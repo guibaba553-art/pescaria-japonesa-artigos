@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, Cable, Sword, Waves } from "lucide-react";
+import { Fish, Anchor, GitBranch, Ruler, Waves } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const categories = [
@@ -18,14 +18,14 @@ const categories = [
     category: "Anzóis"
   },
   {
-    icon: Cable,
+    icon: GitBranch,
     title: "Linhas",
     description: "Multifilamento e monofilamento",
     color: "from-primary/80 to-primary",
     category: "Linhas"
   },
   {
-    icon: Sword,
+    icon: Ruler,
     title: "Varas",
     description: "Telescópicas e resistentes",
     color: "from-secondary/70 to-secondary",

@@ -1,7 +1,10 @@
-import { Facebook, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import japaLogo from "@/assets/japa-logo.png";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
   return (
     <footer className="bg-secondary text-secondary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -16,10 +19,13 @@ const Footer = () => {
               Sua loja completa de artigos de pesca com os melhores produtos e atendimento especializado.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors">
+              <a 
+                href="https://www.instagram.com/japafishing_/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors"
+                aria-label="Instagram JAPA Fishing"
+              >
                 <Instagram className="w-5 h-5" />
               </a>
             </div>
@@ -28,11 +34,46 @@ const Footer = () => {
           <div>
             <h3 className="text-xl font-bold mb-4">Categorias</h3>
             <ul className="space-y-2 text-secondary-foreground/80">
-              <li><a href="#" className="hover:text-primary transition-colors">Iscas</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Anzóis</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Varas</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Linhas</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Acessórios</a></li>
+              <li>
+                <button 
+                  onClick={() => navigate('/produtos?category=Iscas')}
+                  className="hover:text-primary transition-colors"
+                >
+                  Iscas
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/produtos?category=Anzóis')}
+                  className="hover:text-primary transition-colors"
+                >
+                  Anzóis
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/produtos?category=Varas')}
+                  className="hover:text-primary transition-colors"
+                >
+                  Varas
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/produtos?category=Linhas')}
+                  className="hover:text-primary transition-colors"
+                >
+                  Linhas
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => navigate('/produtos?category=Acessórios')}
+                  className="hover:text-primary transition-colors"
+                >
+                  Acessórios
+                </button>
+              </li>
             </ul>
           </div>
           
@@ -52,15 +93,27 @@ const Footer = () => {
             <ul className="space-y-3 text-secondary-foreground/80">
               <li className="flex items-start gap-2">
                 <Phone className="w-5 h-5 mt-1 text-primary" />
-                <span>(11) 9999-9999</span>
+                <a 
+                  href="https://wa.me/5566996579671" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors"
+                >
+                  (66) 99657-9671
+                </a>
               </li>
               <li className="flex items-start gap-2">
                 <Mail className="w-5 h-5 mt-1 text-primary" />
-                <span>contato@japapesca.com.br</span>
+                <a 
+                  href="mailto:contato@japapesca.com.br"
+                  className="hover:text-primary transition-colors"
+                >
+                  contato@japapesca.com.br
+                </a>
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 mt-1 text-primary" />
-                <span>São Paulo - SP</span>
+                <span>Sinop - MT</span>
               </li>
             </ul>
           </div>
