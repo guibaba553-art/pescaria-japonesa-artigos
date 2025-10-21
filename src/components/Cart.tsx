@@ -1,4 +1,5 @@
 import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -11,9 +12,11 @@ import {
 import { useCart } from '@/hooks/useCart';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Checkout } from '@/components/Checkout';
 
 export function Cart() {
   const { items, removeItem, updateQuantity, clearCart, total, itemCount } = useCart();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   return (
     <Sheet>
@@ -103,7 +106,11 @@ export function Cart() {
                   <span className="text-primary">R$ {total.toFixed(2)}</span>
                 </div>
 
-                <Button className="w-full" size="lg">
+                <Button 
+                  className="w-full" 
+                  size="lg"
+                  onClick={() => setCheckoutOpen(true)}
+                >
                   Finalizar Compra
                 </Button>
 
@@ -119,6 +126,7 @@ export function Cart() {
           )}
         </div>
       </SheetContent>
+      <Checkout open={checkoutOpen} onOpenChange={setCheckoutOpen} />
     </Sheet>
   );
 }
