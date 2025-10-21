@@ -20,10 +20,10 @@ const Footer = () => {
             </p>
             <div className="flex gap-4">
               <a 
-                href="https://www.instagram.com/japafishing_/" 
+                href="https://www.instagram.com/japafishing_/?hl=en" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors"
+                className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors cursor-pointer"
                 aria-label="Instagram JAPA Fishing"
               >
                 <Instagram className="w-5 h-5" />
@@ -37,7 +37,7 @@ const Footer = () => {
               <li>
                 <button 
                   onClick={() => navigate('/produtos?category=Iscas')}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   Iscas
                 </button>
@@ -45,7 +45,7 @@ const Footer = () => {
               <li>
                 <button 
                   onClick={() => navigate('/produtos?category=Anzóis')}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   Anzóis
                 </button>
@@ -53,7 +53,7 @@ const Footer = () => {
               <li>
                 <button 
                   onClick={() => navigate('/produtos?category=Varas')}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   Varas
                 </button>
@@ -61,7 +61,7 @@ const Footer = () => {
               <li>
                 <button 
                   onClick={() => navigate('/produtos?category=Linhas')}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   Linhas
                 </button>
@@ -69,7 +69,7 @@ const Footer = () => {
               <li>
                 <button 
                   onClick={() => navigate('/produtos?category=Acessórios')}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors cursor-pointer text-left"
                 >
                   Acessórios
                 </button>
@@ -92,21 +92,21 @@ const Footer = () => {
             <h3 className="text-xl font-bold mb-4">Contato</h3>
             <ul className="space-y-3 text-secondary-foreground/80">
               <li className="flex items-start gap-2">
-                <Phone className="w-5 h-5 mt-1 text-primary" />
+                <Phone className="w-5 h-5 mt-1 text-primary flex-shrink-0" />
                 <a 
                   href="https://wa.me/5566996579671" 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors underline cursor-pointer"
                 >
                   (66) 99657-9671
                 </a>
               </li>
               <li className="flex items-start gap-2">
-                <Mail className="w-5 h-5 mt-1 text-primary" />
+                <Mail className="w-5 h-5 mt-1 text-primary flex-shrink-0" />
                 <a 
                   href="mailto:contato@japapesca.com.br"
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors underline cursor-pointer"
                 >
                   contato@japapesca.com.br
                 </a>
@@ -114,10 +114,10 @@ const Footer = () => {
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 mt-1 text-primary" />
                 <a 
-                  href="https://share.google/gPlcDOAHvaHZKYSmI" 
+                  href="https://maps.app.goo.gl/gPlcDOAHvaHZKYSmI" 
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors underline"
                 >
                   Sinop - MT
                 </a>
