@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import japaLogo from "@/assets/japa-logo.png";
 
 const Hero = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-muted/30 pt-16">
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070')] bg-cover bg-center opacity-10" />
@@ -25,7 +28,11 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Button size="lg" className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 shadow-glow">
+            <Button 
+              size="lg" 
+              className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 shadow-glow"
+              onClick={() => navigate('/produtos')}
+            >
               <ShoppingCart className="mr-2 h-5 w-5" />
               Ver Produtos
             </Button>

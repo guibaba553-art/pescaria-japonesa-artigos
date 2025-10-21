@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Star } from "lucide-react";
@@ -17,6 +18,7 @@ interface Product {
 }
 
 const FeaturedProducts = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -128,7 +130,12 @@ const FeaturedProducts = () => {
         </div>
         
         <div className="text-center mt-12">
-          <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-primary/10">
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="border-2 border-primary text-primary hover:bg-primary/10"
+            onClick={() => navigate('/produtos')}
+          >
             Ver Todos os Produtos
           </Button>
         </div>

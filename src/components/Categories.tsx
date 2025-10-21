@@ -1,34 +1,48 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, Package, Waves } from "lucide-react";
+import { Fish, Anchor, Package, Waves, CircleDot } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const categories = [
   {
     icon: Fish,
     title: "Iscas",
     description: "Artificiais, naturais e vivas",
-    color: "from-primary to-primary/80"
+    color: "from-primary to-primary/80",
+    category: "Iscas"
   },
   {
     icon: Anchor,
     title: "Anzóis",
     description: "Diversos tamanhos e modelos",
-    color: "from-secondary to-secondary/80"
+    color: "from-secondary to-secondary/80",
+    category: "Anzóis"
   },
   {
     icon: Package,
-    title: "Linhas e Varas",
-    description: "Equipamentos profissionais",
-    color: "from-primary/80 to-primary"
+    title: "Linhas",
+    description: "Multifilamento e monofilamento",
+    color: "from-primary/80 to-primary",
+    category: "Linhas"
+  },
+  {
+    icon: CircleDot,
+    title: "Varas",
+    description: "Telescópicas e de bambu",
+    color: "from-secondary/70 to-secondary",
+    category: "Varas"
   },
   {
     icon: Waves,
     title: "Acessórios",
     description: "Tudo para sua pescaria",
-    color: "from-secondary/80 to-secondary"
+    color: "from-primary/60 to-primary/80",
+    category: "Acessórios"
   }
 ];
 
 const Categories = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="py-20 bg-muted/30">
       <div className="container mx-auto px-4">
@@ -41,11 +55,12 @@ const Categories = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {categories.map((category, index) => (
             <Card 
               key={index} 
               className="group hover:shadow-glow transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 overflow-hidden"
+              onClick={() => navigate(`/produtos?category=${category.category}`)}
             >
               <CardContent className="p-8 text-center relative">
                 <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
