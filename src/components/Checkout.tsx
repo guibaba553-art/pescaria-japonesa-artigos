@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CreditCard, Smartphone, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CreditCard, Smartphone, DollarSign, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +21,7 @@ import {
 import { useCart } from '@/hooks/useCart';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CheckoutProps {
   open: boolean;
@@ -34,6 +35,8 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [installments, setInstallments] = useState('1');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string} | null>(null);
   const [cardData, setCardData] = useState({
     number: '',
     name: '',
@@ -41,22 +44,100 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
     cvv: '',
   });
 
-  const handleFinishPurchase = () => {
-    // Aqui você integraria com o gateway de pagamento real
-    toast({
-      title: 'Pedido realizado com sucesso!',
-      description: `Pagamento via ${
-        paymentMethod === 'pix' ? 'PIX' : 
-        paymentMethod === 'credit' ? `Crédito em ${installments}x` : 
-        'Débito'
-      } confirmado.`,
-    });
-    clearCart();
-    onOpenChange(false);
+  useEffect(() => {
+    // Carregar SDK do Mercado Pago
+    const script = document.createElement('script');
+    script.src = 'https://sdk.mercadopago.com/js/v2';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const handleFinishPurchase = async () => {
+    setIsProcessing(true);
+    
+    try {
+      let cardToken = null;
+      
+      // Se for cartão, gerar token primeiro
+      if (paymentMethod === 'credit' || paymentMethod === 'debit') {
+        const mp = new (window as any).MercadoPago(import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY);
+        
+        const [month, year] = cardData.expiry.split('/');
+        
+        cardToken = await mp.createCardToken({
+          cardNumber: cardData.number.replace(/\s/g, ''),
+          cardholderName: cardData.name,
+          cardExpirationMonth: month,
+          cardExpirationYear: `20${year}`,
+          securityCode: cardData.cvv,
+        });
+
+        if (cardToken.error) {
+          throw new Error(cardToken.error.message || 'Erro ao processar cartão');
+        }
+      }
+
+      // Chamar edge function
+      const { data, error } = await supabase.functions.invoke('create-payment', {
+        body: {
+          amount: total,
+          paymentMethod,
+          items: items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          cardData: cardToken ? {
+            token: cardToken.id,
+            paymentMethodId: cardToken.payment_method_id
+          } : null,
+          installments: paymentMethod === 'credit' ? installments : '1'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        if (paymentMethod === 'pix') {
+          setPixData({
+            qrCode: data.qrCode,
+            qrCodeBase64: data.qrCodeBase64
+          });
+          toast({
+            title: 'PIX gerado com sucesso!',
+            description: 'Use o QR Code abaixo para pagar.',
+          });
+        } else {
+          toast({
+            title: 'Pagamento processado!',
+            description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} confirmado.`,
+          });
+          clearCart();
+          onOpenChange(false);
+        }
+      } else {
+        throw new Error(data.error || 'Erro ao processar pagamento');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        title: 'Erro no pagamento',
+        description: error instanceof Error ? error.message : 'Tente novamente',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const calculateInstallmentValue = (value: number) => {
-    return (value / parseInt(value.toString())).toFixed(2);
+  const handleClosePix = () => {
+    setPixData(null);
+    clearCart();
+    onOpenChange(false);
   };
 
   return (
@@ -201,7 +282,7 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
           )}
 
           {/* PIX Info */}
-          {paymentMethod === 'pix' && (
+          {paymentMethod === 'pix' && !pixData && (
             <div className="bg-accent/50 p-4 rounded-lg">
               <p className="text-sm text-muted-foreground">
                 Ao confirmar, você receberá o código PIX para realizar o pagamento.
@@ -210,13 +291,49 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
             </div>
           )}
 
-          <Button 
-            className="w-full" 
-            size="lg"
-            onClick={handleFinishPurchase}
-          >
-            Confirmar Pagamento - R$ {total.toFixed(2)}
-          </Button>
+          {/* PIX QR Code */}
+          {pixData && (
+            <div className="space-y-4">
+              <div className="bg-white p-4 rounded-lg flex justify-center">
+                <img 
+                  src={`data:image/png;base64,${pixData.qrCodeBase64}`} 
+                  alt="QR Code PIX"
+                  className="w-64 h-64"
+                />
+              </div>
+              <div className="bg-accent/50 p-4 rounded-lg">
+                <p className="text-sm font-medium mb-2">Código PIX Copia e Cola:</p>
+                <code className="text-xs break-all block bg-background p-2 rounded">
+                  {pixData.qrCode}
+                </code>
+              </div>
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={handleClosePix}
+              >
+                Fechar
+              </Button>
+            </div>
+          )}
+
+          {!pixData && (
+            <Button 
+              className="w-full" 
+              size="lg"
+              onClick={handleFinishPurchase}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                `Confirmar Pagamento - R$ ${total.toFixed(2)}`
+              )}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
