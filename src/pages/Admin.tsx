@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, ArrowLeft } from 'lucide-react';
+import { Cart } from '@/components/Cart';
 
 interface Product {
   id: string;
@@ -172,9 +173,12 @@ export default function Admin() {
             </Button>
             <h1 className="text-3xl font-bold">Painel Administrativo</h1>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            Sair
-          </Button>
+          <div className="flex items-center gap-4">
+            <Cart />
+            <Button variant="outline" onClick={signOut}>
+              Sair
+            </Button>
+          </div>
         </div>
 
         <Card>

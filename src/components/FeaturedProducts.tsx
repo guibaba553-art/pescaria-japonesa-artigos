@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/hooks/useCart";
 
 interface Product {
   id: string;
@@ -19,6 +20,7 @@ const FeaturedProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { addItem } = useCart();
 
   useEffect(() => {
     loadProducts();
@@ -105,7 +107,16 @@ const FeaturedProducts = () => {
                     <span className="text-2xl font-bold text-primary">
                       R$ {product.price.toFixed(2)}
                     </span>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90">
+                    <Button 
+                      size="sm" 
+                      className="bg-primary hover:bg-primary/90"
+                      onClick={() => addItem({
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        image_url: product.image_url
+                      })}
+                    >
                       <ShoppingCart className="w-4 h-4 mr-1" />
                       Comprar
                     </Button>
