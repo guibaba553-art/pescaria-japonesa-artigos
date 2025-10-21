@@ -1,19 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Cart } from "@/components/Cart";
 import japaLogo from "@/assets/japa-logo.png";
 
 const Hero = () => {
-  const navigate = useNavigate();
-  const { user, isEmployee, isAdmin } = useAuth();
-
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-muted/30">
-      <div className="absolute top-6 right-6 z-20">
-        <Cart />
-      </div>
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-muted/30 pt-16">
       <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070')] bg-cover bg-center opacity-10" />
       
       <div className="container mx-auto px-4 py-20 relative z-10">
@@ -38,26 +29,6 @@ const Hero = () => {
               <ShoppingCart className="mr-2 h-5 w-5" />
               Ver Produtos
             </Button>
-            {(isEmployee || isAdmin) && (
-              <Button 
-                size="lg" 
-                variant="secondary" 
-                className="text-lg px-8 py-6"
-                onClick={() => navigate('/admin')}
-              >
-                Painel Admin
-              </Button>
-            )}
-            {!user && (
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="text-lg px-8 py-6 border-2 border-primary text-primary hover:bg-primary/10"
-                onClick={() => navigate('/auth')}
-              >
-                Entrar / Cadastrar
-              </Button>
-            )}
           </div>
         </div>
       </div>

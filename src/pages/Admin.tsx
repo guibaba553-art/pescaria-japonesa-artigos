@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, ArrowLeft } from 'lucide-react';
-import { Cart } from '@/components/Cart';
+import { Header } from '@/components/Header';
 
 interface Product {
   id: string;
@@ -163,22 +163,15 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      <Header />
+      <div className="max-w-7xl mx-auto space-y-8 p-6 pt-24">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Site
-            </Button>
-            <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Cart />
-            <Button variant="outline" onClick={signOut}>
-              Sair
-            </Button>
-          </div>
+          <h1 className="text-3xl font-bold">Painel Administrativo</h1>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Site
+          </Button>
         </div>
 
         <Card>
