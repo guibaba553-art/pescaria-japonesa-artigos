@@ -19,6 +19,7 @@ serve(async (req) => {
     }
 
     console.log('Creating payment:', { amount, paymentMethod, items });
+    console.log('Access token configured:', !!accessToken);
 
     // Para PIX
     if (paymentMethod === 'pix') {
@@ -27,27 +28,55 @@ serve(async (req) => {
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         payment_method_id: 'pix',
         payer: {
-          email: 'customer@example.com',
+          email: 'test@test.com',
+          first_name: 'Test',
+          last_name: 'User',
+          identification: {
+            type: 'CPF',
+            number: '12345678909'
+          }
         },
       };
+
+      console.log('PIX payment payload:', JSON.stringify(pixPayment, null, 2));
 
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'X-Idempotency-Key': `${Date.now()}-${Math.random()}`,
         },
         body: JSON.stringify(pixPayment),
       });
 
       const data = await response.json();
       
+      console.log('Mercado Pago response status:', response.status);
+      console.log('Mercado Pago response:', JSON.stringify(data, null, 2));
+      
       if (!response.ok) {
-        console.error('Mercado Pago error:', data);
-        throw new Error(data.message || 'Payment creation failed');
+        console.error('Mercado Pago error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        });
+        
+        // Retornar erro mais descritivo
+        return new Response(
+          JSON.stringify({ 
+            error: data.message || data.cause?.[0]?.description || 'Erro ao criar pagamento PIX',
+            details: data,
+            success: false 
+          }),
+          { 
+            status: response.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
 
-      console.log('PIX payment created:', data);
+      console.log('PIX payment created successfully');
 
       return new Response(
         JSON.stringify({
