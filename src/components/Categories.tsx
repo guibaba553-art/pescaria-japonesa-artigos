@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, GitBranch, Ruler, Waves } from "lucide-react";
+import { Fish, Anchor, GitBranch, Wand2, Waves } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const categories = [
@@ -25,7 +25,7 @@ const categories = [
     category: "Linhas"
   },
   {
-    icon: Ruler,
+    icon: Wand2,
     title: "Varas",
     description: "Telescópicas e resistentes",
     color: "from-secondary/70 to-secondary",

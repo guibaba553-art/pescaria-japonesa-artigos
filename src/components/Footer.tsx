@@ -113,7 +113,14 @@ const Footer = () => {
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 mt-1 text-primary" />
-                <span>Sinop - MT</span>
+                <a 
+                  href="https://share.google/gPlcDOAHvaHZKYSmI" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors"
+                >
+                  Sinop - MT
+                </a>
               </li>
             </ul>
           </div>
