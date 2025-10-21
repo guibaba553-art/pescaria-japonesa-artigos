@@ -19,16 +19,37 @@ serve(async (req) => {
     }
 
     console.log('Creating payment:', { amount, paymentMethod, items });
-    console.log('Access token configured:', !!accessToken);
+    console.log('Access token starts with TEST:', accessToken.startsWith('TEST-'));
+    
+    // Modo simulação para testes (quando credenciais reais não funcionam)
+    const isTestMode = accessToken.startsWith('TEST-');
+    const simulatePayment = Deno.env.get('SIMULATE_PAYMENTS') === 'true';
 
     // Para PIX
     if (paymentMethod === 'pix') {
+      // Modo simulação
+      if (simulatePayment) {
+        console.log('SIMULATION MODE: Generating mock PIX payment');
+        const mockQRCode = '00020126580014br.gov.bcb.pix0136' + crypto.randomUUID() + '5204000053039865802BR5925JAPA PESCA6009SAO PAULO62070503***6304';
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            paymentId: `SIM-${Date.now()}`,
+            qrCode: mockQRCode,
+            qrCodeBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            simulated: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const pixPayment = {
         transaction_amount: amount,
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         payment_method_id: 'pix',
         payer: {
-          email: 'test@test.com',
+          email: 'test_user_123456@testuser.com',
           first_name: 'Test',
           last_name: 'User',
           identification: {
@@ -45,7 +66,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
-          'X-Idempotency-Key': `${Date.now()}-${Math.random()}`,
+          'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
         },
         body: JSON.stringify(pixPayment),
       });
@@ -56,17 +77,25 @@ serve(async (req) => {
       console.log('Mercado Pago response:', JSON.stringify(data, null, 2));
       
       if (!response.ok) {
-        console.error('Mercado Pago error details:', {
+        console.error('Mercado Pago API Error:', {
           status: response.status,
-          statusText: response.statusText,
           data: data
         });
         
-        // Retornar erro mais descritivo
+        // Mensagem de erro específica
+        let errorMessage = 'Erro ao criar pagamento PIX';
+        if (response.status === 403 && data.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
+          errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado ou use o modo simulação.';
+        }
+        
         return new Response(
           JSON.stringify({ 
-            error: data.message || data.cause?.[0]?.description || 'Erro ao criar pagamento PIX',
-            details: data,
+            error: errorMessage,
+            details: {
+              status: response.status,
+              code: data.code,
+              message: data.message
+            },
             success: false 
           }),
           { 
