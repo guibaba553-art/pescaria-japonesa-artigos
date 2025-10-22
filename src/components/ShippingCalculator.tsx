@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck } from 'lucide-react';
+import { Loader2, Truck, Store } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
@@ -24,7 +24,16 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<ShippingOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Opção de retirada na loja
+  const pickupOption: ShippingOption = {
+    codigo: 'RETIRADA',
+    nome: 'Retirar na Loja',
+    valor: 0,
+    prazoEntrega: 0
+  };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numeric = sanitizeNumericInput(e.target.value);
@@ -79,10 +88,44 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
     }
   };
 
+  const handleSelectOption = (option: ShippingOption) => {
+    setSelectedOption(option.codigo);
+    onSelectShipping?.(option);
+  };
+
   return (
     <div className="space-y-4">
+      {/* Opção de Retirada na Loja - sempre visível */}
       <div className="space-y-2">
-        <Label htmlFor="cep">Calcular Frete</Label>
+        <Label>Opções de Entrega</Label>
+        <Card
+          className={`p-3 cursor-pointer transition-all ${
+            selectedOption === 'RETIRADA' 
+              ? 'border-primary bg-primary/5 border-2' 
+              : 'hover:bg-accent'
+          }`}
+          onClick={() => handleSelectOption(pickupOption)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-primary" />
+              <div>
+                <p className="font-medium">Retirar na Loja</p>
+                <p className="text-sm text-muted-foreground">
+                  Disponível imediatamente - Sinop/MT
+                </p>
+              </div>
+            </div>
+            <p className="font-bold text-lg text-green-600">
+              GRÁTIS
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* Cálculo de Frete para Entrega */}
+      <div className="space-y-2">
+        <Label htmlFor="cep">Ou calcule o frete para entrega</Label>
         <div className="flex gap-2">
           <Input
             id="cep"
@@ -107,12 +150,15 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
 
       {options.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">Opções de envio:</p>
           {options.map((option) => (
             <Card
               key={option.codigo}
-              className="p-3 cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => onSelectShipping?.(option)}
+              className={`p-3 cursor-pointer transition-all ${
+                selectedOption === option.codigo 
+                  ? 'border-primary bg-primary/5 border-2' 
+                  : 'hover:bg-accent'
+              }`}
+              onClick={() => handleSelectOption(option)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -120,9 +166,7 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
                   <div>
                     <p className="font-medium">{option.nome}</p>
                     <p className="text-sm text-muted-foreground">
-                      {option.prazoEntrega === 0 
-                        ? 'Disponível imediatamente' 
-                        : `Entrega em ${option.prazoEntrega} dias úteis`}
+                      Entrega em {option.prazoEntrega} dias úteis
                     </p>
                   </div>
                 </div>
