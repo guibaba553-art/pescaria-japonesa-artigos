@@ -4,7 +4,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart } from 'lucide-react';
+import { Star, ShoppingCart, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -83,6 +83,15 @@ export default function Products() {
       <Header />
       
       <div className="container mx-auto px-4 pt-24 pb-20">
+        <Button
+          variant="ghost"
+          className="mb-6"
+          onClick={() => window.location.href = '/'}
+        >
+          <Home className="w-4 h-4 mr-2" />
+          Voltar à Home
+        </Button>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             {categoryParam || 'Todos os Produtos'}

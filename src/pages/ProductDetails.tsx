@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -82,14 +82,22 @@ export default function ProductDetails() {
       <Header />
       
       <div className="container mx-auto px-4 pt-24 pb-20">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => navigate('/produtos')}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Voltar para Produtos
-        </Button>
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Home
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/produtos')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Produtos
+          </Button>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Imagens */}

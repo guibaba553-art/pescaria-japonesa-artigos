@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { sanitizeNumericInput, formatCPF, formatCEP, formatPhone } from '@/utils/validation';
+import { Home } from 'lucide-react';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -48,7 +49,17 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-      <Card className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/')}
+          className="w-full"
+        >
+          <Home className="w-4 h-4 mr-2" />
+          Voltar à Home
+        </Button>
+        
+        <Card className="w-full">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">JAPA Pesca</CardTitle>
           <CardDescription>Entre ou crie sua conta</CardDescription>
@@ -170,6 +181,7 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

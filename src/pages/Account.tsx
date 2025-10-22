@@ -5,8 +5,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -89,7 +90,13 @@ export default function Account() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Header />
       <div className="max-w-4xl mx-auto p-6 pt-24 space-y-6">
-        <h1 className="text-3xl font-bold">Minha Conta</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Minha Conta</h1>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <Home className="w-4 h-4 mr-2" />
+            Voltar à Home
+          </Button>
+        </div>
 
         <Card>
           <CardHeader>
