@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Star, ShoppingCart, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,7 @@ export default function Products() {
   const categoryParam = searchParams.get('category') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const { addItem } = useCart();
 
@@ -100,9 +102,17 @@ export default function Products() {
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             {categoryParam || 'Todos os Produtos'}
           </h1>
-          <p className="text-xl text-muted-foreground">
+          <p className="text-xl text-muted-foreground mb-6">
             Encontre os melhores equipamentos de pesca
           </p>
+          <div className="max-w-md mx-auto">
+            <Input
+              placeholder="Procurar produto por nome..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="text-lg"
+            />
+          </div>
         </div>
 
         {/* Filtros de Categoria */}
@@ -132,7 +142,11 @@ export default function Products() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
+            {products
+              .filter(product => 
+                product.name.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((product) => (
               <Card 
                 key={product.id}
                 className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl"
