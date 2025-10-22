@@ -54,6 +54,8 @@ export default function Account() {
   }, [user]);
 
   const loadOrders = async () => {
+    if (!user) return;
+    
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -63,6 +65,7 @@ export default function Account() {
           products (name, image_url)
         )
       `)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
