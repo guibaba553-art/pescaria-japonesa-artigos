@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2 } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface OrderItem {
   id: string;
@@ -55,7 +56,20 @@ export function OrdersManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profiles, setProfiles] = useState<Record<string, { name: string; cpf: string }>>({});
   const [loading, setLoading] = useState(true);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     loadOrders();
@@ -187,84 +201,137 @@ export function OrdersManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className="font-mono text-xs">
-                  {order.id.slice(0, 8)}
-                </TableCell>
-                <TableCell>{profiles[order.user_id]?.name || 'Carregando...'}</TableCell>
-                <TableCell className="font-mono text-sm">
-                  {profiles[order.user_id]?.cpf || 'N/A'}
-                </TableCell>
-                <TableCell className="font-mono text-sm">
-                  {order.shipping_cep || 'N/A'}
-                </TableCell>
-                <TableCell>
-                  <div className="space-y-1 text-sm">
-                    {order.order_items.map((item) => (
-                      <div key={item.id}>
-                        {item.products.name} x{item.quantity}
-                      </div>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
-                <TableCell>
-                  {new Date(order.created_at).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={order.status}
-                    onValueChange={(value) => updateOrderStatus(order.id, value as 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado')}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
-                      <SelectItem value="em_preparo">Em Preparo</SelectItem>
-                      <SelectItem value="enviado">Enviado</SelectItem>
-                      <SelectItem value="entregado">Entregue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="text-right">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="hover:bg-destructive/10 hover:text-destructive"
+            {orders.map((order) => {
+              const isExpanded = expandedOrders.has(order.id);
+              return (
+                <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)}>
+                  <TableRow>
+                    <TableCell className="font-mono text-xs">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mr-1" />
+                          )}
+                          <span>{order.id.slice(0, 8)}</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                    </TableCell>
+                    <TableCell>{profiles[order.user_id]?.name || 'Carregando...'}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {profiles[order.user_id]?.cpf || 'N/A'}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {order.shipping_cep || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={order.status}
+                        onValueChange={(value) => updateOrderStatus(order.id, value as 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado')}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
-                          <div className="mt-2 p-2 bg-muted rounded-md text-sm">
-                            <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
-                            <strong>Cliente:</strong> {profiles[order.user_id]?.name}<br />
-                            <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
+                          <SelectItem value="em_preparo">Em Preparo</SelectItem>
+                          <SelectItem value="enviado">Enviado</SelectItem>
+                          <SelectItem value="entregue">Entregue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
+                              <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                                <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
+                                <strong>Cliente:</strong> {profiles[order.user_id]?.name}<br />
+                                <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
+                              </div>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteOrder(order.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                  <CollapsibleContent asChild>
+                    <TableRow>
+                      <TableCell colSpan={9} className="bg-muted/50">
+                        <div className="py-4 px-6 space-y-3">
+                          <h4 className="font-semibold text-sm">Itens do Pedido</h4>
+                          <div className="space-y-2">
+                            {order.order_items.map((item) => (
+                              <div 
+                                key={item.id}
+                                className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                              >
+                                <div className="flex-1">
+                                  <p className="font-medium">{item.products.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Quantidade: {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold">
+                                    R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteOrder(order.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Excluir
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
-              </TableRow>
-            ))}
+                          <div className="pt-3 border-t space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span>Subtotal:</span>
+                              <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Frete:</span>
+                              <span>R$ {order.shipping_cost.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-base pt-2 border-t">
+                              <span>Total:</span>
+                              <span>R$ {order.total_amount.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>
