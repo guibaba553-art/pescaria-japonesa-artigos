@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
+import { ProductReviews } from '@/components/ProductReviews';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -275,6 +276,11 @@ export default function ProductDetails() {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* Seção de avaliações */}
+        <div className="mt-12">
+          <ProductReviews productId={product.id} />
         </div>
       </div>
     </div>
