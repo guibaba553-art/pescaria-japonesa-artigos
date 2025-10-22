@@ -17,6 +17,7 @@ interface Product {
   category: string;
   image_url: string | null;
   rating: number;
+  stock: number;
 }
 
 const categories = [
@@ -45,6 +46,7 @@ export default function Products() {
     let query = supabase
       .from('products')
       .select('*')
+      .gt('stock', 0)
       .order('created_at', { ascending: false });
 
     if (categoryParam) {

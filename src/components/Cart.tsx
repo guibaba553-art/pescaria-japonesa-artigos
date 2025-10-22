@@ -156,14 +156,6 @@ export function Cart() {
                 >
                   Finalizar Compra
                 </Button>
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={clearCart}
-                >
-                  Limpar Carrinho
-                </Button>
               </div>
             </>
           )}

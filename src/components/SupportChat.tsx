@@ -154,7 +154,7 @@ export function SupportChat() {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className={`fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg relative transition-colors ${
+          className={`fixed bottom-6 left-6 rounded-full w-14 h-14 shadow-lg relative transition-colors ${
             unreadCount > 0 ? 'bg-orange-500 hover:bg-orange-600' : ''
           }`}
           size="icon"
@@ -173,7 +173,7 @@ export function SupportChat() {
 
       {/* Janela de Chat */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-96 shadow-2xl">
+        <Card className="fixed bottom-6 left-6 w-96 shadow-2xl">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div>
               <CardTitle>Suporte</CardTitle>
