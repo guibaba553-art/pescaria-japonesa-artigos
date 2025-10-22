@@ -75,6 +75,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Adicionar opção de retirada na loja
+    shippingOptions.push({
+      codigo: 'RETIRADA',
+      nome: 'Retirar na Loja',
+      valor: 0,
+      prazoEntrega: 0,
+      valorMaoPropriaLabel: 'R$ 0,00',
+      valorAvisoRecebimento: 'R$ 0,00',
+      valorDeclarado: 'R$ 0,00',
+    });
+
     console.log('Shipping options calculated:', shippingOptions);
 
     return new Response(

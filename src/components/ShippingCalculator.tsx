@@ -120,7 +120,9 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
                   <div>
                     <p className="font-medium">{option.nome}</p>
                     <p className="text-sm text-muted-foreground">
-                      Entrega em {option.prazoEntrega} dias úteis
+                      {option.prazoEntrega === 0 
+                        ? 'Disponível imediatamente' 
+                        : `Entrega em ${option.prazoEntrega} dias úteis`}
                     </p>
                   </div>
                 </div>
