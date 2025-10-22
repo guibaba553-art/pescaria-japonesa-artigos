@@ -20,7 +20,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'em_preparo' | 'enviado' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -33,6 +33,7 @@ interface Profile {
 }
 
 const statusConfig = {
+  aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Package, color: 'bg-orange-500' },
   em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
@@ -90,7 +91,7 @@ export function OrdersManagement() {
     setLoading(false);
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: 'em_preparo' | 'enviado' | 'entregado') => {
+  const updateOrderStatus = async (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => {
     const { error } = await supabase
       .from('orders')
       .update({ status: newStatus })
@@ -164,12 +165,13 @@ export function OrdersManagement() {
                 <TableCell>
                   <Select
                     value={order.status}
-                    onValueChange={(value) => updateOrderStatus(order.id, value as 'em_preparo' | 'enviado' | 'entregado')}
+                    onValueChange={(value) => updateOrderStatus(order.id, value as 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado')}
                   >
-                    <SelectTrigger className="w-[140px]">
+                    <SelectTrigger className="w-[180px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
                       <SelectItem value="em_preparo">Em Preparo</SelectItem>
                       <SelectItem value="enviado">Enviado</SelectItem>
                       <SelectItem value="entregado">Entregue</SelectItem>

@@ -124,7 +124,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       if (error) throw error;
 
       if (data.success) {
-        // Criar pedido no banco de dados
+        // Criar pedido no banco de dados com status aguardando_pagamento
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
@@ -136,7 +136,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               shipping_cost: shippingCost,
               shipping_address: shippingInfo?.nome || 'Endereço não informado',
               shipping_cep: '00000-000',
-              status: 'em_preparo'
+              status: 'aguardando_pagamento',
+              payment_id: data.paymentId?.toString()
             })
             .select()
             .single();
@@ -161,12 +162,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           });
           toast({
             title: 'PIX gerado com sucesso!',
-            description: 'Use o QR Code abaixo para pagar.',
+            description: 'Após o pagamento, seu pedido será processado automaticamente.',
           });
         } else {
           toast({
             title: 'Pagamento processado!',
-            description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} confirmado.`,
+            description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} em análise. Você receberá uma confirmação em breve.`,
           });
           clearCart();
           onOpenChange(false);
@@ -361,7 +362,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               </p>
               <p className="text-sm text-green-700">
                 Ao confirmar, você receberá o código PIX para realizar o pagamento.
-                Após a confirmação do pagamento, seu pedido será processado.
+                Seu pedido será criado automaticamente após a confirmação do pagamento.
               </p>
             </div>
           )}

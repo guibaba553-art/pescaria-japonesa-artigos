@@ -107,6 +107,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          payment_id: string | null
           shipping_address: string
           shipping_cep: string
           shipping_cost: number
@@ -118,6 +119,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          payment_id?: string | null
           shipping_address: string
           shipping_cep: string
           shipping_cost?: number
@@ -129,6 +131,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          payment_id?: string | null
           shipping_address?: string
           shipping_cep?: string
           shipping_cost?: number
@@ -317,7 +320,11 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "employee" | "user"
-      order_status: "em_preparo" | "enviado" | "entregado"
+      order_status:
+        | "em_preparo"
+        | "enviado"
+        | "entregado"
+        | "aguardando_pagamento"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -446,7 +453,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "employee", "user"],
-      order_status: ["em_preparo", "enviado", "entregado"],
+      order_status: [
+        "em_preparo",
+        "enviado",
+        "entregado",
+        "aguardando_pagamento",
+      ],
     },
   },
 } as const

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.cleanup-old-messages]
 verify_jwt = false
+
+[functions.payment-webhook]
+verify_jwt = false

@@ -26,12 +26,13 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'em_preparo' | 'enviado' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
   created_at: string;
   order_items: OrderItem[];
 }
 
 const statusConfig = {
+  aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Package, color: 'bg-orange-500' },
   em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
