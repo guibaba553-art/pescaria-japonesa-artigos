@@ -45,7 +45,7 @@ serve(async (req) => {
       }
 
       const pixPayment = {
-        transaction_amount: amount,
+        transaction_amount: Number(amount.toFixed(2)),
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         payment_method_id: 'pix',
         payer: {
@@ -122,7 +122,7 @@ serve(async (req) => {
     // Para cartão de crédito/débito
     if (paymentMethod === 'credit' || paymentMethod === 'debit') {
       const cardPayment = {
-        transaction_amount: amount,
+        transaction_amount: Number(amount.toFixed(2)),
         token: cardData.token,
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         installments: parseInt(installments) || 1,
@@ -137,6 +137,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'X-Idempotency-Key': `card-${Date.now()}-${Math.random()}`,
         },
         body: JSON.stringify(cardPayment),
       });
