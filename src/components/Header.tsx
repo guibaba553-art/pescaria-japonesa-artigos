@@ -65,9 +65,11 @@ export function Header() {
           <span className="text-xl font-bold text-foreground">JAPA Pesca</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 justify-end">
           {user ? (
             <>
+              <Cart />
+              
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/conta')}
@@ -94,8 +96,6 @@ export function Header() {
                 )}
               </Button>
               
-              <Cart />
-              
               {(isEmployee || isAdmin) && (
                 <Button 
                   variant="outline" 
@@ -106,13 +106,16 @@ export function Header() {
                   Painel Admin
                 </Button>
               )}
-              <Button 
-                variant="ghost" 
-                onClick={signOut}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </Button>
+              
+              <div className="ml-auto">
+                <Button 
+                  variant="ghost" 
+                  onClick={signOut}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
             </>
           ) : (
             <>
