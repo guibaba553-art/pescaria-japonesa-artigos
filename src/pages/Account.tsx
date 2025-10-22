@@ -72,6 +72,28 @@ export default function Account() {
   useEffect(() => {
     if (user) {
       loadOrders();
+
+      // Configurar realtime para atualizar automaticamente quando pedidos mudarem
+      const channel = supabase
+        .channel('user-orders-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Order status changed:', payload);
+            loadOrders(); // Recarregar pedidos automaticamente
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 

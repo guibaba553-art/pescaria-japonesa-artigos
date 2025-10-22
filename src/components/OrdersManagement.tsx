@@ -73,6 +73,27 @@ export function OrdersManagement() {
 
   useEffect(() => {
     loadOrders();
+
+    // Configurar realtime para atualizar automaticamente quando pedidos mudarem
+    const channel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escutar INSERT, UPDATE e DELETE
+          schema: 'public',
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Order change detected:', payload);
+          loadOrders(); // Recarregar pedidos quando houver mudanças
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadOrders = async () => {
