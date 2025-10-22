@@ -110,7 +110,7 @@ export default function Admin() {
             category,
             stock: parseInt(stock),
             images: imageUrls,
-            image_url: imageUrls[0] || null, // Manter compatibilidade
+            image_url: imageUrls.length > 0 ? imageUrls[0] : null,
             created_by: user?.id
           }
         ]);
