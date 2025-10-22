@@ -129,9 +129,10 @@ export default function ProductDetails() {
           <div className="space-y-4">
             <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-border">
               <img
+                key={selectedImage}
                 src={selectedImage || 'https://placehold.co/600x600?text=Sem+Imagem'}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-500"
               />
               
               {/* Setas de navegação */}
