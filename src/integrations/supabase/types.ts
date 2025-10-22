@@ -21,6 +21,7 @@ export type Database = {
           is_from_user: boolean
           message: string
           product_id: string | null
+          read_by_user: boolean
           replied: boolean
           replied_at: string | null
           replied_by: string | null
@@ -32,6 +33,7 @@ export type Database = {
           is_from_user?: boolean
           message: string
           product_id?: string | null
+          read_by_user?: boolean
           replied?: boolean
           replied_at?: string | null
           replied_by?: string | null
@@ -43,6 +45,7 @@ export type Database = {
           is_from_user?: boolean
           message?: string
           product_id?: string | null
+          read_by_user?: boolean
           replied?: boolean
           replied_at?: string | null
           replied_by?: string | null
@@ -144,6 +147,7 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
+          images: string[] | null
           name: string
           price: number
           rating: number | null
@@ -156,6 +160,7 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
+          images?: string[] | null
           name: string
           price: number
           rating?: number | null
@@ -168,6 +173,7 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
+          images?: string[] | null
           name?: string
           price?: number
           rating?: number | null

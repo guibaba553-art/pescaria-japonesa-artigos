@@ -23,6 +23,7 @@ interface Product {
   price: number;
   category: string;
   image_url: string | null;
+  images: string[];
   rating: number;
 }
 
@@ -35,7 +36,7 @@ export default function Admin() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
-  const [image, setImage] = useState<File | null>(null);
+  const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -70,14 +71,15 @@ export default function Admin() {
     setUploading(true);
 
     try {
-      let imageUrl = null;
+      const imageUrls: string[] = [];
 
-      if (image) {
-        const fileExt = image.name.split('.').pop();
+      // Upload de todas as imagens
+      for (const file of images) {
+        const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(fileName, image);
+          .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
@@ -85,7 +87,7 @@ export default function Admin() {
           .from('product-images')
           .getPublicUrl(fileName);
 
-        imageUrl = publicUrl;
+        imageUrls.push(publicUrl);
       }
 
       const { error } = await supabase
@@ -96,7 +98,8 @@ export default function Admin() {
             description,
             price: parseFloat(price),
             category,
-            image_url: imageUrl,
+            images: imageUrls,
+            image_url: imageUrls[0] || null, // Manter compatibilidade
             created_by: user?.id
           }
         ]);
@@ -112,7 +115,7 @@ export default function Admin() {
       setDescription('');
       setPrice('');
       setCategory('');
-      setImage(null);
+      setImages([]);
       loadProducts();
     } catch (error: any) {
       toast({
@@ -240,13 +243,42 @@ export default function Admin() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Imagem do Produto</Label>
+                <Label htmlFor="image">Imagens do Produto (múltiplas)</Label>
+                {images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {images.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-20 object-cover rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                          onClick={() => setImages(images.filter((_, i) => i !== index))}
+                        >
+                          X
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Input
                   id="image"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setImage(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    setImages([...images, ...files]);
+                  }}
                 />
+                <p className="text-sm text-muted-foreground">
+                  Selecione múltiplas imagens para o produto
+                </p>
               </div>
 
               <Button type="submit" disabled={uploading} className="w-full">

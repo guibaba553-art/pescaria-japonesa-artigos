@@ -21,6 +21,7 @@ interface Product {
   price: number;
   category: string;
   image_url: string | null;
+  images: string[];
   rating: number;
 }
 
@@ -36,32 +37,37 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [description, setDescription] = useState(product.description);
   const [price, setPrice] = useState(product.price.toString());
   const [category, setCategory] = useState(product.category);
-  const [image, setImage] = useState<File | null>(null);
+  const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
+  const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
+
+  const handleDeleteImage = (imageUrl: string) => {
+    setExistingImages(existingImages.filter(img => img !== imageUrl));
+  };
+
+  const handleNewImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setNewImages([...newImages, ...files]);
+  };
+
+  const handleRemoveNewImage = (index: number) => {
+    setNewImages(newImages.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdating(true);
 
     try {
-      let imageUrl = product.image_url;
+      const allImageUrls = [...existingImages];
 
-      // Upload nova imagem se selecionada
-      if (image) {
-        // Deletar imagem antiga se existir
-        if (product.image_url) {
-          const oldFileName = product.image_url.split('/').pop();
-          if (oldFileName) {
-            await supabase.storage.from('product-images').remove([oldFileName]);
-          }
-        }
-
-        // Upload nova imagem
-        const fileExt = image.name.split('.').pop();
+      // Upload novas imagens
+      for (const file of newImages) {
+        const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(fileName, image);
+          .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
@@ -69,7 +75,16 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           .from('product-images')
           .getPublicUrl(fileName);
 
-        imageUrl = publicUrl;
+        allImageUrls.push(publicUrl);
+      }
+
+      // Deletar imagens removidas do storage
+      const deletedImages = (product.images || []).filter(img => !existingImages.includes(img));
+      for (const imageUrl of deletedImages) {
+        const fileName = imageUrl.split('/').pop();
+        if (fileName) {
+          await supabase.storage.from('product-images').remove([fileName]);
+        }
       }
 
       // Atualizar produto
@@ -80,7 +95,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           description,
           price: parseFloat(price),
           category,
-          image_url: imageUrl,
+          images: allImageUrls,
+          image_url: allImageUrls[0] || null, // Manter compatibilidade
         })
         .eq('id', product.id);
 
@@ -170,20 +186,66 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-image">Nova Imagem (opcional)</Label>
-              {product.image_url && (
-                <img
-                  src={product.image_url}
-                  alt={product.name}
-                  className="w-32 h-32 object-cover rounded mb-2"
-                />
+              <Label>Imagens do Produto</Label>
+              
+              {/* Imagens existentes */}
+              {existingImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {existingImages.map((imgUrl, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={imgUrl}
+                        alt={`Produto ${index + 1}`}
+                        className="w-full h-24 object-cover rounded"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteImage(imgUrl)}
+                      >
+                        X
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
+
+              {/* Preview de novas imagens */}
+              {newImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {newImages.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Nova ${index + 1}`}
+                        className="w-full h-24 object-cover rounded"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRemoveNewImage(index)}
+                      >
+                        X
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Input
-                id="edit-image"
+                id="edit-images"
                 type="file"
                 accept="image/*"
-                onChange={(e) => setImage(e.target.files?.[0] || null)}
+                multiple
+                onChange={handleNewImageChange}
               />
+              <p className="text-sm text-muted-foreground">
+                Adicione múltiplas imagens para o produto
+              </p>
             </div>
 
             <div className="flex gap-2 justify-end">

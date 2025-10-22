@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,11 +23,39 @@ export function SupportChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && user) {
+    if (user) {
       loadMessages();
+      
+      // Realtime subscription para novas mensagens
+      const channel = supabase
+        .channel('user-chat-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            loadMessages();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isOpen && user) {
+      markMessagesAsRead();
     }
   }, [isOpen, user]);
 
@@ -44,7 +73,24 @@ export function SupportChat() {
 
     if (!error && data) {
       setMessages(data);
+      
+      // Contar mensagens não lidas (respostas dos admins)
+      const unread = data.filter(m => !m.is_from_user && !m.read_by_user).length;
+      setUnreadCount(unread);
     }
+  };
+
+  const markMessagesAsRead = async () => {
+    if (!user) return;
+
+    await supabase
+      .from('chat_messages')
+      .update({ read_by_user: true })
+      .eq('user_id', user.id)
+      .eq('is_from_user', false)
+      .eq('read_by_user', false);
+
+    setUnreadCount(0);
   };
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -108,10 +154,20 @@ export function SupportChat() {
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg"
+          className={`fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg relative transition-colors ${
+            unreadCount > 0 ? 'bg-orange-500 hover:bg-orange-600' : ''
+          }`}
           size="icon"
         >
           <MessageCircle className="w-6 h-6" />
+          {unreadCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center"
+            >
+              {unreadCount}
+            </Badge>
+          )}
         </Button>
       )}
 
