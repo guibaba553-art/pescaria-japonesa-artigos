@@ -24,6 +24,28 @@ export default function ProductDetails() {
     loadProduct();
   }, [id]);
 
+  // Autoplay das imagens
+  useEffect(() => {
+    if (!product) return;
+    
+    const allImages = [
+      ...(product.image_url ? [product.image_url] : []),
+      ...(product.images || [])
+    ].filter(Boolean);
+
+    if (allImages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setSelectedImage(current => {
+        const currentIndex = allImages.indexOf(current);
+        const nextIndex = (currentIndex + 1) % allImages.length;
+        return allImages[nextIndex];
+      });
+    }, 3000); // Troca a cada 3 segundos
+
+    return () => clearInterval(interval);
+  }, [product]);
+
   const loadProduct = async () => {
     if (!id) return;
     
