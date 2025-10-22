@@ -30,6 +30,7 @@ export const APP_CONFIG = {
     email: 'contato@japapesca.com.br',
     whatsapp: 'https://wa.me/5566996579671',
   },
+  MERCADO_PAGO_PUBLIC_KEY: 'TEST-797e5e66-240d-435c-8b22-1474550e7074',
 } as const;
 
 export const PRODUCT_CATEGORIES = [

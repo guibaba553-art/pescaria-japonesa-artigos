@@ -22,6 +22,7 @@ import { useCart } from '@/hooks/useCart';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { APP_CONFIG } from '@/config/constants';
 
 interface CheckoutProps {
   open: boolean;
@@ -107,13 +108,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           throw new Error('Sistema de pagamento ainda não está pronto. Aguarde alguns segundos e tente novamente.');
         }
 
-        const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
-        if (!publicKey) {
-          throw new Error('Chave pública do Mercado Pago não configurada');
-        }
-
         console.log('Criando token do cartão...');
-        const mp = new (window as any).MercadoPago(publicKey);
+        const mp = new (window as any).MercadoPago(APP_CONFIG.MERCADO_PAGO_PUBLIC_KEY);
         
         const [month, year] = cardData.expiry.split('/');
         
