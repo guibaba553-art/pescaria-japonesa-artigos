@@ -21,6 +21,9 @@ export type Database = {
           is_from_user: boolean
           message: string
           product_id: string | null
+          replied: boolean
+          replied_at: string | null
+          replied_by: string | null
           user_id: string
         }
         Insert: {
@@ -29,6 +32,9 @@ export type Database = {
           is_from_user?: boolean
           message: string
           product_id?: string | null
+          replied?: boolean
+          replied_at?: string | null
+          replied_by?: string | null
           user_id: string
         }
         Update: {
@@ -37,6 +43,9 @@ export type Database = {
           is_from_user?: boolean
           message?: string
           product_id?: string | null
+          replied?: boolean
+          replied_at?: string | null
+          replied_by?: string | null
           user_id?: string
         }
         Relationships: [

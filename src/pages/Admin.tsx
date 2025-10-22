@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Trash2, ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
+import { ChatManagement } from '@/components/ChatManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Product {
@@ -177,9 +178,10 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
+            <TabsTrigger value="chat">Chat Suporte</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
@@ -306,6 +308,10 @@ export default function Admin() {
 
           <TabsContent value="orders">
             <OrdersManagement />
+          </TabsContent>
+
+          <TabsContent value="chat">
+            <ChatManagement />
           </TabsContent>
         </Tabs>
       </div>
