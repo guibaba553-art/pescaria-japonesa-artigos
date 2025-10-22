@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star } from 'lucide-react';
+import { ReviewDialog } from '@/components/ReviewDialog';
 
 interface OrderItem {
   id: string;
@@ -41,6 +42,13 @@ export default function Account() {
   const { user, loading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [selectedReview, setSelectedReview] = useState<{
+    orderId: string;
+    productId: string;
+    productName: string;
+  } | null>(null);
+  const [reviewedProducts, setReviewedProducts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) {
@@ -71,10 +79,31 @@ export default function Account() {
 
     if (!error && data) {
       setOrders(data as Order[]);
+      
+      // Carregar avaliações existentes
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('order_id, product_id')
+        .eq('user_id', user.id);
+      
+      if (reviews) {
+        const reviewedSet = new Set(
+          reviews.map(r => `${r.order_id}_${r.product_id}`)
+        );
+        setReviewedProducts(reviewedSet);
+      }
     }
     setLoadingOrders(false);
   };
 
+  const handleOpenReviewDialog = (orderId: string, productId: string, productName: string) => {
+    setSelectedReview({ orderId, productId, productName });
+    setReviewDialogOpen(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    loadOrders();
+  };
 
   if (loading || loadingOrders) {
     return (
@@ -138,26 +167,52 @@ export default function Account() {
                     <Separator />
 
                     <div className="space-y-2">
-                      {order.order_items.map((item) => (
-                        <div key={item.id} className="flex gap-3 items-start">
-                          {item.products.image_url && (
-                            <img
-                              src={item.products.image_url}
-                              alt={item.products.name}
-                              className="w-16 h-16 object-cover rounded"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <p className="font-medium">{item.products.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Quantidade: {item.quantity}
+                      {order.order_items.map((item) => {
+                        const isReviewed = reviewedProducts.has(`${order.id}_${item.product_id}`);
+                        const canReview = order.status === 'entregado' && !isReviewed;
+                        
+                        return (
+                          <div key={item.id} className="flex gap-3 items-start">
+                            {item.products.image_url && (
+                              <img
+                                src={item.products.image_url}
+                                alt={item.products.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <p className="font-medium">{item.products.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Quantidade: {item.quantity}
+                              </p>
+                              {canReview && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2"
+                                  onClick={() => handleOpenReviewDialog(
+                                    order.id,
+                                    item.product_id,
+                                    item.products.name
+                                  )}
+                                >
+                                  <Star className="w-4 h-4 mr-1" />
+                                  Avaliar Produto
+                                </Button>
+                              )}
+                              {isReviewed && (
+                                <Badge variant="secondary" className="mt-2">
+                                  <Star className="w-3 h-3 mr-1 fill-current" />
+                                  Avaliado
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="font-medium">
+                              R$ {(item.price_at_purchase * item.quantity).toFixed(2)}
                             </p>
                           </div>
-                          <p className="font-medium">
-                            R$ {(item.price_at_purchase * item.quantity).toFixed(2)}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <Separator />
@@ -180,6 +235,16 @@ export default function Account() {
         </Card>
       </div>
 
+      {selectedReview && (
+        <ReviewDialog
+          open={reviewDialogOpen}
+          onOpenChange={setReviewDialogOpen}
+          orderId={selectedReview.orderId}
+          productId={selectedReview.productId}
+          productName={selectedReview.productName}
+          onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
     </div>
   );
 }
