@@ -13,6 +13,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
+  short_description?: string;
   price: number;
   category: string;
   image_url: string | null;
@@ -124,7 +125,10 @@ export default function Products() {
                 className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl"
               >
                 <CardContent className="p-0">
-                  <div className="relative overflow-hidden aspect-square">
+                  <div 
+                    className="relative overflow-hidden aspect-square cursor-pointer"
+                    onClick={() => window.location.href = `/produto/${product.id}`}
+                  >
                     <img
                       src={product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem'}
                       alt={product.name}
@@ -154,7 +158,7 @@ export default function Products() {
                     
                     <h3 className="font-bold text-xl">{product.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
+                      {product.short_description || product.description}
                     </p>
                     
                     <div className="flex items-center justify-between pt-2">

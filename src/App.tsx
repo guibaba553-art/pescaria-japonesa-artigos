@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Account from "./pages/Account";
 import Products from "./pages/Products";
+import ProductDetails from "./pages/ProductDetails";
 import RemoveLogoBackground from "./pages/RemoveLogoBackground";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/conta" element={<Account />} />
           <Route path="/produtos" element={<Products />} />
+          <Route path="/produto/:id" element={<ProductDetails />} />
           <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

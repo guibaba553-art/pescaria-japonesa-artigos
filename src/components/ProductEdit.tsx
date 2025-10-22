@@ -20,6 +20,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
+  short_description?: string;
   price: number;
   category: string;
   image_url: string | null;
@@ -38,12 +39,14 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
+  const [shortDescription, setShortDescription] = useState(product.short_description || '');
   const [price, setPrice] = useState(product.price.toString());
   const [category, setCategory] = useState(product.category);
   const [stock, setStock] = useState(product.stock.toString());
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   const handleDeleteImage = (imageUrl: string) => {
     setExistingImages(existingImages.filter(img => img !== imageUrl));
@@ -56,6 +59,40 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
   const handleRemoveNewImage = (index: number) => {
     setNewImages(newImages.filter((_, i) => i !== index));
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!description.trim()) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha a descrição antes de gerar o resumo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { description }
+      });
+
+      if (error) throw error;
+
+      setShortDescription(data.summary);
+      toast({
+        title: 'Resumo gerado!',
+        description: 'O resumo foi gerado com sucesso.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao gerar resumo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingSummary(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,6 +134,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         .update({
           name,
           description,
+          short_description: shortDescription,
           price: parseFloat(price),
           category,
           stock: parseInt(stock),
@@ -205,6 +243,28 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-short-description">Resumo (para listagem)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  disabled={generatingSummary}
+                >
+                  {generatingSummary ? 'Gerando...' : 'Gerar com IA'}
+                </Button>
+              </div>
+              <Textarea
+                id="edit-short-description"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                rows={2}
+                placeholder="Resumo curto de 2 linhas (gerado automaticamente pela IA ou edite manualmente)"
               />
             </div>
 
