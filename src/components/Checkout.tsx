@@ -78,10 +78,71 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     };
   }, []);
 
+  const validateCardData = () => {
+    const errors: string[] = [];
+
+    // Validar número do cartão
+    const cardNumber = cardData.number.replace(/\s/g, '');
+    if (!cardNumber) {
+      errors.push('Número do cartão é obrigatório');
+    } else if (!/^\d{13,19}$/.test(cardNumber)) {
+      errors.push('Número do cartão inválido (deve ter entre 13 e 19 dígitos)');
+    }
+
+    // Validar nome
+    if (!cardData.name || cardData.name.trim().length < 3) {
+      errors.push('Nome no cartão deve ter pelo menos 3 caracteres');
+    }
+
+    // Validar validade
+    if (!cardData.expiry) {
+      errors.push('Data de validade é obrigatória');
+    } else {
+      const [month, year] = cardData.expiry.split('/');
+      if (!month || !year || month.length !== 2 || year.length !== 2) {
+        errors.push('Data de validade inválida (use MM/AA)');
+      } else {
+        const monthNum = parseInt(month);
+        const yearNum = parseInt(`20${year}`);
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+
+        if (monthNum < 1 || monthNum > 12) {
+          errors.push('Mês inválido (deve ser entre 01 e 12)');
+        }
+        if (yearNum < currentYear || (yearNum === currentYear && monthNum < currentMonth)) {
+          errors.push('Cartão vencido');
+        }
+      }
+    }
+
+    // Validar CVV
+    if (!cardData.cvv) {
+      errors.push('CVV é obrigatório');
+    } else if (!/^\d{3,4}$/.test(cardData.cvv)) {
+      errors.push('CVV inválido (deve ter 3 ou 4 dígitos)');
+    }
+
+    return errors;
+  };
+
   const handleFinishPurchase = async () => {
     setIsProcessing(true);
     
     try {
+      // Validar dados do cartão se for pagamento com cartão
+      if (paymentMethod === 'credit' || paymentMethod === 'debit') {
+        const validationErrors = validateCardData();
+        if (validationErrors.length > 0) {
+          throw new Error(`Dados do cartão inválidos:\n${validationErrors.map(e => `• ${e}`).join('\n')}`);
+        }
+
+        if (!mpLoaded || !(window as any).MercadoPago) {
+          throw new Error('Sistema de pagamento ainda não está pronto. Aguarde alguns segundos e tente novamente.');
+        }
+      }
+
       // Buscar dados do perfil do usuário
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -99,23 +160,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       
       // Se for cartão, gerar token primeiro
       if (paymentMethod === 'credit' || paymentMethod === 'debit') {
-        // Validar dados do cartão
-        if (!cardData.number || !cardData.name || !cardData.expiry || !cardData.cvv) {
-          throw new Error('Preencha todos os dados do cartão');
-        }
-
-        if (!mpLoaded || !(window as any).MercadoPago) {
-          throw new Error('Sistema de pagamento ainda não está pronto. Aguarde alguns segundos e tente novamente.');
-        }
-
         console.log('Criando token do cartão...');
         const mp = new (window as any).MercadoPago(APP_CONFIG.MERCADO_PAGO_PUBLIC_KEY);
         
         const [month, year] = cardData.expiry.split('/');
-        
-        if (!month || !year || month.length !== 2 || year.length !== 2) {
-          throw new Error('Data de validade inválida. Use o formato MM/AA');
-        }
 
         try {
           cardToken = await mp.createCardToken({
@@ -130,11 +178,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
           if (cardToken.error) {
             console.error('Erro ao criar token:', cardToken.error);
-            throw new Error(cardToken.error.message || 'Erro ao processar cartão');
+            const errorMsg = cardToken.error.message || 'Erro ao processar cartão';
+            throw new Error(`Erro no cartão: ${errorMsg}`);
           }
         } catch (error) {
           console.error('Erro na criação do token:', error);
-          throw error;
+          throw new Error('Erro ao validar cartão. Verifique os dados e tente novamente.');
         }
       }
 
@@ -159,7 +208,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Erro ao processar pagamento: ${error.message}`);
+      }
 
       if (data.success) {
         // Criar pedido no banco de dados com status aguardando_pagamento
@@ -211,14 +263,32 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           onOpenChange(false);
         }
       } else {
-        throw new Error(data.error || 'Erro ao processar pagamento');
+        // Mostrar erro específico retornado pela API
+        const errorMessage = data.error || 'Erro ao processar pagamento';
+        const errorDetails = data.details || '';
+        throw new Error(errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage);
       }
     } catch (error) {
       console.error('Payment error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao processar pagamento';
+      
+      // Mapear erros comuns do Mercado Pago para mensagens amigáveis
+      let friendlyMessage = errorMessage;
+      if (errorMessage.includes('cc_rejected_bad_filled')) {
+        friendlyMessage = 'Dados do cartão incorretos. Verifique número, nome, validade e CVV.';
+      } else if (errorMessage.includes('cc_rejected_insufficient_amount')) {
+        friendlyMessage = 'Saldo insuficiente no cartão.';
+      } else if (errorMessage.includes('cc_rejected_max_attempts')) {
+        friendlyMessage = 'Você excedeu o número de tentativas permitidas.';
+      } else if (errorMessage.includes('Card Token not found')) {
+        friendlyMessage = 'Erro ao processar cartão. Verifique os dados e tente novamente.';
+      }
+
       toast({
-        title: 'Erro no pagamento',
-        description: error instanceof Error ? error.message : 'Tente novamente',
-        variant: 'destructive'
+        title: '❌ Erro no pagamento',
+        description: friendlyMessage,
+        variant: 'destructive',
+        duration: 6000,
       });
     } finally {
       setIsProcessing(false);
@@ -437,7 +507,17 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 className="w-full" 
                 size="lg"
                 onClick={handleFinishPurchase}
-                disabled={isProcessing || !shippingInfo || ((paymentMethod === 'credit' || paymentMethod === 'debit') && !mpLoaded)}
+                disabled={
+                  isProcessing || 
+                  !shippingInfo || 
+                  ((paymentMethod === 'credit' || paymentMethod === 'debit') && (
+                    !mpLoaded || 
+                    !cardData.number || 
+                    !cardData.name || 
+                    !cardData.expiry || 
+                    !cardData.cvv
+                  ))
+                }
               >
                 {isProcessing ? (
                   <>
@@ -451,6 +531,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Carregando sistema de pagamento...
                   </>
+                ) : ((paymentMethod === 'credit' || paymentMethod === 'debit') && (!cardData.number || !cardData.name || !cardData.expiry || !cardData.cvv)) ? (
+                  '⚠️ Preencha todos os dados do cartão'
                 ) : (
                   `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
                 )}

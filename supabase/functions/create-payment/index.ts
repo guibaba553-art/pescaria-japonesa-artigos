@@ -144,12 +144,83 @@ serve(async (req) => {
 
       const data = await response.json();
       
+      console.log('Card payment created:', data);
+      
       if (!response.ok) {
         console.error('Mercado Pago error:', data);
-        throw new Error(data.message || 'Payment creation failed');
+        
+        // Mapear erros específicos
+        let errorMessage = data.message || 'Erro ao processar pagamento com cartão';
+        let errorDetails = '';
+        
+        if (data.cause && data.cause.length > 0) {
+          const cause = data.cause[0];
+          errorDetails = cause.description || '';
+          
+          // Mapear códigos de erro específicos
+          if (cause.code === 2006) {
+            errorMessage = 'Token do cartão inválido';
+            errorDetails = 'Verifique os dados do cartão e tente novamente';
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            details: errorDetails,
+            status: data.status,
+            statusDetail: data.status_detail,
+            success: false 
+          }),
+          { 
+            status: response.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
 
-      console.log('Card payment created:', data);
+      // Verificar se o pagamento foi rejeitado
+      if (data.status === 'rejected') {
+        let rejectionReason = 'Pagamento rejeitado';
+        let rejectionDetails = '';
+        
+        // Mapear motivos de rejeição
+        const statusDetail = data.status_detail;
+        if (statusDetail === 'cc_rejected_bad_filled_card_number') {
+          rejectionReason = 'Número do cartão incorreto';
+          rejectionDetails = 'Verifique o número do cartão e tente novamente';
+        } else if (statusDetail === 'cc_rejected_bad_filled_date') {
+          rejectionReason = 'Data de validade inválida';
+          rejectionDetails = 'Verifique a data de validade do cartão';
+        } else if (statusDetail === 'cc_rejected_bad_filled_security_code') {
+          rejectionReason = 'CVV incorreto';
+          rejectionDetails = 'Verifique o código de segurança do cartão';
+        } else if (statusDetail === 'cc_rejected_insufficient_amount') {
+          rejectionReason = 'Saldo insuficiente';
+          rejectionDetails = 'O cartão não possui saldo suficiente';
+        } else if (statusDetail === 'cc_rejected_invalid_installments') {
+          rejectionReason = 'Parcelamento não disponível';
+          rejectionDetails = 'O cartão não aceita este parcelamento';
+        } else if (statusDetail === 'cc_rejected_max_attempts') {
+          rejectionReason = 'Limite de tentativas excedido';
+          rejectionDetails = 'Aguarde alguns minutos antes de tentar novamente';
+        } else if (statusDetail.includes('cc_rejected')) {
+          rejectionReason = 'Cartão rejeitado';
+          rejectionDetails = statusDetail.replace('cc_rejected_', '').replace(/_/g, ' ');
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: rejectionReason,
+            details: rejectionDetails,
+            paymentId: data.id,
+            status: data.status,
+            statusDetail: data.status_detail,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
       return new Response(
         JSON.stringify({

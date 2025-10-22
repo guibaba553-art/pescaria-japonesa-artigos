@@ -5,7 +5,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface OrderItem {
   id: string;
@@ -112,6 +124,43 @@ export function OrdersManagement() {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    // Primeiro deletar os itens do pedido
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', orderId);
+
+    if (itemsError) {
+      toast({
+        title: 'Erro ao deletar itens',
+        description: itemsError.message,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Depois deletar o pedido
+    const { error: orderError } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (orderError) {
+      toast({
+        title: 'Erro ao deletar pedido',
+        description: orderError.message,
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Pedido deletado',
+        description: 'O pedido foi removido com sucesso.'
+      });
+      loadOrders();
+    }
+  };
+
   if (loading) {
     return <div>Carregando pedidos...</div>;
   }
@@ -134,6 +183,7 @@ export function OrdersManagement() {
               <TableHead>Total</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -177,6 +227,41 @@ export function OrdersManagement() {
                       <SelectItem value="entregado">Entregue</SelectItem>
                     </SelectContent>
                   </Select>
+                </TableCell>
+                <TableCell className="text-right">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
+                          <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                            <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
+                            <strong>Cliente:</strong> {profiles[order.user_id]?.name}<br />
+                            <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteOrder(order.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
