@@ -30,6 +30,7 @@ export default function ProductDetails() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [quantity, setQuantity] = useState(1);
   const { toast } = useToast();
   const { addItem } = useCart();
 
@@ -198,25 +199,58 @@ export default function ProductDetails() {
               </p>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full text-lg py-6"
-              onClick={() => {
-                addItem({
-                  id: product.id,
-                  name: product.name,
-                  price: product.on_sale && product.sale_price ? product.sale_price : product.price,
-                  image_url: product.image_url
-                });
-                toast({
-                  title: 'Produto adicionado!',
-                  description: 'O produto foi adicionado ao carrinho.'
-                });
-              }}
-            >
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              Adicionar ao Carrinho
-            </Button>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Quantidade</label>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  >
+                    -
+                  </Button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={product.stock}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
+                    className="w-20 text-center border rounded-md px-3 py-2"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  >
+                    +
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    (máx: {product.stock})
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                size="lg"
+                className="w-full text-lg py-6"
+                onClick={() => {
+                  addItem({
+                    id: product.id,
+                    name: product.name,
+                    price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                    image_url: product.image_url
+                  }, quantity);
+                  toast({
+                    title: 'Produto adicionado!',
+                    description: `${quantity} unidade(s) adicionada(s) ao carrinho.`
+                  });
+                }}
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Adicionar ao Carrinho
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Star } from "lucide-react";
+import { ShoppingCart, Star, Plus, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
@@ -26,8 +26,14 @@ const FeaturedProducts = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const { addItem } = useCart();
+
+  const getQuantity = (productId: string) => quantities[productId] || 1;
+  const setQuantity = (productId: string, qty: number) => {
+    setQuantities(prev => ({ ...prev, [productId]: qty }));
+  };
 
   useEffect(() => {
     loadProducts();
@@ -123,7 +129,7 @@ const FeaturedProducts = () => {
                     {product.name}
                   </h3>
                   
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="space-y-3 mt-4">
                     <div className="flex flex-col">
                       {product.on_sale && product.sale_price ? (
                         <>
@@ -145,19 +151,53 @@ const FeaturedProducts = () => {
                         </span>
                       )}
                     </div>
-                    <Button 
-                      size="sm" 
-                      className="bg-primary hover:bg-primary/90"
-                      onClick={() => addItem({
-                        id: product.id,
-                        name: product.name,
-                        price: product.on_sale && product.sale_price ? product.sale_price : product.price,
-                        image_url: product.image_url
-                      })}
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-1" />
-                      Comprar
-                    </Button>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setQuantity(product.id, Math.max(1, getQuantity(product.id) - 1))}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <input
+                        type="number"
+                        min="1"
+                        max={product.stock}
+                        value={getQuantity(product.id)}
+                        onChange={(e) => setQuantity(product.id, Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
+                        className="w-14 text-center border rounded px-2 py-1 text-sm"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setQuantity(product.id, Math.min(product.stock, getQuantity(product.id) + 1))}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => {
+                          const qty = getQuantity(product.id);
+                          addItem({
+                            id: product.id,
+                            name: product.name,
+                            price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                            image_url: product.image_url
+                          }, qty);
+                          toast({
+                            title: 'Produto adicionado!',
+                            description: `${qty} unidade(s) adicionada(s) ao carrinho.`
+                          });
+                        }}
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-1" />
+                        Comprar
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

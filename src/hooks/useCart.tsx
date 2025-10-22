@@ -11,7 +11,7 @@ interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: { id: string; name: string; price: number; image_url: string | null }) => void;
+  addItem: (product: { id: string; name: string; price: number; image_url: string | null }, quantity?: number) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -38,7 +38,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
 
-  const addItem = (product: { id: string; name: string; price: number; image_url: string | null }) => {
+  const addItem = (product: { id: string; name: string; price: number; image_url: string | null }, quantity: number = 1) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
       
@@ -49,7 +49,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         });
         return currentItems.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
@@ -59,7 +59,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: `${product.name} foi adicionado ao carrinho`
       });
 
-      return [...currentItems, { ...product, quantity: 1 }];
+      return [...currentItems, { ...product, quantity }];
     });
   };
 

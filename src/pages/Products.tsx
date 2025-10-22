@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Star, ShoppingCart, Home } from 'lucide-react';
+import { Star, ShoppingCart, Home, Plus, Minus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -43,8 +43,14 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const { toast } = useToast();
   const { addItem } = useCart();
+
+  const getQuantity = (productId: string) => quantities[productId] || 1;
+  const setQuantity = (productId: string, qty: number) => {
+    setQuantities(prev => ({ ...prev, [productId]: qty }));
+  };
 
   useEffect(() => {
     loadProducts();
@@ -193,40 +199,76 @@ export default function Products() {
                       {product.short_description || product.description}
                     </p>
                     
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="flex flex-col">
-                        {product.on_sale && product.sale_price ? (
-                          <>
-                            <span className="text-sm line-through text-muted-foreground">
-                              R$ {product.price.toFixed(2)}
-                            </span>
-                            <span className="text-2xl font-bold text-red-600">
-                              R$ {product.sale_price.toFixed(2)}
-                            </span>
-                            {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
-                              <span className="text-xs text-muted-foreground">
-                                Até {new Date(product.sale_ends_at).toLocaleDateString('pt-BR')}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          {product.on_sale && product.sale_price ? (
+                            <>
+                              <span className="text-sm line-through text-muted-foreground">
+                                R$ {product.price.toFixed(2)}
                               </span>
-                            )}
-                          </>
-                        ) : (
-                          <p className="text-2xl font-bold text-primary">
-                            R$ {product.price.toFixed(2)}
-                          </p>
-                        )}
+                              <span className="text-2xl font-bold text-red-600">
+                                R$ {product.sale_price.toFixed(2)}
+                              </span>
+                              {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
+                                <span className="text-xs text-muted-foreground">
+                                  Até {new Date(product.sale_ends_at).toLocaleDateString('pt-BR')}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-2xl font-bold text-primary">
+                              R$ {product.price.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <Button 
-                        className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                        onClick={() => addItem({
-                          id: product.id,
-                          name: product.name,
-                          price: product.on_sale && product.sale_price ? product.sale_price : product.price,
-                          image_url: product.image_url
-                        })}
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Comprar
-                      </Button>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setQuantity(product.id, Math.max(1, getQuantity(product.id) - 1))}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <input
+                          type="number"
+                          min="1"
+                          max={product.stock}
+                          value={getQuantity(product.id)}
+                          onChange={(e) => setQuantity(product.id, Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
+                          className="w-14 text-center border rounded px-2 py-1 text-sm"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setQuantity(product.id, Math.min(product.stock, getQuantity(product.id) + 1))}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          className="flex-1"
+                          onClick={() => {
+                            const qty = getQuantity(product.id);
+                            addItem({
+                              id: product.id,
+                              name: product.name,
+                              price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                              image_url: product.image_url
+                            }, qty);
+                            toast({
+                              title: 'Produto adicionado!',
+                              description: `${qty} unidade(s) adicionada(s) ao carrinho.`
+                            });
+                          }}
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Comprar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
