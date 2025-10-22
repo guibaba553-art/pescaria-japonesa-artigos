@@ -28,10 +28,9 @@ export default function ProductDetails() {
   useEffect(() => {
     if (!product) return;
     
-    const allImages = [
-      ...(product.image_url ? [product.image_url] : []),
-      ...(product.images || [])
-    ].filter(Boolean);
+    const allImages = product.images && product.images.length > 0 
+      ? product.images 
+      : (product.image_url ? [product.image_url] : []);
 
     if (allImages.length <= 1) return;
 
@@ -65,7 +64,10 @@ export default function ProductDetails() {
       navigate('/produtos');
     } else {
       setProduct(data);
-      setSelectedImage(data.image_url || (data.images && data.images[0]) || '');
+      const firstImage = (data.images && data.images.length > 0) 
+        ? data.images[0] 
+        : (data.image_url || '');
+      setSelectedImage(firstImage);
     }
     setLoading(false);
   };
@@ -85,10 +87,9 @@ export default function ProductDetails() {
     return null;
   }
 
-  const allImages = [
-    ...(product.image_url ? [product.image_url] : []),
-    ...(product.images || [])
-  ].filter(Boolean);
+  const allImages = product.images && product.images.length > 0 
+    ? product.images 
+    : (product.image_url ? [product.image_url] : []);
 
   const goToNextImage = () => {
     const currentIndex = allImages.indexOf(selectedImage);
