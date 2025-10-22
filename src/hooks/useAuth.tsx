@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     toast({
       title: "Conta criada!",
-      description: "Você já pode fazer login."
+      description: "Verifique seu e-mail para confirmar o cadastro antes de fazer login."
     });
 
     return { error: null };
