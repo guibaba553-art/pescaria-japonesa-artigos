@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     console.log('Calculating shipping:', { cepDestino, peso, formato, comprimento, altura, largura });
 
     // CEP de origem (Sinop - MT)
-    const cepOrigem = '78550970';
+    const cepOrigem = '78556100';
 
     // Códigos de serviço dos Correios
     // 04014 = SEDEX

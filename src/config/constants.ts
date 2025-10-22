@@ -1,7 +1,7 @@
 // Configurações centralizadas da aplicação
 
 export const SHIPPING_CONFIG = {
-  ORIGIN_CEP: '78550970', // Sinop - MT
+  ORIGIN_CEP: '78556100', // Sinop - MT
   DEFAULT_WEIGHT: 500, // gramas
   DEFAULT_FORMAT: 1, // 1=caixa/pacote, 2=rolo/prisma, 3=envelope
   DEFAULT_DIMENSIONS: {
