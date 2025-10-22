@@ -11,6 +11,7 @@ interface Product {
   id: string;
   name: string;
   description: string;
+  short_description?: string;
   price: number;
   category: string;
   image_url: string | null;
@@ -112,6 +113,10 @@ const FeaturedProducts = () => {
                   >
                     {product.name}
                   </h3>
+                  
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                    {product.short_description || product.description}
+                  </p>
                   
                   <div className="flex items-center justify-between mt-4">
                     <span className="text-2xl font-bold text-primary">
