@@ -39,6 +39,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const [installments, setInstallments] = useState('1');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string} | null>(null);
+  const [mpLoaded, setMpLoaded] = useState(false);
   const [cardData, setCardData] = useState({
     number: '',
     name: '',
@@ -55,10 +56,24 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     const script = document.createElement('script');
     script.src = 'https://sdk.mercadopago.com/js/v2';
     script.async = true;
+    script.onload = () => {
+      console.log('Mercado Pago SDK carregado');
+      setMpLoaded(true);
+    };
+    script.onerror = () => {
+      console.error('Erro ao carregar SDK do Mercado Pago');
+      toast({
+        title: 'Erro ao carregar SDK',
+        description: 'Não foi possível carregar o sistema de pagamento. Recarregue a página.',
+        variant: 'destructive'
+      });
+    };
     document.body.appendChild(script);
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
@@ -83,20 +98,47 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       
       // Se for cartão, gerar token primeiro
       if (paymentMethod === 'credit' || paymentMethod === 'debit') {
-        const mp = new (window as any).MercadoPago(import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY);
+        // Validar dados do cartão
+        if (!cardData.number || !cardData.name || !cardData.expiry || !cardData.cvv) {
+          throw new Error('Preencha todos os dados do cartão');
+        }
+
+        if (!mpLoaded || !(window as any).MercadoPago) {
+          throw new Error('Sistema de pagamento ainda não está pronto. Aguarde alguns segundos e tente novamente.');
+        }
+
+        const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
+        if (!publicKey) {
+          throw new Error('Chave pública do Mercado Pago não configurada');
+        }
+
+        console.log('Criando token do cartão...');
+        const mp = new (window as any).MercadoPago(publicKey);
         
         const [month, year] = cardData.expiry.split('/');
         
-        cardToken = await mp.createCardToken({
-          cardNumber: cardData.number.replace(/\s/g, ''),
-          cardholderName: cardData.name,
-          cardExpirationMonth: month,
-          cardExpirationYear: `20${year}`,
-          securityCode: cardData.cvv,
-        });
+        if (!month || !year || month.length !== 2 || year.length !== 2) {
+          throw new Error('Data de validade inválida. Use o formato MM/AA');
+        }
 
-        if (cardToken.error) {
-          throw new Error(cardToken.error.message || 'Erro ao processar cartão');
+        try {
+          cardToken = await mp.createCardToken({
+            cardNumber: cardData.number.replace(/\s/g, ''),
+            cardholderName: cardData.name,
+            cardExpirationMonth: month,
+            cardExpirationYear: `20${year}`,
+            securityCode: cardData.cvv,
+          });
+
+          console.log('Token do cartão criado:', cardToken);
+
+          if (cardToken.error) {
+            console.error('Erro ao criar token:', cardToken.error);
+            throw new Error(cardToken.error.message || 'Erro ao processar cartão');
+          }
+        } catch (error) {
+          console.error('Erro na criação do token:', error);
+          throw error;
         }
       }
 
@@ -399,7 +441,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 className="w-full" 
                 size="lg"
                 onClick={handleFinishPurchase}
-                disabled={isProcessing || !shippingInfo}
+                disabled={isProcessing || !shippingInfo || ((paymentMethod === 'credit' || paymentMethod === 'debit') && !mpLoaded)}
               >
                 {isProcessing ? (
                   <>
@@ -408,6 +450,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   </>
                 ) : !shippingInfo ? (
                   '⚠️ Escolha uma opção de entrega'
+                ) : ((paymentMethod === 'credit' || paymentMethod === 'debit') && !mpLoaded) ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Carregando sistema de pagamento...
+                  </>
                 ) : (
                   `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
                 )}
