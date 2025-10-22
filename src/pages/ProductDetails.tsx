@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart, ArrowLeft, Home } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -90,6 +90,18 @@ export default function ProductDetails() {
     ...(product.images || [])
   ].filter(Boolean);
 
+  const goToNextImage = () => {
+    const currentIndex = allImages.indexOf(selectedImage);
+    const nextIndex = (currentIndex + 1) % allImages.length;
+    setSelectedImage(allImages[nextIndex]);
+  };
+
+  const goToPreviousImage = () => {
+    const currentIndex = allImages.indexOf(selectedImage);
+    const previousIndex = (currentIndex - 1 + allImages.length) % allImages.length;
+    setSelectedImage(allImages[previousIndex]);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -115,12 +127,32 @@ export default function ProductDetails() {
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Imagens */}
           <div className="space-y-4">
-            <div className="aspect-square rounded-lg overflow-hidden border-2 border-border">
+            <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-border">
               <img
                 src={selectedImage || 'https://placehold.co/600x600?text=Sem+Imagem'}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
+              
+              {/* Setas de navegação */}
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    onClick={goToPreviousImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all"
+                    aria-label="Imagem anterior"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                  <button
+                    onClick={goToNextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all"
+                    aria-label="Próxima imagem"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
+                </>
+              )}
             </div>
             
             {allImages.length > 1 && (
