@@ -214,7 +214,6 @@ export function OrdersManagement() {
               <TableHead>Cliente</TableHead>
               <TableHead>CPF</TableHead>
               <TableHead>CEP</TableHead>
-              <TableHead>Itens</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Status</TableHead>
@@ -245,11 +244,6 @@ export function OrdersManagement() {
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {order.shipping_cep || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
-                      </Badge>
                     </TableCell>
                     <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
                     <TableCell>
@@ -309,7 +303,7 @@ export function OrdersManagement() {
                   </TableRow>
                   <CollapsibleContent asChild>
                     <TableRow>
-                      <TableCell colSpan={9} className="bg-muted/50">
+                      <TableCell colSpan={8} className="bg-muted/50">
                         <div className="py-4 px-6 grid grid-cols-2 gap-6">
                           {/* Informações do Cliente */}
                           <div className="space-y-3">
