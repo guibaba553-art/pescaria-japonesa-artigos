@@ -45,6 +45,8 @@ export default function Admin() {
   const [stock, setStock] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [featuredSearchQuery, setFeaturedSearchQuery] = useState('');
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -199,6 +201,14 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
+            <div className="mb-4">
+              <Input
+                placeholder="Procurar produto por nome..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="max-w-md"
+              />
+            </div>
             <Card>
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
@@ -334,7 +344,9 @@ export default function Admin() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {products
+                  .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
                       {product.image_url ? (
@@ -411,10 +423,18 @@ export default function Admin() {
           </TabsContent>
 
           <TabsContent value="featured">
+            <div className="mb-4">
+              <Input
+                placeholder="Procurar produto por nome..."
+                value={featuredSearchQuery}
+                onChange={(e) => setFeaturedSearchQuery(e.target.value)}
+                className="max-w-md"
+              />
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
-                <CardDescription>Selecione quais produtos aparecerão na página inicial</CardDescription>
+                <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -424,11 +444,25 @@ export default function Admin() {
                       <TableHead>Nome</TableHead>
                       <TableHead>Categoria</TableHead>
                       <TableHead>Preço</TableHead>
+                      <TableHead className="text-center">Promoção</TableHead>
                       <TableHead className="text-center">Em Destaque</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {products.map((product) => (
+                    {products
+                      .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
+                      .map((product) => {
+                        const [showPromotion, setShowPromotion] = useState(product.on_sale);
+                        const [discountPercent, setDiscountPercent] = useState(
+                          product.on_sale && product.sale_price 
+                            ? Math.round(((product.price - product.sale_price) / product.price) * 100)
+                            : 0
+                        );
+                        const [saleEndDate, setSaleEndDate] = useState(
+                          product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().split('T')[0] : ''
+                        );
+
+                        return (
                       <TableRow key={product.id}>
                         <TableCell>
                           {product.image_url ? (
@@ -459,6 +493,100 @@ export default function Admin() {
                             <span>R$ {product.price.toFixed(2)}</span>
                           )}
                         </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <Button
+                              variant={showPromotion ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setShowPromotion(!showPromotion)}
+                            >
+                              {showPromotion ? '🏷️ Em Promoção' : 'Adicionar Promoção'}
+                            </Button>
+                            {showPromotion && (
+                              <div className="space-y-2 mt-2">
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="99"
+                                    value={discountPercent}
+                                    onChange={(e) => setDiscountPercent(parseInt(e.target.value) || 0)}
+                                    className="w-20"
+                                  />
+                                  <span className="text-sm">% desconto</span>
+                                </div>
+                                <Input
+                                  type="date"
+                                  value={saleEndDate}
+                                  onChange={(e) => setSaleEndDate(e.target.value)}
+                                  className="w-full"
+                                />
+                                <div className="text-sm text-muted-foreground">
+                                  Preço final: R$ {(product.price * (1 - discountPercent / 100)).toFixed(2)}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    const salePrice = product.price * (1 - discountPercent / 100);
+                                    const { error } = await supabase
+                                      .from('products')
+                                      .update({ 
+                                        on_sale: true,
+                                        sale_price: salePrice,
+                                        sale_ends_at: saleEndDate ? new Date(saleEndDate).toISOString() : null
+                                      })
+                                      .eq('id', product.id);
+                                    
+                                    if (error) {
+                                      toast({
+                                        title: 'Erro ao aplicar promoção',
+                                        description: error.message,
+                                        variant: 'destructive'
+                                      });
+                                    } else {
+                                      toast({
+                                        title: 'Promoção aplicada com sucesso!',
+                                      });
+                                      loadProducts();
+                                    }
+                                  }}
+                                >
+                                  Aplicar Promoção
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    const { error } = await supabase
+                                      .from('products')
+                                      .update({ 
+                                        on_sale: false,
+                                        sale_price: null,
+                                        sale_ends_at: null
+                                      })
+                                      .eq('id', product.id);
+                                    
+                                    if (error) {
+                                      toast({
+                                        title: 'Erro ao remover promoção',
+                                        description: error.message,
+                                        variant: 'destructive'
+                                      });
+                                    } else {
+                                      toast({
+                                        title: 'Promoção removida',
+                                      });
+                                      setShowPromotion(false);
+                                      loadProducts();
+                                    }
+                                  }}
+                                >
+                                  Remover Promoção
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant={product.featured ? "default" : "outline"}
@@ -487,7 +615,8 @@ export default function Admin() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
