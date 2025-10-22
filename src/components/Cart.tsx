@@ -1,5 +1,6 @@
 import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -10,13 +11,34 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useCart } from '@/hooks/useCart';
+import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Checkout } from '@/components/Checkout';
+import { ShippingCalculator } from '@/components/ShippingCalculator';
+import { useToast } from '@/hooks/use-toast';
 
 export function Cart() {
   const { items, removeItem, updateQuantity, clearCart, total, itemCount } = useCart();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [shippingCost, setShippingCost] = useState(0);
+  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number } | null>(null);
+
+  const handleCheckout = () => {
+    if (!user) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa fazer login para finalizar a compra",
+        variant: "destructive"
+      });
+      navigate('/auth');
+      return;
+    }
+    setCheckoutOpen(true);
+  };
 
   return (
     <Sheet>
@@ -101,15 +123,36 @@ export function Cart() {
               <Separator className="my-4" />
 
               <div className="space-y-4">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total:</span>
-                  <span className="text-primary">R$ {total.toFixed(2)}</span>
+                <ShippingCalculator 
+                  onSelectShipping={(option) => {
+                    setShippingCost(option.valor);
+                    setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
+                  }}
+                />
+
+                <Separator className="my-4" />
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>R$ {total.toFixed(2)}</span>
+                  </div>
+                  {shippingInfo && (
+                    <div className="flex justify-between text-sm">
+                      <span>{shippingInfo.nome}:</span>
+                      <span>R$ {shippingCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                    <span>Total:</span>
+                    <span className="text-primary">R$ {(total + shippingCost).toFixed(2)}</span>
+                  </div>
                 </div>
 
                 <Button 
                   className="w-full" 
                   size="lg"
-                  onClick={() => setCheckoutOpen(true)}
+                  onClick={handleCheckout}
                 >
                   Finalizar Compra
                 </Button>
@@ -126,7 +169,14 @@ export function Cart() {
           )}
         </div>
       </SheetContent>
-      <Checkout open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      {user && (
+        <Checkout 
+          open={checkoutOpen} 
+          onOpenChange={setCheckoutOpen}
+          shippingCost={shippingCost}
+          shippingInfo={shippingInfo}
+        />
+      )}
     </Sheet>
   );
 }

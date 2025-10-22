@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   isEmployee: boolean;
@@ -67,10 +67,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => {
+    // Validar campos obrigatórios
+    if (!cpf || cpf.length !== 11) {
+      toast({
+        title: "Erro ao criar conta",
+        description: "CPF deve ter 11 dígitos",
+        variant: "destructive"
+      });
+      return { error: new Error("CPF inválido") };
+    }
+
+    if (!cep || cep.length !== 8) {
+      toast({
+        title: "Erro ao criar conta",
+        description: "CEP deve ter 8 dígitos",
+        variant: "destructive"
+      });
+      return { error: new Error("CEP inválido") };
+    }
+
+    if (!phone || phone.length < 10 || phone.length > 11) {
+      toast({
+        title: "Erro ao criar conta",
+        description: "Telefone deve ter 10 ou 11 dígitos",
+        variant: "destructive"
+      });
+      return { error: new Error("Telefone inválido") };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -87,14 +115,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: error.message,
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Conta criada!",
-        description: "Você já pode fazer login."
-      });
+      return { error };
     }
 
-    return { error };
+    // Atualizar perfil com CPF, CEP e telefone
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          cpf, 
+          cep, 
+          phone 
+        })
+        .eq('id', data.user.id);
+
+      if (profileError) {
+        console.error('Erro ao atualizar perfil:', profileError);
+      }
+    }
+
+    toast({
+      title: "Conta criada!",
+      description: "Você já pode fazer login."
+    });
+
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {

@@ -15,6 +15,9 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
+  const [signupCpf, setSignupCpf] = useState('');
+  const [signupCep, setSignupCep] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (user) {
@@ -35,7 +38,7 @@ export default function Auth() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupCep, signupPhone);
     setLoading(false);
     if (!error) {
       navigate('/');
@@ -97,6 +100,43 @@ export default function Auth() {
                     value={signupName}
                     onChange={(e) => setSignupName(e.target.value)}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-cpf">CPF</Label>
+                  <Input
+                    id="signup-cpf"
+                    type="text"
+                    placeholder="00000000000"
+                    value={signupCpf}
+                    onChange={(e) => setSignupCpf(e.target.value.replace(/\D/g, ''))}
+                    required
+                    maxLength={11}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-cep">CEP</Label>
+                  <Input
+                    id="signup-cep"
+                    type="text"
+                    placeholder="00000000"
+                    value={signupCep}
+                    onChange={(e) => setSignupCep(e.target.value.replace(/\D/g, ''))}
+                    required
+                    maxLength={8}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-phone">Telefone</Label>
+                  <Input
+                    id="signup-phone"
+                    type="text"
+                    placeholder="11999999999"
+                    value={signupPhone}
+                    onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, ''))}
+                    required
+                    minLength={10}
+                    maxLength={11}
                   />
                 </div>
                 <div className="space-y-2">

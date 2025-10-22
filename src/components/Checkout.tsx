@@ -22,24 +22,23 @@ import { useCart } from '@/hooks/useCart';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { ShippingCalculator } from './ShippingCalculator';
 
 interface CheckoutProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  shippingCost: number;
+  shippingInfo: { nome: string; prazoEntrega: number } | null;
 }
 
 type PaymentMethod = 'pix' | 'credit' | 'debit';
 
-export function Checkout({ open, onOpenChange }: CheckoutProps) {
+export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [installments, setInstallments] = useState('1');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string} | null>(null);
-  const [shippingCost, setShippingCost] = useState(0);
-  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number } | null>(null);
   const [cardData, setCardData] = useState({
     number: '',
     name: '',
@@ -176,18 +175,6 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
               <span>Total:</span>
               <span className="text-primary">R$ {(total + shippingCost).toFixed(2)}</span>
             </div>
-          </div>
-
-          <Separator />
-
-          {/* Calculadora de Frete */}
-          <div className="space-y-4">
-            <ShippingCalculator 
-              onSelectShipping={(option) => {
-                setShippingCost(option.valor);
-                setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
-              }}
-            />
           </div>
 
           <Separator />
