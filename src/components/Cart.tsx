@@ -153,8 +153,9 @@ export function Cart() {
                   className="w-full" 
                   size="lg"
                   onClick={handleCheckout}
+                  disabled={!shippingInfo}
                 >
-                  Finalizar Compra
+                  {!shippingInfo ? 'Calcule o frete primeiro' : 'Finalizar Compra'}
                 </Button>
               </div>
             </>

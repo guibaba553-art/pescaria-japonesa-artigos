@@ -381,13 +381,15 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               className="w-full" 
               size="lg"
               onClick={handleFinishPurchase}
-              disabled={isProcessing}
+              disabled={isProcessing || !shippingInfo}
             >
               {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Processando...
                 </>
+              ) : !shippingInfo ? (
+                'CEP não calculado'
               ) : (
                 `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
               )}
