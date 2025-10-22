@@ -28,6 +28,10 @@ interface Product {
   images: string[];
   stock: number;
   rating: number;
+  featured: boolean;
+  on_sale: boolean;
+  sale_price?: number;
+  sale_ends_at?: string;
 }
 
 export default function Admin() {
@@ -326,6 +330,7 @@ export default function Admin() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Estoque</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -347,13 +352,40 @@ export default function Admin() {
                     </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
-                    <TableCell>R$ {product.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {product.on_sale && product.sale_price ? (
+                        <div className="flex flex-col">
+                          <span className="line-through text-muted-foreground text-xs">
+                            R$ {product.price.toFixed(2)}
+                          </span>
+                          <span className="text-green-600 font-semibold">
+                            R$ {product.sale_price.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span>R$ {product.price.toFixed(2)}</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {product.stock === 0 ? (
                         <span className="text-red-600 font-bold">ESGOTADO</span>
                       ) : (
                         <span>{product.stock} unidades</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {product.featured && (
+                          <span className="text-xs bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded">
+                            ⭐ Destaque
+                          </span>
+                        )}
+                        {product.on_sale && (
+                          <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+                            🏷️ Promoção
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                        <div className="flex gap-2 justify-end">

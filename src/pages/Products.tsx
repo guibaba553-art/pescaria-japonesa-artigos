@@ -19,6 +19,10 @@ interface Product {
   image_url: string | null;
   rating: number;
   stock: number;
+  featured: boolean;
+  on_sale: boolean;
+  sale_price?: number;
+  sale_ends_at?: string;
 }
 
 const categories = [
@@ -146,6 +150,11 @@ export default function Products() {
                     <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
                       {product.category}
                     </div>
+                    {product.on_sale && (
+                      <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                        🏷️ PROMOÇÃO
+                      </div>
+                    )}
                   </div>
                   
                   <div className="p-6 space-y-4">
@@ -171,15 +180,33 @@ export default function Products() {
                     </p>
                     
                     <div className="flex items-center justify-between pt-2">
-                      <p className="text-2xl font-bold text-primary">
-                        R$ {product.price.toFixed(2)}
-                      </p>
+                      <div className="flex flex-col">
+                        {product.on_sale && product.sale_price ? (
+                          <>
+                            <span className="text-sm line-through text-muted-foreground">
+                              R$ {product.price.toFixed(2)}
+                            </span>
+                            <span className="text-2xl font-bold text-red-600">
+                              R$ {product.sale_price.toFixed(2)}
+                            </span>
+                            {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
+                              <span className="text-xs text-muted-foreground">
+                                Até {new Date(product.sale_ends_at).toLocaleDateString('pt-BR')}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-2xl font-bold text-primary">
+                            R$ {product.price.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
                       <Button 
                         className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
                         onClick={() => addItem({
                           id: product.id,
                           name: product.name,
-                          price: product.price,
+                          price: product.on_sale && product.sale_price ? product.sale_price : product.price,
                           image_url: product.image_url
                         })}
                       >

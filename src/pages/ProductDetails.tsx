@@ -18,6 +18,10 @@ interface Product {
   images: string[] | null;
   rating: number;
   stock: number;
+  featured: boolean;
+  on_sale: boolean;
+  sale_price?: number;
+  sale_ends_at?: string;
 }
 
 export default function ProductDetails() {
@@ -134,7 +138,14 @@ export default function ProductDetails() {
           {/* Detalhes */}
           <div className="space-y-6">
             <div>
-              <Badge className="mb-3">{product.category}</Badge>
+              <div className="flex gap-2 mb-3">
+                <Badge>{product.category}</Badge>
+                {product.on_sale && (
+                  <Badge className="bg-red-600 hover:bg-red-700">
+                    🏷️ PROMOÇÃO
+                  </Badge>
+                )}
+              </div>
               <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
               
               <div className="flex items-center gap-2 mb-6">
@@ -155,9 +166,25 @@ export default function ProductDetails() {
                 </span>
               </div>
 
-              <p className="text-4xl font-bold text-primary mb-6">
-                R$ {product.price.toFixed(2)}
-              </p>
+              {product.on_sale && product.sale_price ? (
+                <div className="mb-6">
+                  <p className="text-2xl line-through text-muted-foreground">
+                    R$ {product.price.toFixed(2)}
+                  </p>
+                  <p className="text-5xl font-bold text-red-600">
+                    R$ {product.sale_price.toFixed(2)}
+                  </p>
+                  {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Promoção válida até {new Date(product.sale_ends_at).toLocaleString('pt-BR')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-4xl font-bold text-primary mb-6">
+                  R$ {product.price.toFixed(2)}
+                </p>
+              )}
 
               <p className="text-lg text-muted-foreground mb-2">
                 Estoque disponível: <span className="font-semibold">{product.stock} unidades</span>
@@ -178,7 +205,7 @@ export default function ProductDetails() {
                 addItem({
                   id: product.id,
                   name: product.name,
-                  price: product.price,
+                  price: product.on_sale && product.sale_price ? product.sale_price : product.price,
                   image_url: product.image_url
                 });
                 toast({

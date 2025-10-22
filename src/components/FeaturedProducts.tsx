@@ -16,6 +16,10 @@ interface Product {
   image_url: string | null;
   stock: number;
   rating: number;
+  featured: boolean;
+  on_sale: boolean;
+  sale_price?: number;
+  sale_ends_at?: string;
 }
 
 const FeaturedProducts = () => {
@@ -35,6 +39,7 @@ const FeaturedProducts = () => {
       .from('products')
       .select('*')
       .gt('stock', 0) // Apenas produtos com estoque disponível
+      .eq('featured', true) // Apenas produtos em destaque
       .order('created_at', { ascending: false })
       .limit(4);
 
@@ -97,6 +102,11 @@ const FeaturedProducts = () => {
                   <div className="absolute top-4 right-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-bold">
                     {product.category}
                   </div>
+                  {product.on_sale && (
+                    <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                      🏷️ PROMOÇÃO
+                    </div>
+                  )}
                 </div>
                 
                 <CardContent className="p-6">
@@ -114,16 +124,34 @@ const FeaturedProducts = () => {
                   </h3>
                   
                   <div className="flex items-center justify-between mt-4">
-                    <span className="text-2xl font-bold text-primary">
-                      R$ {product.price.toFixed(2)}
-                    </span>
+                    <div className="flex flex-col">
+                      {product.on_sale && product.sale_price ? (
+                        <>
+                          <span className="text-sm line-through text-muted-foreground">
+                            R$ {product.price.toFixed(2)}
+                          </span>
+                          <span className="text-2xl font-bold text-red-600">
+                            R$ {product.sale_price.toFixed(2)}
+                          </span>
+                          {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
+                            <span className="text-xs text-muted-foreground">
+                              Até {new Date(product.sale_ends_at).toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-2xl font-bold text-primary">
+                          R$ {product.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                     <Button 
                       size="sm" 
                       className="bg-primary hover:bg-primary/90"
                       onClick={() => addItem({
                         id: product.id,
                         name: product.name,
-                        price: product.price,
+                        price: product.on_sale && product.sale_price ? product.sale_price : product.price,
                         image_url: product.image_url
                       })}
                     >

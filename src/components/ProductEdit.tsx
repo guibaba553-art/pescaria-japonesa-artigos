@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,10 @@ interface Product {
   images: string[];
   stock: number;
   rating: number;
+  featured: boolean;
+  on_sale: boolean;
+  sale_price?: number;
+  sale_ends_at?: string;
 }
 
 interface ProductEditProps {
@@ -47,6 +52,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [featured, setFeatured] = useState(product.featured || false);
+  const [onSale, setOnSale] = useState(product.on_sale || false);
+  const [salePrice, setSalePrice] = useState(product.sale_price?.toString() || '');
+  const [saleEndsAt, setSaleEndsAt] = useState(
+    product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : ''
+  );
 
   const handleDeleteImage = (imageUrl: string) => {
     setExistingImages(existingImages.filter(img => img !== imageUrl));
@@ -140,6 +151,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           stock: parseInt(stock),
           images: allImageUrls,
           image_url: allImageUrls[0] || null, // Manter compatibilidade
+          featured,
+          on_sale: onSale,
+          sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
+          sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
         })
         .eq('id', product.id);
 
@@ -266,6 +281,63 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 rows={2}
                 placeholder="Resumo curto de 2 linhas (gerado automaticamente pela IA ou edite manualmente)"
               />
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="font-semibold">Configurações Especiais</h3>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="featured">Produto em Destaque</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Exibir na seção de produtos em destaque
+                  </p>
+                </div>
+                <Switch
+                  id="featured"
+                  checked={featured}
+                  onCheckedChange={setFeatured}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="on-sale">Produto em Promoção</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ativar preço promocional
+                  </p>
+                </div>
+                <Switch
+                  id="on-sale"
+                  checked={onSale}
+                  onCheckedChange={setOnSale}
+                />
+              </div>
+
+              {onSale && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="sale-price">Preço Promocional (R$)</Label>
+                    <Input
+                      id="sale-price"
+                      type="number"
+                      step="0.01"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sale-ends">Promoção válida até</Label>
+                    <Input
+                      id="sale-ends"
+                      type="datetime-local"
+                      value={saleEndsAt}
+                      onChange={(e) => setSaleEndsAt(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
