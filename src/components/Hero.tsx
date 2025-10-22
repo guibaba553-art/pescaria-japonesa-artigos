@@ -2,13 +2,18 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import japaLogo from "@/assets/japa-logo.png";
+import fishingSunsetHero from "@/assets/fishing-sunset-hero.jpg";
 
 const Hero = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-muted/30 pt-16">
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070')] bg-cover bg-center opacity-10" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+      <div 
+        className="absolute inset-0 bg-cover bg-center" 
+        style={{ backgroundImage: `url(${fishingSunsetHero})` }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-background" />
       
       <div className="container mx-auto px-4 py-20 relative z-10">
         <div className="flex flex-col items-center text-center space-y-8 animate-fade-in">
