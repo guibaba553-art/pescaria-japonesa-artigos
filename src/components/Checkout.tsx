@@ -22,6 +22,7 @@ import { useCart } from '@/hooks/useCart';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ShippingCalculator } from './ShippingCalculator';
 
 interface CheckoutProps {
   open: boolean;
@@ -37,6 +38,8 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
   const [installments, setInstallments] = useState('1');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string} | null>(null);
+  const [shippingCost, setShippingCost] = useState(0);
+  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number } | null>(null);
   const [cardData, setCardData] = useState({
     number: '',
     name: '',
@@ -84,7 +87,7 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
       // Chamar edge function
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
-          amount: total,
+          amount: total + shippingCost,
           paymentMethod,
           items: items.map(item => ({
             name: item.name,
@@ -163,10 +166,28 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
               ))}
             </div>
             <Separator />
+            {shippingInfo && (
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span>{shippingInfo.nome} ({shippingInfo.prazoEntrega} dias úteis):</span>
+                <span>R$ {shippingCost.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-bold text-lg">
               <span>Total:</span>
-              <span className="text-primary">R$ {total.toFixed(2)}</span>
+              <span className="text-primary">R$ {(total + shippingCost).toFixed(2)}</span>
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Calculadora de Frete */}
+          <div className="space-y-4">
+            <ShippingCalculator 
+              onSelectShipping={(option) => {
+                setShippingCost(option.valor);
+                setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
+              }}
+            />
           </div>
 
           <Separator />
@@ -330,7 +351,7 @@ export function Checkout({ open, onOpenChange }: CheckoutProps) {
                   Processando...
                 </>
               ) : (
-                `Confirmar Pagamento - R$ ${total.toFixed(2)}`
+                `Confirmar Pagamento - R$ ${(total + shippingCost).toFixed(2)}`
               )}
             </Button>
           )}
