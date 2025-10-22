@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Trash2, ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
-import { ChatManagement } from '@/components/ChatManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -196,7 +195,7 @@ export default function Admin() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
-            <TabsTrigger value="chat">Chat Suporte</TabsTrigger>
+            <TabsTrigger value="featured">Produtos Destaque</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
@@ -411,8 +410,88 @@ export default function Admin() {
             <OrdersManagement />
           </TabsContent>
 
-          <TabsContent value="chat">
-            <ChatManagement />
+          <TabsContent value="featured">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
+                <CardDescription>Selecione quais produtos aparecerão na página inicial</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Imagem</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Preço</TableHead>
+                      <TableHead className="text-center">Em Destaque</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-16 h-16 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-muted rounded flex items-center justify-center text-xs">
+                              Sem imagem
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>{product.category}</TableCell>
+                        <TableCell>
+                          {product.on_sale && product.sale_price ? (
+                            <div className="flex flex-col">
+                              <span className="line-through text-muted-foreground text-xs">
+                                R$ {product.price.toFixed(2)}
+                              </span>
+                              <span className="text-green-600 font-semibold">
+                                R$ {product.sale_price.toFixed(2)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span>R$ {product.price.toFixed(2)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant={product.featured ? "default" : "outline"}
+                            size="sm"
+                            onClick={async () => {
+                              const { error } = await supabase
+                                .from('products')
+                                .update({ featured: !product.featured })
+                                .eq('id', product.id);
+                              
+                              if (error) {
+                                toast({
+                                  title: 'Erro ao atualizar',
+                                  description: error.message,
+                                  variant: 'destructive'
+                                });
+                              } else {
+                                toast({
+                                  title: product.featured ? 'Removido dos destaques' : 'Adicionado aos destaques',
+                                });
+                                loadProducts();
+                              }
+                            }}
+                          >
+                            {product.featured ? '⭐ Destacado' : 'Destacar'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
