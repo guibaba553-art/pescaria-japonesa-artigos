@@ -35,12 +35,10 @@ export const APP_CONFIG = {
 export const PRODUCT_CATEGORIES = [
   'Varas',
   'Molinetes',
-  'Iscas Artificiais',
-  'Iscas Naturais',
+  'Carretilhas',
+  'Iscas',
   'Anzóis',
   'Linhas',
-  'Carretilhas',
   'Acessórios',
-  'Roupas',
-  'Equipamentos de Segurança'
+  'Roupas'
 ] as const;

@@ -22,11 +22,14 @@ interface Product {
 
 const categories = [
   { name: 'Todas', value: '' },
+  { name: 'Varas', value: 'Varas' },
+  { name: 'Molinetes', value: 'Molinetes' },
+  { name: 'Carretilhas', value: 'Carretilhas' },
   { name: 'Iscas', value: 'Iscas' },
   { name: 'Anzóis', value: 'Anzóis' },
   { name: 'Linhas', value: 'Linhas' },
-  { name: 'Varas', value: 'Varas' },
   { name: 'Acessórios', value: 'Acessórios' },
+  { name: 'Roupas', value: 'Roupas' },
 ];
 
 export default function Products() {
