@@ -206,6 +206,28 @@ serve(async (req) => {
         );
       }
 
+      // Atualizar pedido com payment_id para cartão também
+      if (orderId && data.id) {
+        const updateData: any = { payment_id: data.id.toString() };
+        
+        // Se o pagamento foi aprovado instantaneamente, já mudar para em_preparo
+        if (data.status === 'approved') {
+          updateData.status = 'em_preparo';
+          console.log('Card payment approved instantly, updating order to em_preparo');
+        }
+        
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update(updateData)
+          .eq('id', orderId);
+          
+        if (updateError) {
+          console.error('Error updating order with payment_id:', updateError);
+        } else {
+          console.log('Order updated with payment_id successfully', updateData);
+        }
+      }
+
       // Verificar se o pagamento foi rejeitado
       if (data.status === 'rejected') {
         let rejectionReason = 'Pagamento rejeitado';

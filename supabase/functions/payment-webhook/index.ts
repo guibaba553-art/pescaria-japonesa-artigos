@@ -48,6 +48,7 @@ serve(async (req) => {
       // Se o pagamento foi aprovado, atualizar o pedido
       if (paymentData.status === 'approved') {
         console.log('Payment approved, updating order status');
+        console.log('Payment method:', paymentData.payment_method_id, 'Type:', paymentData.payment_type_id);
 
         // Buscar o pedido pelo payment_id
         const { data: order, error: orderError } = await supabase
@@ -73,6 +74,7 @@ serve(async (req) => {
         }
 
         // Atualizar status do pedido para em_preparo
+        // Funciona para PIX, cartão de crédito e débito
         const { error: updateError } = await supabase
           .from('orders')
           .update({ status: 'em_preparo' })
@@ -86,9 +88,14 @@ serve(async (req) => {
           });
         }
 
-        console.log('Order updated successfully to em_preparo');
+        console.log(`Order ${order.id} updated successfully to em_preparo for payment method: ${paymentData.payment_method_id}`);
       } else {
         console.log('Payment not approved, status:', paymentData.status);
+        
+        // Log de pagamentos rejeitados para debug
+        if (paymentData.status === 'rejected') {
+          console.log('Payment rejected, reason:', paymentData.status_detail);
+        }
       }
     }
 

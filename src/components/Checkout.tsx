@@ -256,10 +256,18 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             description: 'Após o pagamento, seu pedido será processado automaticamente. Você pode acessar o QR Code novamente na página "Minha Conta".',
           });
         } else {
-          toast({
-            title: 'Pagamento processado!',
-            description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} em análise. Você receberá uma confirmação em breve.`,
-          });
+          // Para cartão, verificar se foi aprovado instantaneamente
+          if (data.status === 'approved') {
+            toast({
+              title: '✅ Pagamento aprovado!',
+              description: 'Seu pedido já está em preparação. Você pode acompanhá-lo em "Minha Conta".',
+            });
+          } else {
+            toast({
+              title: 'Pagamento em análise',
+              description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} está sendo processado. Você receberá uma confirmação em breve.`,
+            });
+          }
           clearCart();
           onOpenChange(false);
         }
