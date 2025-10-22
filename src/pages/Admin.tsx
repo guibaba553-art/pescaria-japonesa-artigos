@@ -11,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { OrdersManagement } from '@/components/OrdersManagement';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Product {
   id: string;
@@ -174,7 +176,14 @@ export default function Admin() {
           </Button>
         </div>
 
-        <Card>
+        <Tabs defaultValue="products" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="products">Produtos</TabsTrigger>
+            <TabsTrigger value="orders">Pedidos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="products" className="space-y-6">
+            <Card>
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
             <CardDescription>Preencha os dados do produto</CardDescription>
@@ -293,6 +302,12 @@ export default function Admin() {
             </Table>
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="orders">
+            <OrdersManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

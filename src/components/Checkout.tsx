@@ -104,6 +104,36 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       if (error) throw error;
 
       if (data.success) {
+        // Criar pedido no banco de dados
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data: orderData, error: orderError } = await supabase
+            .from('orders')
+            .insert({
+              user_id: user.id,
+              total_amount: total + shippingCost,
+              shipping_cost: shippingCost,
+              shipping_address: shippingInfo?.nome || 'Endereço não informado',
+              shipping_cep: '00000-000',
+              status: 'em_preparo'
+            })
+            .select()
+            .single();
+
+          if (!orderError && orderData) {
+            // Criar itens do pedido
+            const orderItems = items.map(item => ({
+              order_id: orderData.id,
+              product_id: item.id,
+              quantity: item.quantity,
+              price_at_purchase: item.price
+            }));
+
+            await supabase.from('order_items').insert(orderItems);
+          }
+        }
+
         if (paymentMethod === 'pix') {
           setPixData({
             qrCode: data.qrCode,

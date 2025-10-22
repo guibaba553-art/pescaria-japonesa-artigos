@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn, UserPlus, LogOut, User } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User, UserCircle } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 export function Header() {
@@ -25,6 +25,14 @@ export function Header() {
           
           {user ? (
             <>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/conta')}
+                className="hidden sm:flex"
+              >
+                <UserCircle className="w-4 h-4 mr-2" />
+                Minha Conta
+              </Button>
               {(isEmployee || isAdmin) && (
                 <Button 
                   variant="outline" 
