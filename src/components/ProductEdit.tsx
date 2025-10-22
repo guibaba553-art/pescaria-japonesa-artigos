@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Pencil } from 'lucide-react';
+import { PRODUCT_CATEGORIES } from '@/config/constants';
 
 interface Product {
   id: string;
@@ -22,6 +24,7 @@ interface Product {
   category: string;
   image_url: string | null;
   images: string[];
+  stock: number;
   rating: number;
 }
 
@@ -37,6 +40,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [description, setDescription] = useState(product.description);
   const [price, setPrice] = useState(product.price.toString());
   const [category, setCategory] = useState(product.category);
+  const [stock, setStock] = useState(product.stock.toString());
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
@@ -95,6 +99,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           description,
           price: parseFloat(price),
           category,
+          stock: parseInt(stock),
           images: allImageUrls,
           image_url: allImageUrls[0] || null, // Manter compatibilidade
         })
@@ -163,15 +168,33 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-category">Categoria</Label>
-              <Input
-                id="edit-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="Ex: Varas, Molinetes, Iscas"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Categoria</Label>
+                <Select value={category} onValueChange={setCategory} required>
+                  <SelectTrigger id="edit-category">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-stock">Estoque</Label>
+                <Input
+                  id="edit-stock"
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

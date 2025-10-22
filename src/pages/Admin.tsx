@@ -14,7 +14,9 @@ import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ChatManagement } from '@/components/ChatManagement';
 import { ProductEdit } from '@/components/ProductEdit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PRODUCT_CATEGORIES } from '@/config/constants';
 
 interface Product {
   id: string;
@@ -24,6 +26,7 @@ interface Product {
   category: string;
   image_url: string | null;
   images: string[];
+  stock: number;
   rating: number;
 }
 
@@ -36,6 +39,7 @@ export default function Admin() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
+  const [stock, setStock] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -98,6 +102,7 @@ export default function Admin() {
             description,
             price: parseFloat(price),
             category,
+            stock: parseInt(stock),
             images: imageUrls,
             image_url: imageUrls[0] || null, // Manter compatibilidade
             created_by: user?.id
@@ -115,6 +120,7 @@ export default function Admin() {
       setDescription('');
       setPrice('');
       setCategory('');
+      setStock('');
       setImages([]);
       loadProducts();
     } catch (error: any) {
@@ -220,15 +226,33 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
-                <Input
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Ex: Varas, Molinetes, Iscas"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select value={category} onValueChange={setCategory} required>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stock">Estoque</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -301,6 +325,7 @@ export default function Admin() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Preço</TableHead>
+                  <TableHead>Estoque</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -323,7 +348,14 @@ export default function Admin() {
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>R$ {product.price.toFixed(2)}</TableCell>
-                     <TableCell className="text-right">
+                    <TableCell>
+                      {product.stock === 0 ? (
+                        <span className="text-red-600 font-bold">ESGOTADO</span>
+                      ) : (
+                        <span>{product.stock} unidades</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
                        <div className="flex gap-2 justify-end">
                          <ProductEdit product={product} onUpdate={loadProducts} />
                          <Button

@@ -31,3 +31,16 @@ export const APP_CONFIG = {
     whatsapp: 'https://wa.me/5566996579671',
   },
 } as const;
+
+export const PRODUCT_CATEGORIES = [
+  'Varas',
+  'Molinetes',
+  'Iscas Artificiais',
+  'Iscas Naturais',
+  'Anzóis',
+  'Linhas',
+  'Carretilhas',
+  'Acessórios',
+  'Roupas',
+  'Equipamentos de Segurança'
+] as const;

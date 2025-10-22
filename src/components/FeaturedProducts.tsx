@@ -14,6 +14,7 @@ interface Product {
   price: number;
   category: string;
   image_url: string | null;
+  stock: number;
   rating: number;
 }
 
@@ -33,6 +34,7 @@ const FeaturedProducts = () => {
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .gt('stock', 0) // Apenas produtos com estoque disponível
       .order('created_at', { ascending: false })
       .limit(4);
 

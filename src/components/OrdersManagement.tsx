@@ -23,11 +23,13 @@ interface Order {
   status: 'em_preparo' | 'enviado' | 'entregado';
   created_at: string;
   user_id: string;
+  shipping_cep: string;
   order_items: OrderItem[];
 }
 
 interface Profile {
   full_name: string;
+  cpf: string | null;
 }
 
 const statusConfig = {
@@ -38,7 +40,7 @@ const statusConfig = {
 
 export function OrdersManagement() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [profiles, setProfiles] = useState<Record<string, { name: string; cpf: string }>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -72,12 +74,15 @@ export function OrdersManagement() {
     const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, cpf')
       .in('id', userIds);
 
-    const profilesMap: Record<string, string> = {};
+    const profilesMap: Record<string, { name: string; cpf: string }> = {};
     profilesData?.forEach(p => {
-      profilesMap[p.id] = p.full_name || 'Sem nome';
+      profilesMap[p.id] = {
+        name: p.full_name || 'Sem nome',
+        cpf: p.cpf || 'Não informado'
+      };
     });
 
     setProfiles(profilesMap);
@@ -122,6 +127,8 @@ export function OrdersManagement() {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Cliente</TableHead>
+              <TableHead>CPF</TableHead>
+              <TableHead>CEP</TableHead>
               <TableHead>Itens</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Data</TableHead>
@@ -134,7 +141,13 @@ export function OrdersManagement() {
                 <TableCell className="font-mono text-xs">
                   {order.id.slice(0, 8)}
                 </TableCell>
-                <TableCell>{profiles[order.user_id] || 'Carregando...'}</TableCell>
+                <TableCell>{profiles[order.user_id]?.name || 'Carregando...'}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  {profiles[order.user_id]?.cpf || 'N/A'}
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {order.shipping_cep || 'N/A'}
+                </TableCell>
                 <TableCell>
                   <div className="space-y-1 text-sm">
                     {order.order_items.map((item) => (
