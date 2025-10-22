@@ -26,9 +26,9 @@ export const VALIDATION_RULES = {
 export const APP_CONFIG = {
   STORE_NAME: 'JAPA Pesca',
   CONTACT: {
-    phone: '5566996579671',
+    phone: '556699211712',
     email: 'contato@japapesca.com.br',
-    whatsapp: 'https://wa.me/5566996579671',
+    whatsapp: 'https://wa.me/556699211712',
   },
 } as const;
 
