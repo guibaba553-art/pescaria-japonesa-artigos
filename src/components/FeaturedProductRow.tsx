@@ -29,14 +29,28 @@ interface FeaturedProductRowProps {
 export function FeaturedProductRow({ product, onUpdate }: FeaturedProductRowProps) {
   const { toast } = useToast();
   const [showPromotion, setShowPromotion] = useState(product.on_sale);
+  const [discountType, setDiscountType] = useState<'percent' | 'value'>('percent');
   const [discountPercent, setDiscountPercent] = useState(
     product.on_sale && product.sale_price 
       ? Math.round(((product.price - product.sale_price) / product.price) * 100)
       : 0
   );
+  const [discountValue, setDiscountValue] = useState(
+    product.on_sale && product.sale_price 
+      ? product.price - product.sale_price
+      : 0
+  );
   const [saleEndDate, setSaleEndDate] = useState(
     product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().split('T')[0] : ''
   );
+
+  const calculateFinalPrice = () => {
+    if (discountType === 'percent') {
+      return product.price * (1 - discountPercent / 100);
+    } else {
+      return Math.max(0, product.price - discountValue);
+    }
+  };
 
   return (
     <TableRow>
@@ -80,17 +94,53 @@ export function FeaturedProductRow({ product, onUpdate }: FeaturedProductRowProp
           </Button>
           {showPromotion && (
             <div className="space-y-2 mt-2">
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="1"
-                  max="99"
-                  value={discountPercent}
-                  onChange={(e) => setDiscountPercent(parseInt(e.target.value) || 0)}
-                  className="w-20"
-                />
-                <span className="text-sm">% desconto</span>
+              <div className="flex gap-2 mb-2">
+                <Button
+                  variant={discountType === 'percent' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDiscountType('percent')}
+                  className="flex-1"
+                >
+                  Porcentagem %
+                </Button>
+                <Button
+                  variant={discountType === 'value' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setDiscountType('value')}
+                  className="flex-1"
+                >
+                  Valor R$
+                </Button>
               </div>
+
+              {discountType === 'percent' ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(parseInt(e.target.value) || 0)}
+                    className="w-20"
+                  />
+                  <span className="text-sm">% desconto</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">R$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    max={product.price}
+                    step="0.01"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                    className="w-24"
+                  />
+                  <span className="text-sm">de desconto</span>
+                </div>
+              )}
+
               <Input
                 type="date"
                 value={saleEndDate}
@@ -98,12 +148,15 @@ export function FeaturedProductRow({ product, onUpdate }: FeaturedProductRowProp
                 className="w-full"
               />
               <div className="text-sm text-muted-foreground">
-                Preço final: R$ {(product.price * (1 - discountPercent / 100)).toFixed(2)}
+                <div>Preço original: R$ {product.price.toFixed(2)}</div>
+                <div className="font-semibold text-green-600">
+                  Preço final: R$ {calculateFinalPrice().toFixed(2)}
+                </div>
               </div>
               <Button
                 size="sm"
                 onClick={async () => {
-                  const salePrice = product.price * (1 - discountPercent / 100);
+                  const salePrice = calculateFinalPrice();
                   const { error } = await supabase
                     .from('products')
                     .update({ 

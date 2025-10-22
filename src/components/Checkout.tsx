@@ -46,6 +46,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     cvv: '',
   });
 
+  // Calcular desconto de 5% para PIX
+  const pixDiscount = paymentMethod === 'pix' ? (total + shippingCost) * 0.05 : 0;
+  const finalTotal = (total + shippingCost) - pixDiscount;
+
   useEffect(() => {
     // Carregar SDK do Mercado Pago
     const script = document.createElement('script');
@@ -86,7 +90,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       // Chamar edge function
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
-          amount: total + shippingCost,
+          amount: finalTotal,
           paymentMethod,
           items: items.map(item => ({
             name: item.name,
@@ -112,7 +116,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             .from('orders')
             .insert({
               user_id: user.id,
-              total_amount: total + shippingCost,
+              total_amount: finalTotal,
               shipping_cost: shippingCost,
               shipping_address: shippingInfo?.nome || 'Endereço não informado',
               shipping_cep: '00000-000',
@@ -201,9 +205,20 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 <span>R$ {shippingCost.toFixed(2)}</span>
               </div>
             )}
+            <div className="flex justify-between text-sm">
+              <span>Subtotal:</span>
+              <span>R$ {(total + shippingCost).toFixed(2)}</span>
+            </div>
+            {paymentMethod === 'pix' && pixDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600 font-medium">
+                <span>Desconto PIX (5%):</span>
+                <span>- R$ {pixDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            <Separator />
             <div className="flex justify-between font-bold text-lg">
               <span>Total:</span>
-              <span className="text-primary">R$ {(total + shippingCost).toFixed(2)}</span>
+              <span className="text-primary">R$ {finalTotal.toFixed(2)}</span>
             </div>
           </div>
 
@@ -217,9 +232,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 <RadioGroupItem value="pix" id="pix" />
                 <Label htmlFor="pix" className="flex items-center gap-2 cursor-pointer flex-1">
                   <Smartphone className="w-5 h-5 text-primary" />
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">PIX</p>
                     <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
+                  </div>
+                  <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
+                    5% OFF
                   </div>
                 </Label>
               </div>
@@ -308,7 +326,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                     <SelectContent>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
                         <SelectItem key={num} value={num.toString()}>
-                          {num}x de R$ {(total / num).toFixed(2)}
+                          {num}x de R$ {((total + shippingCost) / num).toFixed(2)}
                           {num === 1 ? ' à vista' : ''}
                         </SelectItem>
                       ))}
@@ -321,8 +339,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
           {/* PIX Info */}
           {paymentMethod === 'pix' && !pixData && (
-            <div className="bg-accent/50 p-4 rounded-lg">
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+              <p className="text-sm font-medium text-green-800 mb-1">
+                🎉 Ganhe 5% de desconto pagando com PIX!
+              </p>
+              <p className="text-sm text-green-700">
                 Ao confirmar, você receberá o código PIX para realizar o pagamento.
                 Após a confirmação do pagamento, seu pedido será processado.
               </p>
@@ -368,7 +389,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   Processando...
                 </>
               ) : (
-                `Confirmar Pagamento - R$ ${(total + shippingCost).toFixed(2)}`
+                `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
               )}
             </Button>
           )}
