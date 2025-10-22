@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return { error: new Error(firstError?.message || "Dados inválidos") };
     }
-
+    
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -104,12 +104,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (error) {
+      // Verificar se é erro de email duplicado
+      if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+        toast({
+          title: "Email já cadastrado",
+          description: "Este email já possui uma conta. Por favor, faça login ou use outro email.",
+          variant: "destructive"
+        });
+        return { error: new Error('EMAIL_ALREADY_EXISTS') };
+      }
+      
       toast({
         title: "Erro ao criar conta",
         description: error.message,
         variant: "destructive"
       });
       return { error };
+    }
+
+    // Se o usuário já existe mas não há erro (conta não confirmada ainda)
+    if (data.user && !data.session) {
+      toast({
+        title: "Email já cadastrado",
+        description: "Este email já possui uma conta. Verifique sua caixa de entrada ou faça login.",
+        variant: "destructive"
+      });
+      return { error: new Error('EMAIL_ALREADY_EXISTS') };
     }
 
     // Atualizar perfil com CPF, CEP e telefone

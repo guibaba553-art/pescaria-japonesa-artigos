@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ export default function Auth() {
   const [signupCep, setSignupCep] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   if (user) {
     navigate('/');
@@ -42,6 +44,14 @@ export default function Auth() {
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupCep, signupPhone);
     setLoading(false);
+    
+    // Se o erro for de email duplicado, mudar para a aba de login
+    if (error && error.message === 'EMAIL_ALREADY_EXISTS') {
+      setLoginEmail(signupEmail);
+      setActiveTab('login');
+      return;
+    }
+    
     if (!error) {
       navigate('/');
     }
@@ -65,7 +75,7 @@ export default function Auth() {
           <CardDescription>Entre ou crie sua conta</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login">
+          <Tabs value={activeTab} onValueChange={setActiveTab} ref={tabsRef}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Criar Conta</TabsTrigger>
