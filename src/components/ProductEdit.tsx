@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
+import { Pencil } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -20,17 +21,17 @@ interface Product {
   price: number;
   category: string;
   image_url: string | null;
+  rating: number;
 }
 
 interface ProductEditProps {
   product: Product;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onUpdate: () => void;
 }
 
-export function ProductEdit({ product, open, onOpenChange, onSuccess }: ProductEditProps) {
+export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
   const [price, setPrice] = useState(product.price.toString());
@@ -45,7 +46,7 @@ export function ProductEdit({ product, open, onOpenChange, onSuccess }: ProductE
     try {
       let imageUrl = product.image_url;
 
-      // Se houver nova imagem, fazer upload
+      // Upload nova imagem se selecionada
       if (image) {
         // Deletar imagem antiga se existir
         if (product.image_url) {
@@ -55,7 +56,7 @@ export function ProductEdit({ product, open, onOpenChange, onSuccess }: ProductE
           }
         }
 
-        // Upload da nova imagem
+        // Upload nova imagem
         const fileExt = image.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
@@ -90,8 +91,8 @@ export function ProductEdit({ product, open, onOpenChange, onSuccess }: ProductE
         description: 'As alterações foram salvas com sucesso.',
       });
 
-      onSuccess();
-      onOpenChange(false);
+      setOpen(false);
+      onUpdate();
     } catch (error: any) {
       toast({
         title: 'Erro ao atualizar produto',
@@ -104,96 +105,103 @@ export function ProductEdit({ product, open, onOpenChange, onSuccess }: ProductE
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar Produto</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do produto
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        <Pencil className="w-4 h-4" />
+      </Button>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Produto</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do produto
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome do Produto</Label>
+                <Input
+                  id="edit-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Preço (R$)</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome do Produto</Label>
+              <Label htmlFor="edit-category">Categoria</Label>
               <Input
-                id="edit-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                id="edit-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="Ex: Varas, Molinetes, Iscas"
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="edit-price">Preço (R$)</Label>
-              <Input
-                id="edit-price"
-                type="number"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
+              <Label htmlFor="edit-description">Descrição</Label>
+              <Textarea
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
                 required
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-category">Categoria</Label>
-            <Input
-              id="edit-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Ex: Varas, Molinetes, Iscas"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-description">Descrição</Label>
-            <Textarea
-              id="edit-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-image">Nova Imagem (opcional)</Label>
-            {product.image_url && (
-              <div className="mb-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-image">Nova Imagem (opcional)</Label>
+              {product.image_url && (
                 <img
                   src={product.image_url}
-                  alt="Imagem atual"
-                  className="w-32 h-32 object-cover rounded border"
+                  alt={product.name}
+                  className="w-32 h-32 object-cover rounded mb-2"
                 />
-                <p className="text-sm text-muted-foreground mt-1">Imagem atual</p>
-              </div>
-            )}
-            <Input
-              id="edit-image"
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImage(e.target.files?.[0] || null)}
-            />
-          </div>
+              )}
+              <Input
+                id="edit-image"
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImage(e.target.files?.[0] || null)}
+              />
+            </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={updating}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={updating}>
-              {updating ? 'Salvando...' : 'Salvar Alterações'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={updating}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updating}>
+                {updating ? 'Atualizando...' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

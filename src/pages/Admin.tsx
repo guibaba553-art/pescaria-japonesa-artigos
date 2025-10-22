@@ -37,8 +37,6 @@ export default function Admin() {
   const [category, setCategory] = useState('');
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -160,10 +158,6 @@ export default function Admin() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingProduct(product);
-    setEditDialogOpen(true);
-  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -297,24 +291,18 @@ export default function Admin() {
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>R$ {product.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(product)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(product.id, product.image_url)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                     <TableCell className="text-right">
+                       <div className="flex gap-2 justify-end">
+                         <ProductEdit product={product} onUpdate={loadProducts} />
+                         <Button
+                           variant="destructive"
+                           size="sm"
+                           onClick={() => handleDelete(product.id, product.image_url)}
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </Button>
+                       </div>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -331,15 +319,6 @@ export default function Admin() {
             <ChatManagement />
           </TabsContent>
         </Tabs>
-
-        {editingProduct && (
-          <ProductEdit
-            product={editingProduct}
-            open={editDialogOpen}
-            onOpenChange={setEditDialogOpen}
-            onSuccess={loadProducts}
-          />
-        )}
       </div>
     </div>
   );
