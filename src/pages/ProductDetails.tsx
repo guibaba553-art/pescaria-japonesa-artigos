@@ -7,22 +7,8 @@ import { Star, ShoppingCart, ArrowLeft, Home } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  image_url: string | null;
-  images: string[] | null;
-  rating: number;
-  stock: number;
-  featured: boolean;
-  on_sale: boolean;
-  sale_price?: number;
-  sale_ends_at?: string;
-}
+import { Product } from '@/types/product';
+import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -202,33 +188,14 @@ export default function ProductDetails() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Quantidade</label>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  >
-                    -
-                  </Button>
-                  <input
-                    type="number"
-                    min="1"
-                    max={product.stock}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
-                    className="w-20 text-center border rounded-md px-3 py-2"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  >
-                    +
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    (máx: {product.stock})
-                  </span>
-                </div>
+                <ProductQuantitySelector
+                  quantity={quantity}
+                  maxQuantity={product.stock}
+                  onIncrement={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  onDecrement={() => setQuantity(Math.max(1, quantity - 1))}
+                  onChange={setQuantity}
+                  size="lg"
+                />
               </div>
 
               <Button
