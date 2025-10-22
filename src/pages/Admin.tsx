@@ -13,6 +13,7 @@ import { Trash2, ArrowLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ChatManagement } from '@/components/ChatManagement';
+import { ProductEdit } from '@/components/ProductEdit';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Product {
@@ -36,6 +37,8 @@ export default function Admin() {
   const [category, setCategory] = useState('');
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -155,6 +158,11 @@ export default function Admin() {
         variant: 'destructive'
       });
     }
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setEditDialogOpen(true);
   };
 
   if (loading) {
@@ -290,13 +298,22 @@ export default function Admin() {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>R$ {product.price.toFixed(2)}</TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(product.id, product.image_url)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(product)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(product.id, product.image_url)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -314,6 +331,15 @@ export default function Admin() {
             <ChatManagement />
           </TabsContent>
         </Tabs>
+
+        {editingProduct && (
+          <ProductEdit
+            product={editingProduct}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSuccess={loadProducts}
+          />
+        )}
       </div>
     </div>
   );
