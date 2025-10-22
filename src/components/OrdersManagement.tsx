@@ -214,6 +214,7 @@ export function OrdersManagement() {
               <TableHead>Cliente</TableHead>
               <TableHead>CPF</TableHead>
               <TableHead>CEP</TableHead>
+              <TableHead>Itens</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Status</TableHead>
@@ -244,6 +245,11 @@ export function OrdersManagement() {
                     </TableCell>
                     <TableCell className="font-mono text-sm">
                       {order.shipping_cep || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                      </Badge>
                     </TableCell>
                     <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
                     <TableCell>
@@ -303,22 +309,22 @@ export function OrdersManagement() {
                   </TableRow>
                   <CollapsibleContent asChild>
                     <TableRow>
-                      <TableCell colSpan={8} className="bg-muted/50">
+                      <TableCell colSpan={9} className="bg-muted/50">
                         <div className="py-4 px-6 grid grid-cols-2 gap-6">
                           {/* Informações do Cliente */}
                           <div className="space-y-3">
                             <h4 className="font-semibold text-sm border-b pb-2">Informações do Cliente</h4>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <p className="text-muted-foreground">Cliente</p>
+                            <div className="space-y-3">
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">Cliente</p>
                                 <p className="font-medium">{profiles[order.user_id]?.name || 'Carregando...'}</p>
                               </div>
-                              <div>
-                                <p className="text-muted-foreground">CPF</p>
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">CPF</p>
                                 <p className="font-mono">{profiles[order.user_id]?.cpf || 'N/A'}</p>
                               </div>
-                              <div>
-                                <p className="text-muted-foreground">CEP</p>
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground uppercase">CEP</p>
                                 <p className="font-mono">{order.shipping_cep || 'N/A'}</p>
                               </div>
                             </div>
