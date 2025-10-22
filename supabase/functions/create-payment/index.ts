@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, paymentMethod, items, cardData, installments } = await req.json();
+    const { amount, paymentMethod, items, cardData, installments, userEmail, userCpf, userName } = await req.json();
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
 
     if (!accessToken) {
@@ -49,12 +49,12 @@ serve(async (req) => {
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         payment_method_id: 'pix',
         payer: {
-          email: 'test_user_123456@testuser.com',
-          first_name: 'Test',
-          last_name: 'User',
+          email: userEmail || 'cliente@japapesca.com',
+          first_name: userName?.split(' ')[0] || 'Cliente',
+          last_name: userName?.split(' ').slice(1).join(' ') || 'JAPA',
           identification: {
             type: 'CPF',
-            number: '12345678909'
+            number: userCpf?.replace(/\D/g, '') || '00000000000'
           }
         },
       };
@@ -123,12 +123,12 @@ serve(async (req) => {
     if (paymentMethod === 'credit' || paymentMethod === 'debit') {
       const cardPayment = {
         transaction_amount: amount,
-        token: cardData.token, // Token gerado pelo Mercado Pago SDK no frontend
+        token: cardData.token,
         description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
         installments: parseInt(installments) || 1,
         payment_method_id: cardData.paymentMethodId,
         payer: {
-          email: 'customer@example.com',
+          email: userEmail || 'cliente@japapesca.com',
         },
       };
 

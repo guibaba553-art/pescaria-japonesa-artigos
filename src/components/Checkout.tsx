@@ -66,6 +66,19 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     setIsProcessing(true);
     
     try {
+      // Buscar dados do perfil do usuário
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('cpf, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
       let cardToken = null;
       
       // Se for cartão, gerar token primeiro
@@ -101,7 +114,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             token: cardToken.id,
             paymentMethodId: cardToken.payment_method_id
           } : null,
-          installments: paymentMethod === 'credit' ? installments : '1'
+          installments: paymentMethod === 'credit' ? installments : '1',
+          userEmail: user?.email,
+          userCpf: profile?.cpf,
+          userName: profile?.full_name || user?.user_metadata?.full_name
         }
       });
 
