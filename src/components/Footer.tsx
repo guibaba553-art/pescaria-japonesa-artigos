@@ -94,12 +94,12 @@ const Footer = () => {
               <li className="flex items-start gap-2">
                 <Phone className="w-5 h-5 mt-1 text-primary flex-shrink-0" />
                 <a 
-                  href="https://wa.me/556699211712" 
+                  href="https://wa.me/5566996579671" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors underline cursor-pointer"
                 >
-                  (66) 99211-7120
+                  (66) 99657-9671
                 </a>
               </li>
               <li className="flex items-start gap-2">
