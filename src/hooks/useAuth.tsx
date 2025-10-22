@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { signUpSchema } from '@/utils/validation';
+import { VALIDATION_RULES } from '@/config/constants';
 
 interface AuthContextType {
   user: User | null;
@@ -68,32 +70,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => {
-    // Validar campos obrigatórios
-    if (!cpf || cpf.length !== 11) {
+    // Validar todos os campos usando zod
+    try {
+      signUpSchema.parse({
+        email,
+        password,
+        fullName,
+        cpf,
+        cep,
+        phone
+      });
+    } catch (error: any) {
+      const firstError = error.errors?.[0];
       toast({
-        title: "Erro ao criar conta",
-        description: "CPF deve ter 11 dígitos",
+        title: "Erro de validação",
+        description: firstError?.message || "Dados inválidos",
         variant: "destructive"
       });
-      return { error: new Error("CPF inválido") };
-    }
-
-    if (!cep || cep.length !== 8) {
-      toast({
-        title: "Erro ao criar conta",
-        description: "CEP deve ter 8 dígitos",
-        variant: "destructive"
-      });
-      return { error: new Error("CEP inválido") };
-    }
-
-    if (!phone || phone.length < 10 || phone.length > 11) {
-      toast({
-        title: "Erro ao criar conta",
-        description: "Telefone deve ter 10 ou 11 dígitos",
-        variant: "destructive"
-      });
-      return { error: new Error("Telefone inválido") };
+      return { error: new Error(firstError?.message || "Dados inválidos") };
     }
 
     const redirectUrl = `${window.location.origin}/`;

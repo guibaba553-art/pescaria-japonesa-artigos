@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { sanitizeNumericInput, formatCPF, formatCEP, formatPhone } from '@/utils/validation';
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -107,11 +108,11 @@ export default function Auth() {
                   <Input
                     id="signup-cpf"
                     type="text"
-                    placeholder="00000000000"
-                    value={signupCpf}
-                    onChange={(e) => setSignupCpf(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000.000.000-00"
+                    value={formatCPF(signupCpf)}
+                    onChange={(e) => setSignupCpf(sanitizeNumericInput(e.target.value))}
                     required
-                    maxLength={11}
+                    maxLength={14}
                   />
                 </div>
                 <div className="space-y-2">
@@ -119,11 +120,11 @@ export default function Auth() {
                   <Input
                     id="signup-cep"
                     type="text"
-                    placeholder="00000000"
-                    value={signupCep}
-                    onChange={(e) => setSignupCep(e.target.value.replace(/\D/g, ''))}
+                    placeholder="00000-000"
+                    value={formatCEP(signupCep)}
+                    onChange={(e) => setSignupCep(sanitizeNumericInput(e.target.value))}
                     required
-                    maxLength={8}
+                    maxLength={9}
                   />
                 </div>
                 <div className="space-y-2">
@@ -131,12 +132,11 @@ export default function Auth() {
                   <Input
                     id="signup-phone"
                     type="text"
-                    placeholder="11999999999"
-                    value={signupPhone}
-                    onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="(00) 00000-0000"
+                    value={formatPhone(signupPhone)}
+                    onChange={(e) => setSignupPhone(sanitizeNumericInput(e.target.value))}
                     required
-                    minLength={10}
-                    maxLength={11}
+                    maxLength={15}
                   />
                 </div>
                 <div className="space-y-2">

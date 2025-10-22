@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Truck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
+import { SHIPPING_CONFIG } from '@/config/constants';
 
 interface ShippingOption {
   codigo: string;
@@ -24,21 +26,13 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const { toast } = useToast();
 
-  const formatCep = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 5) return numbers;
-    return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
-  };
-
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatCep(e.target.value);
-    setCep(formatted);
+    const numeric = sanitizeNumericInput(e.target.value);
+    setCep(numeric);
   };
 
   const calculateShipping = async () => {
-    const cepNumbers = cep.replace(/\D/g, '');
-    
-    if (cepNumbers.length !== 8) {
+    if (cep.length !== 8) {
       toast({
         title: 'CEP inválido',
         description: 'Por favor, informe um CEP válido com 8 dígitos',
@@ -53,12 +47,12 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
     try {
       const { data, error } = await supabase.functions.invoke('calculate-shipping', {
         body: {
-          cepDestino: cepNumbers,
-          peso: 500, // 500g - peso padrão para produtos de pesca
-          formato: 1, // caixa/pacote
-          comprimento: 30,
-          altura: 20,
-          largura: 20
+          cepDestino: cep,
+          peso: SHIPPING_CONFIG.DEFAULT_WEIGHT,
+          formato: SHIPPING_CONFIG.DEFAULT_FORMAT,
+          comprimento: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
+          altura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height,
+          largura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width
         }
       });
 
@@ -93,7 +87,7 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
           <Input
             id="cep"
             placeholder="00000-000"
-            value={cep}
+            value={formatCEP(cep)}
             onChange={handleCepChange}
             maxLength={9}
             className="flex-1"
