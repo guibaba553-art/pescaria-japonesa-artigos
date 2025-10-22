@@ -155,8 +155,13 @@ export function Cart() {
                   onClick={handleCheckout}
                   disabled={!shippingInfo}
                 >
-                  {!shippingInfo ? 'Calcule o frete primeiro' : 'Finalizar Compra'}
+                  {!shippingInfo ? '⚠️ Escolha uma opção de entrega' : 'Finalizar Compra'}
                 </Button>
+                {!shippingInfo && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Selecione uma opção de entrega acima para continuar
+                  </p>
+                )}
               </div>
             </>
           )}

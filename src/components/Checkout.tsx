@@ -377,23 +377,30 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           )}
 
           {!pixData && (
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={handleFinishPurchase}
-              disabled={isProcessing || !shippingInfo}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : !shippingInfo ? (
-                'CEP não calculado'
-              ) : (
-                `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
+            <>
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={handleFinishPurchase}
+                disabled={isProcessing || !shippingInfo}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : !shippingInfo ? (
+                  '⚠️ Escolha uma opção de entrega'
+                ) : (
+                  `Confirmar Pagamento - R$ ${finalTotal.toFixed(2)}`
+                )}
+              </Button>
+              {!shippingInfo && (
+                <p className="text-sm text-destructive text-center font-medium">
+                  Você precisa selecionar uma opção de entrega no carrinho antes de finalizar
+                </p>
               )}
-            </Button>
+            </>
           )}
         </div>
       </DialogContent>
