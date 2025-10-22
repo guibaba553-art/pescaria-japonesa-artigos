@@ -310,40 +310,62 @@ export function OrdersManagement() {
                   <CollapsibleContent asChild>
                     <TableRow>
                       <TableCell colSpan={9} className="bg-muted/50">
-                        <div className="py-4 px-6 space-y-3">
-                          <h4 className="font-semibold text-sm">Itens do Pedido</h4>
-                          <div className="space-y-2">
-                            {order.order_items.map((item) => (
-                              <div 
-                                key={item.id}
-                                className="flex items-center justify-between p-3 bg-background rounded-lg border"
-                              >
-                                <div className="flex-1">
-                                  <p className="font-medium">{item.products.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    Quantidade: {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-semibold">
-                                    R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
-                                  </p>
-                                </div>
+                        <div className="py-4 px-6 grid grid-cols-2 gap-6">
+                          {/* Informações do Cliente */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm border-b pb-2">Informações do Cliente</h4>
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Cliente</p>
+                                <p className="font-medium">{profiles[order.user_id]?.name || 'Carregando...'}</p>
                               </div>
-                            ))}
+                              <div>
+                                <p className="text-muted-foreground">CPF</p>
+                                <p className="font-mono">{profiles[order.user_id]?.cpf || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">CEP</p>
+                                <p className="font-mono">{order.shipping_cep || 'N/A'}</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="pt-3 border-t space-y-1">
-                            <div className="flex justify-between text-sm">
-                              <span>Subtotal:</span>
-                              <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
+
+                          {/* Itens do Pedido */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm border-b pb-2">Itens do Pedido</h4>
+                            <div className="space-y-2">
+                              {order.order_items.map((item) => (
+                                <div 
+                                  key={item.id}
+                                  className="flex items-center justify-between p-3 bg-background rounded-lg border"
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium">{item.products.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      Quantidade: {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-semibold">
+                                      R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Frete:</span>
-                              <span>R$ {order.shipping_cost.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-base pt-2 border-t">
-                              <span>Total:</span>
-                              <span>R$ {order.total_amount.toFixed(2)}</span>
+                            <div className="pt-3 border-t space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>Subtotal:</span>
+                                <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>Frete:</span>
+                                <span>R$ {order.shipping_cost.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-bold text-base pt-2 border-t">
+                                <span>Total:</span>
+                                <span>R$ {order.total_amount.toFixed(2)}</span>
+                              </div>
                             </div>
                           </div>
                         </div>
