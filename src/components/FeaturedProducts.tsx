@@ -85,7 +85,10 @@ const FeaturedProducts = () => {
                 key={product.id} 
                 className="group hover:shadow-glow transition-all duration-300 overflow-hidden border-2 hover:border-primary/50"
               >
-                <div className="relative overflow-hidden">
+                <div 
+                  className="relative overflow-hidden cursor-pointer"
+                  onClick={() => navigate(`/produto/${product.id}`)}
+                >
                   <img 
                     src={product.image_url || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400'} 
                     alt={product.name}
@@ -103,7 +106,10 @@ const FeaturedProducts = () => {
                     ))}
                   </div>
                   
-                  <h3 className="text-xl font-bold text-foreground mb-2">
+                  <h3 
+                    className="text-xl font-bold text-foreground mb-2 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => navigate(`/produto/${product.id}`)}
+                  >
                     {product.name}
                   </h3>
                   
