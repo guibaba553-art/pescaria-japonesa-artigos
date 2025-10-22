@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
+import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 
 interface OrderItem {
   id: string;
@@ -29,6 +30,10 @@ interface Order {
   status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
   created_at: string;
   order_items: OrderItem[];
+  qr_code: string | null;
+  qr_code_base64: string | null;
+  ticket_url: string | null;
+  pix_expiration: string | null;
 }
 
 const statusConfig = {
@@ -50,6 +55,13 @@ export default function Account() {
     productName: string;
   } | null>(null);
   const [reviewedProducts, setReviewedProducts] = useState<Set<string>>(new Set());
+  const [pixDialogOpen, setPixDialogOpen] = useState(false);
+  const [selectedPixPayment, setSelectedPixPayment] = useState<{
+    qrCode: string;
+    qrCodeBase64: string;
+    ticketUrl?: string;
+    expiresAt?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -106,6 +118,18 @@ export default function Account() {
     loadOrders();
   };
 
+  const handleOpenPixDialog = (order: Order) => {
+    if (order.qr_code && order.qr_code_base64) {
+      setSelectedPixPayment({
+        qrCode: order.qr_code,
+        qrCodeBase64: order.qr_code_base64,
+        ticketUrl: order.ticket_url || undefined,
+        expiresAt: order.pix_expiration || undefined
+      });
+      setPixDialogOpen(true);
+    }
+  };
+
   if (loading || loadingOrders) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -159,10 +183,22 @@ export default function Account() {
                           })}
                         </p>
                       </div>
-                      <Badge className={statusConfig[order.status].color}>
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {statusConfig[order.status].label}
-                      </Badge>
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge className={statusConfig[order.status].color}>
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {statusConfig[order.status].label}
+                        </Badge>
+                        {order.status === 'aguardando_pagamento' && order.qr_code && order.qr_code_base64 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenPixDialog(order)}
+                          >
+                            <QrCode className="w-4 h-4 mr-2" />
+                            Ver QR Code PIX
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     <Separator />
@@ -244,6 +280,17 @@ export default function Account() {
           productId={selectedReview.productId}
           productName={selectedReview.productName}
           onReviewSubmitted={handleReviewSubmitted}
+        />
+      )}
+
+      {selectedPixPayment && (
+        <PixPaymentDialog
+          open={pixDialogOpen}
+          onOpenChange={setPixDialogOpen}
+          qrCode={selectedPixPayment.qrCode}
+          qrCodeBase64={selectedPixPayment.qrCodeBase64}
+          ticketUrl={selectedPixPayment.ticketUrl}
+          expiresAt={selectedPixPayment.expiresAt}
         />
       )}
     </div>

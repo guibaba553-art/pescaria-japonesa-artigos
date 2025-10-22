@@ -144,10 +144,14 @@ export type Database = {
           created_at: string
           id: string
           payment_id: string | null
+          pix_expiration: string | null
+          qr_code: string | null
+          qr_code_base64: string | null
           shipping_address: string
           shipping_cep: string
           shipping_cost: number
           status: Database["public"]["Enums"]["order_status"]
+          ticket_url: string | null
           total_amount: number
           updated_at: string
           user_id: string
@@ -156,10 +160,14 @@ export type Database = {
           created_at?: string
           id?: string
           payment_id?: string | null
+          pix_expiration?: string | null
+          qr_code?: string | null
+          qr_code_base64?: string | null
           shipping_address: string
           shipping_cep: string
           shipping_cost?: number
           status?: Database["public"]["Enums"]["order_status"]
+          ticket_url?: string | null
           total_amount: number
           updated_at?: string
           user_id: string
@@ -168,10 +176,14 @@ export type Database = {
           created_at?: string
           id?: string
           payment_id?: string | null
+          pix_expiration?: string | null
+          qr_code?: string | null
+          qr_code_base64?: string | null
           shipping_address?: string
           shipping_cep?: string
           shipping_cost?: number
           status?: Database["public"]["Enums"]["order_status"]
+          ticket_url?: string | null
           total_amount?: number
           updated_at?: string
           user_id?: string

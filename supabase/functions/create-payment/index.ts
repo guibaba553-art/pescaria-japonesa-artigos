@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,8 +12,12 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, paymentMethod, items, cardData, installments, userEmail, userCpf, userName } = await req.json();
+    const { amount, paymentMethod, items, cardData, installments, userEmail, userCpf, userName, orderId } = await req.json();
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     if (!accessToken) {
       throw new Error('MERCADO_PAGO_ACCESS_TOKEN not configured');
@@ -106,6 +111,28 @@ serve(async (req) => {
       }
 
       console.log('PIX payment created successfully');
+
+      // Salvar dados do PIX no pedido para acesso posterior
+      if (orderId) {
+        const pixExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+        
+        const { error: updateError } = await supabase
+          .from('orders')
+          .update({
+            payment_id: data.id.toString(),
+            qr_code: data.point_of_interaction?.transaction_data?.qr_code,
+            qr_code_base64: data.point_of_interaction?.transaction_data?.qr_code_base64,
+            ticket_url: data.point_of_interaction?.transaction_data?.ticket_url,
+            pix_expiration: pixExpiration.toISOString()
+          })
+          .eq('id', orderId);
+          
+        if (updateError) {
+          console.error('Error saving PIX data to order:', updateError);
+        } else {
+          console.log('PIX data saved to order successfully');
+        }
+      }
 
       return new Response(
         JSON.stringify({

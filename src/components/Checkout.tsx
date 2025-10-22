@@ -187,7 +187,35 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
-      // Chamar edge function
+      // Criar pedido no banco de dados primeiro
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          total_amount: finalTotal,
+          shipping_cost: shippingCost,
+          shipping_address: shippingInfo?.nome || 'Endereço não informado',
+          shipping_cep: '00000-000',
+          status: 'aguardando_pagamento'
+        })
+        .select()
+        .single();
+
+      if (orderError || !orderData) {
+        throw new Error('Erro ao criar pedido');
+      }
+
+      // Criar itens do pedido
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price_at_purchase: item.price
+      }));
+
+      await supabase.from('order_items').insert(orderItems);
+
+      // Processar pagamento com o orderId
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
           amount: finalTotal,
@@ -204,47 +232,20 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           installments: paymentMethod === 'credit' ? installments : '1',
           userEmail: user?.email,
           userCpf: profile?.cpf,
-          userName: profile?.full_name || user?.user_metadata?.full_name
+          userName: profile?.full_name || user?.user_metadata?.full_name,
+          orderId: orderData.id
         }
       });
 
       if (error) {
+        // Se falhar, deletar o pedido criado
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
         console.error('Edge function error:', error);
         throw new Error(`Erro ao processar pagamento: ${error.message}`);
       }
 
       if (data.success) {
-        // Criar pedido no banco de dados com status aguardando_pagamento
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .insert({
-              user_id: user.id,
-              total_amount: finalTotal,
-              shipping_cost: shippingCost,
-              shipping_address: shippingInfo?.nome || 'Endereço não informado',
-              shipping_cep: '00000-000',
-              status: 'aguardando_pagamento',
-              payment_id: data.paymentId?.toString()
-            })
-            .select()
-            .single();
-
-          if (!orderError && orderData) {
-            // Criar itens do pedido
-            const orderItems = items.map(item => ({
-              order_id: orderData.id,
-              product_id: item.id,
-              quantity: item.quantity,
-              price_at_purchase: item.price
-            }));
-
-            await supabase.from('order_items').insert(orderItems);
-          }
-        }
-
         if (paymentMethod === 'pix') {
           setPixData({
             qrCode: data.qrCode,
@@ -252,7 +253,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           });
           toast({
             title: 'PIX gerado com sucesso!',
-            description: 'Após o pagamento, seu pedido será processado automaticamente.',
+            description: 'Após o pagamento, seu pedido será processado automaticamente. Você pode acessar o QR Code novamente na página "Minha Conta".',
           });
         } else {
           toast({
@@ -263,6 +264,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           onOpenChange(false);
         }
       } else {
+        // Se falhar, deletar o pedido criado
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        
         // Mostrar erro específico retornado pela API
         const errorMessage = data.error || 'Erro ao processar pagamento';
         const errorDetails = data.details || '';

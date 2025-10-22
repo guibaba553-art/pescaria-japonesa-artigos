@@ -19,23 +19,63 @@ Deno.serve(async (req) => {
     // Deletar mensagens com mais de 24 horas
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    const { data, error } = await supabaseClient
+    const { data: messagesData, error: messagesError } = await supabaseClient
       .from('chat_messages')
       .delete()
       .lt('created_at', twentyFourHoursAgo);
 
-    if (error) {
-      console.error('Error deleting old messages:', error);
-      throw error;
+    if (messagesError) {
+      console.error('Error deleting old messages:', messagesError);
+    } else {
+      console.log('Successfully deleted old messages');
     }
 
-    console.log('Successfully deleted old messages');
+    // Deletar pedidos aguardando pagamento há mais de 3 dias
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Primeiro buscar os pedidos que serão deletados
+    const { data: ordersToDelete, error: fetchError } = await supabaseClient
+      .from('orders')
+      .select('id')
+      .eq('status', 'aguardando_pagamento')
+      .lt('created_at', threeDaysAgo);
+
+    if (fetchError) {
+      console.error('Error fetching old orders:', fetchError);
+    } else if (ordersToDelete && ordersToDelete.length > 0) {
+      console.log(`Found ${ordersToDelete.length} old unpaid orders to delete`);
+      
+      // Deletar os itens dos pedidos primeiro (foreign key)
+      const orderIds = ordersToDelete.map(o => o.id);
+      const { error: itemsError } = await supabaseClient
+        .from('order_items')
+        .delete()
+        .in('order_id', orderIds);
+
+      if (itemsError) {
+        console.error('Error deleting order items:', itemsError);
+      }
+
+      // Depois deletar os pedidos
+      const { error: ordersError } = await supabaseClient
+        .from('orders')
+        .delete()
+        .in('id', orderIds);
+
+      if (ordersError) {
+        console.error('Error deleting old orders:', ordersError);
+      } else {
+        console.log(`Successfully deleted ${ordersToDelete.length} old unpaid orders`);
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Old messages cleaned up successfully',
-        deletedAt: twentyFourHoursAgo
+        message: 'Cleanup completed successfully',
+        messagesDeletedBefore: twentyFourHoursAgo,
+        ordersDeletedBefore: threeDaysAgo,
+        deletedOrdersCount: ordersToDelete?.length || 0
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
