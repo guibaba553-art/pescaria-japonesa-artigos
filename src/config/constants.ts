@@ -34,8 +34,7 @@ export const APP_CONFIG = {
 
 export const PRODUCT_CATEGORIES = [
   'Varas',
-  'Molinetes',
-  'Carretilhas',
+  'Molinetes e Carretilhas',
   'Iscas',
   'Anzóis',
   'Linhas',

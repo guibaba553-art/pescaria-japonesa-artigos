@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, GitBranch, Wand2, Waves, Disc3, CircleDot } from "lucide-react";
+import { Fish, Anchor, GitBranch, Wand2, Waves, CircleDot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const categories = [
@@ -33,17 +33,10 @@ const categories = [
   },
   {
     icon: CircleDot,
-    title: "Molinetes",
-    description: "Modelos variados e resistentes",
-    color: "from-primary/70 to-primary/90",
-    category: "Molinetes"
-  },
-  {
-    icon: Disc3,
-    title: "Carretilhas",
+    title: "Molinetes e Carretilhas",
     description: "Alta performance e precisão",
-    color: "from-secondary/60 to-secondary/80",
-    category: "Carretilhas"
+    color: "from-primary/70 to-primary/90",
+    category: "Molinetes e Carretilhas"
   },
   {
     icon: Waves,
@@ -69,7 +62,7 @@ const Categories = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
           {categories.map((category, index) => (
             <Card 
               key={index} 

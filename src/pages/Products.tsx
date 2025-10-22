@@ -23,8 +23,7 @@ interface Product {
 const categories = [
   { name: 'Todas', value: '' },
   { name: 'Varas', value: 'Varas' },
-  { name: 'Molinetes', value: 'Molinetes' },
-  { name: 'Carretilhas', value: 'Carretilhas' },
+  { name: 'Molinetes e Carretilhas', value: 'Molinetes e Carretilhas' },
   { name: 'Iscas', value: 'Iscas' },
   { name: 'Anzóis', value: 'Anzóis' },
   { name: 'Linhas', value: 'Linhas' },
