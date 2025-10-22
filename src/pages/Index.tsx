@@ -4,7 +4,6 @@ import Categories from "@/components/Categories";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import Benefits from "@/components/Benefits";
 import Footer from "@/components/Footer";
-import { SupportChat } from "@/components/SupportChat";
 
 const Index = () => {
   return (
@@ -15,7 +14,6 @@ const Index = () => {
       <FeaturedProducts />
       <Benefits />
       <Footer />
-      <SupportChat />
     </div>
   );
 };
