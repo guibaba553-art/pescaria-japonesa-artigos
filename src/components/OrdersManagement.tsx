@@ -247,14 +247,9 @@ export function OrdersManagement() {
                       {order.shipping_cep || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1 text-sm max-w-[200px]">
-                        {order.order_items.map((item, index) => (
-                          <div key={item.id} className="flex items-start gap-1">
-                            <span className="font-medium text-primary">{item.quantity}×</span>
-                            <span className="text-muted-foreground truncate">{item.products.name}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <Badge variant="outline">
+                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                      </Badge>
                     </TableCell>
                     <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
                     <TableCell>
