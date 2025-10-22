@@ -202,14 +202,6 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
-            <div className="mb-4">
-              <Input
-                placeholder="Procurar produto por nome..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-md"
-              />
-            </div>
             <Card>
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
@@ -325,6 +317,15 @@ export default function Admin() {
             </form>
           </CardContent>
         </Card>
+
+        <div className="mb-4">
+          <Input
+            placeholder="Procurar produto por nome..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+        </div>
 
         <Card>
           <CardHeader>
