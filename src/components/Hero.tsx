@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import japaLogo from "@/assets/japa-logo.png";
-import fishingSunsetHero from "@/assets/fishing-sunset-hero.jpg";
+import fishingHeroBg from "@/assets/fishing-hero-bg.jpg";
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const Hero = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <div 
         className="absolute inset-0 bg-cover bg-center" 
-        style={{ backgroundImage: `url(${fishingSunsetHero})` }}
+        style={{ backgroundImage: `url(${fishingHeroBg})` }}
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-background" />
       
