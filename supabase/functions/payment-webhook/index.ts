@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,9 +26,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get raw request body for signature verification
+    const rawBody = await req.text();
+    
     // Validate webhook signature for security
     const signature = req.headers.get('x-signature');
     const requestId = req.headers.get('x-request-id');
+    const webhookSecret = Deno.env.get('MERCADO_PAGO_WEBHOOK_SECRET');
     
     if (!signature || !requestId) {
       console.error('Webhook signature validation failed: Missing headers');
@@ -37,7 +42,41 @@ serve(async (req) => {
       });
     }
 
-    const payload = await req.json();
+    // Verify HMAC signature if webhook secret is configured
+    if (webhookSecret) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(webhookSecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      
+      const signatureBuffer = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(rawBody)
+      );
+      
+      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      if (signature !== expectedSignature) {
+        console.error('Webhook signature validation failed: Invalid signature');
+        return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log('Webhook signature verified successfully');
+    } else {
+      console.warn('MERCADO_PAGO_WEBHOOK_SECRET not configured - skipping signature verification');
+    }
+
+    const payload = JSON.parse(rawBody);
     
     // Validate payload structure
     const validationResult = webhookPayloadSchema.safeParse(payload);
