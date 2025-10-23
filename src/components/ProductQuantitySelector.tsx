@@ -28,10 +28,15 @@ export function ProductQuantitySelector({
   return (
     <div className="flex items-center gap-2">
       <Button
+        type="button"
         variant="outline"
         size={buttonSize}
         className={buttonClass}
-        onClick={onDecrement}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDecrement();
+        }}
         disabled={quantity <= 1}
       >
         <Minus className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} />
@@ -48,10 +53,15 @@ export function ProductQuantitySelector({
         className={`${inputClass} text-center border rounded px-2 py-1 ${size === 'sm' ? 'text-sm' : 'text-base'}`}
       />
       <Button
+        type="button"
         variant="outline"
         size={buttonSize}
         className={buttonClass}
-        onClick={onIncrement}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onIncrement();
+        }}
         disabled={quantity >= maxQuantity}
       >
         <Plus className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} />
