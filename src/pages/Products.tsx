@@ -43,7 +43,7 @@ export default function Products() {
       .from('products')
       .select('*')
       .gt('stock', 0)
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
 
     if (categoryParam) {
       query = query.eq('category', categoryParam);
