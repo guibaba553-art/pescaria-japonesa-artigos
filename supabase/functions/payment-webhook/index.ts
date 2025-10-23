@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-request-id',
 };
+
+// Validation schema for webhook payload
+const webhookPayloadSchema = z.object({
+  type: z.string(),
+  data: z.object({
+    id: z.union([z.string(), z.number()]).transform(String),
+  }).optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,9 +25,31 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Validate webhook signature for security
+    const signature = req.headers.get('x-signature');
+    const requestId = req.headers.get('x-request-id');
+    
+    if (!signature || !requestId) {
+      console.error('Webhook signature validation failed: Missing headers');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const payload = await req.json();
     
-    console.log('Webhook received:', JSON.stringify(payload, null, 2));
+    // Validate payload structure
+    const validationResult = webhookPayloadSchema.safeParse(payload);
+    if (!validationResult.success) {
+      console.error('Invalid webhook payload structure:', validationResult.error.message);
+      return new Response(JSON.stringify({ error: 'Invalid payload' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.log('Webhook received - Type:', payload.type, 'Request ID:', requestId);
 
     // Mercado Pago envia notificações com este formato
     if (payload.type === 'payment') {
@@ -43,12 +74,12 @@ serve(async (req) => {
       });
 
       const paymentData = await paymentResponse.json();
-      console.log('Payment data from Mercado Pago:', JSON.stringify(paymentData, null, 2));
+      // Log sanitized payment info (no sensitive data)
+      console.log('Payment status:', paymentData.status, 'Method:', paymentData.payment_method_id);
 
       // Se o pagamento foi aprovado, atualizar o pedido
       if (paymentData.status === 'approved') {
         console.log('Payment approved, updating order status');
-        console.log('Payment method:', paymentData.payment_method_id, 'Type:', paymentData.payment_type_id);
 
         // Buscar o pedido pelo payment_id
         const { data: order, error: orderError } = await supabase
@@ -88,14 +119,9 @@ serve(async (req) => {
           });
         }
 
-        console.log(`Order ${order.id} updated successfully to em_preparo for payment method: ${paymentData.payment_method_id}`);
+        console.log(`Order ${order.id} updated successfully to em_preparo`);
       } else {
         console.log('Payment not approved, status:', paymentData.status);
-        
-        // Log de pagamentos rejeitados para debug
-        if (paymentData.status === 'rejected') {
-          console.log('Payment rejected, reason:', paymentData.status_detail);
-        }
       }
     }
 

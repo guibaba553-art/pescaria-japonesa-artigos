@@ -1,10 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Validation schema for payment request
+const paymentRequestSchema = z.object({
+  amount: z.number().positive('Amount must be positive').max(1000000, 'Amount exceeds maximum'),
+  paymentMethod: z.enum(['pix', 'credit', 'debit']),
+  items: z.array(z.object({
+    name: z.string(),
+    quantity: z.number().int().positive(),
+  })).min(1, 'At least one item required'),
+  cardData: z.object({
+    token: z.string(),
+    paymentMethodId: z.string(),
+  }).optional(),
+  installments: z.union([z.string(), z.number()]).optional(),
+  userEmail: z.string().email('Invalid email').optional(),
+  userCpf: z.string().optional(),
+  userName: z.string().optional(),
+  orderId: z.string().uuid('Invalid order ID').optional(),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,7 +32,22 @@ serve(async (req) => {
   }
 
   try {
-    const { amount, paymentMethod, items, cardData, installments, userEmail, userCpf, userName, orderId } = await req.json();
+    const rawData = await req.json();
+    
+    // Validate input
+    const validationResult = paymentRequestSchema.safeParse(rawData);
+    if (!validationResult.success) {
+      console.error('Payment validation failed:', validationResult.error.issues[0].message);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid payment data', 
+          details: validationResult.error.errors.map(e => e.message)
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+    
+    const data = validationResult.data;
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -23,18 +58,16 @@ serve(async (req) => {
       throw new Error('MERCADO_PAGO_ACCESS_TOKEN not configured');
     }
 
-    console.log('Creating payment:', { amount, paymentMethod, items });
-    console.log('Access token starts with TEST:', accessToken.startsWith('TEST-'));
+    console.log('Creating payment - Method:', data.paymentMethod, 'Amount:', data.amount);
     
-    // Modo simulação para testes (quando credenciais reais não funcionam)
     const isTestMode = accessToken.startsWith('TEST-');
     const simulatePayment = Deno.env.get('SIMULATE_PAYMENTS') === 'true';
 
     // Para PIX
-    if (paymentMethod === 'pix') {
+    if (data.paymentMethod === 'pix') {
       // Modo simulação
       if (simulatePayment) {
-        console.log('SIMULATION MODE: Generating mock PIX payment');
+        console.log('Simulation mode: PIX payment');
         const mockQRCode = '00020126580014br.gov.bcb.pix0136' + crypto.randomUUID() + '5204000053039865802BR5925JAPA PESCA6009SAO PAULO62070503***6304';
         
         return new Response(
@@ -50,21 +83,21 @@ serve(async (req) => {
       }
 
       const pixPayment = {
-        transaction_amount: Number(amount.toFixed(2)),
-        description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
+        transaction_amount: Number(data.amount.toFixed(2)),
+        description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
         payment_method_id: 'pix',
         payer: {
-          email: userEmail || 'cliente@japapesca.com',
-          first_name: userName?.split(' ')[0] || 'Cliente',
-          last_name: userName?.split(' ').slice(1).join(' ') || 'JAPA',
+          email: data.userEmail || 'cliente@japapesca.com',
+          first_name: data.userName?.split(' ')[0] || 'Cliente',
+          last_name: data.userName?.split(' ').slice(1).join(' ') || 'JAPA',
           identification: {
             type: 'CPF',
-            number: userCpf?.replace(/\D/g, '') || '00000000000'
+            number: data.userCpf?.replace(/\D/g, '') || '00000000000'
           }
         },
       };
 
-      console.log('PIX payment payload:', JSON.stringify(pixPayment, null, 2));
+      console.log('Creating PIX payment');
 
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
@@ -76,31 +109,21 @@ serve(async (req) => {
         body: JSON.stringify(pixPayment),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
-      console.log('Mercado Pago response status:', response.status);
-      console.log('Mercado Pago response:', JSON.stringify(data, null, 2));
+      console.log('Mercado Pago PIX response status:', response.status);
       
       if (!response.ok) {
-        console.error('Mercado Pago API Error:', {
-          status: response.status,
-          data: data
-        });
+        console.error('Mercado Pago API Error - Status:', response.status, 'Code:', responseData.code);
         
-        // Mensagem de erro específica
         let errorMessage = 'Erro ao criar pagamento PIX';
-        if (response.status === 403 && data.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
-          errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado ou use o modo simulação.';
+        if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
+          errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado.';
         }
         
         return new Response(
           JSON.stringify({ 
             error: errorMessage,
-            details: {
-              status: response.status,
-              code: data.code,
-              message: data.message
-            },
             success: false 
           }),
           { 
@@ -110,25 +133,25 @@ serve(async (req) => {
         );
       }
 
-      console.log('PIX payment created successfully');
+      console.log('PIX payment created successfully - ID:', responseData.id);
 
-      // Salvar dados do PIX no pedido para acesso posterior
-      if (orderId) {
-        const pixExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+      // Salvar dados do PIX no pedido
+      if (data.orderId) {
+        const pixExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
         
         const { error: updateError } = await supabase
           .from('orders')
           .update({
-            payment_id: data.id.toString(),
-            qr_code: data.point_of_interaction?.transaction_data?.qr_code,
-            qr_code_base64: data.point_of_interaction?.transaction_data?.qr_code_base64,
-            ticket_url: data.point_of_interaction?.transaction_data?.ticket_url,
+            payment_id: responseData.id.toString(),
+            qr_code: responseData.point_of_interaction?.transaction_data?.qr_code,
+            qr_code_base64: responseData.point_of_interaction?.transaction_data?.qr_code_base64,
+            ticket_url: responseData.point_of_interaction?.transaction_data?.ticket_url,
             pix_expiration: pixExpiration.toISOString()
           })
-          .eq('id', orderId);
+          .eq('id', data.orderId);
           
         if (updateError) {
-          console.error('Error saving PIX data to order:', updateError);
+          console.error('Error saving PIX data to order');
         } else {
           console.log('PIX data saved to order successfully');
         }
@@ -137,27 +160,36 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          paymentId: data.id,
-          qrCode: data.point_of_interaction?.transaction_data?.qr_code,
-          qrCodeBase64: data.point_of_interaction?.transaction_data?.qr_code_base64,
-          ticketUrl: data.point_of_interaction?.transaction_data?.ticket_url,
+          paymentId: responseData.id,
+          qrCode: responseData.point_of_interaction?.transaction_data?.qr_code,
+          qrCodeBase64: responseData.point_of_interaction?.transaction_data?.qr_code_base64,
+          ticketUrl: responseData.point_of_interaction?.transaction_data?.ticket_url,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Para cartão de crédito/débito
-    if (paymentMethod === 'credit' || paymentMethod === 'debit') {
+    if (data.paymentMethod === 'credit' || data.paymentMethod === 'debit') {
+      if (!data.cardData?.token) {
+        return new Response(
+          JSON.stringify({ error: 'Card token required', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
       const cardPayment = {
-        transaction_amount: Number(amount.toFixed(2)),
-        token: cardData.token,
-        description: items.map((item: any) => `${item.name} x${item.quantity}`).join(', '),
-        installments: parseInt(installments) || 1,
-        payment_method_id: cardData.paymentMethodId,
+        transaction_amount: Number(data.amount.toFixed(2)),
+        token: data.cardData.token,
+        description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
+        installments: parseInt(String(data.installments)) || 1,
+        payment_method_id: data.cardData.paymentMethodId,
         payer: {
-          email: userEmail || 'cliente@japapesca.com',
+          email: data.userEmail || 'cliente@japapesca.com',
         },
       };
+
+      console.log('Creating card payment - Type:', data.paymentMethod);
 
       const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
@@ -169,22 +201,20 @@ serve(async (req) => {
         body: JSON.stringify(cardPayment),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       
-      console.log('Card payment created:', data);
+      console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status);
       
       if (!response.ok) {
-        console.error('Mercado Pago error:', data);
+        console.error('Mercado Pago error - Status:', response.status);
         
-        // Mapear erros específicos
-        let errorMessage = data.message || 'Erro ao processar pagamento com cartão';
+        let errorMessage = responseData.message || 'Erro ao processar pagamento com cartão';
         let errorDetails = '';
         
-        if (data.cause && data.cause.length > 0) {
-          const cause = data.cause[0];
+        if (responseData.cause && responseData.cause.length > 0) {
+          const cause = responseData.cause[0];
           errorDetails = cause.description || '';
           
-          // Mapear códigos de erro específicos
           if (cause.code === 2006) {
             errorMessage = 'Token do cartão inválido';
             errorDetails = 'Verifique os dados do cartão e tente novamente';
@@ -195,8 +225,6 @@ serve(async (req) => {
           JSON.stringify({ 
             error: errorMessage,
             details: errorDetails,
-            status: data.status,
-            statusDetail: data.status_detail,
             success: false 
           }),
           { 
@@ -206,55 +234,45 @@ serve(async (req) => {
         );
       }
 
-      // Atualizar pedido com payment_id para cartão também
-      if (orderId && data.id) {
-        const updateData: any = { payment_id: data.id.toString() };
+      // Atualizar pedido com payment_id
+      if (data.orderId && responseData.id) {
+        const updateData: any = { payment_id: responseData.id.toString() };
         
-        // Se o pagamento foi aprovado instantaneamente, já mudar para em_preparo
-        if (data.status === 'approved') {
+        if (responseData.status === 'approved') {
           updateData.status = 'em_preparo';
-          console.log('Card payment approved instantly, updating order to em_preparo');
+          console.log('Card payment approved instantly');
         }
         
         const { error: updateError } = await supabase
           .from('orders')
           .update(updateData)
-          .eq('id', orderId);
+          .eq('id', data.orderId);
           
         if (updateError) {
-          console.error('Error updating order with payment_id:', updateError);
+          console.error('Error updating order');
         } else {
-          console.log('Order updated with payment_id successfully', updateData);
+          console.log('Order updated successfully');
         }
       }
 
       // Verificar se o pagamento foi rejeitado
-      if (data.status === 'rejected') {
+      if (responseData.status === 'rejected') {
         let rejectionReason = 'Pagamento rejeitado';
         let rejectionDetails = '';
         
-        // Mapear motivos de rejeição
-        const statusDetail = data.status_detail;
-        if (statusDetail === 'cc_rejected_bad_filled_card_number') {
-          rejectionReason = 'Número do cartão incorreto';
-          rejectionDetails = 'Verifique o número do cartão e tente novamente';
-        } else if (statusDetail === 'cc_rejected_bad_filled_date') {
-          rejectionReason = 'Data de validade inválida';
-          rejectionDetails = 'Verifique a data de validade do cartão';
-        } else if (statusDetail === 'cc_rejected_bad_filled_security_code') {
-          rejectionReason = 'CVV incorreto';
-          rejectionDetails = 'Verifique o código de segurança do cartão';
-        } else if (statusDetail === 'cc_rejected_insufficient_amount') {
-          rejectionReason = 'Saldo insuficiente';
-          rejectionDetails = 'O cartão não possui saldo suficiente';
-        } else if (statusDetail === 'cc_rejected_invalid_installments') {
-          rejectionReason = 'Parcelamento não disponível';
-          rejectionDetails = 'O cartão não aceita este parcelamento';
-        } else if (statusDetail === 'cc_rejected_max_attempts') {
-          rejectionReason = 'Limite de tentativas excedido';
-          rejectionDetails = 'Aguarde alguns minutos antes de tentar novamente';
-        } else if (statusDetail.includes('cc_rejected')) {
-          rejectionReason = 'Cartão rejeitado';
+        const statusDetail = responseData.status_detail;
+        const rejectionMessages: Record<string, [string, string]> = {
+          'cc_rejected_bad_filled_card_number': ['Número do cartão incorreto', 'Verifique o número do cartão'],
+          'cc_rejected_bad_filled_date': ['Data de validade inválida', 'Verifique a data de validade'],
+          'cc_rejected_bad_filled_security_code': ['CVV incorreto', 'Verifique o código de segurança'],
+          'cc_rejected_insufficient_amount': ['Saldo insuficiente', 'O cartão não possui saldo suficiente'],
+          'cc_rejected_invalid_installments': ['Parcelamento não disponível', 'O cartão não aceita este parcelamento'],
+          'cc_rejected_max_attempts': ['Limite de tentativas excedido', 'Aguarde antes de tentar novamente'],
+        };
+
+        if (statusDetail && rejectionMessages[statusDetail]) {
+          [rejectionReason, rejectionDetails] = rejectionMessages[statusDetail];
+        } else if (statusDetail?.includes('cc_rejected')) {
           rejectionDetails = statusDetail.replace('cc_rejected_', '').replace(/_/g, ' ');
         }
         
@@ -263,9 +281,8 @@ serve(async (req) => {
             success: false,
             error: rejectionReason,
             details: rejectionDetails,
-            paymentId: data.id,
-            status: data.status,
-            statusDetail: data.status_detail,
+            paymentId: responseData.id,
+            status: responseData.status,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -274,9 +291,9 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          paymentId: data.id,
-          status: data.status,
-          statusDetail: data.status_detail,
+          paymentId: responseData.id,
+          status: responseData.status,
+          statusDetail: responseData.status_detail,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -285,7 +302,7 @@ serve(async (req) => {
     throw new Error('Invalid payment method');
 
   } catch (error) {
-    console.error('Error in create-payment function:', error);
+    console.error('Error in create-payment:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Unknown error',
