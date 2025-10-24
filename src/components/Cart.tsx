@@ -76,7 +76,7 @@ export function Cart() {
           ) : (
             <>
               {items.map((item) => (
-                <div key={item.id} className="flex gap-4 py-4 border-b">
+                <div key={item.cartItemKey} className="flex gap-4 py-4 border-b">
                   <img
                     src={item.image_url || 'https://placehold.co/100x100?text=Sem+Imagem'}
                     alt={item.name}
@@ -92,7 +92,7 @@ export function Cart() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.cartItemKey, item.quantity - 1)}
                         disabled={item.quantity <= 1}
                       >
                         <Minus className="h-3 w-3" />
@@ -116,7 +116,7 @@ export function Cart() {
                             });
                             return;
                           }
-                          updateQuantity(item.id, item.quantity + 1);
+                          updateQuantity(item.cartItemKey, item.quantity + 1);
                         }}
                         disabled={item.quantity >= 100}
                       >
@@ -126,7 +126,7 @@ export function Cart() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 ml-auto text-destructive"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeItem(item.cartItemKey)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

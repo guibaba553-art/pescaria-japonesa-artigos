@@ -348,7 +348,8 @@ export default function ProductDetails() {
                       ? `${product.name} - ${selectedVariation.name}`
                       : product.name,
                     price: finalPrice,
-                    image_url: product.image_url
+                    image_url: product.image_url,
+                    variationId: selectedVariation?.id
                   }, quantity);
                   
                   toast({

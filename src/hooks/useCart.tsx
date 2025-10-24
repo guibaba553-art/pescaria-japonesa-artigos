@@ -8,13 +8,14 @@ interface CartItem {
   image_url: string | null;
   quantity: number;
   variationId?: string;
+  cartItemKey: string; // Chave única combinando id + variationId
 }
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: { id: string; name: string; price: number; image_url: string | null }, quantity?: number) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  addItem: (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity?: number) => void;
+  removeItem: (cartItemKey: string) => void;
+  updateQuantity: (cartItemKey: string, quantity: number) => void;
   clearCart: () => void;
   total: number;
   itemCount: number;
@@ -30,7 +31,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
-      setItems(JSON.parse(savedCart));
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        // Migrar itens antigos que não têm cartItemKey
+        const migratedCart = parsedCart.map((item: CartItem) => {
+          if (!item.cartItemKey) {
+            return {
+              ...item,
+              cartItemKey: item.variationId ? `${item.id}-${item.variationId}` : item.id
+            };
+          }
+          return item;
+        });
+        setItems(migratedCart);
+      } catch (error) {
+        console.error('Error loading cart:', error);
+        setItems([]);
+      }
     }
   }, []);
 
@@ -39,7 +56,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
 
-  const addItem = (product: { id: string; name: string; price: number; image_url: string | null }, quantity: number = 1) => {
+  const addItem = (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity: number = 1) => {
     // Validação de quantidade
     if (quantity < 1) {
       toast({
@@ -59,8 +76,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Criar chave única para o item
+    const cartItemKey = product.variationId 
+      ? `${product.id}-${product.variationId}` 
+      : product.id;
+
     setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === product.id);
+      // Verificar se o produto já existe no carrinho usando cartItemKey
+      const existingItem = currentItems.find((item) => item.cartItemKey === cartItemKey);
       
       if (existingItem) {
         const newQuantity = existingItem.quantity + quantity;
@@ -71,7 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             variant: 'destructive'
           });
           return currentItems.map((item) =>
-            item.id === product.id
+            item.cartItemKey === cartItemKey
               ? { ...item, quantity: 100 }
               : item
           );
@@ -82,7 +105,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           description: `${product.name} - quantidade aumentada`
         });
         return currentItems.map((item) =>
-          item.id === product.id
+          item.cartItemKey === cartItemKey
             ? { ...item, quantity: newQuantity }
             : item
         );
@@ -93,21 +116,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         description: `${product.name} foi adicionado ao carrinho`
       });
 
-      return [...currentItems, { ...product, quantity }];
+      return [...currentItems, { ...product, quantity, cartItemKey }];
     });
   };
 
-  const removeItem = (id: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.id !== id));
+  const removeItem = (cartItemKey: string) => {
+    setItems((currentItems) => currentItems.filter((item) => item.cartItemKey !== cartItemKey));
     toast({
       title: 'Produto removido',
       description: 'Item removido do carrinho'
     });
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (cartItemKey: string, quantity: number) => {
     if (quantity < 1) {
-      removeItem(id);
+      removeItem(cartItemKey);
       return;
     }
 
@@ -120,7 +143,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       setItems((currentItems) =>
         currentItems.map((item) =>
-          item.id === id ? { ...item, quantity: 100 } : item
+          item.cartItemKey === cartItemKey ? { ...item, quantity: 100 } : item
         )
       );
       return;
@@ -128,7 +151,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.id === id ? { ...item, quantity } : item
+        item.cartItemKey === cartItemKey ? { ...item, quantity } : item
       )
     );
   };
