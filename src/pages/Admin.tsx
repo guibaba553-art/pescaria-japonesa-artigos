@@ -125,7 +125,7 @@ export default function Admin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Usar validação centralizada
+    // Validação centralizada
     const validationErrors = validateProductForm({
       name,
       description,
@@ -137,7 +137,6 @@ export default function Admin() {
     });
 
     if (validationErrors.length > 0) {
-      // Mostrar primeiro erro
       const firstError = validationErrors[0];
       toast({
         title: `Erro: ${firstError.field}`,
@@ -149,11 +148,12 @@ export default function Admin() {
 
     setUploading(true);
     console.log('=== CRIANDO NOVO PRODUTO ===');
+    console.log('Variações:', newProductVariations.length);
 
     try {
       const imageUrls: string[] = [];
 
-      // Upload de todas as imagens
+      // Upload de imagens
       for (const file of images) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -170,7 +170,8 @@ export default function Admin() {
         imageUrls.push(publicUrl);
       }
 
-      const { data: newProduct, error } = await supabase
+      // Criar produto
+      const { data: newProduct, error: productError } = await supabase
         .from('products')
         .insert([
           {
@@ -188,20 +189,21 @@ export default function Admin() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (productError) throw productError;
+      console.log('✅ Produto criado:', newProduct.id);
 
-      // Usar hook para salvar variações
+      // Salvar variações (se houver)
       if (newProductVariations.length > 0 && newProduct) {
-        const { success, error: varError } = await saveVariations(
+        const { success: varSuccess, error: varError } = await saveVariations(
           newProduct.id, 
           newProductVariations
         );
 
-        if (!success && varError) {
-          throw new Error(varError);
+        if (!varSuccess) {
+          throw new Error(varError || 'Erro ao salvar variações');
         }
         
-        console.log(`${newProductVariations.length} variações salvas com sucesso`);
+        console.log(`✅ ${newProductVariations.length} variações salvas`);
       }
 
       toast({
@@ -209,16 +211,21 @@ export default function Admin() {
         description: 'O produto foi adicionado com sucesso.'
       });
 
+      // Limpar formulário
       setName('');
       setDescription('');
+      setShortDescription('');
       setPrice('');
       setCategory('');
       setStock('');
       setImages([]);
       setNewProductVariations([]);
-      setShortDescription('');
+      
       loadProducts();
+      console.log('=== PRODUTO CRIADO COM SUCESSO ===');
+      
     } catch (error: any) {
+      console.error('❌ Erro ao adicionar produto:', error);
       toast({
         title: 'Erro ao adicionar produto',
         description: error.message,

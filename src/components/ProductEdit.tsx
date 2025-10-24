@@ -53,11 +53,15 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     saveVariations 
   } = useProductVariations();
 
-  // Carregar variações ao abrir o dialog
+  // Carregar variações quando o dialog abre
   useEffect(() => {
-    if (open) {
+    if (open && product.id) {
+      console.log('📂 Carregando dados do produto para edição:', product.id);
+      
+      // Carregar variações
       loadVariations(product.id);
-      // Resetar todos os estados para os valores do produto
+      
+      // Resetar estados do formulário
       setName(product.name);
       setDescription(product.description);
       setShortDescription(product.short_description || '');
@@ -71,8 +75,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSalePrice(product.sale_price?.toString() || '');
       setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, product.id]);
+  }, [open, product.id, loadVariations]);
 
   const handleDeleteImage = (imageUrl: string) => {
     setExistingImages(existingImages.filter(img => img !== imageUrl));
@@ -125,13 +128,14 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     e.preventDefault();
     setUpdating(true);
 
-    console.log('=== INICIANDO SALVAMENTO DE PRODUTO ===');
-    console.log('Estado atual de variações:', variations);
+    console.log('=== ATUALIZANDO PRODUTO ===');
+    console.log('Produto ID:', product.id);
+    console.log('Variações atuais:', variations.length);
 
     try {
       const allImageUrls = [...existingImages];
 
-      // Upload novas imagens
+      // Upload de novas imagens
       for (const file of newImages) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -148,7 +152,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         allImageUrls.push(publicUrl);
       }
 
-      // Deletar imagens removidas do storage
+      // Deletar imagens removidas
       const deletedImages = (product.images || []).filter(img => !existingImages.includes(img));
       for (const imageUrl of deletedImages) {
         const fileName = imageUrl.split('/').pop();
@@ -157,8 +161,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         }
       }
 
-      // Atualizar produto
-      const { error } = await supabase
+      // Atualizar dados do produto
+      const { error: updateError } = await supabase
         .from('products')
         .update({
           name,
@@ -176,13 +180,14 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         })
         .eq('id', product.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+      console.log('✅ Produto atualizado');
 
-      // Usar hook para salvar variações de forma segura
-      const { success, error: varError } = await saveVariations(product.id, variations);
+      // Salvar variações
+      const { success: varSuccess, error: varError } = await saveVariations(product.id, variations);
       
-      if (!success && varError) {
-        throw new Error(varError);
+      if (!varSuccess) {
+        throw new Error(varError || 'Erro ao salvar variações');
       }
 
       toast({
@@ -190,11 +195,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         description: 'As alterações foram salvas com sucesso.',
       });
 
-      console.log('=== PRODUTO SALVO COM SUCESSO ===');
+      console.log('=== ATUALIZAÇÃO CONCLUÍDA ===');
       setOpen(false);
       onUpdate();
+      
     } catch (error: any) {
-      console.error('=== ERRO AO SALVAR PRODUTO ===', error);
+      console.error('❌ Erro ao atualizar produto:', error);
       toast({
         title: 'Erro ao atualizar produto',
         description: error.message,

@@ -4,8 +4,13 @@ import { useToast } from '@/hooks/use-toast';
 import { ProductVariation } from '@/types/product';
 
 /**
- * Hook para gerenciar variações de produtos
- * Centraliza toda a lógica de CRUD de variações
+ * Hook centralizado para gerenciar variações de produtos
+ * 
+ * ARQUITETURA SIMPLIFICADA:
+ * - Carrega variações do banco
+ * - Mantém estado local para edição
+ * - Salva de forma atômica (deleta tudo e recria)
+ * - Sem proteções complexas que podem causar bugs
  */
 export function useProductVariations(productId?: string) {
   const [variations, setVariations] = useState<ProductVariation[]>([]);
@@ -17,33 +22,35 @@ export function useProductVariations(productId?: string) {
    */
   const loadVariations = async (id?: string) => {
     const targetId = id || productId;
-    if (!targetId) return;
+    if (!targetId) {
+      setVariations([]);
+      return;
+    }
 
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('product_variations')
         .select('*')
-        .eq('product_id', targetId);
+        .eq('product_id', targetId)
+        .order('name', { ascending: true });
       
       if (error) {
-        console.error('Erro ao carregar variações:', error);
+        console.error('❌ Erro ao carregar variações:', error);
         toast({
-          title: 'Aviso',
-          description: 'Não foi possível carregar as variações do produto',
+          title: 'Erro',
+          description: 'Não foi possível carregar as variações',
           variant: 'destructive'
         });
+        setVariations([]);
         return;
       }
       
-      if (data) {
-        setVariations(data);
-        console.log(`${data.length} variações carregadas para o produto ${targetId}`);
-      } else {
-        setVariations([]);
-      }
+      setVariations(data || []);
+      console.log(`✅ ${data?.length || 0} variações carregadas`);
     } catch (error) {
-      console.error('Erro ao carregar variações:', error);
+      console.error('❌ Erro inesperado ao carregar variações:', error);
+      setVariations([]);
     } finally {
       setLoading(false);
     }
@@ -51,111 +58,88 @@ export function useProductVariations(productId?: string) {
 
   /**
    * Salva variações no banco de dados
-   * Estratégia: sempre deleta e recria para evitar duplicações
+   * ESTRATÉGIA: Sempre deleta tudo e recria (operação atômica)
    */
   const saveVariations = async (
     targetProductId: string, 
     variationsToSave: ProductVariation[]
   ): Promise<{ success: boolean; error?: string }> => {
+    console.log('=== SALVANDO VARIAÇÕES ===');
+    console.log('Produto:', targetProductId);
+    console.log('Variações a salvar:', variationsToSave.length);
+
     try {
-      console.log(`=== SALVANDO VARIAÇÕES ===`);
-      console.log(`Produto ID: ${targetProductId}`);
-      console.log(`Número de variações a salvar: ${variationsToSave.length}`);
-      
-      // SEMPRE deletar variações existentes primeiro
-      console.log('Deletando todas as variações existentes...');
+      // PASSO 1: Deletar TODAS as variações existentes
+      console.log('Deletando variações antigas...');
       const { error: deleteError } = await supabase
         .from('product_variations')
         .delete()
         .eq('product_id', targetProductId);
       
       if (deleteError) {
-        console.error('Erro ao deletar variações:', deleteError);
+        console.error('❌ Erro ao deletar:', deleteError);
         return { 
           success: false, 
-          error: `Erro ao limpar variações antigas: ${deleteError.message}` 
+          error: `Erro ao limpar variações: ${deleteError.message}` 
         };
       }
-      console.log('Variações antigas deletadas com sucesso');
+      console.log('✅ Variações antigas deletadas');
 
-      // Inserir novas variações (se houver)
+      // PASSO 2: Inserir novas variações (se houver)
       if (variationsToSave.length > 0) {
         const variationsToInsert = variationsToSave.map(v => ({
           product_id: targetProductId,
-          name: v.name,
-          price: v.price,
-          stock: v.stock,
-          description: v.description || null,
-          sku: v.sku || null
+          name: v.name.trim(),
+          price: Number(v.price),
+          stock: Number(v.stock),
+          description: v.description?.trim() || null,
+          sku: v.sku?.trim() || null
         }));
 
-        console.log('Inserindo novas variações:', variationsToInsert);
-        const { error: insertError } = await supabase
+        console.log('Inserindo novas variações:', variationsToInsert.length);
+        const { error: insertError, data } = await supabase
           .from('product_variations')
-          .insert(variationsToInsert);
+          .insert(variationsToInsert)
+          .select();
 
         if (insertError) {
-          console.error('Erro ao inserir variações:', insertError);
+          console.error('❌ Erro ao inserir:', insertError);
           return { 
             success: false, 
-            error: `Erro ao salvar novas variações: ${insertError.message}` 
+            error: `Erro ao salvar variações: ${insertError.message}` 
           };
         }
-        console.log(`✅ ${variationsToInsert.length} variações inseridas com sucesso`);
+        
+        console.log(`✅ ${data?.length || 0} variações salvas com sucesso`);
       } else {
-        console.log('✅ Nenhuma variação para inserir (produto sem variações)');
+        console.log('✅ Produto sem variações (ok)');
       }
 
-      console.log('=== VARIAÇÕES SALVAS COM SUCESSO ===');
+      console.log('=== SALVAMENTO CONCLUÍDO COM SUCESSO ===');
       return { success: true };
+      
     } catch (error: any) {
-      console.error('=== ERRO AO SALVAR VARIAÇÕES ===', error);
+      console.error('❌ Erro inesperado:', error);
       return { 
         success: false, 
-        error: error.message || 'Erro desconhecido ao salvar variações' 
+        error: error.message || 'Erro desconhecido' 
       };
     }
   };
 
   /**
-   * Adiciona uma nova variação localmente
-   */
-  const addVariation = (variation: Omit<ProductVariation, 'id' | 'product_id'>) => {
-    const newVariation: ProductVariation = {
-      ...variation,
-      id: `temp-${Date.now()}`,
-      product_id: productId || '',
-    };
-    setVariations(prev => [...prev, newVariation]);
-  };
-
-  /**
-   * Atualiza uma variação existente localmente
-   */
-  const updateVariation = (variationId: string, updates: Partial<ProductVariation>) => {
-    setVariations(prev => 
-      prev.map(v => v.id === variationId ? { ...v, ...updates } : v)
-    );
-  };
-
-  /**
-   * Remove uma variação localmente
-   */
-  const removeVariation = (variationId: string) => {
-    setVariations(prev => prev.filter(v => v.id !== variationId));
-  };
-
-  /**
-   * Reseta as variações para um array vazio
+   * Reseta o estado local de variações
    */
   const resetVariations = () => {
     setVariations([]);
   };
 
-  // Carregar automaticamente quando productId muda
+  // Autoload quando productId muda
   useEffect(() => {
     if (productId) {
       loadVariations(productId);
+    } else {
+      setVariations([]);
     }
   }, [productId]);
 
@@ -165,9 +149,6 @@ export function useProductVariations(productId?: string) {
     loading,
     loadVariations,
     saveVariations,
-    addVariation,
-    updateVariation,
-    removeVariation,
     resetVariations
   };
 }
