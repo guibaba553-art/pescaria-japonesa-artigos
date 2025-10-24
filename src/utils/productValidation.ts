@@ -33,13 +33,8 @@ export function validateProductForm(data: ProductFormData): ValidationError[] {
     });
   }
 
-  // Descrição obrigatória
-  if (!data.description.trim()) {
-    errors.push({
-      field: 'description',
-      message: 'Descrição do produto é obrigatória'
-    });
-  }
+  // Descrição é opcional agora
+  // Removido validação obrigatória
 
   // Categoria obrigatória
   if (!data.category) {

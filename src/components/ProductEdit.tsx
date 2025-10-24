@@ -298,13 +298,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Descrição</Label>
+              <Label htmlFor="edit-description">Descrição (opcional)</Label>
               <Textarea
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                required
               />
             </div>
 
