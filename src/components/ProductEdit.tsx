@@ -45,12 +45,28 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   );
   const [variations, setVariations] = useState<ProductVariation[]>([]);
 
-  // Carregar variações ao abrir o dialog
+  // Carregar variações ao abrir o dialog e resetar ao fechar
   useEffect(() => {
     if (open) {
       loadVariations();
+      // Resetar todos os estados para os valores do produto
+      setName(product.name);
+      setDescription(product.description);
+      setShortDescription(product.short_description || '');
+      setPrice(product.price.toString());
+      setCategory(product.category);
+      setStock(product.stock.toString());
+      setExistingImages(product.images || []);
+      setNewImages([]);
+      setFeatured(product.featured || false);
+      setOnSale(product.on_sale || false);
+      setSalePrice(product.sale_price?.toString() || '');
+      setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
+    } else {
+      // Limpar variações quando fechar
+      setVariations([]);
     }
-  }, [open]);
+  }, [open, product]);
 
   const loadVariations = async () => {
     const { data } = await supabase
