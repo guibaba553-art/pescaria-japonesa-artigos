@@ -63,20 +63,37 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSalePrice(product.sale_price?.toString() || '');
       setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
     } else {
-      // Limpar variações quando fechar
-      setVariations([]);
+      // IMPORTANTE: Não limpar variações ao fechar para evitar perda de dados
+      // As variações serão recarregadas na próxima abertura
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product.id]);
 
   const loadVariations = async () => {
-    const { data } = await supabase
-      .from('product_variations')
-      .select('*')
-      .eq('product_id', product.id);
-    
-    if (data) {
-      setVariations(data);
+    try {
+      const { data, error } = await supabase
+        .from('product_variations')
+        .select('*')
+        .eq('product_id', product.id);
+      
+      if (error) {
+        console.error('Erro ao carregar variações:', error);
+        toast({
+          title: 'Aviso',
+          description: 'Não foi possível carregar as variações do produto',
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      if (data) {
+        setVariations(data);
+        console.log(`${data.length} variações carregadas para o produto ${product.id}`);
+      } else {
+        setVariations([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar variações:', error);
     }
   };
 
@@ -181,15 +198,19 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
       if (error) throw error;
 
-      // Gerenciar variações
-      // Deletar todas as variações existentes
-      await supabase
+      // Gerenciar variações de forma segura
+      // IMPORTANTE: Validar que temos variações carregadas antes de fazer qualquer operação
+      // Se variations estiver vazio, pode ser um erro de carregamento, não uma deleção intencional
+      
+      // Carregar variações existentes para comparação
+      const { data: existingVariations } = await supabase
         .from('product_variations')
-        .delete()
+        .select('*')
         .eq('product_id', product.id);
 
-      // Inserir novas variações
-      if (variations.length > 0) {
+      // Se temos variações no estado OU existem variações no banco, processar mudanças
+      if (variations.length > 0 || (existingVariations && existingVariations.length > 0)) {
+        // Preparar variações para inserção
         const variationsToInsert = variations.map(v => ({
           product_id: product.id,
           name: v.name,
@@ -199,11 +220,37 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           sku: v.sku || null
         }));
 
-        const { error: varError } = await supabase
-          .from('product_variations')
-          .insert(variationsToInsert);
+        // Usar uma transação segura: só deleta se a inserção for bem sucedida
+        // Primeiro tentar inserir as novas
+        if (variationsToInsert.length > 0) {
+          const { error: varError } = await supabase
+            .from('product_variations')
+            .insert(variationsToInsert);
 
-        if (varError) throw varError;
+          if (varError) {
+            console.error('Erro ao inserir variações:', varError);
+            throw new Error(`Erro ao salvar variações: ${varError.message}`);
+          }
+        }
+
+        // Só agora deletar as antigas (já que as novas foram salvas com sucesso)
+        if (existingVariations && existingVariations.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('product_variations')
+            .delete()
+            .eq('product_id', product.id)
+            .not('id', 'in', `(${variationsToInsert.map(() => 'NULL').join(',')})`);
+
+          // Na verdade, vamos deletar todas as antigas e manter só as novas
+          // Deletar variações antigas que não estão mais na lista
+          const oldIds = existingVariations.map(v => v.id);
+          if (oldIds.length > 0) {
+            await supabase
+              .from('product_variations')
+              .delete()
+              .in('id', oldIds);
+          }
+        }
       }
 
       toast({

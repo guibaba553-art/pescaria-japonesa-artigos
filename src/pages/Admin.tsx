@@ -232,7 +232,10 @@ export default function Admin() {
           .from('product_variations')
           .insert(variationsToInsert);
 
-        if (varError) console.error('Erro ao adicionar variações:', varError);
+        if (varError) {
+          console.error('Erro ao adicionar variações:', varError);
+          throw new Error(`Erro ao salvar variações: ${varError.message}`);
+        }
       }
 
       toast({
