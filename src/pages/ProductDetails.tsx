@@ -281,7 +281,9 @@ export default function ProductDetails() {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold">Descrição</h2>
               <p className="text-base leading-relaxed whitespace-pre-line">
-                {product.description}
+                {selectedVariation && selectedVariation.description 
+                  ? selectedVariation.description 
+                  : product.description}
               </p>
             </div>
 
