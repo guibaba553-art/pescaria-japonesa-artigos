@@ -66,7 +66,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       // Limpar variações quando fechar
       setVariations([]);
     }
-  }, [open, product]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, product.id]);
 
   const loadVariations = async () => {
     const { data } = await supabase
