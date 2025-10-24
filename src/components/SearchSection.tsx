@@ -4,14 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Search, X } from "lucide-react";
+import { Search, X, ShoppingCart } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { PRODUCT_CATEGORIES } from "@/config/constants";
 import { Product } from "@/types/product";
+import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 
 export function SearchSection() {
   const navigate = useNavigate();
+  const { addItem } = useCart();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -67,6 +71,26 @@ export function SearchSection() {
   const handleProductClick = (productId: string) => {
     navigate(`/produto/${productId}`);
     clearSearch();
+  };
+
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    
+    const finalPrice = product.on_sale && product.sale_price 
+      ? product.sale_price 
+      : product.price;
+
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: finalPrice,
+      image_url: product.image_url
+    }, 1);
+
+    toast({
+      title: 'Produto adicionado!',
+      description: `${product.name} foi adicionado ao carrinho.`
+    });
   };
 
   return (
@@ -144,12 +168,14 @@ export function SearchSection() {
                   </div>
                   <div className="grid gap-3">
                     {searchResults.map((product) => (
-                      <button
+                      <div
                         key={product.id}
-                        onClick={() => handleProductClick(product.id)}
-                        className="flex gap-4 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                        className="flex gap-4 p-3 rounded-lg hover:bg-accent transition-colors group"
                       >
-                        <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                        <button
+                          onClick={() => handleProductClick(product.id)}
+                          className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted"
+                        >
                           {product.image_url ? (
                             <img
                               src={product.image_url}
@@ -161,8 +187,11 @@ export function SearchSection() {
                               Sem imagem
                             </div>
                           )}
-                        </div>
-                        <div className="flex-1 min-w-0">
+                        </button>
+                        <button
+                          onClick={() => handleProductClick(product.id)}
+                          className="flex-1 min-w-0 text-left"
+                        >
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <h3 className="font-semibold truncate">{product.name}</h3>
                             <Badge variant="secondary" className="flex-shrink-0">
@@ -191,8 +220,17 @@ export function SearchSection() {
                               {product.stock} em estoque
                             </span>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => handleAddToCart(e, product)}
+                          className="self-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={product.stock === 0}
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Adicionar
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </>
