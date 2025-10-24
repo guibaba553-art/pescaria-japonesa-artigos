@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useProductVariations } from '@/hooks/useProductVariations';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +18,8 @@ import { FeaturedProductRow } from '@/components/FeaturedProductRow';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PRODUCT_CATEGORIES } from '@/config/constants';
-import { ProductVariation } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
+import { validateProductForm } from '@/utils/productValidation';
 
 interface Product {
   id: string;
@@ -50,9 +51,15 @@ export default function Admin() {
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredSearchQuery, setFeaturedSearchQuery] = useState('');
-  const [newProductVariations, setNewProductVariations] = useState<ProductVariation[]>([]);
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  
+  // Usar hook personalizado para gerenciar variações
+  const { 
+    variations: newProductVariations, 
+    setVariations: setNewProductVariations,
+    saveVariations
+  } = useProductVariations();
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -118,64 +125,30 @@ export default function Admin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validações
-    if (!name.trim()) {
-      toast({
-        title: 'Nome obrigatório',
-        description: 'Por favor, informe o nome do produto.',
-        variant: 'destructive'
-      });
-      return;
-    }
+    // Usar validação centralizada
+    const validationErrors = validateProductForm({
+      name,
+      description,
+      price,
+      category,
+      stock,
+      images,
+      variations: newProductVariations
+    });
 
-    if (!description.trim()) {
+    if (validationErrors.length > 0) {
+      // Mostrar primeiro erro
+      const firstError = validationErrors[0];
       toast({
-        title: 'Descrição obrigatória',
-        description: 'Por favor, informe a descrição do produto.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!category) {
-      toast({
-        title: 'Categoria obrigatória',
-        description: 'Por favor, selecione uma categoria.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum <= 0) {
-      toast({
-        title: 'Preço inválido',
-        description: 'O preço deve ser maior que zero.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    const stockNum = parseInt(stock);
-    if (isNaN(stockNum) || stockNum < 0) {
-      toast({
-        title: 'Estoque inválido',
-        description: 'O estoque não pode ser negativo.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (images.length === 0) {
-      toast({
-        title: 'Imagem obrigatória',
-        description: 'Adicione pelo menos uma imagem do produto.',
+        title: `Erro: ${firstError.field}`,
+        description: firstError.message,
         variant: 'destructive'
       });
       return;
     }
 
     setUploading(true);
+    console.log('=== CRIANDO NOVO PRODUTO ===');
 
     try {
       const imageUrls: string[] = [];
@@ -217,25 +190,18 @@ export default function Admin() {
 
       if (error) throw error;
 
-      // Inserir variações se houver
+      // Usar hook para salvar variações
       if (newProductVariations.length > 0 && newProduct) {
-        const variationsToInsert = newProductVariations.map(v => ({
-          product_id: newProduct.id,
-          name: v.name,
-          price: v.price,
-          stock: v.stock,
-          description: v.description || null,
-          sku: v.sku || null
-        }));
+        const { success, error: varError } = await saveVariations(
+          newProduct.id, 
+          newProductVariations
+        );
 
-        const { error: varError } = await supabase
-          .from('product_variations')
-          .insert(variationsToInsert);
-
-        if (varError) {
-          console.error('Erro ao adicionar variações:', varError);
-          throw new Error(`Erro ao salvar variações: ${varError.message}`);
+        if (!success && varError) {
+          throw new Error(varError);
         }
+        
+        console.log(`${newProductVariations.length} variações salvas com sucesso`);
       }
 
       toast({
