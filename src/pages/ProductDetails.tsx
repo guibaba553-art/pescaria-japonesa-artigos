@@ -225,14 +225,25 @@ export default function ProductDetails() {
 
               {variations.length > 0 ? (
                 <div className="mb-6">
-                  <p className="text-sm text-muted-foreground mb-2">Preço a partir de:</p>
-                  <p className="text-4xl font-bold text-primary">
-                    R$ {Math.min(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
-                  </p>
-                  {variations.filter(v => v.stock > 0).length > 1 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      até R$ {Math.max(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
-                    </p>
+                  {selectedVariation ? (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-2">Preço da variação selecionada:</p>
+                      <p className="text-4xl font-bold text-primary">
+                        R$ {selectedVariation.price.toFixed(2)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-2">Preço a partir de:</p>
+                      <p className="text-4xl font-bold text-primary">
+                        R$ {Math.min(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
+                      </p>
+                      {variations.filter(v => v.stock > 0).length > 1 && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          até R$ {Math.max(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
+                        </p>
+                      )}
+                    </>
                   )}
                   {variations.every(v => v.stock === 0) && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-semibold">
