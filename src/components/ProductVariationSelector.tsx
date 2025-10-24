@@ -48,7 +48,7 @@ export function ProductVariationSelector({
             value={selectedVariation?.id || ""}
             onValueChange={handleVariationChange}
           >
-            <div className="grid grid-cols-3 gap-3 max-w-2xl">
+            <div className="grid grid-cols-3 gap-3 w-full">
               {varList.map((variation) => {
                 const finalPrice = basePrice + variation.price_adjustment;
                 const isOutOfStock = variation.stock === 0;
@@ -59,38 +59,39 @@ export function ProductVariationSelector({
                     <label
                       htmlFor={variation.id}
                       className={`
-                        flex items-center space-x-2 p-4 border rounded-lg cursor-pointer
-                        transition-all hover:border-primary
+                        flex flex-col p-3 border rounded-lg cursor-pointer
+                        transition-all hover:border-primary w-full
                         ${isSelected ? 'border-primary bg-primary/5' : 'border-border'}
                         ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}
                       `}
                     >
-                      <RadioGroupItem
-                        value={variation.id}
-                        id={variation.id}
-                        disabled={isOutOfStock}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{variation.value}</span>
+                      <div className="flex items-start gap-2 mb-2">
+                        <RadioGroupItem
+                          value={variation.id}
+                          id={variation.id}
+                          disabled={isOutOfStock}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{variation.value}</div>
                           {isOutOfStock && (
-                            <Badge variant="destructive" className="text-xs">
+                            <Badge variant="destructive" className="text-xs mt-1">
                               Esgotado
                             </Badge>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          R$ {finalPrice.toFixed(2)}
-                          {variation.price_adjustment !== 0 && (
-                            <span className="text-xs ml-1">
-                              ({variation.price_adjustment > 0 ? '+' : ''}
-                              {variation.price_adjustment.toFixed(2)})
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Estoque: {variation.stock}
-                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        R$ {finalPrice.toFixed(2)}
+                        {variation.price_adjustment !== 0 && (
+                          <span className="text-xs ml-1">
+                            ({variation.price_adjustment > 0 ? '+' : ''}
+                            {variation.price_adjustment.toFixed(2)})
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Estoque: {variation.stock}
                       </div>
                     </label>
                   </div>
