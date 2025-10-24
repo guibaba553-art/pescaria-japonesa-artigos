@@ -17,7 +17,7 @@ export function ProductVariationSelector({
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
 
-  // Agrupar variações por tipo (name)
+  // Agrupar variações por tipo (name) e ordenar alfabeticamente
   const groupedVariations = variations.reduce((acc, variation) => {
     if (!acc[variation.name]) {
       acc[variation.name] = [];
@@ -25,6 +25,11 @@ export function ProductVariationSelector({
     acc[variation.name].push(variation);
     return acc;
   }, {} as Record<string, ProductVariation[]>);
+
+  // Ordenar cada grupo alfabeticamente pelo valor
+  Object.keys(groupedVariations).forEach(key => {
+    groupedVariations[key].sort((a, b) => a.value.localeCompare(b.value, 'pt-BR', { numeric: true }));
+  });
 
   useEffect(() => {
     onVariationSelect(selectedVariation);

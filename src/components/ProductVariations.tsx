@@ -18,7 +18,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     stock: 0,
     description: ""
   });
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const addVariation = () => {
     if (!newVariation.name || !newVariation.value) return;
@@ -37,15 +36,15 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     setNewVariation({ name: "", value: "", stock: 0, description: "" });
   };
 
-  const updateVariation = (index: number, field: keyof ProductVariation, value: any) => {
-    const updated = variations.map((v, i) => 
-      i === index ? { ...v, [field]: value } : v
+  const updateVariation = (variationId: string, field: keyof ProductVariation, value: any) => {
+    const updated = variations.map((v) => 
+      v.id === variationId ? { ...v, [field]: value } : v
     );
     onVariationsChange(updated);
   };
 
-  const removeVariation = (index: number) => {
-    onVariationsChange(variations.filter((_, i) => i !== index));
+  const removeVariation = (variationId: string) => {
+    onVariationsChange(variations.filter((v) => v.id !== variationId));
   };
 
   return (
@@ -55,46 +54,50 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       {/* Lista de variações existentes */}
       {variations.length > 0 && (
             <div className="space-y-2">
-              {variations.map((variation, index) => (
+              {[...variations].sort((a, b) => {
+                const nameCompare = a.name.localeCompare(b.name, 'pt-BR');
+                if (nameCompare !== 0) return nameCompare;
+                return a.value.localeCompare(b.value, 'pt-BR', { numeric: true });
+              }).map((variation) => (
                 <Card key={variation.id} className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-1 space-y-3">
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <Label htmlFor={`edit-name-${index}`} className="text-xs text-muted-foreground">Tipo</Label>
+                          <Label htmlFor={`edit-name-${variation.id}`} className="text-xs text-muted-foreground">Tipo</Label>
                           <Input
-                            id={`edit-name-${index}`}
+                            id={`edit-name-${variation.id}`}
                             value={variation.name}
-                            onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                            onChange={(e) => updateVariation(variation.id, 'name', e.target.value)}
                             placeholder="Ex: Tamanho"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`edit-value-${index}`} className="text-xs text-muted-foreground">Valor</Label>
+                          <Label htmlFor={`edit-value-${variation.id}`} className="text-xs text-muted-foreground">Valor</Label>
                           <Input
-                            id={`edit-value-${index}`}
+                            id={`edit-value-${variation.id}`}
                             value={variation.value}
-                            onChange={(e) => updateVariation(index, 'value', e.target.value)}
+                            onChange={(e) => updateVariation(variation.id, 'value', e.target.value)}
                             placeholder="Ex: 1, 2, 3"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`edit-stock-${index}`} className="text-xs text-muted-foreground">Estoque</Label>
+                          <Label htmlFor={`edit-stock-${variation.id}`} className="text-xs text-muted-foreground">Estoque</Label>
                           <Input
-                            id={`edit-stock-${index}`}
+                            id={`edit-stock-${variation.id}`}
                             type="number"
                             value={variation.stock}
-                            onChange={(e) => updateVariation(index, 'stock', parseInt(e.target.value) || 0)}
+                            onChange={(e) => updateVariation(variation.id, 'stock', parseInt(e.target.value) || 0)}
                             placeholder="0"
                           />
                         </div>
                       </div>
                       <div>
-                        <Label htmlFor={`edit-desc-${index}`} className="text-xs text-muted-foreground">Descrição (opcional)</Label>
+                        <Label htmlFor={`edit-desc-${variation.id}`} className="text-xs text-muted-foreground">Descrição (opcional)</Label>
                         <Input
-                          id={`edit-desc-${index}`}
+                          id={`edit-desc-${variation.id}`}
                           value={variation.description || ''}
-                          onChange={(e) => updateVariation(index, 'description', e.target.value)}
+                          onChange={(e) => updateVariation(variation.id, 'description', e.target.value)}
                           placeholder="Ex: Ideal para ambientes pequenos"
                         />
                       </div>
@@ -102,7 +105,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeVariation(index)}
+                      onClick={() => removeVariation(variation.id)}
                       className="mt-6"
                     >
                       <Trash2 className="h-4 w-4" />
