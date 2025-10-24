@@ -172,7 +172,7 @@ const OrdersTable = ({
                           onClick={() => deleteOrder(order.id)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Excluir
+                          Tenho Certeza
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
