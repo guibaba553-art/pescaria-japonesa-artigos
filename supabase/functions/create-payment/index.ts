@@ -35,7 +35,34 @@ serve(async (req) => {
   }
 
   try {
-    const rawData = await req.json();
+    let rawData;
+    
+    try {
+      const text = await req.text();
+      console.log('Request body received:', text);
+      
+      if (!text || text.trim() === '') {
+        console.error('Empty request body');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Empty request body', 
+            details: ['Request body cannot be empty']
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+      
+      rawData = JSON.parse(text);
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid JSON in request body', 
+          details: ['Request body must be valid JSON']
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
     
     // Validate input
     const validationResult = paymentRequestSchema.safeParse(rawData);
