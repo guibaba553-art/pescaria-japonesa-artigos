@@ -24,7 +24,10 @@ const FeaturedProducts = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        *,
+        variations:product_variations(*)
+      `)
       .gt('stock', 0) // Apenas produtos com estoque disponível
       .eq('featured', true) // Apenas produtos em destaque
       .order('created_at', { ascending: false })

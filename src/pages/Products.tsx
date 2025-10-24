@@ -41,7 +41,10 @@ export default function Products() {
     setLoading(true);
     let query = supabase
       .from('products')
-      .select('*')
+      .select(`
+        *,
+        variations:product_variations(*)
+      `)
       .gt('stock', 0)
       .order('name', { ascending: true });
 
