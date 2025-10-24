@@ -47,8 +47,26 @@ export function ProductQuantitySelector({
         max={maxQuantity}
         value={quantity}
         onChange={(e) => {
-          const value = parseInt(e.target.value) || 1;
-          onChange(Math.max(1, Math.min(maxQuantity, value)));
+          const value = parseInt(e.target.value);
+          // Validar entrada
+          if (isNaN(value) || value < 1) {
+            onChange(1);
+            return;
+          }
+          if (value > maxQuantity) {
+            onChange(maxQuantity);
+            return;
+          }
+          onChange(value);
+        }}
+        onBlur={(e) => {
+          // Corrigir valor ao sair do campo
+          const value = parseInt(e.target.value);
+          if (isNaN(value) || value < 1) {
+            onChange(1);
+          } else if (value > maxQuantity) {
+            onChange(maxQuantity);
+          }
         }}
         className={`${inputClass} text-center border rounded px-2 py-1 ${size === 'sm' ? 'text-sm' : 'text-base'}`}
       />

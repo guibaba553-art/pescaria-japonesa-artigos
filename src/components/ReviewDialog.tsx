@@ -30,10 +30,29 @@ export function ReviewDialog({
   const { toast } = useToast();
 
   const handleSubmit = async () => {
+    // Validações
     if (!comment.trim()) {
       toast({
         title: 'Comentário obrigatório',
         description: 'Por favor, escreva um comentário sobre o produto.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (comment.trim().length < 10) {
+      toast({
+        title: 'Comentário muito curto',
+        description: 'O comentário deve ter pelo menos 10 caracteres.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (rating < 1 || rating > 5) {
+      toast({
+        title: 'Avaliação inválida',
+        description: 'Selecione uma avaliação de 1 a 5 estrelas.',
         variant: 'destructive'
       });
       return;
@@ -126,15 +145,18 @@ export function ReviewDialog({
               Comentário *
             </label>
             <Textarea
-              placeholder="Conte sua experiência com o produto..."
+              placeholder="Conte sua experiência com o produto... (mínimo 10 caracteres)"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={4}
               maxLength={500}
+              className={comment.trim().length > 0 && comment.trim().length < 10 ? 'border-destructive' : ''}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              {comment.length}/500 caracteres
-            </p>
+            <div className="flex justify-between items-center">
+              <p className={`text-xs ${comment.trim().length < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {comment.trim().length < 10 ? `Faltam ${10 - comment.trim().length} caracteres` : `${comment.length}/500 caracteres`}
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end">
@@ -145,7 +167,7 @@ export function ReviewDialog({
             >
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={submitting}>
+            <Button onClick={handleSubmit} disabled={submitting || comment.trim().length < 10}>
               {submitting ? 'Enviando...' : 'Enviar Avaliação'}
             </Button>
           </div>

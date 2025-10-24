@@ -119,23 +119,40 @@ export function ProductCard({
           <div className="space-y-3">
             {renderPrice()}
             
-            <div className="flex items-center gap-2">
-              <ProductQuantitySelector
-                quantity={quantity}
-                maxQuantity={product.stock}
-                onIncrement={onIncrement}
-                onDecrement={onDecrement}
-                onChange={onQuantityChange}
-                size="sm"
-              />
-              <Button 
-                className="flex-1"
-                onClick={onAddToCart}
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Comprar
-              </Button>
-            </div>
+            {product.stock === 0 ? (
+              <div className="space-y-2">
+                <Button className="w-full" disabled>
+                  Produto Esgotado
+                </Button>
+                <p className="text-sm text-center text-muted-foreground">
+                  Este produto está temporariamente indisponível
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <ProductQuantitySelector
+                  quantity={quantity}
+                  maxQuantity={product.stock}
+                  onIncrement={onIncrement}
+                  onDecrement={onDecrement}
+                  onChange={onQuantityChange}
+                  size="sm"
+                />
+                <Button 
+                  className="flex-1"
+                  onClick={onAddToCart}
+                  disabled={product.stock === 0}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Comprar
+                </Button>
+              </div>
+            )}
+            {product.stock > 0 && product.stock <= 5 && (
+              <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
+                ⚠️ Apenas {product.stock} {product.stock === 1 ? 'unidade disponível' : 'unidades disponíveis'}
+              </p>
+            )}
           </div>
         </div>
       </CardContent>

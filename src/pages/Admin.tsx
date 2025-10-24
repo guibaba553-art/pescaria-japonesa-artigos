@@ -117,6 +117,64 @@ export default function Admin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validações
+    if (!name.trim()) {
+      toast({
+        title: 'Nome obrigatório',
+        description: 'Por favor, informe o nome do produto.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!description.trim()) {
+      toast({
+        title: 'Descrição obrigatória',
+        description: 'Por favor, informe a descrição do produto.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!category) {
+      toast({
+        title: 'Categoria obrigatória',
+        description: 'Por favor, selecione uma categoria.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast({
+        title: 'Preço inválido',
+        description: 'O preço deve ser maior que zero.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const stockNum = parseInt(stock);
+    if (isNaN(stockNum) || stockNum < 0) {
+      toast({
+        title: 'Estoque inválido',
+        description: 'O estoque não pode ser negativo.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (images.length === 0) {
+      toast({
+        title: 'Imagem obrigatória',
+        description: 'Adicione pelo menos uma imagem do produto.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {

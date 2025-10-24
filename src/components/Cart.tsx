@@ -93,6 +93,7 @@ export function Cart() {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -103,7 +104,21 @@ export function Cart() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        onClick={() => {
+                          // Validação: não permitir adicionar mais se não há informação de estoque
+                          // Este é um carrinho, então não temos acesso direto ao estoque aqui
+                          // Mas podemos pelo menos evitar quantidades absurdas
+                          if (item.quantity >= 100) {
+                            toast({
+                              title: 'Quantidade máxima',
+                              description: 'Quantidade máxima por item atingida',
+                              variant: 'destructive'
+                            });
+                            return;
+                          }
+                          updateQuantity(item.id, item.quantity + 1);
+                        }}
+                        disabled={item.quantity >= 100}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>

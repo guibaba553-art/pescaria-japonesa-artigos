@@ -39,17 +39,50 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addItem = (product: { id: string; name: string; price: number; image_url: string | null }, quantity: number = 1) => {
+    // Validação de quantidade
+    if (quantity < 1) {
+      toast({
+        title: 'Quantidade inválida',
+        description: 'A quantidade deve ser pelo menos 1',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (quantity > 100) {
+      toast({
+        title: 'Quantidade muito alta',
+        description: 'Quantidade máxima por item é 100',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
       
       if (existingItem) {
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > 100) {
+          toast({
+            title: 'Quantidade máxima atingida',
+            description: 'Você atingiu a quantidade máxima para este produto',
+            variant: 'destructive'
+          });
+          return currentItems.map((item) =>
+            item.id === product.id
+              ? { ...item, quantity: 100 }
+              : item
+          );
+        }
+
         toast({
           title: 'Quantidade atualizada',
           description: `${product.name} - quantidade aumentada`
         });
         return currentItems.map((item) =>
           item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: newQuantity }
             : item
         );
       }
@@ -74,6 +107,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity < 1) {
       removeItem(id);
+      return;
+    }
+
+    // Validação de quantidade máxima
+    if (quantity > 100) {
+      toast({
+        title: 'Quantidade máxima',
+        description: 'Quantidade máxima por item é 100',
+        variant: 'destructive'
+      });
+      setItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === id ? { ...item, quantity: 100 } : item
+        )
+      );
       return;
     }
 

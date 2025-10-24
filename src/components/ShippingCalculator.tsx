@@ -37,11 +37,15 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const numeric = sanitizeNumericInput(e.target.value);
-    setCep(numeric);
+    // Limitar a 8 dígitos
+    if (numeric.length <= 8) {
+      setCep(numeric);
+    }
   };
 
   const calculateShipping = async () => {
-    if (cep.length !== 8) {
+    // Validação mais rigorosa do CEP
+    if (!cep || cep.length !== 8) {
       toast({
         title: 'CEP inválido',
         description: 'Por favor, informe um CEP válido com 8 dígitos',
@@ -50,8 +54,19 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
       return;
     }
 
+    // Validar se CEP contém apenas números
+    if (!/^\d{8}$/.test(cep)) {
+      toast({
+        title: 'CEP inválido',
+        description: 'O CEP deve conter apenas números',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
     setOptions([]);
+    setSelectedOption(null); // Resetar seleção ao calcular novo frete
 
     try {
       const { data, error } = await supabase.functions.invoke('calculate-shipping', {
