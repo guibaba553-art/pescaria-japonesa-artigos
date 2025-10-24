@@ -55,15 +55,13 @@ const FeaturedProducts = () => {
   }
 
   return (
-    <section className="py-24 bg-gradient-to-b from-background via-muted/10 to-background relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-      
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-primary via-primary-glow to-secondary bg-clip-text text-transparent mb-6">
+    <section className="py-20 bg-background">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Produtos em Destaque
           </h2>
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Os produtos mais populares entre nossos clientes
           </p>
         </div>
@@ -102,10 +100,11 @@ const FeaturedProducts = () => {
           )}
         </div>
         
-        <div className="text-center mt-16">
+        <div className="text-center mt-12">
           <Button 
             size="lg" 
-            className="border-2 border-primary/50 bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-secondary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-10 py-6 text-lg font-bold"
+            variant="outline" 
+            className="border-2 border-primary text-primary hover:bg-primary/10"
             onClick={() => navigate('/produtos')}
           >
             Ver Todos os Produtos
