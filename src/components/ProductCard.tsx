@@ -83,33 +83,34 @@ export function ProductCard({
   );
 
   return (
-    <Card className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl">
+    <Card className="group overflow-hidden border-2 border-border hover:border-primary/70 transition-all duration-500 hover:shadow-[0_8px_40px_rgba(14,165,233,0.25)] hover:-translate-y-2 bg-card">
       <CardContent className="p-0">
         {/* Imagem do Produto */}
         <div 
-          className="relative overflow-hidden aspect-square cursor-pointer"
+          className="relative overflow-hidden aspect-square cursor-pointer bg-gradient-to-br from-muted/30 to-muted/10"
           onClick={handleImageClick}
         >
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" />
           <img
             src={product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem'}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
           />
-          <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
+          <div className="absolute top-4 left-4 bg-gradient-to-r from-primary to-primary-glow text-primary-foreground px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-white/20">
             {product.category}
           </div>
           {product.on_sale && (
-            <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+            <div className="absolute top-4 right-4 bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-2 rounded-full text-xs font-bold animate-pulse shadow-xl border border-white/30">
               🏷️ PROMOÇÃO
             </div>
           )}
         </div>
         
         {/* Informações do Produto */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 bg-gradient-to-br from-card to-muted/10">
           {renderRating()}
           
-          <h3 className="font-bold text-xl">{product.name}</h3>
+          <h3 className="font-bold text-xl group-hover:text-primary transition-colors duration-300">{product.name}</h3>
           
           {showDescription && (
             <p className="text-sm text-muted-foreground line-clamp-2">
