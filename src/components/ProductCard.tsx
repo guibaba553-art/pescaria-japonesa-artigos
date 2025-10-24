@@ -36,7 +36,18 @@ export function ProductCard({
     navigate(`/produto/${product.id}`);
   };
 
+  const hasVariations = product.variations && product.variations.length > 0;
+
   const renderPrice = () => {
+    // Se produto tem variações, não mostrar preço
+    if (hasVariations) {
+      return (
+        <span className="text-lg font-semibold text-muted-foreground">
+          Selecione uma variação
+        </span>
+      );
+    }
+
     // Se produto em promoção, mostrar preço promocional
     if (product.on_sale && product.sale_price) {
       return (
@@ -130,6 +141,14 @@ export function ProductCard({
                   Este produto está temporariamente indisponível
                 </p>
               </div>
+            ) : hasVariations ? (
+              <Button 
+                className="w-full"
+                onClick={handleImageClick}
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Ver Opções
+              </Button>
             ) : (
               <div className="flex items-center gap-2">
                 <ProductQuantitySelector

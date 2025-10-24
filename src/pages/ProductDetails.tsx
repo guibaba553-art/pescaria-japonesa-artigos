@@ -309,8 +309,18 @@ export default function ProductDetails() {
                   (variations.length === 0 && product.stock === 0)
                 }
                 onClick={() => {
+                  // Impedir adicionar ao carrinho sem selecionar variação
+                  if (variations.length > 0 && !selectedVariation) {
+                    toast({
+                      title: 'Selecione uma variação',
+                      description: 'Por favor, selecione uma variação antes de adicionar ao carrinho.',
+                      variant: 'destructive'
+                    });
+                    return;
+                  }
+
                   // Validação extra de segurança
-                  if (variations.length > 0 && (!selectedVariation || selectedVariation.stock === 0)) {
+                  if (variations.length > 0 && selectedVariation && selectedVariation.stock === 0) {
                     toast({
                       title: 'Variação indisponível',
                       description: 'Por favor, selecione uma variação com estoque disponível.',

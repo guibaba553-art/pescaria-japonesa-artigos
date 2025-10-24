@@ -210,14 +210,40 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                       </div>
                       <div>
                         <Label htmlFor={`img-${variation.id}`} className="text-xs">
-                          URL da Imagem (opcional)
+                          Imagem (opcional - JPG/PNG)
                         </Label>
                         <Input
                           id={`img-${variation.id}`}
-                          value={variation.image_url || ''}
-                          onChange={(e) => updateVariation(variation.id, 'image_url', e.target.value)}
-                          placeholder="https://..."
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+                                toast({
+                                  title: 'Formato inválido',
+                                  description: 'Apenas arquivos JPG e PNG são aceitos',
+                                  variant: 'destructive',
+                                });
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                updateVariation(variation.id, 'image_url', reader.result as string);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
                         />
+                        {variation.image_url && (
+                          <div className="mt-2">
+                            <img 
+                              src={variation.image_url} 
+                              alt="Preview" 
+                              className="h-20 w-20 object-cover rounded border"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -297,14 +323,40 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
             <div>
               <Label htmlFor="new-var-image" className="text-xs">
-                URL da Imagem (opcional)
+                Imagem (opcional - JPG/PNG)
               </Label>
               <Input
                 id="new-var-image"
-                placeholder="https://..."
-                value={newVariation.image_url}
-                onChange={(e) => setNewVariation({ ...newVariation, image_url: e.target.value })}
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+                      toast({
+                        title: 'Formato inválido',
+                        description: 'Apenas arquivos JPG e PNG são aceitos',
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setNewVariation({ ...newVariation, image_url: reader.result as string });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
               />
+              {newVariation.image_url && (
+                <div className="mt-2">
+                  <img 
+                    src={newVariation.image_url} 
+                    alt="Preview" 
+                    className="h-20 w-20 object-cover rounded border"
+                  />
+                </div>
+              )}
             </div>
           </div>
           
