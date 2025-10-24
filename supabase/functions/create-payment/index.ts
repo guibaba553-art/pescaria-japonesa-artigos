@@ -21,7 +21,7 @@ const paymentRequestSchema = z.object({
   cardData: z.object({
     token: z.string(),
     paymentMethodId: z.string(),
-  }).optional(),
+  }).nullable().optional(),
   installments: z.union([z.string(), z.number()]).optional(),
   userEmail: z.string().email('Invalid email').optional(),
   userCpf: z.string().optional(),
