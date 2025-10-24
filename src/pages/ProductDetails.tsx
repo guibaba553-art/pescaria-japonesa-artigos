@@ -223,7 +223,19 @@ export default function ProductDetails() {
                 </span>
               </div>
 
-              {product.on_sale && product.sale_price ? (
+              {variations.length > 0 ? (
+                <div className="mb-6">
+                  <p className="text-sm text-muted-foreground mb-2">Preço a partir de:</p>
+                  <p className="text-4xl font-bold text-primary">
+                    R$ {Math.min(...variations.map(v => v.price)).toFixed(2)}
+                  </p>
+                  {variations.length > 1 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      até R$ {Math.max(...variations.map(v => v.price)).toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              ) : product.on_sale && product.sale_price ? (
                 <div className="mb-6">
                   <p className="text-2xl line-through text-muted-foreground">
                     R$ {product.price.toFixed(2)}
@@ -243,9 +255,11 @@ export default function ProductDetails() {
                 </p>
               )}
 
-              <p className="text-lg text-muted-foreground mb-2">
-                Estoque disponível: <span className="font-semibold">{product.stock} unidades</span>
-              </p>
+              {variations.length === 0 && (
+                <p className="text-lg text-muted-foreground mb-2">
+                  Estoque disponível: <span className="font-semibold">{product.stock} unidades</span>
+                </p>
+              )}
             </div>
 
             <div className="space-y-4">

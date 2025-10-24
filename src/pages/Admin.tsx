@@ -146,9 +146,9 @@ export default function Admin() {
             name,
             description,
             short_description: shortDescription,
-            price: parseFloat(price),
+            price: price ? parseFloat(price) : 0,
             category,
-            stock: parseInt(stock),
+            stock: stock ? parseInt(stock) : 0,
             images: imageUrls,
             image_url: imageUrls.length > 0 ? imageUrls[0] : null,
             created_by: user?.id
@@ -282,15 +282,22 @@ export default function Admin() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$)</Label>
+                  <Label htmlFor="price">
+                    Preço (R$) {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
+                  </Label>
                   <Input
                     id="price"
                     type="number"
                     step="0.01"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    required
+                    required={newProductVariations.length === 0}
                   />
+                  {newProductVariations.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Os preços serão definidos nas variações
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -311,15 +318,22 @@ export default function Admin() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="stock">Estoque</Label>
+                  <Label htmlFor="stock">
+                    Estoque {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
+                  </Label>
                   <Input
                     id="stock"
                     type="number"
                     min="0"
                     value={stock}
                     onChange={(e) => setStock(e.target.value)}
-                    required
+                    required={newProductVariations.length === 0}
                   />
+                  {newProductVariations.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      O estoque será controlado nas variações
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -167,11 +167,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           name,
           description,
           short_description: shortDescription,
-          price: parseFloat(price),
+          price: price ? parseFloat(price) : 0,
           category,
-          stock: parseInt(stock),
+          stock: stock ? parseInt(stock) : 0,
           images: allImageUrls,
-          image_url: allImageUrls[0] || null, // Manter compatibilidade
+          image_url: allImageUrls[0] || null,
           featured,
           on_sale: onSale,
           sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
@@ -255,15 +255,22 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-price">Preço (R$)</Label>
+                <Label htmlFor="edit-price">
+                  Preço (R$) {variations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
+                </Label>
                 <Input
                   id="edit-price"
                   type="number"
                   step="0.01"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  required
+                  required={variations.length === 0}
                 />
+                {variations.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Os preços serão definidos nas variações
+                  </p>
+                )}
               </div>
             </div>
 
@@ -284,15 +291,22 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-stock">Estoque</Label>
+                <Label htmlFor="edit-stock">
+                  Estoque {variations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
+                </Label>
                 <Input
                   id="edit-stock"
                   type="number"
                   min="0"
                   value={stock}
                   onChange={(e) => setStock(e.target.value)}
-                  required
+                  required={variations.length === 0}
                 />
+                {variations.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    O estoque será controlado nas variações
+                  </p>
+                )}
               </div>
             </div>
 
