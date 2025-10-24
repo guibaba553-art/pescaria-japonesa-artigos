@@ -223,34 +223,16 @@ export default function ProductDetails() {
                 </span>
               </div>
 
+              {/* Preço - apenas se não tiver variações OU se tiver uma variação selecionada */}
               {variations.length > 0 ? (
-                <div className="mb-6">
-                  {selectedVariation ? (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">Preço da variação selecionada:</p>
-                      <p className="text-4xl font-bold text-primary">
-                        R$ {selectedVariation.price.toFixed(2)}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">Preço a partir de:</p>
-                      <p className="text-4xl font-bold text-primary">
-                        R$ {Math.min(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
-                      </p>
-                      {variations.filter(v => v.stock > 0).length > 1 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          até R$ {Math.max(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  {variations.every(v => v.stock === 0) && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-semibold">
-                      Todas as variações estão esgotadas
+                selectedVariation && (
+                  <div className="mb-6">
+                    <p className="text-sm text-muted-foreground mb-2">Preço da variação selecionada:</p>
+                    <p className="text-4xl font-bold text-primary">
+                      R$ {selectedVariation.price.toFixed(2)}
                     </p>
-                  )}
-                </div>
+                  </div>
+                )
               ) : product.on_sale && product.sale_price ? (
                 <div className="mb-6">
                   <p className="text-2xl line-through text-muted-foreground">
@@ -278,14 +260,17 @@ export default function ProductDetails() {
               )}
             </div>
 
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Descrição</h2>
-              <p className="text-base leading-relaxed whitespace-pre-line">
-                {selectedVariation && selectedVariation.description 
-                  ? selectedVariation.description 
-                  : product.description}
-              </p>
-            </div>
+            {/* Descrição - apenas se não tiver variações OU se tiver uma variação selecionada */}
+            {(variations.length === 0 || selectedVariation) && (
+              <div className="space-y-4">
+                <h2 className="text-2xl font-bold">Descrição</h2>
+                <p className="text-base leading-relaxed whitespace-pre-line">
+                  {selectedVariation && selectedVariation.description 
+                    ? selectedVariation.description 
+                    : product.description}
+                </p>
+              </div>
+            )}
 
             {variations.length > 0 && (
               <div className="space-y-4 border-t pt-6">
