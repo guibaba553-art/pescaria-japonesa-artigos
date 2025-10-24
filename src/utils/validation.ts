@@ -90,6 +90,29 @@ export function sanitizeNumericInput(input: string): string {
   return input.replace(/\D/g, '');
 }
 
+// Sanitização de HTML para prevenir XSS
+export function sanitizeHtml(input: string): string {
+  return input
+    .trim()
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
+// Validação de URL para imagens
+export function isValidImageUrl(url: string): boolean {
+  if (!url || url.trim() === '') return true; // Allow empty (optional field)
+  
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // Formatação
 export function formatCPF(cpf: string): string {
   const clean = sanitizeNumericInput(cpf);

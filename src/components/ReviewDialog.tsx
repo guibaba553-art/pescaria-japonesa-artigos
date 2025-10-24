@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { sanitizeHtml } from '@/utils/validation';
 
 interface ReviewDialogProps {
   open: boolean;
@@ -72,6 +73,9 @@ export function ReviewDialog({
       return;
     }
 
+    // Sanitize comment to prevent XSS
+    const sanitizedComment = sanitizeHtml(comment.trim());
+    
     const { error } = await supabase
       .from('reviews')
       .insert({
@@ -79,7 +83,7 @@ export function ReviewDialog({
         product_id: productId,
         user_id: user.id,
         rating,
-        comment: comment.trim()
+        comment: sanitizedComment
       });
 
     if (error) {

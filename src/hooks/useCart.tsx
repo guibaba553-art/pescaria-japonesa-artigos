@@ -7,6 +7,7 @@ interface CartItem {
   price: number;
   image_url: string | null;
   quantity: number;
+  variationId?: string;
 }
 
 interface CartContextType {

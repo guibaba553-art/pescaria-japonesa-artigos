@@ -221,9 +221,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           amount: finalTotal,
           paymentMethod,
           items: items.map(item => ({
+            id: item.id,
             name: item.name,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            variationId: item.variationId
           })),
           cardData: cardToken ? {
             token: cardToken.id,

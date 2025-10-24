@@ -42,39 +42,44 @@ serve(async (req) => {
       });
     }
 
-    // Verify HMAC signature if webhook secret is configured
-    if (webhookSecret) {
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(webhookSecret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
-      
-      const signatureBuffer = await crypto.subtle.sign(
-        'HMAC',
-        key,
-        encoder.encode(rawBody)
-      );
-      
-      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
-      if (signature !== expectedSignature) {
-        console.error('Webhook signature validation failed: Invalid signature');
-        return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-      
-      console.log('Webhook signature verified successfully');
-    } else {
-      console.warn('MERCADO_PAGO_WEBHOOK_SECRET not configured - skipping signature verification');
+    // SECURITY: Webhook secret is REQUIRED - reject if not configured
+    if (!webhookSecret) {
+      console.error('MERCADO_PAGO_WEBHOOK_SECRET not configured - rejecting webhook');
+      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
+
+    // Verify HMAC signature
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(webhookSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      encoder.encode(rawBody)
+    );
+    
+    const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    if (signature !== expectedSignature) {
+      console.error('Webhook signature validation failed: Invalid signature');
+      return new Response(JSON.stringify({ error: 'Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.log('Webhook signature verified successfully');
 
     const payload = JSON.parse(rawBody);
     

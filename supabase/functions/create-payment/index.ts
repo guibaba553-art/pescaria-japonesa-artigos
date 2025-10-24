@@ -12,8 +12,11 @@ const paymentRequestSchema = z.object({
   amount: z.number().positive('Amount must be positive').max(1000000, 'Amount exceeds maximum'),
   paymentMethod: z.enum(['pix', 'credit', 'debit']),
   items: z.array(z.object({
+    id: z.string().uuid('Invalid product ID'),
     name: z.string(),
     quantity: z.number().int().positive(),
+    price: z.number().positive('Price must be positive'),
+    variationId: z.string().uuid().optional(),
   })).min(1, 'At least one item required'),
   cardData: z.object({
     token: z.string(),
@@ -59,6 +62,71 @@ serve(async (req) => {
     }
 
     console.log('Creating payment - Method:', data.paymentMethod, 'Amount:', data.amount);
+    
+    // SECURITY: Verify prices against database to prevent price manipulation
+    let verifiedAmount = 0;
+    for (const item of data.items) {
+      let dbPrice: number;
+      
+      if (item.variationId) {
+        // Verify variation price
+        const { data: variation, error } = await supabase
+          .from('product_variations')
+          .select('price')
+          .eq('id', item.variationId)
+          .eq('product_id', item.id)
+          .single();
+        
+        if (error || !variation) {
+          console.error('Invalid variation:', item.variationId);
+          return new Response(
+            JSON.stringify({ error: 'Invalid product variation', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+          );
+        }
+        
+        dbPrice = Number(variation.price);
+      } else {
+        // Verify product price
+        const { data: product, error } = await supabase
+          .from('products')
+          .select('price, sale_price, on_sale')
+          .eq('id', item.id)
+          .single();
+        
+        if (error || !product) {
+          console.error('Invalid product:', item.id);
+          return new Response(
+            JSON.stringify({ error: 'Invalid product', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+          );
+        }
+        
+        dbPrice = product.on_sale && product.sale_price ? Number(product.sale_price) : Number(product.price);
+      }
+      
+      // Verify client-provided price matches database (allow 0.01 difference for rounding)
+      if (Math.abs(Number(item.price) - dbPrice) > 0.01) {
+        console.error('Price mismatch - Client:', item.price, 'DB:', dbPrice);
+        return new Response(
+          JSON.stringify({ error: 'Price verification failed. Please refresh and try again.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+      
+      verifiedAmount += dbPrice * item.quantity;
+    }
+    
+    // Verify total amount matches verified prices
+    if (Math.abs(data.amount - verifiedAmount) > 0.01) {
+      console.error('Total amount mismatch - Client:', data.amount, 'Verified:', verifiedAmount);
+      return new Response(
+        JSON.stringify({ error: 'Amount verification failed. Please refresh and try again.', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+    
+    console.log('Price verification passed - Verified amount:', verifiedAmount);
     
     const isTestMode = accessToken.startsWith('TEST-');
     const simulatePayment = Deno.env.get('SIMULATE_PAYMENTS') === 'true';

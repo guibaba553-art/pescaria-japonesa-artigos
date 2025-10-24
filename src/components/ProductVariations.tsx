@@ -6,6 +6,8 @@ import { Label } from "./ui/label";
 import { Trash2, Plus } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { isValidImageUrl } from "@/utils/validation";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductVariationsProps {
   variations: ProductVariation[];
@@ -17,6 +19,7 @@ interface ProductVariationsProps {
  * Interface intuitiva para adicionar, editar e remover variações
  */
 export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
+  const { toast } = useToast();
   const [newVariation, setNewVariation] = useState({
     name: "",
     price: "",
@@ -43,6 +46,17 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     if (isNaN(stock) || stock < 0) {
       return;
     }
+    
+    // Validate image URL
+    const imageUrl = newVariation.image_url.trim();
+    if (imageUrl && !isValidImageUrl(imageUrl)) {
+      toast({
+        title: 'URL inválida',
+        description: 'A URL da imagem deve começar com http:// ou https://',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const variation: ProductVariation = {
       id: `temp-${Date.now()}-${Math.random()}`, // ID temporário único
@@ -51,7 +65,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       price,
       stock,
       description: newVariation.description.trim() || null,
-      image_url: newVariation.image_url.trim() || null,
+      image_url: imageUrl || null,
       sku: null
     };
 
@@ -65,6 +79,16 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
    * Atualiza uma variação existente
    */
   const updateVariation = (variationId: string, field: keyof ProductVariation, value: any) => {
+    // Validate image URL when updating
+    if (field === 'image_url' && value && !isValidImageUrl(value)) {
+      toast({
+        title: 'URL inválida',
+        description: 'A URL da imagem deve começar com http:// ou https://',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     const updated = variations.map((v) => {
       if (v.id !== variationId) return v;
       
