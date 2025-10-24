@@ -18,6 +18,7 @@ const paymentRequestSchema = z.object({
     price: z.number().positive('Price must be positive'),
     variationId: z.string().uuid().optional(),
   })).min(1, 'At least one item required'),
+  shippingCost: z.number().nonnegative('Shipping cost must be non-negative').optional().default(0),
   cardData: z.object({
     token: z.string(),
     paymentMethodId: z.string(),
@@ -165,16 +166,26 @@ serve(async (req) => {
       verifiedAmount += dbPrice * item.quantity;
     }
     
-    // Verify total amount matches verified prices
+    console.log('Price verification passed - Verified amount (before shipping and discount):', verifiedAmount);
+    
+    // Add shipping cost to verified amount
+    verifiedAmount += data.shippingCost;
+    console.log('After adding shipping - Verified amount:', verifiedAmount);
+    
+    // Apply 5% discount for PIX payments (same as frontend)
+    if (data.paymentMethod === 'pix') {
+      verifiedAmount = verifiedAmount * 0.95;
+      console.log('PIX discount applied - New verified amount:', verifiedAmount);
+    }
+    
+    // Verify total amount matches verified prices (with discount if applicable)
     if (Math.abs(data.amount - verifiedAmount) > 0.01) {
-      console.error('Total amount mismatch - Client:', data.amount, 'Verified:', verifiedAmount);
+      console.error('Total amount mismatch after discount - Client:', data.amount, 'Verified:', verifiedAmount);
       return new Response(
         JSON.stringify({ error: 'Amount verification failed. Please refresh and try again.', success: false }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
       );
     }
-    
-    console.log('Price verification passed - Verified amount:', verifiedAmount);
     
     const isTestMode = accessToken.startsWith('TEST-');
     const simulatePayment = Deno.env.get('SIMULATE_PAYMENTS') === 'true';

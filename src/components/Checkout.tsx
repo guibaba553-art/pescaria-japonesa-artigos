@@ -220,6 +220,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         body: {
           amount: finalTotal,
           paymentMethod,
+          shippingCost,
           items: items.map(item => ({
             id: item.id,
             name: item.name,
