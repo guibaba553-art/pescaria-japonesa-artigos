@@ -54,6 +54,24 @@ const statusConfig = {
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
 };
 
+const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
+  if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
+  if (currentStatus === 'em_preparo') {
+    return deliveryType === 'pickup' ? 'entregado' : 'enviado';
+  }
+  if (currentStatus === 'enviado') return 'entregado';
+  return null; // Já está entregue
+};
+
+const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): string => {
+  if (currentStatus === 'aguardando_pagamento') return 'Marcar como Em Preparo';
+  if (currentStatus === 'em_preparo') {
+    return deliveryType === 'pickup' ? 'Marcar como Retirado' : 'Marcar como Enviado';
+  }
+  if (currentStatus === 'enviado') return 'Marcar como Entregue';
+  return 'Finalizado';
+};
+
 const OrdersTable = ({ 
   orders, 
   profiles, 
@@ -128,20 +146,22 @@ const OrdersTable = ({
                   {new Date(order.created_at).toLocaleDateString('pt-BR')}
                 </TableCell>
                 <TableCell>
-                  <Select
-                    value={order.status}
-                    onValueChange={(value) => updateOrderStatus(order.id, value as 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado')}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
-                      <SelectItem value="em_preparo">Em Preparo</SelectItem>
-                      <SelectItem value="enviado">Enviado</SelectItem>
-                      <SelectItem value="entregue">Entregue</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {statusConfig[order.status].label}
+                    </Badge>
+                    {getNextStatus(order.status, order.delivery_type) && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const nextStatus = getNextStatus(order.status, order.delivery_type);
+                          if (nextStatus) updateOrderStatus(order.id, nextStatus);
+                        }}
+                      >
+                        {getNextStatusLabel(order.status, order.delivery_type)}
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <AlertDialog>
