@@ -148,6 +148,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     e.preventDefault();
     setUpdating(true);
 
+    console.log('=== INICIANDO SALVAMENTO DE PRODUTO ===');
+    console.log('Estado atual de variações:', variations);
+
     try {
       const allImageUrls = [...existingImages];
 
@@ -199,30 +202,53 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       if (error) throw error;
 
       // Gerenciar variações de forma segura
-      // IMPORTANTE: Validar que temos variações carregadas antes de fazer qualquer operação
-      // Se variations estiver vazio, pode ser um erro de carregamento, não uma deleção intencional
+      // Validar que o estado de variações foi carregado corretamente
+      console.log(`Salvando produto com ${variations.length} variações no estado`);
       
-      // Carregar variações existentes para comparação
+      // Buscar variações existentes do banco para validação
       const { data: existingVariations } = await supabase
         .from('product_variations')
-        .select('*')
+        .select('id, name')
         .eq('product_id', product.id);
+      
+      console.log(`Variações existentes no banco: ${existingVariations?.length || 0}`);
 
-      // Se temos variações no estado OU existem variações no banco, processar mudanças
-      if (variations.length > 0 || (existingVariations && existingVariations.length > 0)) {
-        // Preparar variações para inserção
-        const variationsToInsert = variations.map(v => ({
-          product_id: product.id,
-          name: v.name,
-          price: v.price,
-          stock: v.stock,
-          description: v.description || null,
-          sku: v.sku || null
-        }));
+      // IMPORTANTE: Só processar variações se o estado foi carregado
+      // Se variations.length === 0 E existingVariations.length > 0, pode ser erro de carregamento
+      if (variations.length === 0 && existingVariations && existingVariations.length > 0) {
+        console.warn('AVISO: Tentativa de salvar com 0 variações, mas existem variações no banco. Mantendo variações existentes.');
+        toast({
+          title: 'Aviso',
+          description: 'Não foi possível atualizar as variações. Elas foram mantidas como estavam.',
+        });
+      } else {
+        // Deletar todas as variações existentes
+        if (existingVariations && existingVariations.length > 0) {
+          console.log('Deletando variações antigas...');
+          const { error: deleteError } = await supabase
+            .from('product_variations')
+            .delete()
+            .eq('product_id', product.id);
+          
+          if (deleteError) {
+            console.error('Erro ao deletar variações antigas:', deleteError);
+            throw new Error(`Erro ao atualizar variações: ${deleteError.message}`);
+          }
+          console.log('Variações antigas deletadas com sucesso');
+        }
 
-        // Usar uma transação segura: só deleta se a inserção for bem sucedida
-        // Primeiro tentar inserir as novas
-        if (variationsToInsert.length > 0) {
+        // Inserir novas variações se houver
+        if (variations.length > 0) {
+          const variationsToInsert = variations.map(v => ({
+            product_id: product.id,
+            name: v.name,
+            price: v.price,
+            stock: v.stock,
+            description: v.description || null,
+            sku: v.sku || null
+          }));
+
+          console.log('Inserindo novas variações:', variationsToInsert);
           const { error: varError } = await supabase
             .from('product_variations')
             .insert(variationsToInsert);
@@ -231,25 +257,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
             console.error('Erro ao inserir variações:', varError);
             throw new Error(`Erro ao salvar variações: ${varError.message}`);
           }
-        }
-
-        // Só agora deletar as antigas (já que as novas foram salvas com sucesso)
-        if (existingVariations && existingVariations.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('product_variations')
-            .delete()
-            .eq('product_id', product.id)
-            .not('id', 'in', `(${variationsToInsert.map(() => 'NULL').join(',')})`);
-
-          // Na verdade, vamos deletar todas as antigas e manter só as novas
-          // Deletar variações antigas que não estão mais na lista
-          const oldIds = existingVariations.map(v => v.id);
-          if (oldIds.length > 0) {
-            await supabase
-              .from('product_variations')
-              .delete()
-              .in('id', oldIds);
-          }
+          console.log(`${variationsToInsert.length} variações inseridas com sucesso`);
+        } else {
+          console.log('Nenhuma variação para inserir (produto sem variações)');
         }
       }
 
@@ -258,9 +268,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         description: 'As alterações foram salvas com sucesso.',
       });
 
+      console.log('=== PRODUTO SALVO COM SUCESSO ===');
       setOpen(false);
       onUpdate();
     } catch (error: any) {
+      console.error('=== ERRO AO SALVAR PRODUTO ===', error);
       toast({
         title: 'Erro ao atualizar produto',
         description: error.message,
