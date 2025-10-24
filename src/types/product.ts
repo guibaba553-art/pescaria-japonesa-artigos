@@ -3,10 +3,10 @@ export interface ProductVariation {
   id: string;
   product_id: string;
   name: string;
-  value: string;
-  price_adjustment: number;
+  price: number;
   stock: number;
   description?: string | null;
+  sku?: string | null;
   created_at?: string;
   updated_at?: string;
 }

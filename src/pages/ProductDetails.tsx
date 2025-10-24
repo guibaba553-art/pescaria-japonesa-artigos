@@ -259,7 +259,6 @@ export default function ProductDetails() {
               <div className="space-y-4 border-t pt-6">
                 <ProductVariationSelector
                   variations={variations}
-                  basePrice={product.on_sale && product.sale_price ? product.sale_price : product.price}
                   onVariationSelect={setSelectedVariation}
                 />
               </div>
@@ -284,13 +283,13 @@ export default function ProductDetails() {
                 disabled={variations.length > 0 && !selectedVariation}
                 onClick={() => {
                   const finalPrice = selectedVariation 
-                    ? (product.on_sale && product.sale_price ? product.sale_price : product.price) + selectedVariation.price_adjustment
+                    ? selectedVariation.price
                     : (product.on_sale && product.sale_price ? product.sale_price : product.price);
                   
                   addItem({
                     id: product.id,
                     name: selectedVariation 
-                      ? `${product.name} - ${selectedVariation.name}: ${selectedVariation.value}`
+                      ? `${product.name} - ${selectedVariation.name}`
                       : product.name,
                     price: finalPrice,
                     image_url: product.image_url

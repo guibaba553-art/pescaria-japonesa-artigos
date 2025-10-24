@@ -199,36 +199,33 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          price_adjustment: number | null
+          price: number
           product_id: string
           sku: string | null
           stock: number
           updated_at: string
-          value: string
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           name: string
-          price_adjustment?: number | null
+          price?: number
           product_id: string
           sku?: string | null
           stock?: number
           updated_at?: string
-          value: string
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           name?: string
-          price_adjustment?: number | null
+          price?: number
           product_id?: string
           sku?: string | null
           stock?: number
           updated_at?: string
-          value?: string
         }
         Relationships: [
           {

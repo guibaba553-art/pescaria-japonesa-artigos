@@ -14,26 +14,25 @@ interface ProductVariationsProps {
 export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
   const [newVariation, setNewVariation] = useState({
     name: "",
-    value: "",
+    price: 0,
     stock: 0,
     description: ""
   });
 
   const addVariation = () => {
-    if (!newVariation.name || !newVariation.value) return;
+    if (!newVariation.name || newVariation.price <= 0) return;
 
     const variation: ProductVariation = {
       id: `temp-${Date.now()}`,
       product_id: "",
       name: newVariation.name,
-      value: newVariation.value,
-      price_adjustment: 0,
+      price: newVariation.price,
       stock: newVariation.stock,
       description: newVariation.description || null
     };
 
     onVariationsChange([...variations, variation]);
-    setNewVariation({ name: "", value: "", stock: 0, description: "" });
+    setNewVariation({ name: "", price: 0, stock: 0, description: "" });
   };
 
   const updateVariation = (variationId: string, field: keyof ProductVariation, value: any) => {
@@ -54,31 +53,31 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       {/* Lista de variações existentes */}
       {variations.length > 0 && (
             <div className="space-y-2">
-              {[...variations].sort((a, b) => {
-                const nameCompare = a.name.localeCompare(b.name, 'pt-BR');
-                if (nameCompare !== 0) return nameCompare;
-                return a.value.localeCompare(b.value, 'pt-BR', { numeric: true });
-              }).map((variation) => (
+              {[...variations].sort((a, b) => 
+                a.name.localeCompare(b.name, 'pt-BR')
+              ).map((variation) => (
                 <Card key={variation.id} className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-1 space-y-3">
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <Label htmlFor={`edit-name-${variation.id}`} className="text-xs text-muted-foreground">Tipo</Label>
+                          <Label htmlFor={`edit-name-${variation.id}`} className="text-xs text-muted-foreground">Nome</Label>
                           <Input
                             id={`edit-name-${variation.id}`}
                             value={variation.name}
                             onChange={(e) => updateVariation(variation.id, 'name', e.target.value)}
-                            placeholder="Ex: Tamanho"
+                            placeholder="Ex: Anzol 1, Anzol 2"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`edit-value-${variation.id}`} className="text-xs text-muted-foreground">Valor</Label>
+                          <Label htmlFor={`edit-price-${variation.id}`} className="text-xs text-muted-foreground">Preço (R$)</Label>
                           <Input
-                            id={`edit-value-${variation.id}`}
-                            value={variation.value}
-                            onChange={(e) => updateVariation(variation.id, 'value', e.target.value)}
-                            placeholder="Ex: 1, 2, 3"
+                            id={`edit-price-${variation.id}`}
+                            type="number"
+                            step="0.01"
+                            value={variation.price}
+                            onChange={(e) => updateVariation(variation.id, 'price', parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
                           />
                         </div>
                         <div>
@@ -121,21 +120,23 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         <Label className="font-medium">Adicionar Nova Variação</Label>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="var-name">Tipo *</Label>
+            <Label htmlFor="var-name">Nome *</Label>
             <Input
               id="var-name"
-              placeholder="Ex: Tamanho"
+              placeholder="Ex: Anzol 1, Anzol 2"
               value={newVariation.name}
               onChange={(e) => setNewVariation({ ...newVariation, name: e.target.value })}
             />
           </div>
           <div>
-            <Label htmlFor="var-value">Valor *</Label>
+            <Label htmlFor="var-price">Preço (R$) *</Label>
             <Input
-              id="var-value"
-              placeholder="Ex: 1, 2, 3"
-              value={newVariation.value}
-              onChange={(e) => setNewVariation({ ...newVariation, value: e.target.value })}
+              id="var-price"
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={newVariation.price}
+              onChange={(e) => setNewVariation({ ...newVariation, price: parseFloat(e.target.value) || 0 })}
             />
           </div>
           <div>
@@ -161,7 +162,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         <Button
           type="button"
           onClick={addVariation}
-          disabled={!newVariation.name || !newVariation.value}
+          disabled={!newVariation.name || newVariation.price <= 0}
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -170,7 +171,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        * Adicione variações como tamanho, cor, modelo, etc. Cada variação possui seu próprio controle de estoque.
+        * Adicione variações do produto com preços e estoques individuais.
       </p>
     </div>
   );

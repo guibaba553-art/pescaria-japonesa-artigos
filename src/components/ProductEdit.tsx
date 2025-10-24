@@ -192,10 +192,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         const variationsToInsert = variations.map(v => ({
           product_id: product.id,
           name: v.name,
-          value: v.value,
-          price_adjustment: 0,
+          price: v.price,
           stock: v.stock,
-          description: v.description || null
+          description: v.description || null,
+          sku: v.sku || null
         }));
 
         const { error: varError } = await supabase

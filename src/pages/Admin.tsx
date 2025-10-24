@@ -164,9 +164,10 @@ export default function Admin() {
         const variationsToInsert = newProductVariations.map(v => ({
           product_id: newProduct.id,
           name: v.name,
-          value: v.value,
-          price_adjustment: v.price_adjustment,
-          stock: v.stock
+          price: v.price,
+          stock: v.stock,
+          description: v.description || null,
+          sku: v.sku || null
         }));
 
         const { error: varError } = await supabase
