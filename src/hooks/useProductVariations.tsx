@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductVariation } from '@/types/product';
 
 /**
  * Hook centralizado para gerenciar variações de produtos
- * 
- * ARQUITETURA SIMPLIFICADA:
- * - Carrega variações do banco
- * - Mantém estado local para edição
- * - Salva de forma atômica (deleta tudo e recria)
- * - Sem proteções complexas que podem causar bugs
+ * Corrigido para evitar loops infinitos de carregamento
  */
 export function useProductVariations(productId?: string) {
   const [variations, setVariations] = useState<ProductVariation[]>([]);
@@ -19,8 +14,9 @@ export function useProductVariations(productId?: string) {
 
   /**
    * Carrega variações do banco de dados
+   * useCallback para evitar loops infinitos
    */
-  const loadVariations = async (id?: string) => {
+  const loadVariations = useCallback(async (id?: string) => {
     const targetId = id || productId;
     if (!targetId) {
       setVariations([]);
@@ -54,13 +50,13 @@ export function useProductVariations(productId?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId, toast]);
 
   /**
    * Salva variações no banco de dados
    * ESTRATÉGIA: Sempre deleta tudo e recria (operação atômica)
    */
-  const saveVariations = async (
+  const saveVariations = useCallback(async (
     targetProductId: string, 
     variationsToSave: ProductVariation[]
   ): Promise<{ success: boolean; error?: string }> => {
@@ -125,22 +121,24 @@ export function useProductVariations(productId?: string) {
         error: error.message || 'Erro desconhecido' 
       };
     }
-  };
+  }, []);
 
   /**
    * Reseta o estado local de variações
    */
-  const resetVariations = () => {
+  const resetVariations = useCallback(() => {
     setVariations([]);
-  };
+  }, []);
 
   // Autoload quando productId muda
+  // Removida a dependência loadVariations para evitar loop
   useEffect(() => {
     if (productId) {
       loadVariations(productId);
     } else {
       setVariations([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   return {
@@ -152,3 +150,4 @@ export function useProductVariations(productId?: string) {
     resetVariations
   };
 }
+
