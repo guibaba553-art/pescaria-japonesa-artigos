@@ -51,6 +51,8 @@ export default function Admin() {
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredSearchQuery, setFeaturedSearchQuery] = useState('');
   const [newProductVariations, setNewProductVariations] = useState<ProductVariation[]>([]);
+  const [shortDescription, setShortDescription] = useState('');
+  const [generatingSummary, setGeneratingSummary] = useState(false);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -76,6 +78,40 @@ export default function Admin() {
       });
     } else {
       setProducts(data || []);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!description.trim()) {
+      toast({
+        title: 'Atenção',
+        description: 'Preencha a descrição antes de gerar o resumo.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { description }
+      });
+
+      if (error) throw error;
+
+      setShortDescription(data.summary);
+      toast({
+        title: 'Resumo gerado!',
+        description: 'O resumo foi gerado com sucesso.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao gerar resumo',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingSummary(false);
     }
   };
 
@@ -109,6 +145,7 @@ export default function Admin() {
           {
             name,
             description,
+            short_description: shortDescription,
             price: parseFloat(price),
             category,
             stock: parseInt(stock),
@@ -129,8 +166,7 @@ export default function Admin() {
           name: v.name,
           value: v.value,
           price_adjustment: v.price_adjustment,
-          stock: v.stock,
-          sku: v.sku
+          stock: v.stock
         }));
 
         const { error: varError } = await supabase
@@ -152,6 +188,7 @@ export default function Admin() {
       setStock('');
       setImages([]);
       setNewProductVariations([]);
+      setShortDescription('');
       loadProducts();
     } catch (error: any) {
       toast({
@@ -293,6 +330,28 @@ export default function Admin() {
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
                   required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="short-description">Resumo (para listagem)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateSummary}
+                    disabled={generatingSummary}
+                  >
+                    {generatingSummary ? 'Gerando...' : 'Gerar com IA'}
+                  </Button>
+                </div>
+                <Textarea
+                  id="short-description"
+                  value={shortDescription}
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  rows={2}
+                  placeholder="Resumo curto de 2 linhas (gerado automaticamente pela IA ou edite manualmente)"
                 />
               </div>
 

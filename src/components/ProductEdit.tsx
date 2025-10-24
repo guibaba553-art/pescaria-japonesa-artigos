@@ -178,8 +178,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           name: v.name,
           value: v.value,
           price_adjustment: v.price_adjustment,
-          stock: v.stock,
-          sku: v.sku
+          stock: v.stock
         }));
 
         const { error: varError } = await supabase

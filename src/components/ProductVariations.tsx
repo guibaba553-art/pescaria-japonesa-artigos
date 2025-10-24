@@ -16,8 +16,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     name: "",
     value: "",
     price_adjustment: 0,
-    stock: 0,
-    sku: ""
+    stock: 0
   });
 
   const addVariation = () => {
@@ -29,12 +28,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       name: newVariation.name,
       value: newVariation.value,
       price_adjustment: newVariation.price_adjustment,
-      stock: newVariation.stock,
-      sku: newVariation.sku || null
+      stock: newVariation.stock
     };
 
     onVariationsChange([...variations, variation]);
-    setNewVariation({ name: "", value: "", price_adjustment: 0, stock: 0, sku: "" });
+    setNewVariation({ name: "", value: "", price_adjustment: 0, stock: 0 });
   };
 
   const removeVariation = (index: number) => {
@@ -47,47 +45,43 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       
       {/* Lista de variações existentes */}
       {variations.length > 0 && (
-        <div className="space-y-2">
-          {variations.map((variation, index) => (
-            <Card key={variation.id} className="p-4 flex items-center gap-4">
-              <div className="flex-1 grid grid-cols-5 gap-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Tipo</Label>
-                  <p className="font-medium">{variation.name}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Valor</Label>
-                  <p className="font-medium">{variation.value}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Ajuste Preço</Label>
-                  <p className="font-medium">R$ {variation.price_adjustment.toFixed(2)}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Estoque</Label>
-                  <p className="font-medium">{variation.stock}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">SKU</Label>
-                  <p className="font-medium text-xs">{variation.sku || "-"}</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeVariation(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </Card>
-          ))}
-        </div>
+            <div className="space-y-2">
+              {variations.map((variation, index) => (
+                <Card key={variation.id} className="p-4 flex items-center gap-4">
+                  <div className="flex-1 grid grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Tipo</Label>
+                      <p className="font-medium">{variation.name}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Valor</Label>
+                      <p className="font-medium">{variation.value}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Ajuste Preço</Label>
+                      <p className="font-medium">R$ {variation.price_adjustment.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Estoque</Label>
+                      <p className="font-medium">{variation.stock}</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeVariation(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </Card>
+              ))}
+            </div>
       )}
 
       {/* Formulário para adicionar nova variação */}
       <Card className="p-4 space-y-4">
         <Label className="font-medium">Adicionar Nova Variação</Label>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="var-name">Tipo *</Label>
             <Input
@@ -125,15 +119,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               placeholder="0"
               value={newVariation.stock}
               onChange={(e) => setNewVariation({ ...newVariation, stock: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="var-sku">SKU</Label>
-            <Input
-              id="var-sku"
-              placeholder="Código"
-              value={newVariation.sku}
-              onChange={(e) => setNewVariation({ ...newVariation, sku: e.target.value })}
             />
           </div>
         </div>
