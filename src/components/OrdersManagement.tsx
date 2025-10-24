@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -38,6 +38,7 @@ interface Order {
   created_at: string;
   user_id: string;
   shipping_cep: string;
+  delivery_type: 'delivery' | 'pickup';
   order_items: OrderItem[];
 }
 
@@ -333,7 +334,7 @@ export function OrdersManagement() {
     });
 
     setProfiles(profilesMap);
-    setOrders(ordersData || []);
+    setOrders((ordersData || []) as Order[]);
     setLoading(false);
   };
 
@@ -399,9 +400,10 @@ export function OrdersManagement() {
     return <div>Carregando pedidos...</div>;
   }
 
-  // Filtrar pedidos por status
+  // Filtrar pedidos por status e tipo de entrega
   const semPagamento = orders.filter(o => o.status === 'aguardando_pagamento');
-  const paraEnviar = orders.filter(o => o.status === 'em_preparo');
+  const paraEnviar = orders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery');
+  const paraRetirar = orders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup');
   const emCaminho = orders.filter(o => o.status === 'enviado');
   const entregues = orders.filter(o => o.status === 'entregado');
 
@@ -413,7 +415,7 @@ export function OrdersManagement() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="sem-pagamento" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="sem-pagamento" className="relative">
               <Clock className="w-4 h-4 mr-2" />
               Sem Pagamento
@@ -429,6 +431,15 @@ export function OrdersManagement() {
               {paraEnviar.length > 0 && (
                 <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
                   {paraEnviar.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="para-retirar" className="relative">
+              <Store className="w-4 h-4 mr-2" />
+              Para Retirar
+              {paraRetirar.length > 0 && (
+                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
+                  {paraRetirar.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -466,6 +477,17 @@ export function OrdersManagement() {
           <TabsContent value="para-enviar">
             <OrdersTable
               orders={paraEnviar}
+              profiles={profiles}
+              expandedOrders={expandedOrders}
+              toggleOrderExpansion={toggleOrderExpansion}
+              updateOrderStatus={updateOrderStatus}
+              deleteOrder={deleteOrder}
+            />
+          </TabsContent>
+
+          <TabsContent value="para-retirar">
+            <OrdersTable
+              orders={paraRetirar}
               profiles={profiles}
               expandedOrders={expandedOrders}
               toggleOrderExpansion={toggleOrderExpansion}
