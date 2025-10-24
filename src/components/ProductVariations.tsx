@@ -20,15 +20,17 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   });
 
   const addVariation = () => {
-    if (!newVariation.name || newVariation.price <= 0) return;
+    if (!newVariation.name.trim() || newVariation.price <= 0 || newVariation.stock < 0) {
+      return;
+    }
 
     const variation: ProductVariation = {
       id: `temp-${Date.now()}`,
       product_id: "",
-      name: newVariation.name,
+      name: newVariation.name.trim(),
       price: newVariation.price,
       stock: newVariation.stock,
-      description: newVariation.description || null
+      description: newVariation.description?.trim() || null
     };
 
     onVariationsChange([...variations, variation]);
@@ -36,9 +38,16 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   };
 
   const updateVariation = (variationId: string, field: keyof ProductVariation, value: any) => {
-    const updated = variations.map((v) => 
-      v.id === variationId ? { ...v, [field]: value } : v
-    );
+    const updated = variations.map((v) => {
+      if (v.id !== variationId) return v;
+      
+      // Validações em tempo real
+      if (field === 'price' && value < 0) return v;
+      if (field === 'stock' && value < 0) return v;
+      if (field === 'name' && typeof value === 'string' && !value.trim()) return v;
+      
+      return { ...v, [field]: value };
+    });
     onVariationsChange(updated);
   };
 
@@ -70,24 +79,28 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`edit-price-${variation.id}`} className="text-xs text-muted-foreground">Preço (R$)</Label>
+                          <Label htmlFor={`edit-price-${variation.id}`} className="text-xs text-muted-foreground">Preço (R$) *</Label>
                           <Input
                             id={`edit-price-${variation.id}`}
                             type="number"
                             step="0.01"
+                            min="0.01"
                             value={variation.price}
                             onChange={(e) => updateVariation(variation.id, 'price', parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
+                            required
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`edit-stock-${variation.id}`} className="text-xs text-muted-foreground">Estoque</Label>
+                          <Label htmlFor={`edit-stock-${variation.id}`} className="text-xs text-muted-foreground">Estoque *</Label>
                           <Input
                             id={`edit-stock-${variation.id}`}
                             type="number"
+                            min="0"
                             value={variation.stock}
                             onChange={(e) => updateVariation(variation.id, 'stock', parseInt(e.target.value) || 0)}
                             placeholder="0"
+                            required
                           />
                         </div>
                       </div>
@@ -134,9 +147,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               id="var-price"
               type="number"
               step="0.01"
+              min="0.01"
               placeholder="0.00"
               value={newVariation.price}
               onChange={(e) => setNewVariation({ ...newVariation, price: parseFloat(e.target.value) || 0 })}
+              required
             />
           </div>
           <div>
@@ -144,9 +159,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             <Input
               id="var-stock"
               type="number"
+              min="0"
               placeholder="0"
               value={newVariation.stock}
               onChange={(e) => setNewVariation({ ...newVariation, stock: parseInt(e.target.value) || 0 })}
+              required
             />
           </div>
         </div>
@@ -162,7 +179,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         <Button
           type="button"
           onClick={addVariation}
-          disabled={!newVariation.name || newVariation.price <= 0}
+          disabled={!newVariation.name.trim() || newVariation.price <= 0 || newVariation.stock < 0}
           className="w-full"
         >
           <Plus className="h-4 w-4 mr-2" />

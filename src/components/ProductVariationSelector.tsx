@@ -15,10 +15,16 @@ export function ProductVariationSelector({
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
 
-  // Ordenar variações alfabeticamente pelo nome
-  const sortedVariations = [...variations].sort((a, b) => 
-    a.name.localeCompare(b.name, 'pt-BR')
-  );
+  // Ordenar variações: primeiro as em estoque (alfabético), depois as esgotadas (alfabético)
+  const sortedVariations = [...variations].sort((a, b) => {
+    const aOutOfStock = a.stock === 0;
+    const bOutOfStock = b.stock === 0;
+    
+    if (aOutOfStock && !bOutOfStock) return 1;
+    if (!aOutOfStock && bOutOfStock) return -1;
+    
+    return a.name.localeCompare(b.name, 'pt-BR');
+  });
 
   useEffect(() => {
     onVariationSelect(selectedVariation);
@@ -26,6 +32,10 @@ export function ProductVariationSelector({
 
   const handleVariationChange = (variationId: string) => {
     const variation = variations.find(v => v.id === variationId);
+    // Não permitir selecionar variações esgotadas
+    if (variation && variation.stock === 0) {
+      return;
+    }
     setSelectedVariation(variation || null);
   };
 
@@ -93,8 +103,16 @@ export function ProductVariationSelector({
         </div>
       </RadioGroup>
 
+      {!selectedVariation && variations.some(v => v.stock > 0) && (
+        <div className="p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded-md border border-yellow-300 dark:border-yellow-700">
+          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+            ⚠️ Por favor, selecione uma variação para continuar
+          </p>
+        </div>
+      )}
+
       {selectedVariation && (
-        <div className="p-4 bg-accent/50 rounded-md">
+        <div className="p-4 bg-accent/50 rounded-md border-2 border-primary">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="font-medium">Selecionado:</span>

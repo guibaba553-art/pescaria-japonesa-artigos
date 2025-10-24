@@ -227,11 +227,16 @@ export default function ProductDetails() {
                 <div className="mb-6">
                   <p className="text-sm text-muted-foreground mb-2">Preço a partir de:</p>
                   <p className="text-4xl font-bold text-primary">
-                    R$ {Math.min(...variations.map(v => v.price)).toFixed(2)}
+                    R$ {Math.min(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
                   </p>
-                  {variations.length > 1 && (
+                  {variations.filter(v => v.stock > 0).length > 1 && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      até R$ {Math.max(...variations.map(v => v.price)).toFixed(2)}
+                      até R$ {Math.max(...variations.filter(v => v.stock > 0).map(v => v.price)).toFixed(2)}
+                    </p>
+                  )}
+                  {variations.every(v => v.stock === 0) && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-2 font-semibold">
+                      Todas as variações estão esgotadas
                     </p>
                   )}
                 </div>
@@ -294,8 +299,31 @@ export default function ProductDetails() {
               <Button
                 size="lg"
                 className="w-full text-lg py-6"
-                disabled={variations.length > 0 && !selectedVariation}
+                disabled={
+                  (variations.length > 0 && !selectedVariation) ||
+                  (variations.length > 0 && selectedVariation && selectedVariation.stock === 0) ||
+                  (variations.length === 0 && product.stock === 0)
+                }
                 onClick={() => {
+                  // Validação extra de segurança
+                  if (variations.length > 0 && (!selectedVariation || selectedVariation.stock === 0)) {
+                    toast({
+                      title: 'Variação indisponível',
+                      description: 'Por favor, selecione uma variação com estoque disponível.',
+                      variant: 'destructive'
+                    });
+                    return;
+                  }
+
+                  if (variations.length === 0 && product.stock === 0) {
+                    toast({
+                      title: 'Produto esgotado',
+                      description: 'Este produto está temporariamente fora de estoque.',
+                      variant: 'destructive'
+                    });
+                    return;
+                  }
+
                   const finalPrice = selectedVariation 
                     ? selectedVariation.price
                     : (product.on_sale && product.sale_price ? product.sale_price : product.price);
@@ -318,6 +346,10 @@ export default function ProductDetails() {
                 <ShoppingCart className="w-5 h-5 mr-2" />
                 {variations.length > 0 && !selectedVariation 
                   ? 'Selecione uma variação'
+                  : (selectedVariation && selectedVariation.stock === 0)
+                  ? 'Variação esgotada'
+                  : (variations.length === 0 && product.stock === 0)
+                  ? 'Produto esgotado'
                   : 'Adicionar ao Carrinho'
                 }
               </Button>
