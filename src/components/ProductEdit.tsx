@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -16,23 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Pencil } from 'lucide-react';
 import { PRODUCT_CATEGORIES } from '@/config/constants';
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  short_description?: string;
-  price: number;
-  category: string;
-  image_url: string | null;
-  images: string[];
-  stock: number;
-  rating: number;
-  featured: boolean;
-  on_sale: boolean;
-  sale_price?: number;
-  sale_ends_at?: string;
-}
+import { Product, ProductVariation } from '@/types/product';
+import { ProductVariations } from '@/components/ProductVariations';
 
 interface ProductEditProps {
   product: Product;
@@ -58,6 +43,25 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [saleEndsAt, setSaleEndsAt] = useState(
     product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : ''
   );
+  const [variations, setVariations] = useState<ProductVariation[]>([]);
+
+  // Carregar variações ao abrir o dialog
+  useEffect(() => {
+    if (open) {
+      loadVariations();
+    }
+  }, [open]);
+
+  const loadVariations = async () => {
+    const { data } = await supabase
+      .from('product_variations')
+      .select('*')
+      .eq('product_id', product.id);
+    
+    if (data) {
+      setVariations(data);
+    }
+  };
 
   const handleDeleteImage = (imageUrl: string) => {
     setExistingImages(existingImages.filter(img => img !== imageUrl));
@@ -159,6 +163,31 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         .eq('id', product.id);
 
       if (error) throw error;
+
+      // Gerenciar variações
+      // Deletar todas as variações existentes
+      await supabase
+        .from('product_variations')
+        .delete()
+        .eq('product_id', product.id);
+
+      // Inserir novas variações
+      if (variations.length > 0) {
+        const variationsToInsert = variations.map(v => ({
+          product_id: product.id,
+          name: v.name,
+          value: v.value,
+          price_adjustment: v.price_adjustment,
+          stock: v.stock,
+          sku: v.sku
+        }));
+
+        const { error: varError } = await supabase
+          .from('product_variations')
+          .insert(variationsToInsert);
+
+        if (varError) throw varError;
+      }
 
       toast({
         title: 'Produto atualizado!',
@@ -339,6 +368,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 </div>
               )}
             </div>
+
+            <ProductVariations
+              variations={variations}
+              onVariationsChange={setVariations}
+            />
 
             <div className="space-y-2">
               <Label>Imagens do Produto</Label>

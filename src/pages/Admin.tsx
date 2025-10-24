@@ -17,6 +17,8 @@ import { FeaturedProductRow } from '@/components/FeaturedProductRow';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PRODUCT_CATEGORIES } from '@/config/constants';
+import { ProductVariation } from '@/types/product';
+import { ProductVariations } from '@/components/ProductVariations';
 
 interface Product {
   id: string;
@@ -48,6 +50,7 @@ export default function Admin() {
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [featuredSearchQuery, setFeaturedSearchQuery] = useState('');
+  const [newProductVariations, setNewProductVariations] = useState<ProductVariation[]>([]);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -100,7 +103,7 @@ export default function Admin() {
         imageUrls.push(publicUrl);
       }
 
-      const { error } = await supabase
+      const { data: newProduct, error } = await supabase
         .from('products')
         .insert([
           {
@@ -113,9 +116,29 @@ export default function Admin() {
             image_url: imageUrls.length > 0 ? imageUrls[0] : null,
             created_by: user?.id
           }
-        ]);
+        ])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Inserir variações se houver
+      if (newProductVariations.length > 0 && newProduct) {
+        const variationsToInsert = newProductVariations.map(v => ({
+          product_id: newProduct.id,
+          name: v.name,
+          value: v.value,
+          price_adjustment: v.price_adjustment,
+          stock: v.stock,
+          sku: v.sku
+        }));
+
+        const { error: varError } = await supabase
+          .from('product_variations')
+          .insert(variationsToInsert);
+
+        if (varError) console.error('Erro ao adicionar variações:', varError);
+      }
 
       toast({
         title: 'Produto adicionado!',
@@ -128,6 +151,7 @@ export default function Admin() {
       setCategory('');
       setStock('');
       setImages([]);
+      setNewProductVariations([]);
       loadProducts();
     } catch (error: any) {
       toast({
@@ -271,6 +295,11 @@ export default function Admin() {
                   required
                 />
               </div>
+
+              <ProductVariations
+                variations={newProductVariations}
+                onVariationsChange={setNewProductVariations}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="image">Imagens do Produto (múltiplas)</Label>

@@ -1,4 +1,16 @@
 // Tipos centralizados para produtos
+export interface ProductVariation {
+  id: string;
+  product_id: string;
+  name: string;
+  value: string;
+  price_adjustment: number;
+  stock: number;
+  sku?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -17,6 +29,7 @@ export interface Product {
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
+  variations?: ProductVariation[];
 }
 
 export interface CartProduct {

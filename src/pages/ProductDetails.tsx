@@ -7,9 +7,10 @@ import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight } from '
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
-import { Product } from '@/types/product';
+import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
+import { ProductVariationSelector } from '@/components/ProductVariationSelector';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,8 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+  const [variations, setVariations] = useState<ProductVariation[]>([]);
+  const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
   const { toast } = useToast();
   const { addItem } = useCart();
 
@@ -69,6 +72,16 @@ export default function ProductDetails() {
         ? data.images[0] 
         : (data.image_url || '');
       setSelectedImage(firstImage);
+
+      // Carregar variações
+      const { data: variationsData } = await supabase
+        .from('product_variations')
+        .select('*')
+        .eq('product_id', id);
+      
+      if (variationsData) {
+        setVariations(variationsData);
+      }
     }
     setLoading(false);
   };
@@ -242,13 +255,23 @@ export default function ProductDetails() {
               </p>
             </div>
 
-            <div className="space-y-4">
+            {variations.length > 0 && (
+              <div className="space-y-4 border-t pt-6">
+                <ProductVariationSelector
+                  variations={variations}
+                  basePrice={product.on_sale && product.sale_price ? product.sale_price : product.price}
+                  onVariationSelect={setSelectedVariation}
+                />
+              </div>
+            )}
+
+            <div className="space-y-4 border-t pt-6">
               <div>
                 <label className="text-sm font-medium mb-2 block">Quantidade</label>
                 <ProductQuantitySelector
                   quantity={quantity}
-                  maxQuantity={product.stock}
-                  onIncrement={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  maxQuantity={selectedVariation ? selectedVariation.stock : product.stock}
+                  onIncrement={() => setQuantity(Math.min(selectedVariation ? selectedVariation.stock : product.stock, quantity + 1))}
                   onDecrement={() => setQuantity(Math.max(1, quantity - 1))}
                   onChange={setQuantity}
                   size="lg"
@@ -258,13 +281,21 @@ export default function ProductDetails() {
               <Button
                 size="lg"
                 className="w-full text-lg py-6"
+                disabled={variations.length > 0 && !selectedVariation}
                 onClick={() => {
+                  const finalPrice = selectedVariation 
+                    ? (product.on_sale && product.sale_price ? product.sale_price : product.price) + selectedVariation.price_adjustment
+                    : (product.on_sale && product.sale_price ? product.sale_price : product.price);
+                  
                   addItem({
                     id: product.id,
-                    name: product.name,
-                    price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                    name: selectedVariation 
+                      ? `${product.name} - ${selectedVariation.name}: ${selectedVariation.value}`
+                      : product.name,
+                    price: finalPrice,
                     image_url: product.image_url
                   }, quantity);
+                  
                   toast({
                     title: 'Produto adicionado!',
                     description: `${quantity} unidade(s) adicionada(s) ao carrinho.`
@@ -272,7 +303,10 @@ export default function ProductDetails() {
                 }}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                Adicionar ao Carrinho
+                {variations.length > 0 && !selectedVariation 
+                  ? 'Selecione uma variação'
+                  : 'Adicionar ao Carrinho'
+                }
               </Button>
             </div>
           </div>
