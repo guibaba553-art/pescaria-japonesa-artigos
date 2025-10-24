@@ -96,7 +96,21 @@ serve(async (req) => {
       let dbPrice: number;
       
       if (item.variationId) {
-        // Verify variation price
+        // Verify variation price - need to check parent product's sale status
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('on_sale, sale_price, price')
+          .eq('id', item.id)
+          .single();
+          
+        if (productError || !product) {
+          console.error('Invalid product:', item.id);
+          return new Response(
+            JSON.stringify({ error: 'Invalid product', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+          );
+        }
+        
         const { data: variation, error } = await supabase
           .from('product_variations')
           .select('price')
@@ -112,7 +126,14 @@ serve(async (req) => {
           );
         }
         
-        dbPrice = Number(variation.price);
+        // If parent product has sale, apply discount to variation price
+        let variationPrice = Number(variation.price);
+        if (product.on_sale && product.sale_price !== null) {
+          const discountPercent = 1 - (Number(product.sale_price) / Number(product.price));
+          variationPrice = variationPrice * (1 - discountPercent);
+        }
+        
+        dbPrice = variationPrice;
       } else {
         // Verify product price
         const { data: product, error } = await supabase
