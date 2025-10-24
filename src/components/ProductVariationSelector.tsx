@@ -48,7 +48,7 @@ export function ProductVariationSelector({
             value={selectedVariation?.id || ""}
             onValueChange={handleVariationChange}
           >
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 max-w-2xl">
               {varList.map((variation) => {
                 const finalPrice = basePrice + variation.price_adjustment;
                 const isOutOfStock = variation.stock === 0;
