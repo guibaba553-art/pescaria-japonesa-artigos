@@ -37,6 +37,7 @@ export function ProductCard({
   };
 
   const renderPrice = () => {
+    // Se produto em promoção, mostrar preço promocional
     if (product.on_sale && product.sale_price) {
       return (
         <div className="flex flex-col">
@@ -55,9 +56,10 @@ export function ProductCard({
       );
     }
 
+    // Preço normal do produto
     return (
       <span className="text-2xl font-bold text-primary">
-        R$ {product.price.toFixed(2)}
+        R$ {product.price?.toFixed(2) || '0.00'}
       </span>
     );
   };
