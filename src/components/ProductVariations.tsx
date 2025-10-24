@@ -15,9 +15,9 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   const [newVariation, setNewVariation] = useState({
     name: "",
     value: "",
-    price_adjustment: 0,
     stock: 0
   });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const addVariation = () => {
     if (!newVariation.name || !newVariation.value) return;
@@ -27,12 +27,19 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       product_id: "",
       name: newVariation.name,
       value: newVariation.value,
-      price_adjustment: newVariation.price_adjustment,
+      price_adjustment: 0,
       stock: newVariation.stock
     };
 
     onVariationsChange([...variations, variation]);
-    setNewVariation({ name: "", value: "", price_adjustment: 0, stock: 0 });
+    setNewVariation({ name: "", value: "", stock: 0 });
+  };
+
+  const updateVariation = (index: number, field: keyof ProductVariation, value: any) => {
+    const updated = variations.map((v, i) => 
+      i === index ? { ...v, [field]: value } : v
+    );
+    onVariationsChange(updated);
   };
 
   const removeVariation = (index: number) => {
@@ -47,32 +54,47 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       {variations.length > 0 && (
             <div className="space-y-2">
               {variations.map((variation, index) => (
-                <Card key={variation.id} className="p-4 flex items-center gap-4">
-                  <div className="flex-1 grid grid-cols-4 gap-4">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Tipo</Label>
-                      <p className="font-medium">{variation.name}</p>
+                <Card key={variation.id} className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1 grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor={`edit-name-${index}`} className="text-xs text-muted-foreground">Tipo</Label>
+                        <Input
+                          id={`edit-name-${index}`}
+                          value={variation.name}
+                          onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                          placeholder="Ex: Tamanho"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`edit-value-${index}`} className="text-xs text-muted-foreground">Valor</Label>
+                        <Input
+                          id={`edit-value-${index}`}
+                          value={variation.value}
+                          onChange={(e) => updateVariation(index, 'value', e.target.value)}
+                          placeholder="Ex: 1, 2, 3"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`edit-stock-${index}`} className="text-xs text-muted-foreground">Estoque</Label>
+                        <Input
+                          id={`edit-stock-${index}`}
+                          type="number"
+                          value={variation.stock}
+                          onChange={(e) => updateVariation(index, 'stock', parseInt(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Valor</Label>
-                      <p className="font-medium">{variation.value}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Ajuste Preço</Label>
-                      <p className="font-medium">R$ {variation.price_adjustment.toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Estoque</Label>
-                      <p className="font-medium">{variation.stock}</p>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeVariation(index)}
+                      className="mt-6"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeVariation(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </Card>
               ))}
             </div>
@@ -81,7 +103,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       {/* Formulário para adicionar nova variação */}
       <Card className="p-4 space-y-4">
         <Label className="font-medium">Adicionar Nova Variação</Label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <Label htmlFor="var-name">Tipo *</Label>
             <Input
@@ -98,17 +120,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               placeholder="Ex: 1, 2, 3"
               value={newVariation.value}
               onChange={(e) => setNewVariation({ ...newVariation, value: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="var-price">Ajuste Preço (R$)</Label>
-            <Input
-              id="var-price"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={newVariation.price_adjustment}
-              onChange={(e) => setNewVariation({ ...newVariation, price_adjustment: parseFloat(e.target.value) || 0 })}
             />
           </div>
           <div>
@@ -134,7 +145,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        * Adicione variações como tamanho, cor, modelo, etc. O ajuste de preço será somado ao preço base do produto.
+        * Adicione variações como tamanho, cor, modelo, etc. Cada variação possui seu próprio controle de estoque.
       </p>
     </div>
   );

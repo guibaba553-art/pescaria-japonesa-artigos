@@ -177,7 +177,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           product_id: product.id,
           name: v.name,
           value: v.value,
-          price_adjustment: v.price_adjustment,
+          price_adjustment: 0,
           stock: v.stock
         }));
 
