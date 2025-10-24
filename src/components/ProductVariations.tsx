@@ -46,17 +46,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     if (isNaN(stock) || stock < 0) {
       return;
     }
-    
-    // Validate image URL
-    const imageUrl = newVariation.image_url.trim();
-    if (imageUrl && !isValidImageUrl(imageUrl)) {
-      toast({
-        title: 'URL inválida',
-        description: 'A URL da imagem deve começar com http:// ou https://',
-        variant: 'destructive',
-      });
-      return;
-    }
 
     const variation: ProductVariation = {
       id: `temp-${Date.now()}-${Math.random()}`, // ID temporário único
@@ -65,7 +54,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       price,
       stock,
       description: newVariation.description.trim() || null,
-      image_url: imageUrl || null,
+      image_url: newVariation.image_url.trim() || null,
       sku: null
     };
 
@@ -79,16 +68,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
    * Atualiza uma variação existente
    */
   const updateVariation = (variationId: string, field: keyof ProductVariation, value: any) => {
-    // Validate image URL when updating
-    if (field === 'image_url' && value && !isValidImageUrl(value)) {
-      toast({
-        title: 'URL inválida',
-        description: 'A URL da imagem deve começar com http:// ou https://',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
     const updated = variations.map((v) => {
       if (v.id !== variationId) return v;
       
