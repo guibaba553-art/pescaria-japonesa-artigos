@@ -196,6 +196,7 @@ export type Database = {
       product_variations: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           name: string
           price_adjustment: number | null
@@ -207,6 +208,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           price_adjustment?: number | null
@@ -218,6 +220,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           price_adjustment?: number | null

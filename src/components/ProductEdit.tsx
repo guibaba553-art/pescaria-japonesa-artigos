@@ -178,7 +178,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           name: v.name,
           value: v.value,
           price_adjustment: 0,
-          stock: v.stock
+          stock: v.stock,
+          description: v.description || null
         }));
 
         const { error: varError } = await supabase

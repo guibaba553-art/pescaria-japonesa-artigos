@@ -15,7 +15,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   const [newVariation, setNewVariation] = useState({
     name: "",
     value: "",
-    stock: 0
+    stock: 0,
+    description: ""
   });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -28,11 +29,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       name: newVariation.name,
       value: newVariation.value,
       price_adjustment: 0,
-      stock: newVariation.stock
+      stock: newVariation.stock,
+      description: newVariation.description || null
     };
 
     onVariationsChange([...variations, variation]);
-    setNewVariation({ name: "", value: "", stock: 0 });
+    setNewVariation({ name: "", value: "", stock: 0, description: "" });
   };
 
   const updateVariation = (index: number, field: keyof ProductVariation, value: any) => {
@@ -56,33 +58,44 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               {variations.map((variation, index) => (
                 <Card key={variation.id} className="p-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex-1 grid grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor={`edit-name-${index}`} className="text-xs text-muted-foreground">Tipo</Label>
-                        <Input
-                          id={`edit-name-${index}`}
-                          value={variation.name}
-                          onChange={(e) => updateVariation(index, 'name', e.target.value)}
-                          placeholder="Ex: Tamanho"
-                        />
+                    <div className="flex-1 space-y-3">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor={`edit-name-${index}`} className="text-xs text-muted-foreground">Tipo</Label>
+                          <Input
+                            id={`edit-name-${index}`}
+                            value={variation.name}
+                            onChange={(e) => updateVariation(index, 'name', e.target.value)}
+                            placeholder="Ex: Tamanho"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`edit-value-${index}`} className="text-xs text-muted-foreground">Valor</Label>
+                          <Input
+                            id={`edit-value-${index}`}
+                            value={variation.value}
+                            onChange={(e) => updateVariation(index, 'value', e.target.value)}
+                            placeholder="Ex: 1, 2, 3"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`edit-stock-${index}`} className="text-xs text-muted-foreground">Estoque</Label>
+                          <Input
+                            id={`edit-stock-${index}`}
+                            type="number"
+                            value={variation.stock}
+                            onChange={(e) => updateVariation(index, 'stock', parseInt(e.target.value) || 0)}
+                            placeholder="0"
+                          />
+                        </div>
                       </div>
                       <div>
-                        <Label htmlFor={`edit-value-${index}`} className="text-xs text-muted-foreground">Valor</Label>
+                        <Label htmlFor={`edit-desc-${index}`} className="text-xs text-muted-foreground">Descrição (opcional)</Label>
                         <Input
-                          id={`edit-value-${index}`}
-                          value={variation.value}
-                          onChange={(e) => updateVariation(index, 'value', e.target.value)}
-                          placeholder="Ex: 1, 2, 3"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`edit-stock-${index}`} className="text-xs text-muted-foreground">Estoque</Label>
-                        <Input
-                          id={`edit-stock-${index}`}
-                          type="number"
-                          value={variation.stock}
-                          onChange={(e) => updateVariation(index, 'stock', parseInt(e.target.value) || 0)}
-                          placeholder="0"
+                          id={`edit-desc-${index}`}
+                          value={variation.description || ''}
+                          onChange={(e) => updateVariation(index, 'description', e.target.value)}
+                          placeholder="Ex: Ideal para ambientes pequenos"
                         />
                       </div>
                     </div>
@@ -132,6 +145,15 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               onChange={(e) => setNewVariation({ ...newVariation, stock: parseInt(e.target.value) || 0 })}
             />
           </div>
+        </div>
+        <div>
+          <Label htmlFor="var-description">Descrição (opcional)</Label>
+          <Input
+            id="var-description"
+            placeholder="Ex: Ideal para ambientes pequenos"
+            value={newVariation.description}
+            onChange={(e) => setNewVariation({ ...newVariation, description: e.target.value })}
+          />
         </div>
         <Button
           type="button"

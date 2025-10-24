@@ -74,6 +74,11 @@ export function ProductVariationSelector({
                         />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">{variation.value}</div>
+                          {variation.description && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {variation.description}
+                            </div>
+                          )}
                           {isOutOfStock && (
                             <Badge variant="destructive" className="text-[10px] h-4 px-1 mt-0.5">
                               Esgotado
@@ -104,16 +109,23 @@ export function ProductVariationSelector({
 
       {selectedVariation && (
         <div className="p-3 bg-accent/50 rounded-md">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-sm">Selecionado:</span>
-            <div className="text-right">
-              <div className="font-semibold text-sm">
-                {selectedVariation.name}: {selectedVariation.value}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                R$ {(basePrice + selectedVariation.price_adjustment).toFixed(2)}
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-sm">Selecionado:</span>
+              <div className="text-right">
+                <div className="font-semibold text-sm">
+                  {selectedVariation.name}: {selectedVariation.value}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  R$ {(basePrice + selectedVariation.price_adjustment).toFixed(2)}
+                </div>
               </div>
             </div>
+            {selectedVariation.description && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {selectedVariation.description}
+              </p>
+            )}
           </div>
         </div>
       )}

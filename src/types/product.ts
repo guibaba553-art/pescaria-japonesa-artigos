@@ -6,6 +6,7 @@ export interface ProductVariation {
   value: string;
   price_adjustment: number;
   stock: number;
+  description?: string | null;
   created_at?: string;
   updated_at?: string;
 }
