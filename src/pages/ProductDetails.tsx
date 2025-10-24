@@ -276,7 +276,13 @@ export default function ProductDetails() {
               <div className="space-y-4 border-t pt-6">
                 <ProductVariationSelector
                   variations={variations}
-                  onVariationSelect={setSelectedVariation}
+                  onVariationSelect={(variation) => {
+                    setSelectedVariation(variation);
+                    // Mudar a imagem quando selecionar uma variação
+                    if (variation?.image_url) {
+                      setSelectedImage(variation.image_url);
+                    }
+                  }}
                 />
               </div>
             )}

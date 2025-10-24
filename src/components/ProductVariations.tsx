@@ -21,7 +21,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     name: "",
     price: "",
     stock: "",
-    description: ""
+    description: "",
+    image_url: ""
   });
 
   /**
@@ -50,13 +51,14 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       price,
       stock,
       description: newVariation.description.trim() || null,
+      image_url: newVariation.image_url.trim() || null,
       sku: null
     };
 
     onVariationsChange([...variations, variation]);
     
     // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "" });
+    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "" });
   };
 
   /**
@@ -170,16 +172,29 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         />
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor={`desc-${variation.id}`} className="text-xs">
-                        Descrição (opcional)
-                      </Label>
-                      <Input
-                        id={`desc-${variation.id}`}
-                        value={variation.description || ''}
-                        onChange={(e) => updateVariation(variation.id, 'description', e.target.value)}
-                        placeholder="Ex: Ideal para uso diário"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor={`desc-${variation.id}`} className="text-xs">
+                          Descrição (opcional)
+                        </Label>
+                        <Input
+                          id={`desc-${variation.id}`}
+                          value={variation.description || ''}
+                          onChange={(e) => updateVariation(variation.id, 'description', e.target.value)}
+                          placeholder="Ex: Ideal para uso diário"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`img-${variation.id}`} className="text-xs">
+                          URL da Imagem (opcional)
+                        </Label>
+                        <Input
+                          id={`img-${variation.id}`}
+                          value={variation.image_url || ''}
+                          onChange={(e) => updateVariation(variation.id, 'image_url', e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
                     </div>
                   </div>
                   <Button
@@ -244,16 +259,29 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
           </div>
           
-          <div>
-            <Label htmlFor="new-var-description" className="text-xs">
-              Descrição (opcional)
-            </Label>
-            <Input
-              id="new-var-description"
-              placeholder="Ex: Ideal para uso diário"
-              value={newVariation.description}
-              onChange={(e) => setNewVariation({ ...newVariation, description: e.target.value })}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="new-var-description" className="text-xs">
+                Descrição (opcional)
+              </Label>
+              <Input
+                id="new-var-description"
+                placeholder="Ex: Ideal para uso diário"
+                value={newVariation.description}
+                onChange={(e) => setNewVariation({ ...newVariation, description: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-var-image" className="text-xs">
+                URL da Imagem (opcional)
+              </Label>
+              <Input
+                id="new-var-image"
+                placeholder="https://..."
+                value={newVariation.image_url}
+                onChange={(e) => setNewVariation({ ...newVariation, image_url: e.target.value })}
+              />
+            </div>
           </div>
           
           <Button
