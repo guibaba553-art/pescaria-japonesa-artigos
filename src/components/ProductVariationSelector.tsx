@@ -50,7 +50,7 @@ export function ProductVariationSelector({
         value={selectedVariation?.id || ""}
         onValueChange={handleVariationChange}
       >
-        <div className="grid grid-cols-2 gap-2 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 w-full">
           {sortedVariations.map((variation) => {
             const isOutOfStock = variation.stock === 0;
             const isSelected = selectedVariation?.id === variation.id;
