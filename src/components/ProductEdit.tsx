@@ -210,40 +210,66 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       // Processar imagens das variações (converter base64 para URLs públicas)
       const processedVariations = await Promise.all(
         variations.map(async (variation) => {
+          console.log(`🔍 Processando variação: ${variation.name}`);
+          console.log(`📸 Image URL tipo:`, variation.image_url?.substring(0, 50));
+          
           // Se a imagem for base64, fazer upload
           if (variation.image_url && variation.image_url.startsWith('data:')) {
             try {
+              console.log(`📤 Fazendo upload da imagem da variação ${variation.name}`);
+              
               // Converter base64 para blob
               const response = await fetch(variation.image_url);
               const blob = await response.blob();
               
               // Upload para o storage
-              const fileExt = blob.type.split('/')[1];
-              const fileName = `variation-${Date.now()}-${Math.random()}.${fileExt}`;
+              const fileExt = blob.type.split('/')[1] || 'jpg';
+              const fileName = `variation-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
               
-              const { error: uploadError } = await supabase.storage
+              console.log(`📤 Nome do arquivo: ${fileName}, tamanho: ${blob.size} bytes`);
+              
+              const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('product-images')
                 .upload(fileName, blob);
 
               if (uploadError) {
-                console.error('Erro ao fazer upload da imagem da variação:', uploadError);
-                return variation;
+                console.error('❌ Erro ao fazer upload:', uploadError);
+                toast({
+                  title: 'Erro ao salvar imagem',
+                  description: `Não foi possível salvar a imagem da variação ${variation.name}`,
+                  variant: 'destructive'
+                });
+                return { ...variation, image_url: null };
               }
+
+              console.log('✅ Upload concluído:', uploadData.path);
 
               // Obter URL pública
               const { data: { publicUrl } } = supabase.storage
                 .from('product-images')
                 .getPublicUrl(fileName);
 
+              console.log('✅ URL pública gerada:', publicUrl);
               return { ...variation, image_url: publicUrl };
+              
             } catch (error) {
-              console.error('Erro ao processar imagem da variação:', error);
-              return variation;
+              console.error('❌ Erro ao processar imagem da variação:', error);
+              toast({
+                title: 'Erro',
+                description: `Erro ao processar imagem da variação ${variation.name}`,
+                variant: 'destructive'
+              });
+              return { ...variation, image_url: null };
             }
           }
+          
+          // Se não for base64, manter como está
+          console.log(`✅ Variação ${variation.name} - imagem já é URL ou não tem imagem`);
           return variation;
         })
       );
+
+      console.log('📊 Variações processadas:', processedVariations.length);
 
       // Salvar variações com URLs públicas
       const { success: varSuccess, error: varError } = await saveVariations(product.id, processedVariations);
