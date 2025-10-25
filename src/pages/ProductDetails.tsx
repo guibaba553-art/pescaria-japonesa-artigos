@@ -278,9 +278,19 @@ export default function ProductDetails() {
                   variations={variations}
                   onVariationSelect={(variation) => {
                     setSelectedVariation(variation);
-                    // Mudar a imagem quando selecionar uma variação
+                    
+                    // Lógica de troca de imagem:
+                    // 1. Se variação tem imagem própria → usa a imagem da variação
+                    // 2. Se variação não tem imagem → volta para primeira imagem do produto
+                    // 3. Se desmarcou (variation = null) → volta para primeira imagem do produto
                     if (variation?.image_url) {
                       setSelectedImage(variation.image_url);
+                    } else {
+                      // Volta para a primeira imagem do produto
+                      const firstProductImage = (product.images && product.images.length > 0) 
+                        ? product.images[0] 
+                        : (product.image_url || '');
+                      setSelectedImage(firstProductImage);
                     }
                   }}
                 />
