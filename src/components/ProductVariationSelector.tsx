@@ -70,15 +70,6 @@ export function ProductVariationSelector({
                     ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : ''}
                   `}
                 >
-                  {variation.image_url && (
-                    <div className="mb-2 rounded overflow-hidden">
-                      <img 
-                        src={variation.image_url} 
-                        alt={variation.name}
-                        className="w-full h-24 object-cover"
-                      />
-                    </div>
-                  )}
                   <div className="flex items-start gap-2 mb-2">
                     <RadioGroupItem
                       value={variation.id}
