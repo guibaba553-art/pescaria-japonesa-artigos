@@ -37,7 +37,7 @@ export function validateProductForm(data: ProductFormData): ValidationError[] {
   // Removido validação obrigatória
 
   // Categoria obrigatória
-  if (!data.category) {
+  if (!data.category || !data.category.trim()) {
     errors.push({
       field: 'category',
       message: 'Categoria é obrigatória'
