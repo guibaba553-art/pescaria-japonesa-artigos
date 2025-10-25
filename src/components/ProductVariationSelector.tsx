@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ProductVariation } from "@/types/product";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
@@ -26,17 +26,21 @@ export function ProductVariationSelector({
     return a.name.localeCompare(b.name, 'pt-BR');
   });
 
-  useEffect(() => {
-    onVariationSelect(selectedVariation);
-  }, [selectedVariation, onVariationSelect]);
-
   const handleVariationChange = (variationId: string) => {
     const variation = variations.find(v => v.id === variationId);
+    
     // Não permitir selecionar variações esgotadas
     if (variation && variation.stock === 0) {
       return;
     }
+    
     setSelectedVariation(variation || null);
+    
+    // Chamar callback imediatamente
+    onVariationSelect(variation || null);
+    
+    console.log('🔄 Variação selecionada:', variation?.name);
+    console.log('📸 Imagem da variação:', variation?.image_url || 'sem imagem');
   };
 
   if (variations.length === 0) {

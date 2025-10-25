@@ -277,6 +277,7 @@ export default function ProductDetails() {
                 <ProductVariationSelector
                   variations={variations}
                   onVariationSelect={(variation) => {
+                    console.log('📦 ProductDetails recebeu variação:', variation?.name);
                     setSelectedVariation(variation);
                     
                     // Lógica de troca de imagem:
@@ -284,12 +285,14 @@ export default function ProductDetails() {
                     // 2. Se variação não tem imagem → volta para primeira imagem do produto
                     // 3. Se desmarcou (variation = null) → volta para primeira imagem do produto
                     if (variation?.image_url) {
+                      console.log('✅ Trocando para imagem da variação:', variation.image_url);
                       setSelectedImage(variation.image_url);
                     } else {
                       // Volta para a primeira imagem do produto
                       const firstProductImage = (product.images && product.images.length > 0) 
                         ? product.images[0] 
                         : (product.image_url || '');
+                      console.log('⬅️ Voltando para imagem do produto:', firstProductImage);
                       setSelectedImage(firstProductImage);
                     }
                   }}
