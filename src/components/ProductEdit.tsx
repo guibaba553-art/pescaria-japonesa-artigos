@@ -136,20 +136,44 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       const allImageUrls = [...existingImages];
 
       // Upload de novas imagens
-      for (const file of newImages) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file);
+      for (let i = 0; i < newImages.length; i++) {
+        const file = newImages[i];
+        try {
+          // Validar tamanho (máximo 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            toast({
+              title: 'Imagem muito grande',
+              description: `A imagem ${file.name} excede 5MB`,
+              variant: 'destructive'
+            });
+            continue;
+          }
 
-        if (uploadError) throw uploadError;
+          const fileExt = file.name.split('.').pop()?.toLowerCase();
+          const fileName = `product-${Date.now()}-${i}.${fileExt}`;
+          
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(fileName, file);
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName);
+          if (uploadError) {
+            console.error('Erro no upload:', uploadError);
+            toast({
+              title: 'Erro no upload',
+              description: `Falha ao enviar ${file.name}`,
+              variant: 'destructive'
+            });
+            continue;
+          }
 
-        allImageUrls.push(publicUrl);
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName);
+
+          allImageUrls.push(publicUrl);
+        } catch (error: any) {
+          console.error('Erro ao processar imagem:', error);
+        }
       }
 
       // Deletar imagens removidas

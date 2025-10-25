@@ -155,44 +155,68 @@ export default function Admin() {
 
       // Upload de imagens (se houver)
       if (images.length > 0) {
-        console.log('Fazendo upload de', images.length, 'imagens...');
+        console.log('📤 Fazendo upload de', images.length, 'imagens...');
         
-        for (const file of images) {
+        for (let i = 0; i < images.length; i++) {
+          const file = images[i];
           try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
-            
-            console.log('Enviando imagem:', fileName);
-            const { error: uploadError } = await supabase.storage
-              .from('product-images')
-              .upload(fileName, file, {
-                cacheControl: '3600',
-                upsert: false
+            // Validar tamanho (máximo 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+              toast({
+                title: 'Imagem muito grande',
+                description: `A imagem ${file.name} excede 5MB. Por favor, use uma imagem menor.`,
+                variant: 'destructive'
               });
+              continue;
+            }
+
+            const fileExt = file.name.split('.').pop()?.toLowerCase();
+            const fileName = `product-${Date.now()}-${i}.${fileExt}`;
+            
+            console.log(`📤 Enviando imagem ${i + 1}/${images.length}:`, fileName);
+            
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('product-images')
+              .upload(fileName, file);
 
             if (uploadError) {
-              console.error('Erro no upload:', uploadError);
-              throw uploadError;
+              console.error('❌ Erro no upload:', uploadError);
+              toast({
+                title: 'Erro no upload',
+                description: `Falha ao enviar ${file.name}: ${uploadError.message}`,
+                variant: 'destructive'
+              });
+              continue;
             }
+
+            console.log('✅ Upload concluído:', uploadData.path);
 
             const { data: { publicUrl } } = supabase.storage
               .from('product-images')
               .getPublicUrl(fileName);
 
             imageUrls.push(publicUrl);
-            console.log('Imagem enviada:', publicUrl);
+            console.log('✅ URL pública gerada:', publicUrl);
           } catch (imgError: any) {
-            console.error('Erro ao processar imagem:', imgError);
+            console.error('❌ Erro ao processar imagem:', imgError);
             toast({
-              title: 'Aviso',
-              description: `Erro ao fazer upload da imagem: ${imgError.message}`,
+              title: 'Erro',
+              description: `Não foi possível processar ${file.name}`,
               variant: 'destructive'
             });
-            // Continua sem a imagem em vez de falhar completamente
           }
         }
+        
+        if (imageUrls.length === 0) {
+          toast({
+            title: 'Aviso',
+            description: 'Nenhuma imagem foi enviada. O produto será criado sem imagens.',
+          });
+        } else {
+          console.log(`✅ ${imageUrls.length} imagem(ns) enviada(s) com sucesso`);
+        }
       } else {
-        console.log('Nenhuma imagem para upload');
+        console.log('ℹ️ Nenhuma imagem selecionada');
       }
 
       // Criar produto
