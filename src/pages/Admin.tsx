@@ -153,21 +153,46 @@ export default function Admin() {
     try {
       const imageUrls: string[] = [];
 
-      // Upload de imagens
-      for (const file of images) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file);
+      // Upload de imagens (se houver)
+      if (images.length > 0) {
+        console.log('Fazendo upload de', images.length, 'imagens...');
+        
+        for (const file of images) {
+          try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+            
+            console.log('Enviando imagem:', fileName);
+            const { error: uploadError } = await supabase.storage
+              .from('product-images')
+              .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
 
-        if (uploadError) throw uploadError;
+            if (uploadError) {
+              console.error('Erro no upload:', uploadError);
+              throw uploadError;
+            }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName);
+            const { data: { publicUrl } } = supabase.storage
+              .from('product-images')
+              .getPublicUrl(fileName);
 
-        imageUrls.push(publicUrl);
+            imageUrls.push(publicUrl);
+            console.log('Imagem enviada:', publicUrl);
+          } catch (imgError: any) {
+            console.error('Erro ao processar imagem:', imgError);
+            toast({
+              title: 'Aviso',
+              description: `Erro ao fazer upload da imagem: ${imgError.message}`,
+              variant: 'destructive'
+            });
+            // Continua sem a imagem em vez de falhar completamente
+          }
+        }
+      } else {
+        console.log('Nenhuma imagem para upload');
       }
 
       // Criar produto

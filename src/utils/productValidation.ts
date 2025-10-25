@@ -65,13 +65,8 @@ export function validateProductForm(data: ProductFormData): ValidationError[] {
     }
   }
 
-  // Validar imagens (se fornecidas)
-  if (data.images && data.images.length === 0) {
-    errors.push({
-      field: 'images',
-      message: 'Adicione pelo menos uma imagem do produto'
-    });
-  }
+  // Validar imagens (opcional)
+  // Removida validação obrigatória de imagens
 
   return errors;
 }
