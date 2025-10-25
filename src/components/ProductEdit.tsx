@@ -183,8 +183,46 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       if (updateError) throw updateError;
       console.log('✅ Produto atualizado');
 
-      // Salvar variações
-      const { success: varSuccess, error: varError } = await saveVariations(product.id, variations);
+      // Processar imagens das variações (converter base64 para URLs públicas)
+      const processedVariations = await Promise.all(
+        variations.map(async (variation) => {
+          // Se a imagem for base64, fazer upload
+          if (variation.image_url && variation.image_url.startsWith('data:')) {
+            try {
+              // Converter base64 para blob
+              const response = await fetch(variation.image_url);
+              const blob = await response.blob();
+              
+              // Upload para o storage
+              const fileExt = blob.type.split('/')[1];
+              const fileName = `variation-${Date.now()}-${Math.random()}.${fileExt}`;
+              
+              const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, blob);
+
+              if (uploadError) {
+                console.error('Erro ao fazer upload da imagem da variação:', uploadError);
+                return variation;
+              }
+
+              // Obter URL pública
+              const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+              return { ...variation, image_url: publicUrl };
+            } catch (error) {
+              console.error('Erro ao processar imagem da variação:', error);
+              return variation;
+            }
+          }
+          return variation;
+        })
+      );
+
+      // Salvar variações com URLs públicas
+      const { success: varSuccess, error: varError } = await saveVariations(product.id, processedVariations);
       
       if (!varSuccess) {
         throw new Error(varError || 'Erro ao salvar variações');
