@@ -21,6 +21,7 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [variations, setVariations] = useState<ProductVariation[]>([]);
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
+  const [displayImages, setDisplayImages] = useState<string[]>([]);
   const { toast } = useToast();
   const { addItem } = useCart();
 
@@ -30,24 +31,18 @@ export default function ProductDetails() {
 
   // Autoplay das imagens
   useEffect(() => {
-    if (!product) return;
-    
-    const allImages = product.images && product.images.length > 0 
-      ? product.images 
-      : (product.image_url ? [product.image_url] : []);
-
-    if (allImages.length <= 1) return;
+    if (!product || displayImages.length <= 1) return;
 
     const interval = setInterval(() => {
       setSelectedImage(current => {
-        const currentIndex = allImages.indexOf(current);
-        const nextIndex = (currentIndex + 1) % allImages.length;
-        return allImages[nextIndex];
+        const currentIndex = displayImages.indexOf(current);
+        const nextIndex = (currentIndex + 1) % displayImages.length;
+        return displayImages[nextIndex];
       });
     }, 3000); // Troca a cada 3 segundos
 
     return () => clearInterval(interval);
-  }, [product]);
+  }, [displayImages]);
 
   const loadProduct = async () => {
     if (!id) return;
@@ -68,10 +63,12 @@ export default function ProductDetails() {
       navigate('/produtos');
     } else {
       setProduct(data);
-      const firstImage = (data.images && data.images.length > 0) 
-        ? data.images[0] 
-        : (data.image_url || '');
-      setSelectedImage(firstImage);
+      const productImages = (data.images && data.images.length > 0) 
+        ? data.images 
+        : (data.image_url ? [data.image_url] : []);
+      
+      setDisplayImages(productImages);
+      setSelectedImage(productImages[0] || '');
 
       // Carregar variações
       const { data: variationsData } = await supabase
@@ -101,20 +98,16 @@ export default function ProductDetails() {
     return null;
   }
 
-  const allImages = product.images && product.images.length > 0 
-    ? product.images 
-    : (product.image_url ? [product.image_url] : []);
-
   const goToNextImage = () => {
-    const currentIndex = allImages.indexOf(selectedImage);
-    const nextIndex = (currentIndex + 1) % allImages.length;
-    setSelectedImage(allImages[nextIndex]);
+    const currentIndex = displayImages.indexOf(selectedImage);
+    const nextIndex = (currentIndex + 1) % displayImages.length;
+    setSelectedImage(displayImages[nextIndex]);
   };
 
   const goToPreviousImage = () => {
-    const currentIndex = allImages.indexOf(selectedImage);
-    const previousIndex = (currentIndex - 1 + allImages.length) % allImages.length;
-    setSelectedImage(allImages[previousIndex]);
+    const currentIndex = displayImages.indexOf(selectedImage);
+    const previousIndex = (currentIndex - 1 + displayImages.length) % displayImages.length;
+    setSelectedImage(displayImages[previousIndex]);
   };
 
   return (
@@ -151,7 +144,7 @@ export default function ProductDetails() {
               />
               
               {/* Setas de navegação */}
-              {allImages.length > 1 && (
+              {displayImages.length > 1 && (
                 <>
                   <button
                     onClick={goToPreviousImage}
@@ -171,9 +164,9 @@ export default function ProductDetails() {
               )}
             </div>
             
-            {allImages.length > 1 && (
+            {displayImages.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
-                {allImages.map((img, idx) => (
+                {displayImages.map((img, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(img)}
@@ -277,23 +270,22 @@ export default function ProductDetails() {
                 <ProductVariationSelector
                   variations={variations}
                   onVariationSelect={(variation) => {
-                    console.log('📦 ProductDetails recebeu variação:', variation?.name);
+                    console.log('📦 Variação selecionada:', variation?.name);
                     setSelectedVariation(variation);
                     
-                    // Lógica de troca de imagem:
-                    // 1. Se variação tem imagem própria → usa a imagem da variação
-                    // 2. Se variação não tem imagem → volta para primeira imagem do produto
-                    // 3. Se desmarcou (variation = null) → volta para primeira imagem do produto
                     if (variation?.image_url) {
-                      console.log('✅ Trocando para imagem da variação:', variation.image_url);
+                      // Tem imagem na variação - mostrar APENAS ela
+                      console.log('✅ Mostrando imagem da variação:', variation.image_url);
+                      setDisplayImages([variation.image_url]);
                       setSelectedImage(variation.image_url);
                     } else {
-                      // Volta para a primeira imagem do produto
-                      const firstProductImage = (product.images && product.images.length > 0) 
-                        ? product.images[0] 
-                        : (product.image_url || '');
-                      console.log('⬅️ Voltando para imagem do produto:', firstProductImage);
-                      setSelectedImage(firstProductImage);
+                      // Sem imagem na variação - voltar para imagens do produto
+                      console.log('⬅️ Voltando para imagens do produto');
+                      const productImages = (product.images && product.images.length > 0) 
+                        ? product.images 
+                        : (product.image_url ? [product.image_url] : []);
+                      setDisplayImages(productImages);
+                      setSelectedImage(productImages[0] || '');
                     }
                   }}
                 />
