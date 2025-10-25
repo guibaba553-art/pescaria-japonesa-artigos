@@ -83,14 +83,18 @@ export function useProductVariations(productId?: string) {
 
       // PASSO 2: Inserir novas variações (se houver)
       if (variationsToSave.length > 0) {
-        const variationsToInsert = variationsToSave.map(v => ({
-          product_id: targetProductId,
-          name: v.name.trim(),
-          price: Number(v.price),
-          stock: Number(v.stock),
-          description: v.description?.trim() || null,
-          sku: v.sku?.trim() || null
-        }));
+        const variationsToInsert = variationsToSave.map(v => {
+          console.log(`📝 Preparando para salvar: ${v.name}, image_url:`, v.image_url?.substring(0, 80));
+          return {
+            product_id: targetProductId,
+            name: v.name.trim(),
+            price: Number(v.price),
+            stock: Number(v.stock),
+            description: v.description?.trim() || null,
+            sku: v.sku?.trim() || null,
+            image_url: v.image_url || null  // ⚠️ IMPORTANTE: incluir image_url
+          };
+        });
 
         console.log('Inserindo novas variações:', variationsToInsert.length);
         const { error: insertError, data } = await supabase
@@ -107,6 +111,7 @@ export function useProductVariations(productId?: string) {
         }
         
         console.log(`✅ ${data?.length || 0} variações salvas com sucesso`);
+        console.log('📸 Primeira variação salva:', data?.[0]);
       } else {
         console.log('✅ Produto sem variações (ok)');
       }
