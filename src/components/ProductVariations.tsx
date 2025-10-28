@@ -189,7 +189,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                       </div>
                       <div>
                         <Label htmlFor={`img-${variation.id}`} className="text-xs">
-                          Imagem (opcional - JPG/PNG)
+                          Imagem da Variação {!variation.image_url && <Badge variant="outline" className="ml-2 text-xs">Sem imagem</Badge>}
                         </Label>
                         <Input
                           id={`img-${variation.id}`}
@@ -209,18 +209,31 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 updateVariation(variation.id, 'image_url', reader.result as string);
+                                toast({
+                                  title: 'Imagem carregada!',
+                                  description: 'Lembre-se de clicar em "Salvar" para aplicar as mudanças.',
+                                });
                               };
                               reader.readAsDataURL(file);
                             }
                           }}
                         />
                         {variation.image_url && (
-                          <div className="mt-2">
+                          <div className="mt-2 relative">
                             <img 
                               src={variation.image_url} 
                               alt="Preview" 
-                              className="h-20 w-20 object-cover rounded border"
+                              className="h-24 w-24 object-cover rounded border-2 border-primary"
                             />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -top-2 -right-2 h-6 w-6"
+                              onClick={() => updateVariation(variation.id, 'image_url', null)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                         )}
                       </div>
@@ -322,18 +335,31 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                     const reader = new FileReader();
                     reader.onloadend = () => {
                       setNewVariation({ ...newVariation, image_url: reader.result as string });
+                      toast({
+                        title: 'Imagem carregada!',
+                        description: 'Pronto para adicionar a variação.',
+                      });
                     };
                     reader.readAsDataURL(file);
                   }
                 }}
               />
               {newVariation.image_url && (
-                <div className="mt-2">
+                <div className="mt-2 relative">
                   <img 
                     src={newVariation.image_url} 
                     alt="Preview" 
-                    className="h-20 w-20 object-cover rounded border"
+                    className="h-24 w-24 object-cover rounded border-2 border-primary"
                   />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setNewVariation({ ...newVariation, image_url: '' })}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               )}
             </div>
