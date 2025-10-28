@@ -8,7 +8,7 @@ const Footer = () => {
   return (
     <footer className="bg-secondary text-secondary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           <div>
             <img 
               src={japaLogo} 
@@ -74,17 +74,6 @@ const Footer = () => {
                   Acessórios
                 </button>
               </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-xl font-bold mb-4">Atendimento</h3>
-            <ul className="space-y-2 text-secondary-foreground/80">
-              <li><a href="#" className="hover:text-primary transition-colors">Sobre Nós</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Política de Troca</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Envio e Entrega</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Formas de Pagamento</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">FAQ</a></li>
             </ul>
           </div>
           
