@@ -368,6 +368,21 @@ serve(async (req) => {
         if (responseData.status === 'approved') {
           updateData.status = 'em_preparo';
           console.log('Card payment approved instantly');
+          
+          // Subtrair estoque se aprovado instantaneamente
+          try {
+            const { error: stockError } = await supabase.functions.invoke('subtract-stock', {
+              body: { orderId: data.orderId }
+            });
+            
+            if (stockError) {
+              console.error('Error subtracting stock:', stockError);
+            } else {
+              console.log('Stock subtracted successfully for instant approval');
+            }
+          } catch (stockError) {
+            console.error('Error calling subtract-stock:', stockError);
+          }
         }
         
         const { error: updateError } = await supabase

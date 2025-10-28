@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Copy, ExternalLink, QrCode } from 'lucide-react';
+import { Copy, ExternalLink, QrCode, Loader2, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface PixPaymentDialogProps {
   open: boolean;
@@ -10,6 +13,7 @@ interface PixPaymentDialogProps {
   qrCodeBase64: string;
   ticketUrl?: string;
   expiresAt?: string;
+  orderId: string;
 }
 
 export function PixPaymentDialog({
@@ -18,9 +22,47 @@ export function PixPaymentDialog({
   qrCode,
   qrCodeBase64,
   ticketUrl,
-  expiresAt
+  expiresAt,
+  orderId
 }: PixPaymentDialogProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isChecking, setIsChecking] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
+
+  // Verificar status do pagamento a cada 5 segundos
+  useEffect(() => {
+    if (!open || !orderId) return;
+
+    const checkPaymentStatus = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', orderId)
+        .single();
+
+      if (data && data.status !== 'aguardando_pagamento') {
+        setIsPaid(true);
+        setIsChecking(false);
+        
+        toast({
+          title: '✅ Pagamento confirmado!',
+          description: 'Redirecionando...',
+        });
+
+        setTimeout(() => {
+          onOpenChange(false);
+          navigate('/conta');
+        }, 2000);
+      }
+    };
+
+    // Verificar imediatamente e depois a cada 5 segundos
+    checkPaymentStatus();
+    const interval = setInterval(checkPaymentStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [open, orderId, onOpenChange, navigate, toast]);
 
   const handleCopyQRCode = () => {
     navigator.clipboard.writeText(qrCode);
@@ -54,14 +96,31 @@ export function PixPaymentDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* QR Code Image */}
-          <div className="flex justify-center p-4 bg-white rounded-lg">
-            <img
-              src={`data:image/png;base64,${qrCodeBase64}`}
-              alt="QR Code PIX"
-              className="w-64 h-64"
-            />
-          </div>
+          {/* Status do Pagamento */}
+          {isPaid ? (
+            <div className="flex flex-col items-center justify-center p-8 bg-green-50 rounded-lg">
+              <CheckCircle className="w-16 h-16 text-green-600 mb-4" />
+              <p className="text-lg font-semibold text-green-800">Pagamento Confirmado!</p>
+              <p className="text-sm text-green-600">Redirecionando para seus pedidos...</p>
+            </div>
+          ) : (
+            <>
+              {/* QR Code Image */}
+              <div className="flex justify-center p-4 bg-white rounded-lg relative">
+                <img
+                  src={`data:image/png;base64,${qrCodeBase64}`}
+                  alt="QR Code PIX"
+                  className="w-64 h-64"
+                />
+                {isChecking && (
+                  <div className="absolute top-2 right-2 flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Verificando...
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Expiration warning */}
           {expiresAt && (

@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { APP_CONFIG } from '@/config/constants';
+import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 
 interface CheckoutProps {
   open: boolean;
@@ -39,7 +40,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [installments, setInstallments] = useState('1');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string} | null>(null);
+  const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string; orderId: string} | null>(null);
   const [mpLoaded, setMpLoaded] = useState(false);
   const [cardData, setCardData] = useState({
     number: '',
@@ -252,27 +253,37 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         if (paymentMethod === 'pix') {
           setPixData({
             qrCode: data.qrCode,
-            qrCodeBase64: data.qrCodeBase64
+            qrCodeBase64: data.qrCodeBase64,
+            orderId: orderData.id
           });
           toast({
             title: 'PIX gerado com sucesso!',
-            description: 'Após o pagamento, seu pedido será processado automaticamente. Você pode acessar o QR Code novamente na página "Minha Conta".',
+            description: 'Escaneie o QR Code para pagar. O status será atualizado automaticamente.',
           });
         } else {
           // Para cartão, verificar se foi aprovado instantaneamente
           if (data.status === 'approved') {
             toast({
               title: '✅ Pagamento aprovado!',
-              description: 'Seu pedido já está em preparação. Você pode acompanhá-lo em "Minha Conta".',
+              description: 'Redirecionando para seus pedidos...',
             });
+            clearCart();
+            onOpenChange(false);
+            // Redirecionar para conta após 1 segundo
+            setTimeout(() => {
+              window.location.href = '/conta';
+            }, 1000);
           } else {
             toast({
               title: 'Pagamento em análise',
-              description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} está sendo processado. Você receberá uma confirmação em breve.`,
+              description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} está sendo processado. Redirecionando...`,
             });
+            clearCart();
+            onOpenChange(false);
+            setTimeout(() => {
+              window.location.href = '/conta';
+            }, 2000);
           }
-          clearCart();
-          onOpenChange(false);
         }
       } else {
         // Se falhar, deletar o pedido criado
@@ -318,7 +329,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Finalizar Pedido</DialogTitle>
@@ -479,7 +491,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           )}
 
           {/* PIX Info */}
-          {paymentMethod === 'pix' && !pixData && (
+          {paymentMethod === 'pix' && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
               <p className="text-sm font-medium text-green-800 mb-1">
                 🎉 Ganhe 5% de desconto pagando com PIX!
@@ -491,35 +503,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             </div>
           )}
 
-          {/* PIX QR Code */}
-          {pixData && (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-lg flex justify-center">
-                <img 
-                  src={`data:image/png;base64,${pixData.qrCodeBase64}`} 
-                  alt="QR Code PIX"
-                  className="w-64 h-64"
-                />
-              </div>
-              <div className="bg-accent/50 p-4 rounded-lg">
-                <p className="text-sm font-medium mb-2">Código PIX Copia e Cola:</p>
-                <code className="text-xs break-all block bg-background p-2 rounded">
-                  {pixData.qrCode}
-                </code>
-              </div>
-              <Button 
-                className="w-full" 
-                size="lg"
-                onClick={handleClosePix}
-              >
-                Fechar
-              </Button>
-            </div>
-          )}
-
-          {!pixData && (
-            <>
-              <Button 
+          <Button
                 className="w-full" 
                 size="lg"
                 onClick={handleFinishPurchase}
@@ -558,10 +542,22 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   Você precisa selecionar uma opção de entrega no carrinho antes de finalizar
                 </p>
               )}
-            </>
-          )}
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* PIX Payment Dialog separado */}
+    {pixData && (
+      <PixPaymentDialog
+        open={true}
+        onOpenChange={(open) => {
+          if (!open) handleClosePix();
+        }}
+        qrCode={pixData.qrCode}
+        qrCodeBase64={pixData.qrCodeBase64}
+        orderId={pixData.orderId}
+      />
+    )}
+    </>
   );
 }

@@ -155,6 +155,27 @@ serve(async (req) => {
         }
 
         console.log(`Order ${order.id} updated successfully to em_preparo`);
+
+        // Subtrair estoque após pagamento aprovado
+        try {
+          const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ orderId: order.id })
+          });
+
+          if (stockResponse.ok) {
+            const stockData = await stockResponse.json();
+            console.log('Stock subtracted successfully:', stockData.message);
+          } else {
+            console.error('Failed to subtract stock:', await stockResponse.text());
+          }
+        } catch (stockError) {
+          console.error('Error calling subtract-stock function:', stockError);
+        }
       } else {
         console.log('Payment not approved, status:', paymentData.status);
       }

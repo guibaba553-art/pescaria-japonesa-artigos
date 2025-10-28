@@ -83,6 +83,28 @@ serve(async (req) => {
       }
 
       console.log('Pedido atualizado com sucesso');
+
+      // Subtrair estoque após pagamento aprovado
+      try {
+        const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ orderId: order.id })
+        });
+
+        if (stockResponse.ok) {
+          const stockData = await stockResponse.json();
+          console.log('Estoque subtraído:', stockData.message);
+        } else {
+          console.error('Erro ao subtrair estoque:', await stockResponse.text());
+        }
+      } catch (stockError) {
+        console.error('Erro ao chamar subtract-stock:', stockError);
+      }
+
       return new Response(
         JSON.stringify({ 
           success: true, 

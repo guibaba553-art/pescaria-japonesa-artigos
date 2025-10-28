@@ -61,6 +61,7 @@ export default function Account() {
     qrCodeBase64: string;
     ticketUrl?: string;
     expiresAt?: string;
+    orderId: string;
   } | null>(null);
 
   useEffect(() => {
@@ -146,7 +147,8 @@ export default function Account() {
         qrCode: order.qr_code,
         qrCodeBase64: order.qr_code_base64,
         ticketUrl: order.ticket_url || undefined,
-        expiresAt: order.pix_expiration || undefined
+        expiresAt: order.pix_expiration || undefined,
+        orderId: order.id
       });
       setPixDialogOpen(true);
     }
@@ -313,6 +315,7 @@ export default function Account() {
           qrCodeBase64={selectedPixPayment.qrCodeBase64}
           ticketUrl={selectedPixPayment.ticketUrl}
           expiresAt={selectedPixPayment.expiresAt}
+          orderId={selectedPixPayment.orderId}
         />
       )}
     </div>
