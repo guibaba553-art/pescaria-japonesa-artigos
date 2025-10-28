@@ -29,10 +29,11 @@ export function PixPaymentDialog({
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
+  const [hasNotified, setHasNotified] = useState(false);
 
   // Verificar status do pagamento a cada 5 segundos
   useEffect(() => {
-    if (!open || !orderId) return;
+    if (!open || !orderId || isPaid) return;
 
     const checkPaymentStatus = async () => {
       const { data } = await supabase
@@ -41,9 +42,10 @@ export function PixPaymentDialog({
         .eq('id', orderId)
         .single();
 
-      if (data && data.status !== 'aguardando_pagamento') {
+      if (data && data.status !== 'aguardando_pagamento' && !hasNotified) {
         setIsPaid(true);
         setIsChecking(false);
+        setHasNotified(true);
         
         toast({
           title: '✅ Pagamento confirmado!',
@@ -62,7 +64,7 @@ export function PixPaymentDialog({
     const interval = setInterval(checkPaymentStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [open, orderId, onOpenChange, navigate, toast]);
+  }, [open, orderId, isPaid, hasNotified, onOpenChange, navigate, toast]);
 
   const handleCopyQRCode = () => {
     navigator.clipboard.writeText(qrCode);
