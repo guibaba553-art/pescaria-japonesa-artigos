@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -78,7 +78,8 @@ const OrdersTable = ({
   expandedOrders, 
   toggleOrderExpansion,
   updateOrderStatus,
-  deleteOrder 
+  deleteOrder,
+  verifyPayment
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -86,6 +87,7 @@ const OrdersTable = ({
   toggleOrderExpansion: (orderId: string) => void;
   updateOrderStatus: (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => void;
   deleteOrder: (orderId: string) => void;
+  verifyPayment: (orderId: string) => void;
 }) => {
   if (orders.length === 0) {
     return (
@@ -150,6 +152,16 @@ const OrdersTable = ({
                     <Badge variant="secondary">
                       {statusConfig[order.status].label}
                     </Badge>
+                    {order.status === 'aguardando_pagamento' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => verifyPayment(order.id)}
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Verificar Pagamento
+                      </Button>
+                    )}
                     {getNextStatus(order.status, order.delivery_type) && (
                       <Button
                         size="sm"
@@ -379,6 +391,41 @@ export function OrdersManagement() {
     }
   };
 
+  const verifyPayment = async (orderId: string) => {
+    toast({
+      title: 'Verificando pagamento...',
+      description: 'Consultando Mercado Pago'
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { orderId }
+      });
+
+      if (error) throw error;
+
+      if (data.updated) {
+        toast({
+          title: 'Pagamento confirmado!',
+          description: data.message,
+        });
+        loadOrders();
+      } else {
+        toast({
+          title: 'Status do pagamento',
+          description: data.message,
+          variant: data.status === 'approved' ? 'default' : 'destructive'
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro ao verificar pagamento',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const deleteOrder = async (orderId: string) => {
     // Primeiro deletar os itens do pedido
     const { error: itemsError } = await supabase
@@ -491,6 +538,7 @@ export function OrdersManagement() {
               toggleOrderExpansion={toggleOrderExpansion}
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
+              verifyPayment={verifyPayment}
             />
           </TabsContent>
 
@@ -502,6 +550,7 @@ export function OrdersManagement() {
               toggleOrderExpansion={toggleOrderExpansion}
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
+              verifyPayment={verifyPayment}
             />
           </TabsContent>
 
@@ -513,6 +562,7 @@ export function OrdersManagement() {
               toggleOrderExpansion={toggleOrderExpansion}
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
+              verifyPayment={verifyPayment}
             />
           </TabsContent>
 
@@ -524,6 +574,7 @@ export function OrdersManagement() {
               toggleOrderExpansion={toggleOrderExpansion}
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
+              verifyPayment={verifyPayment}
             />
           </TabsContent>
 
@@ -535,6 +586,7 @@ export function OrdersManagement() {
               toggleOrderExpansion={toggleOrderExpansion}
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
+              verifyPayment={verifyPayment}
             />
           </TabsContent>
         </Tabs>
