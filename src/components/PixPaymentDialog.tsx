@@ -36,26 +36,43 @@ export function PixPaymentDialog({
     if (!open || !orderId || isPaid) return;
 
     const checkPaymentStatus = async () => {
-      const { data } = await supabase
-        .from('orders')
-        .select('status')
-        .eq('id', orderId)
-        .single();
-
-      if (data && data.status !== 'aguardando_pagamento' && !hasNotified) {
-        setIsPaid(true);
-        setIsChecking(false);
-        setHasNotified(true);
-        
-        toast({
-          title: '✅ Pagamento confirmado!',
-          description: 'Redirecionando...',
+      setIsChecking(true);
+      
+      try {
+        // Chamar edge function que consulta o Mercado Pago diretamente
+        const { data: result, error } = await supabase.functions.invoke('verify-payment', {
+          body: { orderId }
         });
 
-        setTimeout(() => {
-          onOpenChange(false);
-          navigate('/conta');
-        }, 2000);
+        if (error) {
+          console.error('Erro ao verificar pagamento:', error);
+          setIsChecking(false);
+          return;
+        }
+
+        console.log('Status do pagamento:', result);
+
+        // Se pagamento foi aprovado
+        if (result?.status === 'approved' && !hasNotified) {
+          setIsPaid(true);
+          setIsChecking(false);
+          setHasNotified(true);
+          
+          toast({
+            title: '✅ Pagamento confirmado!',
+            description: 'Redirecionando...',
+          });
+
+          setTimeout(() => {
+            onOpenChange(false);
+            navigate('/conta');
+          }, 2000);
+        } else {
+          setIsChecking(false);
+        }
+      } catch (err) {
+        console.error('Erro ao verificar pagamento:', err);
+        setIsChecking(false);
       }
     };
 
