@@ -29,6 +29,18 @@ export default function ProductDetails() {
     loadProduct();
   }, [id]);
 
+  // Preload de imagens das variações para carregamento rápido
+  useEffect(() => {
+    if (variations.length === 0) return;
+    
+    variations.forEach(variation => {
+      if (variation.image_url) {
+        const img = new Image();
+        img.src = variation.image_url;
+      }
+    });
+  }, [variations]);
+
   // Autoplay das imagens
   useEffect(() => {
     if (!product || displayImages.length <= 1) return;
@@ -39,7 +51,7 @@ export default function ProductDetails() {
         const nextIndex = (currentIndex + 1) % displayImages.length;
         return displayImages[nextIndex];
       });
-    }, 3000); // Troca a cada 3 segundos
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [displayImages]);
@@ -140,7 +152,9 @@ export default function ProductDetails() {
                 key={selectedImage}
                 src={selectedImage || 'https://placehold.co/600x600?text=Sem+Imagem'}
                 alt={product.name}
-                className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-500"
+                loading="eager"
+                fetchPriority="high"
+                className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-300"
               />
               
               {/* Setas de navegação */}
@@ -177,6 +191,7 @@ export default function ProductDetails() {
                     <img
                       src={img}
                       alt={`${product.name} ${idx + 1}`}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                   </button>
