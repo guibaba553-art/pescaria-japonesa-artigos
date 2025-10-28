@@ -2,6 +2,7 @@ import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Sheet,
   SheetContent,
@@ -104,21 +105,33 @@ export function Cart() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => {
-                          // Validação: não permitir adicionar mais se não há informação de estoque
-                          // Este é um carrinho, então não temos acesso direto ao estoque aqui
-                          // Mas podemos pelo menos evitar quantidades absurdas
-                          if (item.quantity >= 100) {
+                        onClick={async () => {
+                          // Validar estoque real antes de incrementar
+                          try {
+                            const { data: stockData } = await supabase
+                              .from(item.variationId ? 'product_variations' : 'products')
+                              .select('stock')
+                              .eq('id', item.variationId || item.id)
+                              .single();
+
+                            if (!stockData || stockData.stock < item.quantity + 1) {
+                              toast({
+                                title: 'Estoque insuficiente',
+                                description: `Apenas ${stockData?.stock || 0} unidades disponíveis`,
+                                variant: 'destructive'
+                              });
+                              return;
+                            }
+
+                            updateQuantity(item.cartItemKey, item.quantity + 1);
+                          } catch (error) {
                             toast({
-                              title: 'Quantidade máxima',
-                              description: 'Quantidade máxima por item atingida',
+                              title: 'Erro ao verificar estoque',
+                              description: 'Tente novamente',
                               variant: 'destructive'
                             });
-                            return;
                           }
-                          updateQuantity(item.cartItemKey, item.quantity + 1);
                         }}
-                        disabled={item.quantity >= 100}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>

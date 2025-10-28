@@ -27,7 +27,7 @@ serve(async (req) => {
 
     console.log('Subtracting stock for order:', orderId);
 
-    // Buscar itens do pedido
+    // Buscar itens do pedido com informações sobre variações
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
       .select('product_id, quantity')
@@ -48,37 +48,70 @@ serve(async (req) => {
       );
     }
 
-    // Subtrair estoque de cada produto
+    // Subtrair estoque de cada produto/variação
     const updates = [];
     for (const item of orderItems) {
-      const { data: product, error: productError } = await supabase
-        .from('products')
-        .select('stock')
+      // Primeiro verificar se é uma variação (product_variations) ou produto direto (products)
+      const { data: variation } = await supabase
+        .from('product_variations')
+        .select('stock, product_id')
         .eq('id', item.product_id)
-        .single();
+        .maybeSingle();
 
-      if (productError || !product) {
-        console.error('Error fetching product:', item.product_id, productError);
-        continue;
-      }
+      if (variation) {
+        // É uma variação - subtrair estoque da tabela product_variations
+        const newStock = Math.max(0, variation.stock - item.quantity);
+        
+        const { error: updateError } = await supabase
+          .from('product_variations')
+          .update({ stock: newStock })
+          .eq('id', item.product_id);
 
-      const newStock = Math.max(0, product.stock - item.quantity);
-      
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ stock: newStock })
-        .eq('id', item.product_id);
-
-      if (updateError) {
-        console.error('Error updating stock for product:', item.product_id, updateError);
+        if (updateError) {
+          console.error('Error updating stock for variation:', item.product_id, updateError);
+        } else {
+          updates.push({
+            type: 'variation',
+            variation_id: item.product_id,
+            product_id: variation.product_id,
+            old_stock: variation.stock,
+            new_stock: newStock,
+            quantity_removed: item.quantity
+          });
+          console.log(`Stock updated for variation ${item.product_id}: ${variation.stock} -> ${newStock}`);
+        }
       } else {
-        updates.push({
-          product_id: item.product_id,
-          old_stock: product.stock,
-          new_stock: newStock,
-          quantity_removed: item.quantity
-        });
-        console.log(`Stock updated for product ${item.product_id}: ${product.stock} -> ${newStock}`);
+        // É um produto direto - subtrair estoque da tabela products
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.product_id)
+          .single();
+
+        if (productError || !product) {
+          console.error('Error fetching product:', item.product_id, productError);
+          continue;
+        }
+
+        const newStock = Math.max(0, product.stock - item.quantity);
+        
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .eq('id', item.product_id);
+
+        if (updateError) {
+          console.error('Error updating stock for product:', item.product_id, updateError);
+        } else {
+          updates.push({
+            type: 'product',
+            product_id: item.product_id,
+            old_stock: product.stock,
+            new_stock: newStock,
+            quantity_removed: item.quantity
+          });
+          console.log(`Stock updated for product ${item.product_id}: ${product.stock} -> ${newStock}`);
+        }
       }
     }
 
@@ -86,7 +119,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         updates,
-        message: `Stock updated for ${updates.length} products`
+        message: `Stock updated for ${updates.length} items`
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -188,7 +188,36 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
-      // Criar pedido no banco de dados primeiro
+      // Buscar CEP do usuário do perfil
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('cep')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      // Validar CEP para entregas (não validar para retirada na loja)
+      if (shippingInfo?.nome !== 'Retirar na Loja' && (!profileData?.cep || profileData.cep === '00000-000')) {
+        throw new Error('Por favor, cadastre seu CEP no perfil antes de finalizar a compra com entrega.');
+      }
+
+      // Validar estoque ANTES de criar o pedido
+      for (const item of items) {
+        const { data: productData, error: stockError } = await supabase
+          .from(item.variationId ? 'product_variations' : 'products')
+          .select('stock, name')
+          .eq('id', item.variationId || item.id)
+          .single();
+
+        if (stockError || !productData) {
+          throw new Error(`Erro ao verificar estoque de ${item.name}`);
+        }
+
+        if (productData.stock < item.quantity) {
+          throw new Error(`Estoque insuficiente para ${item.name}. Disponível: ${productData.stock}, solicitado: ${item.quantity}`);
+        }
+      }
+
+      // Criar pedido no banco de dados
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -196,8 +225,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           total_amount: finalTotal,
           shipping_cost: shippingCost,
           shipping_address: shippingInfo?.nome || 'Endereço não informado',
-          shipping_cep: '00000-000',
-          status: 'aguardando_pagamento'
+          shipping_cep: profileData?.cep || '00000-000',
+          status: 'aguardando_pagamento',
+          delivery_type: shippingInfo?.nome === 'Retirar na Loja' ? 'pickup' : 'delivery'
         })
         .select()
         .single();
@@ -206,10 +236,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error('Erro ao criar pedido');
       }
 
-      // Criar itens do pedido
+      // Criar itens do pedido - incluir variationId se existir
       const orderItems = items.map(item => ({
         order_id: orderData.id,
-        product_id: item.id,
+        product_id: item.variationId || item.id, // Usar variationId se existir
         quantity: item.quantity,
         price_at_purchase: item.price
       }));
