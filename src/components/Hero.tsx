@@ -24,8 +24,8 @@ const Hero = () => {
           />
           
           <h1 className="text-5xl md:text-7xl font-bold text-foreground max-w-4xl">
-            JAPAS
-            <span className="block text-primary mt-2">Pesca e Conveniência</span>
+            Sua Loja Completa de
+            <span className="block text-primary mt-2">Artigos de Pesca</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl">
