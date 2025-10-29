@@ -360,7 +360,7 @@ export function OrdersManagement() {
     // Log audit trail for admin accessing user profiles (PII data)
     if (profilesData && profilesData.length > 0) {
       for (const profile of profilesData) {
-        await supabase.rpc('log_admin_access', {
+        const { error: logError } = await supabase.rpc('log_admin_access', {
           p_action: 'VIEW_PROFILE',
           p_table_name: 'profiles',
           p_record_id: profile.id,
@@ -370,9 +370,11 @@ export function OrdersManagement() {
             timestamp: new Date().toISOString(),
             accessed_fields: ['full_name', 'cpf']
           }
-        }).catch(err => {
-          console.error('Failed to log profile access:', err);
         });
+        
+        if (logError) {
+          console.error('Failed to log profile access:', logError);
+        }
       }
     }
 
