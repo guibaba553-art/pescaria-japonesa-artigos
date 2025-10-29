@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const requestSchema = z.object({
+  orderId: z.string().uuid('Invalid order ID format')
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -13,17 +18,57 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { orderId } = await req.json();
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
+    // Validate input
+    const body = await req.json();
+    const validationResult = requestSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.error('Validation error:', validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.errors 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { orderId } = validationResult.data;
     console.log('Verificando pagamento para pedido:', orderId);
+    
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Buscar o pedido
+    // Create client with user's token for authorization checks
+    const userToken = authHeader.replace('Bearer ', '');
+    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: { user }, error: authError } = await supabaseUser.auth.getUser(userToken);
+    
+    if (authError || !user) {
+      console.error('Invalid token:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use service role client for operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Buscar o pedido e verificar autorização
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, payment_id, status')
+      .select('id, payment_id, status, user_id')
       .eq('id', orderId)
       .single();
 
@@ -32,6 +77,22 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Pedido não encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check authorization: user must own the order OR be admin/employee
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+
+    const isAdmin = roles?.some(r => r.role === 'admin' || r.role === 'employee');
+    
+    if (!isAdmin && order.user_id !== user.id) {
+      console.error('User not authorized to access this order');
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: You do not have permission to access this order' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -89,7 +150,7 @@ serve(async (req) => {
         const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ orderId: order.id })
