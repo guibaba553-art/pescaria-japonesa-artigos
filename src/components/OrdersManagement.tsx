@@ -357,6 +357,25 @@ export function OrdersManagement() {
       .select('id, full_name, cpf')
       .in('id', userIds);
 
+    // Log audit trail for admin accessing user profiles (PII data)
+    if (profilesData && profilesData.length > 0) {
+      for (const profile of profilesData) {
+        await supabase.rpc('log_admin_access', {
+          p_action: 'VIEW_PROFILE',
+          p_table_name: 'profiles',
+          p_record_id: profile.id,
+          p_accessed_user_id: profile.id,
+          p_details: { 
+            context: 'orders_management',
+            timestamp: new Date().toISOString(),
+            accessed_fields: ['full_name', 'cpf']
+          }
+        }).catch(err => {
+          console.error('Failed to log profile access:', err);
+        });
+      }
+    }
+
     const profilesMap: Record<string, { name: string; cpf: string }> = {};
     profilesData?.forEach(p => {
       profilesMap[p.id] = {
