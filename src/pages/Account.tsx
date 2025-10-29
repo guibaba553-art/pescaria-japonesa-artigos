@@ -27,8 +27,9 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue';
   created_at: string;
+  tracking_code?: string;
   order_items: OrderItem[];
   qr_code: string | null;
   qr_code_base64: string | null;
@@ -40,7 +41,7 @@ const statusConfig = {
   aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Package, color: 'bg-orange-500' },
   em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
-  entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
+  entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
 };
 
 export default function Account() {
@@ -230,7 +231,7 @@ export default function Account() {
                     <div className="space-y-2">
                       {order.order_items.map((item) => {
                         const isReviewed = reviewedProducts.has(`${order.id}_${item.product_id}`);
-                        const canReview = order.status === 'entregado' && !isReviewed;
+                        const canReview = order.status === 'entregue' && !isReviewed;
                         
                         return (
                           <div key={item.id} className="flex gap-3 items-start">
@@ -277,6 +278,21 @@ export default function Account() {
                     </div>
 
                     <Separator />
+
+                    {order.tracking_code && order.status === 'enviado' && (
+                      <>
+                        <div className="p-3 bg-primary/5 rounded-md border border-primary/10">
+                          <p className="text-sm font-medium mb-1">📦 Código de Rastreio</p>
+                          <p className="text-base font-mono font-semibold text-primary">
+                            {order.tracking_code}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Use este código para rastrear seu pedido
+                          </p>
+                        </div>
+                        <Separator />
+                      </>
+                    )}
 
                     <div className="flex justify-between text-sm">
                       <span>Frete:</span>

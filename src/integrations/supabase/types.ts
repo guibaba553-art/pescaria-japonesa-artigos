@@ -154,6 +154,7 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           ticket_url: string | null
           total_amount: number
+          tracking_code: string | null
           updated_at: string
           user_id: string
         }
@@ -171,6 +172,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           ticket_url?: string | null
           total_amount: number
+          tracking_code?: string | null
           updated_at?: string
           user_id: string
         }
@@ -188,6 +190,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           ticket_url?: string | null
           total_amount?: number
+          tracking_code?: string | null
           updated_at?: string
           user_id?: string
         }

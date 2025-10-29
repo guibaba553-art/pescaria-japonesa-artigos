@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,7 @@ interface Order {
   user_id: string;
   shipping_cep: string;
   delivery_type: 'delivery' | 'pickup';
+  tracking_code?: string;
   order_items: OrderItem[];
 }
 
@@ -79,7 +81,10 @@ const OrdersTable = ({
   toggleOrderExpansion,
   updateOrderStatus,
   deleteOrder,
-  verifyPayment
+  verifyPayment,
+  trackingCodes,
+  setTrackingCodes,
+  updateTrackingCode
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -88,6 +93,9 @@ const OrdersTable = ({
   updateOrderStatus: (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => void;
   deleteOrder: (orderId: string) => void;
   verifyPayment: (orderId: string) => void;
+  trackingCodes: Record<string, string>;
+  setTrackingCodes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  updateTrackingCode: (orderId: string) => void;
 }) => {
   if (orders.length === 0) {
     return (
@@ -273,6 +281,36 @@ const OrdersTable = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* Código de Rastreio */}
+                    {order.status === 'enviado' && (
+                      <div className="col-span-2 mt-4 p-4 bg-background rounded-lg border">
+                        <h4 className="font-semibold text-sm mb-3">Código de Rastreio</h4>
+                        <div className="flex gap-2">
+                          <Input
+                            value={trackingCodes[order.id] || order.tracking_code || ''}
+                            onChange={(e) => setTrackingCodes(prev => ({
+                              ...prev,
+                              [order.id]: e.target.value
+                            }))}
+                            placeholder="Digite o código de rastreio"
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={() => updateTrackingCode(order.id)}
+                            size="sm"
+                            disabled={!trackingCodes[order.id] || trackingCodes[order.id] === order.tracking_code}
+                          >
+                            Salvar
+                          </Button>
+                        </div>
+                        {order.tracking_code && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Código atual: <span className="font-mono font-semibold">{order.tracking_code}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               </CollapsibleContent>
@@ -289,6 +327,7 @@ export function OrdersManagement() {
   const [profiles, setProfiles] = useState<Record<string, { name: string; cpf: string }>>({});
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -409,6 +448,36 @@ export function OrdersManagement() {
         description: 'O status do pedido foi atualizado com sucesso.'
       });
       loadOrders();
+    }
+  };
+
+  const updateTrackingCode = async (orderId: string) => {
+    const code = trackingCodes[orderId];
+    if (!code || code.trim() === '') return;
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ tracking_code: code.trim() })
+      .eq('id', orderId);
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar o código de rastreio',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Código salvo',
+        description: 'Código de rastreio salvo com sucesso'
+      });
+      loadOrders();
+      // Limpar o campo após salvar
+      setTrackingCodes(prev => {
+        const newCodes = { ...prev };
+        delete newCodes[orderId];
+        return newCodes;
+      });
     }
   };
 
@@ -560,6 +629,9 @@ export function OrdersManagement() {
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
               verifyPayment={verifyPayment}
+              trackingCodes={trackingCodes}
+              setTrackingCodes={setTrackingCodes}
+              updateTrackingCode={updateTrackingCode}
             />
           </TabsContent>
 
@@ -572,6 +644,9 @@ export function OrdersManagement() {
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
               verifyPayment={verifyPayment}
+              trackingCodes={trackingCodes}
+              setTrackingCodes={setTrackingCodes}
+              updateTrackingCode={updateTrackingCode}
             />
           </TabsContent>
 
@@ -584,6 +659,9 @@ export function OrdersManagement() {
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
               verifyPayment={verifyPayment}
+              trackingCodes={trackingCodes}
+              setTrackingCodes={setTrackingCodes}
+              updateTrackingCode={updateTrackingCode}
             />
           </TabsContent>
 
@@ -596,6 +674,9 @@ export function OrdersManagement() {
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
               verifyPayment={verifyPayment}
+              trackingCodes={trackingCodes}
+              setTrackingCodes={setTrackingCodes}
+              updateTrackingCode={updateTrackingCode}
             />
           </TabsContent>
 
@@ -608,6 +689,9 @@ export function OrdersManagement() {
               updateOrderStatus={updateOrderStatus}
               deleteOrder={deleteOrder}
               verifyPayment={verifyPayment}
+              trackingCodes={trackingCodes}
+              setTrackingCodes={setTrackingCodes}
+              updateTrackingCode={updateTrackingCode}
             />
           </TabsContent>
         </Tabs>
