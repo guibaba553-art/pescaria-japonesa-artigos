@@ -103,7 +103,7 @@ const Footer = () => {
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 mt-1 text-primary" />
                 <a 
-                  href="https://maps.google.com/?q=Sinop,Mato+Grosso,Brasil" 
+                  href="https://share.google/rNMZ6Ucia8T7e0hOD" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors underline"
