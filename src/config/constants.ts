@@ -27,7 +27,7 @@ export const APP_CONFIG = {
   STORE_NAME: 'JAPAS Pesca',
   CONTACT: {
     phone: '5566996579671',
-    email: 'contato@japapesca.com.br',
+    email: 'robertobaba2@gmail.com',
     whatsapp: 'https://wa.me/5566996579671',
   },
   MERCADO_PAGO_PUBLIC_KEY: 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485',
