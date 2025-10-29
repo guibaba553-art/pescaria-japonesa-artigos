@@ -12,11 +12,11 @@ const Footer = () => {
           <div>
             <img 
               src={japaLogo} 
-              alt="JAPA" 
+              alt="JAPAS Pesca - Loja de Artigos de Pesca em Sinop MT" 
               className="w-32 h-32 object-contain mb-4"
             />
             <p className="text-secondary-foreground/80 mb-4">
-              Sua loja completa de artigos de pesca com os melhores produtos e atendimento especializado.
+              Sua loja especializada em artigos de pesca em Sinop - MT. Equipamentos de qualidade, atendimento personalizado e entrega rápida para toda a região do Mato Grosso.
             </p>
             <div className="flex gap-4">
               <a 
@@ -24,7 +24,7 @@ const Footer = () => {
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary flex items-center justify-center transition-colors cursor-pointer"
-                aria-label="Instagram JAPA Fishing"
+                aria-label="Instagram JAPAS Pesca - Sinop MT"
               >
                 <Instagram className="w-5 h-5" />
               </a>

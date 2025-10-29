@@ -24,12 +24,12 @@ const Hero = () => {
           />
           
           <h1 className="text-5xl md:text-7xl font-bold text-foreground max-w-4xl">
-            Sua Loja Completa de
-            <span className="block text-primary mt-2">Artigos de Pesca</span>
+            Sua Loja de Pesca em
+            <span className="block text-primary mt-2">Sinop - Mato Grosso</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl">
-            Equipamentos de qualidade, preços competitivos e atendimento especializado para todos os pescadores
+            Equipamentos de qualidade, preços competitivos e atendimento especializado para pescadores de todo o Mato Grosso
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
