@@ -103,7 +103,7 @@ const Footer = () => {
               <li className="flex items-start gap-2">
                 <MapPin className="w-5 h-5 mt-1 text-primary" />
                 <a 
-                  href="https://maps.app.goo.gl/JWHHrcDWtHrZgdbi7" 
+                  href="https://www.google.com/maps/place/JAPA+PESCA+E+CONVENIENCIA/@-11.8707654,-55.5063804,13z/data=!4m6!3m5!1s0x93a77fbf26565e51:0x633b0bafc2828a26!8m2!3d-11.8646827!4d-55.5131974!16s%2Fg%2F11syz4wsh0?entry=ttu&g_ep=EgoyMDI1MTAyNy4wIKXMDSoASAFQAw%3D%3D" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary transition-colors underline"
