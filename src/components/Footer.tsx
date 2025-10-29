@@ -116,7 +116,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-secondary-foreground/20 pt-8 text-center text-secondary-foreground/60">
-          <p>&copy; 2025 JAPA - Pesca e Conveniência. Todos os direitos reservados.</p>
+          <p>&copy; 2025 JAPAS - Pesca e Conveniência. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

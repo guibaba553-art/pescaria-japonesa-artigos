@@ -19,7 +19,7 @@ const Hero = () => {
         <div className="flex flex-col items-center text-center space-y-8 animate-fade-in">
           <img 
             src={japaLogo} 
-            alt="JAPA - Pesca e Conveniência" 
+            alt="JAPAS - Pesca e Conveniência" 
             className="w-64 h-64 object-contain drop-shadow-2xl"
           />
           

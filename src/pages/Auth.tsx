@@ -71,7 +71,7 @@ export default function Auth() {
         
         <Card className="w-full">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">JAPA Pesca</CardTitle>
+          <CardTitle className="text-2xl">JAPAS Pesca</CardTitle>
           <CardDescription>Entre ou crie sua conta</CardDescription>
         </CardHeader>
         <CardContent>

@@ -16,8 +16,8 @@ export function Header() {
           className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => navigate('/')}
         >
-          <img src={japaLogo} alt="JAPA" className="h-10 w-10 object-contain" />
-          <span className="text-xl font-bold text-foreground">JAPA Pesca</span>
+          <img src={japaLogo} alt="JAPAS" className="h-10 w-10 object-contain" />
+          <span className="text-xl font-bold text-foreground">JAPAS Pesca</span>
         </div>
 
         <div className="flex items-center gap-3">
