@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, GitBranch, Wand2, Waves, CircleDot } from "lucide-react";
+import { Fish, Anchor, GitBranch, Wand2, Waves, CircleDot, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const categories = [
@@ -44,6 +44,13 @@ const categories = [
     description: "Tudo para sua pescaria",
     color: "from-primary/60 to-primary/80",
     category: "Acessórios"
+  },
+  {
+    icon: Package,
+    title: "Variedades",
+    description: "Lanternas, fogareiros e mais",
+    color: "from-secondary/60 to-secondary/90",
+    category: "Variedades"
   }
 ];
 

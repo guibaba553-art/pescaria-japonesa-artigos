@@ -40,5 +40,6 @@ export const PRODUCT_CATEGORIES = [
   'Anzóis',
   'Linhas',
   'Acessórios',
-  'Roupas'
+  'Roupas',
+  'Variedades'
 ] as const;
