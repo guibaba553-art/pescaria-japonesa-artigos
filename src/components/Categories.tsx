@@ -82,10 +82,10 @@ const Categories = () => {
                   <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <category.icon className="w-10 h-10 text-primary-foreground" />
                   </div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">
+                  <h3 className="text-xl font-bold text-foreground mb-2">
                     {category.title}
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {category.description}
                   </p>
                 </div>
