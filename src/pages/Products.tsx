@@ -20,7 +20,7 @@ const categories = [
   { name: 'Anzóis', value: 'Anzóis' },
   { name: 'Linhas', value: 'Linhas' },
   { name: 'Acessórios', value: 'Acessórios' },
-  { name: 'Roupas', value: 'Roupas' },
+  { name: 'Variedades', value: 'Variedades' },
 ];
 
 export default function Products() {
