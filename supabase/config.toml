@@ -1,7 +1,7 @@
 project_id = "qiwcngzbpxddowyqaulm"
 
 [functions.create-payment]
-verify_jwt = false
+verify_jwt = true
 
 [functions.cleanup-old-messages]
 verify_jwt = false

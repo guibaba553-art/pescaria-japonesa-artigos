@@ -22,6 +22,10 @@ const paymentRequestSchema = z.object({
   cardData: z.object({
     token: z.string(),
     paymentMethodId: z.string(),
+    cardNumber: z.string().min(13).max(19).regex(/^\d+$/, 'Card number must contain only digits'),
+    cardholderName: z.string().min(3).max(100).regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters'),
+    expirationDate: z.string().regex(/^\d{2}\/\d{2}$/, 'Expiration must be MM/YY format'),
+    securityCode: z.string().min(3).max(4).regex(/^\d+$/, 'CVV must be 3-4 digits'),
   }).nullable().optional(),
   installments: z.union([z.string(), z.number()]).optional(),
   userEmail: z.string().email('Invalid email').optional(),
@@ -36,6 +40,33 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Extract JWT token and verify user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication', success: false }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+
+    console.log('Authenticated user:', user.id);
+
     let rawData;
     
     try {
@@ -79,17 +110,79 @@ serve(async (req) => {
     }
     
     const data = validationResult.data;
-    const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+
+    // SECURITY: Implement rate limiting (10 requests per hour per user)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data: rateLimitData, error: rateLimitError } = await supabase
+      .from('payment_rate_limits')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('window_start', oneHourAgo)
+      .single();
+
+    if (rateLimitData && rateLimitData.request_count >= 10) {
+      console.error('Rate limit exceeded for user:', user.id);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many payment requests. Please try again later.', 
+          success: false 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+
+    // Update or create rate limit record
+    if (rateLimitData) {
+      await supabase
+        .from('payment_rate_limits')
+        .update({ 
+          request_count: rateLimitData.request_count + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', rateLimitData.id);
+    } else {
+      await supabase
+        .from('payment_rate_limits')
+        .insert({ 
+          user_id: user.id, 
+          request_count: 1,
+          window_start: new Date().toISOString()
+        });
+    }
+
+    // SECURITY: Verify order ownership if orderId is provided
+    if (data.orderId) {
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('user_id')
+        .eq('id', data.orderId)
+        .single();
+
+      if (orderError || !order) {
+        console.error('Order not found:', data.orderId);
+        return new Response(
+          JSON.stringify({ error: 'Invalid order', success: false }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
+      if (order.user_id !== user.id) {
+        console.error('Order ownership mismatch - User:', user.id, 'Order user:', order.user_id);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized access to order', success: false }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+    }
+
+    const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
 
     if (!accessToken) {
       throw new Error('MERCADO_PAGO_ACCESS_TOKEN not configured');
     }
 
-    console.log('Creating payment - Method:', data.paymentMethod, 'Amount:', data.amount);
+    console.log('Creating payment - Method:', data.paymentMethod, 'Amount:', data.amount, 'User:', user.id);
     
     // SECURITY: Verify prices against database to prevent price manipulation
     let verifiedAmount = 0;
@@ -301,6 +394,25 @@ serve(async (req) => {
       if (!data.cardData?.token) {
         return new Response(
           JSON.stringify({ error: 'Card token required', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
+      // SECURITY: Server-side card validation
+      if (!data.cardData.cardNumber || !data.cardData.cardholderName || 
+          !data.cardData.expirationDate || !data.cardData.securityCode) {
+        return new Response(
+          JSON.stringify({ error: 'Card validation failed: missing required fields', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
+      // Validate expiration date is not in the past
+      const [month, year] = data.cardData.expirationDate.split('/');
+      const expiryDate = new Date(2000 + parseInt(year), parseInt(month) - 1);
+      if (expiryDate < new Date()) {
+        return new Response(
+          JSON.stringify({ error: 'Card validation failed: card expired', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
         );
       }

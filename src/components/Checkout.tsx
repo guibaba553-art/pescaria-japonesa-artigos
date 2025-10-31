@@ -261,7 +261,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           })),
           cardData: cardToken ? {
             token: cardToken.id,
-            paymentMethodId: cardToken.payment_method_id
+            paymentMethodId: cardToken.payment_method_id,
+            cardNumber: cardData.number.replace(/\s/g, ''),
+            cardholderName: cardData.name,
+            expirationDate: cardData.expiry,
+            securityCode: cardData.cvv
           } : null,
           installments: paymentMethod === 'credit' ? installments : '1',
           userEmail: user?.email,
