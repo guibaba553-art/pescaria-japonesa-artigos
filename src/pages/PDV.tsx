@@ -18,12 +18,31 @@ import {
   CreditCard,
   Banknote,
   ArrowLeft,
-  Check
+  Check,
+  Package
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+
+interface ProductVariation {
+  id: string;
+  product_id: string;
+  name: string;
+  price: number;
+  stock: number;
+  description?: string | null;
+  sku?: string | null;
+  image_url?: string | null;
+}
 
 interface Product {
   id: string;
@@ -34,11 +53,14 @@ interface Product {
   category: string;
   sku?: string | null;
   minimum_quantity?: number;
+  variations?: ProductVariation[];
 }
 
 interface CartItem {
   product: Product;
   quantity: number;
+  variation?: ProductVariation;
+  cartItemKey: string;
 }
 
 export default function PDV() {
@@ -58,6 +80,10 @@ export default function PDV() {
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
+  
+  // Variações
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showVariationsDialog, setShowVariationsDialog] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -73,7 +99,10 @@ export default function PDV() {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          variations:product_variations(*)
+        `)
         .gt('stock', 0)
         .order('name');
 
@@ -90,55 +119,78 @@ export default function PDV() {
     }
   };
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find(item => item.product.id === product.id);
+  const handleProductClick = (product: Product) => {
+    // Se tem variações, mostrar diálogo de seleção
+    if (product.variations && product.variations.length > 0) {
+      setSelectedProduct(product);
+      setShowVariationsDialog(true);
+    } else {
+      addToCart(product, undefined);
+    }
+  };
+
+  const addToCart = (product: Product, variation?: ProductVariation) => {
+    const cartItemKey = variation 
+      ? `${product.id}-${variation.id}`
+      : product.id;
+    
+    const existingItem = cart.find(item => item.cartItemKey === cartItemKey);
     const minimumQty = product.minimum_quantity || 1;
+    const availableStock = variation ? variation.stock : product.stock;
+    const itemPrice = variation ? variation.price : product.price;
     
     if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
+      if (existingItem.quantity >= availableStock) {
         toast({
           title: 'Estoque insuficiente',
-          description: `Apenas ${product.stock} unidades disponíveis`,
+          description: `Apenas ${availableStock} unidades disponíveis`,
           variant: 'destructive'
         });
         return;
       }
       
       setCart(cart.map(item =>
-        item.product.id === product.id
+        item.cartItemKey === cartItemKey
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
-      // Adicionar com a quantidade mínima
-      if (product.stock < minimumQty) {
+      if (availableStock < minimumQty) {
         toast({
           title: 'Estoque insuficiente',
-          description: `Este produto requer no mínimo ${minimumQty} unidades, mas há apenas ${product.stock} em estoque`,
+          description: `Este produto requer no mínimo ${minimumQty} unidades, mas há apenas ${availableStock} em estoque`,
           variant: 'destructive'
         });
         return;
       }
       
-      setCart([...cart, { product, quantity: minimumQty }]);
+      setCart([...cart, { 
+        product, 
+        quantity: minimumQty, 
+        variation,
+        cartItemKey 
+      }]);
+      
+      const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
       
       if (minimumQty > 1) {
         toast({
           title: 'Produto adicionado',
-          description: `${product.name} adicionado ao carrinho (quantidade mínima: ${minimumQty})`,
+          description: `${itemName} adicionado ao carrinho (quantidade mínima: ${minimumQty})`,
         });
       } else {
         toast({
           title: 'Produto adicionado',
-          description: `${product.name} adicionado ao carrinho`,
+          description: `${itemName} adicionado ao carrinho`,
         });
       }
       return;
     }
 
+    const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
     toast({
       title: 'Produto adicionado',
-      description: `${product.name} adicionado ao carrinho`,
+      description: `${itemName} adicionado ao carrinho`,
     });
   };
 
@@ -157,7 +209,22 @@ export default function PDV() {
       if (error) throw error;
 
       if (product) {
-        addToCart(product);
+        // Se tem variações, buscar a variação pelo SKU
+        const productWithVariations = product as Product;
+        if (productWithVariations.variations && productWithVariations.variations.length > 0) {
+          const { data: variation } = await supabase
+            .from('product_variations')
+            .select('*')
+            .eq('sku', barcode.trim())
+            .eq('product_id', productWithVariations.id)
+            .gt('stock', 0)
+            .maybeSingle();
+          
+          addToCart(productWithVariations, variation || undefined);
+        } else {
+          addToCart(productWithVariations, undefined);
+        }
+        
         setBarcodeInput('');
         // Som de "beep" para feedback
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
@@ -187,15 +254,16 @@ export default function PDV() {
     }
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(cart.filter(item => item.product.id !== productId));
+  const removeFromCart = (cartItemKey: string) => {
+    setCart(cart.filter(item => item.cartItemKey !== cartItemKey));
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (cartItemKey: string, delta: number) => {
     setCart(cart.map(item => {
-      if (item.product.id === productId) {
+      if (item.cartItemKey === cartItemKey) {
         const newQuantity = item.quantity + delta;
         const minimumQty = item.product.minimum_quantity || 1;
+        const availableStock = item.variation ? item.variation.stock : item.product.stock;
         
         if (newQuantity < minimumQty) {
           toast({
@@ -206,10 +274,10 @@ export default function PDV() {
           return item;
         }
         
-        if (newQuantity > item.product.stock) {
+        if (newQuantity > availableStock) {
           toast({
             title: 'Estoque insuficiente',
-            description: `Apenas ${item.product.stock} unidades disponíveis`,
+            description: `Apenas ${availableStock} unidades disponíveis`,
             variant: 'destructive'
           });
           return item;
@@ -221,7 +289,10 @@ export default function PDV() {
   };
 
   const calculateTotal = () => {
-    return cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    return cart.reduce((sum, item) => {
+      const itemPrice = item.variation ? item.variation.price : item.product.price;
+      return sum + (itemPrice * item.quantity);
+    }, 0);
   };
 
   const calculateChange = () => {
@@ -274,9 +345,9 @@ export default function PDV() {
       // Criar itens do pedido
       const orderItems = cart.map(item => ({
         order_id: order.id,
-        product_id: item.product.id,
+        product_id: item.variation ? item.variation.id : item.product.id,
         quantity: item.quantity,
-        price_at_purchase: item.product.price
+        price_at_purchase: item.variation ? item.variation.price : item.product.price
       }));
 
       const { error: itemsError } = await supabase
@@ -287,14 +358,27 @@ export default function PDV() {
 
       // Atualizar estoque
       for (const item of cart) {
-        const { error: stockError } = await supabase
-          .from('products')
-          .update({ 
-            stock: item.product.stock - item.quantity 
-          })
-          .eq('id', item.product.id);
+        if (item.variation) {
+          // Atualizar estoque da variação
+          const { error: stockError } = await supabase
+            .from('product_variations')
+            .update({ 
+              stock: item.variation.stock - item.quantity 
+            })
+            .eq('id', item.variation.id);
 
-        if (stockError) throw stockError;
+          if (stockError) throw stockError;
+        } else {
+          // Atualizar estoque do produto
+          const { error: stockError } = await supabase
+            .from('products')
+            .update({ 
+              stock: item.product.stock - item.quantity 
+            })
+            .eq('id', item.product.id);
+
+          if (stockError) throw stockError;
+        }
       }
 
       toast({
@@ -402,9 +486,18 @@ export default function PDV() {
                     {filteredProducts.map(product => (
                       <Card
                         key={product.id}
-                        className="cursor-pointer hover:shadow-lg transition-shadow"
-                        onClick={() => addToCart(product)}
+                        className="cursor-pointer hover:shadow-lg transition-shadow relative"
+                        onClick={() => handleProductClick(product)}
                       >
+                        {product.variations && product.variations.length > 0 && (
+                          <Badge 
+                            variant="secondary" 
+                            className="absolute top-2 right-2 z-10"
+                          >
+                            <Package className="w-3 h-3 mr-1" />
+                            {product.variations.length}
+                          </Badge>
+                        )}
                         <CardContent className="p-3 space-y-2">
                           {product.image_url && (
                             <img
@@ -463,50 +556,57 @@ export default function PDV() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {cart.map(item => (
-                        <div key={item.product.id} className="flex items-center gap-2 p-2 border rounded">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm line-clamp-1">
-                              {item.product.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              R$ {item.product.price.toFixed(2)} × {item.quantity}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-7 w-7"
-                              onClick={() => updateQuantity(item.product.id, -1)}
-                            >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="w-8 text-center font-medium">
-                              {item.quantity}
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-7 w-7"
-                              onClick={() => updateQuantity(item.product.id, 1)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 text-destructive"
-                              onClick={() => removeFromCart(item.product.id)}
+                      {cart.map(item => {
+                        const itemPrice = item.variation ? item.variation.price : item.product.price;
+                        const itemName = item.variation 
+                          ? `${item.product.name} - ${item.variation.name}` 
+                          : item.product.name;
+                        
+                        return (
+                          <div key={item.cartItemKey} className="flex items-center gap-2 p-2 border rounded">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm line-clamp-1">
+                                {itemName}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                R$ {itemPrice.toFixed(2)} × {item.quantity}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7"
+                                onClick={() => updateQuantity(item.cartItemKey, -1)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="w-8 text-center font-medium">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7"
+                                onClick={() => updateQuantity(item.cartItemKey, 1)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-destructive"
+                                onClick={() => removeFromCart(item.cartItemKey)}
                             >
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </div>
                           <div className="font-bold">
-                            R$ {(item.product.price * item.quantity).toFixed(2)}
+                            R$ {(itemPrice * item.quantity).toFixed(2)}
                           </div>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   )}
                 </ScrollArea>
@@ -599,6 +699,62 @@ export default function PDV() {
           </div>
         </div>
       </div>
+      
+      {/* Diálogo de seleção de variações */}
+      <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Selecione a Variação</DialogTitle>
+            <DialogDescription>
+              Escolha uma variação de {selectedProduct?.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {selectedProduct?.variations?.map((variation) => (
+              <Card
+                key={variation.id}
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => {
+                  addToCart(selectedProduct, variation);
+                  setShowVariationsDialog(false);
+                }}
+              >
+                <CardContent className="p-4 space-y-3">
+                  {variation.image_url && (
+                    <img
+                      src={variation.image_url}
+                      alt={variation.name}
+                      className="w-full h-32 object-cover rounded"
+                    />
+                  )}
+                  <div>
+                    <h3 className="font-semibold">{variation.name}</h3>
+                    {variation.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {variation.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-primary">
+                      R$ {variation.price.toFixed(2)}
+                    </span>
+                    <Badge variant={variation.stock > 5 ? "secondary" : "destructive"} className="text-xs">
+                      {variation.stock} un
+                    </Badge>
+                  </div>
+                  {variation.sku && (
+                    <p className="text-xs text-muted-foreground font-mono">
+                      SKU: {variation.sku}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
