@@ -44,6 +44,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [saleEndsAt, setSaleEndsAt] = useState(
     product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : ''
   );
+  const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -74,6 +75,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setOnSale(product.on_sale || false);
       setSalePrice(product.sale_price?.toString() || '');
       setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
+      setMinimumQuantity(product.minimum_quantity?.toString() || '1');
     }
   }, [open, product.id, loadVariations]);
 
@@ -195,6 +197,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           price: price ? parseFloat(price) : 0,
           category,
           stock: stock ? parseInt(stock) : 0,
+          minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
           featured,
@@ -382,6 +385,25 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                     O estoque será controlado nas variações
                   </p>
                 )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-minimumQuantity">Quantidade Mínima de Venda</Label>
+                <Input
+                  id="edit-minimumQuantity"
+                  type="number"
+                  min="1"
+                  value={minimumQuantity}
+                  onChange={(e) => setMinimumQuantity(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quantidade mínima que deve ser comprada
+                </p>
+              </div>
+              <div className="space-y-2">
+                {/* Espaço para outros campos no futuro */}
               </div>
             </div>
 

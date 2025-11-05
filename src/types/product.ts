@@ -27,6 +27,7 @@ export interface Product {
   on_sale: boolean;
   sale_price?: number;
   sale_ends_at?: string;
+  minimum_quantity?: number;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
