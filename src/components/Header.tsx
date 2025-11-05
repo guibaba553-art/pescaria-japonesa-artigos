@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn, UserPlus, LogOut, User, UserCircle } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 export function Header() {
@@ -34,14 +34,24 @@ export function Header() {
                 Minha Conta
               </Button>
               {(isEmployee || isAdmin) && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/admin')}
-                  className="hidden sm:flex"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Painel Admin
-                </Button>
+                <>
+                  <Button 
+                    variant="default" 
+                    onClick={() => navigate('/pdv')}
+                    className="hidden sm:flex"
+                  >
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    PDV
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/admin')}
+                    className="hidden sm:flex"
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Painel Admin
+                  </Button>
+                </>
               )}
               <Button 
                 variant="ghost" 

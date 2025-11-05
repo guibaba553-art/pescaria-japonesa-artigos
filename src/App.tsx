@@ -10,6 +10,7 @@ import Account from "./pages/Account";
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import RemoveLogoBackground from "./pages/RemoveLogoBackground";
+import PDV from "./pages/PDV";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/pdv" element={<PDV />} />
           <Route path="/conta" element={<Account />} />
           <Route path="/produtos" element={<Products />} />
           <Route path="/produto/:id" element={<ProductDetails />} />
