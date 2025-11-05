@@ -91,19 +91,22 @@ serve(async (req) => {
       item.products.include_in_nfe !== false
     );
     
-    // Calcular valor total dos itens que vão na nota (SEM desconto)
+    const excludedItems = order.order_items.filter((item: any) => 
+      item.products.include_in_nfe === false
+    );
+    
+    // Calcular valor total dos itens que vão na nota
     const nfeItemsTotal = nfeItems.reduce((sum: number, item: any) => 
       sum + (item.price_at_purchase * item.quantity), 0
     );
 
-    // Aplicar desconto de 10% nos itens da nota
-    const discountPercent = 0.10; // 10%
-    const nfeItemsWithDiscount = nfeItemsTotal * (1 - discountPercent);
-    const discountAmount = nfeItemsTotal - nfeItemsWithDiscount;
+    // Calcular valor total dos itens que NÃO vão na nota
+    const excludedItemsTotal = excludedItems.reduce((sum: number, item: any) => 
+      sum + (item.price_at_purchase * item.quantity), 0
+    );
 
-    // Frete na NF-e = Total do Pedido - Itens com Desconto
-    // Isso compensa o desconto aplicado nos itens
-    const totalShipping = Number(order.total_amount) - nfeItemsWithDiscount;
+    // Frete na NF-e = (valor de produtos com nota × 10%) + valor de produtos sem nota
+    const totalShipping = (nfeItemsTotal * 0.10) + excludedItemsTotal;
 
     // Simular chamada API NFe.io
     // Em produção, você faria:
@@ -116,11 +119,10 @@ serve(async (req) => {
     console.log('Emitindo NF-e para pedido:', orderId);
     console.log('Configurações:', { companyId: settings.nfe_company_id });
     console.log('Itens na NF-e:', nfeItems);
-    console.log('Valor original dos itens:', nfeItemsTotal);
-    console.log('Desconto aplicado (10%):', discountAmount);
-    console.log('Valor dos itens COM desconto:', nfeItemsWithDiscount);
+    console.log('Valor dos itens COM nota:', nfeItemsTotal);
+    console.log('Valor dos itens SEM nota:', excludedItemsTotal);
+    console.log('Frete na NF-e = (itens com nota × 10%) + itens sem nota:', totalShipping);
     console.log('Total do pedido:', order.total_amount);
-    console.log('Frete na NF-e (absorve o desconto):', totalShipping);
     console.log('Dados do pedido:', order);
 
     // Simular sucesso (remover em produção)
