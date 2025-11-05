@@ -86,7 +86,7 @@ serve(async (req) => {
       throw emissionError;
     }
 
-    // Separar itens que vão na nota dos que viram taxa adicional
+    // Separar itens que vão na nota dos que não vão
     const nfeItems = order.order_items.filter((item: any) => 
       item.products.include_in_nfe !== false
     );
@@ -100,36 +100,24 @@ serve(async (req) => {
       sum + (item.price_at_purchase * item.quantity), 0
     );
 
-    // Preparar taxas adicionais
-    const additionalTaxes = [];
-    
-    if (order.shipping_cost > 0) {
-      additionalTaxes.push({
-        description: 'Frete',
-        amount: order.shipping_cost
-      });
-    }
-    
-    if (excludedItemsTotal > 0) {
-      additionalTaxes.push({
-        description: 'Produtos não tributáveis',
-        amount: excludedItemsTotal
-      });
-    }
+    // Somar valor dos produtos sem nota ao frete
+    const totalShipping = Number(order.shipping_cost) + excludedItemsTotal;
 
     // Simular chamada API NFe.io
     // Em produção, você faria:
     // const nfeResponse = await fetch('https://api.nfe.io/v1/invoices', { 
     //   items: nfeItems,
-    //   additionalTaxes: additionalTaxes,
+    //   shipping_cost: totalShipping,
     //   ... 
     // })
     
     console.log('Emitindo NF-e para pedido:', orderId);
     console.log('Configurações:', { companyId: settings.nfe_company_id });
     console.log('Itens na NF-e:', nfeItems);
-    console.log('Itens excluídos (taxas):', excludedItems);
-    console.log('Taxas adicionais:', additionalTaxes);
+    console.log('Itens excluídos (somados ao frete):', excludedItems);
+    console.log('Frete original:', order.shipping_cost);
+    console.log('Valor excluído:', excludedItemsTotal);
+    console.log('Frete total na NF-e:', totalShipping);
     console.log('Dados do pedido:', order);
 
     // Simular sucesso (remover em produção)
