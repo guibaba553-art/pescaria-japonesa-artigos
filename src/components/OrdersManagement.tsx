@@ -447,6 +447,40 @@ export function OrdersManagement() {
         title: 'Status atualizado',
         description: 'O status do pedido foi atualizado com sucesso.'
       });
+      
+      // Emitir NF-e automaticamente se configurado
+      if (newStatus === 'em_preparo') {
+        try {
+          const { data: settings } = await supabase
+            .from('fiscal_settings')
+            .select('auto_emit_nfe, nfe_enabled')
+            .limit(1)
+            .maybeSingle();
+
+          if (settings?.auto_emit_nfe && settings?.nfe_enabled) {
+            const { error: nfeError } = await supabase.functions.invoke('emit-nfe', {
+              body: { orderId }
+            });
+
+            if (nfeError) {
+              console.error('Erro ao emitir NF-e:', nfeError);
+              toast({
+                title: 'Aviso',
+                description: 'Pedido atualizado, mas houve erro ao emitir NF-e automaticamente.',
+                variant: 'destructive'
+              });
+            } else {
+              toast({
+                title: 'NF-e emitida',
+                description: 'NF-e foi emitida automaticamente.'
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao verificar emissão de NF-e:', err);
+        }
+      }
+      
       loadOrders();
     }
   };
@@ -499,6 +533,31 @@ export function OrdersManagement() {
           title: 'Pagamento confirmado!',
           description: data.message,
         });
+        
+        // Emitir NF-e automaticamente se configurado
+        try {
+          const { data: settings } = await supabase
+            .from('fiscal_settings')
+            .select('auto_emit_nfe, nfe_enabled')
+            .limit(1)
+            .maybeSingle();
+
+          if (settings?.auto_emit_nfe && settings?.nfe_enabled) {
+            const { error: nfeError } = await supabase.functions.invoke('emit-nfe', {
+              body: { orderId }
+            });
+
+            if (!nfeError) {
+              toast({
+                title: 'NF-e emitida',
+                description: 'NF-e foi emitida automaticamente após confirmação do pagamento.'
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao verificar emissão de NF-e:', err);
+        }
+        
         loadOrders();
       } else {
         toast({
