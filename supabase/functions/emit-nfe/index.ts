@@ -95,13 +95,14 @@ serve(async (req) => {
       item.products.include_in_nfe === false
     );
 
-    // Calcular valor dos itens excluídos
-    const excludedItemsTotal = excludedItems.reduce((sum: number, item: any) => 
+    // Calcular valor total dos itens que vão na nota
+    const nfeItemsTotal = nfeItems.reduce((sum: number, item: any) => 
       sum + (item.price_at_purchase * item.quantity), 0
     );
 
-    // Somar valor dos produtos sem nota ao frete
-    const totalShipping = Number(order.shipping_cost) + excludedItemsTotal;
+    // Frete na NF-e = Total do Pedido - Itens com Nota
+    // Isso garante que: Itens + Frete = Total do Pedido
+    const totalShipping = Number(order.total_amount) - nfeItemsTotal;
 
     // Simular chamada API NFe.io
     // Em produção, você faria:
@@ -114,10 +115,9 @@ serve(async (req) => {
     console.log('Emitindo NF-e para pedido:', orderId);
     console.log('Configurações:', { companyId: settings.nfe_company_id });
     console.log('Itens na NF-e:', nfeItems);
-    console.log('Itens excluídos (somados ao frete):', excludedItems);
-    console.log('Frete original:', order.shipping_cost);
-    console.log('Valor excluído:', excludedItemsTotal);
-    console.log('Frete total na NF-e:', totalShipping);
+    console.log('Valor total dos itens com nota:', nfeItemsTotal);
+    console.log('Total do pedido:', order.total_amount);
+    console.log('Frete calculado (Total - Itens):', totalShipping);
     console.log('Dados do pedido:', order);
 
     // Simular sucesso (remover em produção)
