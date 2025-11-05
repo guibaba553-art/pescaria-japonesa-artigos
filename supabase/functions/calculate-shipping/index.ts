@@ -79,19 +79,17 @@ Deno.serve(async (req) => {
       if (codigo === '04014') {
         // SEDEX
         nome = 'SEDEX';
-        valorBase = 25 + (pesoCubado * 5) + (distanciaFator * 50);
         prazoBase = 2 + Math.floor(distanciaFator * 3);
       } else {
         // PAC
         nome = 'PAC';
-        valorBase = 15 + (pesoCubado * 3) + (distanciaFator * 30);
         prazoBase = 5 + Math.floor(distanciaFator * 5);
       }
 
       shippingOptions.push({
         codigo,
         nome,
-        valor: parseFloat(valorBase.toFixed(2)),
+        valor: 0, // Frete grátis - custo embutido nos produtos
         prazoEntrega: prazoBase,
         valorMaoPropriaLabel: 'R$ 0,00',
         valorAvisoRecebimento: 'R$ 0,00',
