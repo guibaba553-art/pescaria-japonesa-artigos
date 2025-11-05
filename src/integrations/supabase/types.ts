@@ -372,6 +372,7 @@ export type Database = {
           id: string
           image_url: string | null
           images: string[] | null
+          minimum_quantity: number
           name: string
           on_sale: boolean
           price: number
@@ -392,6 +393,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          minimum_quantity?: number
           name: string
           on_sale?: boolean
           price: number
@@ -412,6 +414,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          minimum_quantity?: number
           name?: string
           on_sale?: boolean
           price?: number

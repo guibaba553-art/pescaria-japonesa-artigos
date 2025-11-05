@@ -33,6 +33,7 @@ interface Product {
   image_url: string | null;
   category: string;
   sku?: string | null;
+  minimum_quantity?: number;
 }
 
 interface CartItem {
@@ -91,6 +92,7 @@ export default function PDV() {
 
   const addToCart = (product: Product) => {
     const existingItem = cart.find(item => item.product.id === product.id);
+    const minimumQty = product.minimum_quantity || 1;
     
     if (existingItem) {
       if (existingItem.quantity >= product.stock) {
@@ -108,7 +110,30 @@ export default function PDV() {
           : item
       ));
     } else {
-      setCart([...cart, { product, quantity: 1 }]);
+      // Adicionar com a quantidade mínima
+      if (product.stock < minimumQty) {
+        toast({
+          title: 'Estoque insuficiente',
+          description: `Este produto requer no mínimo ${minimumQty} unidades, mas há apenas ${product.stock} em estoque`,
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      setCart([...cart, { product, quantity: minimumQty }]);
+      
+      if (minimumQty > 1) {
+        toast({
+          title: 'Produto adicionado',
+          description: `${product.name} adicionado ao carrinho (quantidade mínima: ${minimumQty})`,
+        });
+      } else {
+        toast({
+          title: 'Produto adicionado',
+          description: `${product.name} adicionado ao carrinho`,
+        });
+      }
+      return;
     }
 
     toast({
@@ -170,7 +195,17 @@ export default function PDV() {
     setCart(cart.map(item => {
       if (item.product.id === productId) {
         const newQuantity = item.quantity + delta;
-        if (newQuantity <= 0) return item;
+        const minimumQty = item.product.minimum_quantity || 1;
+        
+        if (newQuantity < minimumQty) {
+          toast({
+            title: 'Quantidade mínima',
+            description: `Este produto requer no mínimo ${minimumQty} unidades`,
+            variant: 'destructive'
+          });
+          return item;
+        }
+        
         if (newQuantity > item.product.stock) {
           toast({
             title: 'Estoque insuficiente',
@@ -382,9 +417,16 @@ export default function PDV() {
                             <h3 className="font-semibold text-sm line-clamp-2">
                               {product.name}
                             </h3>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {product.category}
-                            </Badge>
+                            <div className="flex gap-1 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                {product.category}
+                              </Badge>
+                              {product.minimum_quantity && product.minimum_quantity > 1 && (
+                                <Badge variant="default" className="text-xs">
+                                  Min: {product.minimum_quantity}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-lg font-bold text-primary">

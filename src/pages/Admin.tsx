@@ -36,6 +36,7 @@ interface Product {
   on_sale: boolean;
   sale_price?: number;
   sale_ends_at?: string;
+  minimum_quantity?: number;
 }
 
 export default function Admin() {
@@ -49,6 +50,7 @@ export default function Admin() {
   const [category, setCategory] = useState('');
   const [stock, setStock] = useState('');
   const [sku, setSku] = useState('');
+  const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,6 +235,7 @@ export default function Admin() {
               category,
               stock: stock ? parseInt(stock) : 0,
               sku: sku || null,
+              minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
               images: imageUrls,
               image_url: imageUrls.length > 0 ? imageUrls[0] : null,
               created_by: user?.id
@@ -334,6 +337,7 @@ export default function Admin() {
       setCategory('');
       setStock('');
       setSku('');
+      setMinimumQuantity('1');
       setImages([]);
       setNewProductVariations([]);
       
@@ -509,7 +513,17 @@ export default function Admin() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  {/* Espaço para outros campos no futuro */}
+                  <Label htmlFor="minimumQuantity">Quantidade Mínima de Venda</Label>
+                  <Input
+                    id="minimumQuantity"
+                    type="number"
+                    min="1"
+                    value={minimumQuantity}
+                    onChange={(e) => setMinimumQuantity(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Quantidade mínima que deve ser comprada (ex: 10 para tuviras)
+                  </p>
                 </div>
               </div>
 
