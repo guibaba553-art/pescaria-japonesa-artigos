@@ -31,6 +31,16 @@ interface OrderItem {
   };
 }
 
+interface NFEEmission {
+  id: string;
+  nfe_number: string | null;
+  nfe_key: string | null;
+  nfe_xml_url: string | null;
+  status: string;
+  emitted_at: string | null;
+  error_message: string | null;
+}
+
 interface Order {
   id: string;
   total_amount: number;
@@ -42,6 +52,7 @@ interface Order {
   delivery_type: 'delivery' | 'pickup';
   tracking_code?: string;
   order_items: OrderItem[];
+  nfe_emissions?: NFEEmission[];
 }
 
 interface Profile {
@@ -282,6 +293,62 @@ const OrdersTable = ({
                       </div>
                     </div>
 
+                    {/* Nota Fiscal */}
+                    {order.nfe_emissions && order.nfe_emissions.length > 0 && (
+                      <div className="col-span-2 mt-4 p-4 bg-background rounded-lg border">
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          📄 Nota Fiscal Eletrônica
+                        </h4>
+                        {order.nfe_emissions.map((nfe) => (
+                          <div key={nfe.id} className="space-y-2">
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase">Número</p>
+                                <p className="font-mono font-semibold">{nfe.nfe_number || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase">Chave</p>
+                                <p className="font-mono text-xs">{nfe.nfe_key || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase">Status</p>
+                                <Badge 
+                                  variant={
+                                    nfe.status === 'success' ? 'default' :
+                                    nfe.status === 'pending' ? 'secondary' : 'destructive'
+                                  }
+                                  className="mt-1"
+                                >
+                                  {nfe.status === 'success' ? '✅ Emitida' :
+                                   nfe.status === 'pending' ? '⏳ Pendente' : '❌ Erro'}
+                                </Badge>
+                              </div>
+                            </div>
+                            {nfe.emitted_at && (
+                              <p className="text-xs text-muted-foreground">
+                                Emitida em: {new Date(nfe.emitted_at).toLocaleString('pt-BR')}
+                              </p>
+                            )}
+                            {nfe.status === 'success' && nfe.nfe_xml_url && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
+                                className="w-full"
+                              >
+                                📥 Download XML
+                              </Button>
+                            )}
+                            {nfe.error_message && (
+                              <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
+                                Erro: {nfe.error_message}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Código de Rastreio */}
                     {order.status === 'enviado' && (
                       <div className="col-span-2 mt-4 p-4 bg-background rounded-lg border">
@@ -375,6 +442,15 @@ export function OrdersManagement() {
         order_items (
           *,
           products (name)
+        ),
+        nfe_emissions (
+          id,
+          nfe_number,
+          nfe_key,
+          nfe_xml_url,
+          status,
+          emitted_at,
+          error_message
         )
       `)
       .order('created_at', { ascending: false });

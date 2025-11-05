@@ -81,7 +81,8 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
     }
   };
 
-  if (!settings?.nfe_enabled) {
+  // Sempre mostrar notas já emitidas, mesmo se o sistema estiver desabilitado
+  if (!settings?.nfe_enabled && nfes.length === 0) {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
