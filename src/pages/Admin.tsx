@@ -15,6 +15,7 @@ import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
+import { FiscalSystem } from '@/components/FiscalSystem';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PRODUCT_CATEGORIES } from '@/config/constants';
@@ -403,10 +404,11 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="featured">Produtos Destaque</TabsTrigger>
+            <TabsTrigger value="fiscal">Sistema Fiscal</TabsTrigger>
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
@@ -712,6 +714,10 @@ export default function Admin() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="fiscal">
+            <FiscalSystem />
           </TabsContent>
         </Tabs>
       </div>

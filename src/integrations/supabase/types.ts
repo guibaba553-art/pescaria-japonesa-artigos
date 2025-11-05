@@ -97,6 +97,98 @@ export type Database = {
           },
         ]
       }
+      fiscal_settings: {
+        Row: {
+          auto_emit_nfe: boolean
+          auto_sync_tga: boolean
+          created_at: string
+          id: string
+          nfe_api_key: string | null
+          nfe_company_id: string | null
+          nfe_enabled: boolean
+          tga_api_url: string | null
+          tga_enabled: boolean
+          tga_password: string | null
+          tga_username: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_emit_nfe?: boolean
+          auto_sync_tga?: boolean
+          created_at?: string
+          id?: string
+          nfe_api_key?: string | null
+          nfe_company_id?: string | null
+          nfe_enabled?: boolean
+          tga_api_url?: string | null
+          tga_enabled?: boolean
+          tga_password?: string | null
+          tga_username?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_emit_nfe?: boolean
+          auto_sync_tga?: boolean
+          created_at?: string
+          id?: string
+          nfe_api_key?: string | null
+          nfe_company_id?: string | null
+          nfe_enabled?: boolean
+          tga_api_url?: string | null
+          tga_enabled?: boolean
+          tga_password?: string | null
+          tga_username?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nfe_emissions: {
+        Row: {
+          created_at: string
+          emitted_at: string | null
+          error_message: string | null
+          id: string
+          nfe_key: string | null
+          nfe_number: string | null
+          nfe_xml_url: string | null
+          order_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          emitted_at?: string | null
+          error_message?: string | null
+          id?: string
+          nfe_key?: string | null
+          nfe_number?: string | null
+          nfe_xml_url?: string | null
+          order_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          emitted_at?: string | null
+          error_message?: string | null
+          id?: string
+          nfe_key?: string | null
+          nfe_number?: string | null
+          nfe_xml_url?: string | null
+          order_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfe_emissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -408,6 +500,47 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tga_sync_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          order_id: string | null
+          request_data: Json | null
+          response_data: Json | null
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          order_id?: string | null
+          request_data?: Json | null
+          response_data?: Json | null
+          status: string
+          sync_type: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          order_id?: string | null
+          request_data?: Json | null
+          response_data?: Json | null
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tga_sync_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
