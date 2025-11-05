@@ -42,7 +42,7 @@ interface CartItem {
 
 export default function PDV() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -59,10 +59,10 @@ export default function PDV() {
   const [customerCPF, setCustomerCPF] = useState('');
 
   useEffect(() => {
-    if (!loading && !isEmployee && !isAdmin) {
+    if (!loading && !isAdmin) {
       navigate('/auth');
     }
-  }, [user, isEmployee, isAdmin, loading, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   useEffect(() => {
     loadProducts();
@@ -294,7 +294,7 @@ export default function PDV() {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
 
-  if (!isEmployee && !isAdmin) {
+  if (!isAdmin) {
     return null;
   }
 

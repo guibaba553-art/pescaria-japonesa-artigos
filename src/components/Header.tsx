@@ -35,14 +35,16 @@ export function Header() {
               </Button>
               {(isEmployee || isAdmin) && (
                 <>
-                  <Button 
-                    variant="default" 
-                    onClick={() => navigate('/pdv')}
-                    className="hidden sm:flex"
-                  >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    PDV
-                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      variant="default" 
+                      onClick={() => navigate('/pdv')}
+                      className="hidden sm:flex"
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-2" />
+                      PDV
+                    </Button>
+                  )}
                   <Button 
                     variant="outline" 
                     onClick={() => navigate('/admin')}

@@ -401,9 +401,11 @@ export default function Admin() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
           <div className="flex gap-2">
-            <Button onClick={() => navigate('/pdv')}>
-              Abrir PDV
-            </Button>
+            {isAdmin && (
+              <Button onClick={() => navigate('/pdv')}>
+                Abrir PDV
+              </Button>
+            )}
             <Button variant="outline" onClick={() => navigate('/')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Voltar ao Site
