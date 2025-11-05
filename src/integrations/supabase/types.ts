@@ -379,6 +379,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_price: number | null
           short_description: string | null
+          sku: string | null
           stock: number
           updated_at: string
         }
@@ -398,6 +399,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           short_description?: string | null
+          sku?: string | null
           stock?: number
           updated_at?: string
         }
@@ -417,6 +419,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_price?: number | null
           short_description?: string | null
+          sku?: string | null
           stock?: number
           updated_at?: string
         }

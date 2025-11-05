@@ -32,6 +32,7 @@ interface Product {
   stock: number;
   image_url: string | null;
   category: string;
+  sku?: string | null;
 }
 
 interface CartItem {
@@ -47,6 +48,7 @@ export default function PDV() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [processing, setProcessing] = useState(false);
   
@@ -113,6 +115,51 @@ export default function PDV() {
       title: 'Produto adicionado',
       description: `${product.name} adicionado ao carrinho`,
     });
+  };
+
+  const handleBarcodeSearch = async (barcode: string) => {
+    if (!barcode.trim()) return;
+
+    try {
+      // Buscar produto por SKU/código de barras
+      const { data: product, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('sku', barcode.trim())
+        .gt('stock', 0)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (product) {
+        addToCart(product);
+        setBarcodeInput('');
+        // Som de "beep" para feedback
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
+        audio.play().catch(() => {}); // Ignora erro se o áudio não puder ser reproduzido
+      } else {
+        toast({
+          title: 'Produto não encontrado',
+          description: `Código de barras: ${barcode}`,
+          variant: 'destructive'
+        });
+        setBarcodeInput('');
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao buscar produto',
+        description: error.message,
+        variant: 'destructive'
+      });
+      setBarcodeInput('');
+    }
+  };
+
+  const handleBarcodeKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBarcodeSearch(barcodeInput);
+    }
   };
 
   const removeFromCart = (productId: string) => {
@@ -278,6 +325,33 @@ export default function PDV() {
                 <CardTitle>Produtos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Campo para Leitor de Código de Barras */}
+                <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
+                  <Label htmlFor="barcode" className="text-sm font-semibold mb-2 block">
+                    Leitor de Código de Barras
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="barcode"
+                      placeholder="Escaneie ou digite o código de barras..."
+                      value={barcodeInput}
+                      onChange={(e) => setBarcodeInput(e.target.value)}
+                      onKeyPress={handleBarcodeKeyPress}
+                      className="text-lg font-mono"
+                      autoFocus
+                    />
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                    >
+                      Pressione Enter
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    💡 Dica: Mantenha o cursor neste campo para usar o leitor de código de barras
+                  </p>
+                </div>
+
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -288,7 +362,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[600px]">
+                <ScrollArea className="h-[520px]">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card

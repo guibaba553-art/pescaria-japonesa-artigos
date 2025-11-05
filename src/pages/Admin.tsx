@@ -48,6 +48,7 @@ export default function Admin() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [stock, setStock] = useState('');
+  const [sku, setSku] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -225,16 +226,17 @@ export default function Admin() {
         .from('products')
         .insert([
           {
-            name,
-            description,
-            short_description: shortDescription,
-            price: price ? parseFloat(price) : 0,
-            category,
-            stock: stock ? parseInt(stock) : 0,
-            images: imageUrls,
-            image_url: imageUrls.length > 0 ? imageUrls[0] : null,
-            created_by: user?.id
-          }
+              name,
+              description,
+              short_description: shortDescription,
+              price: price ? parseFloat(price) : 0,
+              category,
+              stock: stock ? parseInt(stock) : 0,
+              sku: sku || null,
+              images: imageUrls,
+              image_url: imageUrls.length > 0 ? imageUrls[0] : null,
+              created_by: user?.id
+            }
         ])
         .select()
         .single();
@@ -331,6 +333,7 @@ export default function Admin() {
       setPrice('');
       setCategory('');
       setStock('');
+      setSku('');
       setImages([]);
       setNewProductVariations([]);
       
@@ -471,6 +474,21 @@ export default function Admin() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="sku">Código de Barras / SKU (opcional)</Label>
+                  <Input
+                    id="sku"
+                    value={sku}
+                    onChange={(e) => setSku(e.target.value)}
+                    placeholder="Ex: 7891234567890"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Para uso com leitor de código de barras no PDV
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="stock">
                     Estoque {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
                   </Label>
@@ -487,6 +505,9 @@ export default function Admin() {
                       O estoque será controlado nas variações
                     </p>
                   )}
+                </div>
+                <div className="space-y-2">
+                  {/* Espaço para outros campos no futuro */}
                 </div>
               </div>
 

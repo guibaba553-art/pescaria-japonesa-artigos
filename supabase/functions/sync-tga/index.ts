@@ -76,7 +76,7 @@ serve(async (req) => {
           .insert({
             sync_type: 'test',
             status: 'error',
-            error_message: error.message
+            error_message: (error as Error).message
           });
 
         throw error;
@@ -132,7 +132,7 @@ serve(async (req) => {
             order_id: orderId,
             sync_type: 'order_sync',
             status: 'error',
-            error_message: error.message
+            error_message: (error as Error).message
           });
 
         throw error;
@@ -147,7 +147,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Erro na sincronização TGA:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
