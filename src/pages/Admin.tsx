@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
@@ -404,18 +404,61 @@ export default function Admin() {
       <div className="max-w-7xl mx-auto space-y-8 p-6 pt-24">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          <div className="flex gap-2">
-            {isAdmin && (
-              <Button onClick={() => navigate('/pdv')}>
-                Abrir PDV
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Site
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Site
+          </Button>
         </div>
+
+        {/* Cards de Acesso Rápido */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
+              onClick={() => navigate('/dashboard')}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Dashboard
+                </CardTitle>
+                <CardDescription>
+                  Relatórios e análises de vendas
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
+              onClick={() => navigate('/pdv')}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  PDV - Ponto de Venda
+                </CardTitle>
+                <CardDescription>
+                  Vendas presenciais e código de barras
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
+              onClick={() => navigate('/fechamento-caixa')}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Fechamento de Caixa
+                </CardTitle>
+                <CardDescription>
+                  Abertura, sangrias e fechamento
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        )}
 
         <Tabs defaultValue="products" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">

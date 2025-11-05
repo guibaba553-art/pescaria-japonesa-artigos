@@ -50,6 +50,98 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_movements: {
+        Row: {
+          amount: number
+          cash_register_id: string
+          created_at: string
+          id: string
+          performed_by: string
+          reason: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          cash_register_id: string
+          created_at?: string
+          id?: string
+          performed_by: string
+          reason?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          cash_register_id?: string
+          created_at?: string
+          id?: string
+          performed_by?: string
+          reason?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_cash_register_id_fkey"
+            columns: ["cash_register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_registers: {
+        Row: {
+          additions: number
+          card_sales: number
+          cash_sales: number
+          closed_at: string | null
+          closing_amount: number | null
+          created_at: string
+          expected_amount: number
+          id: string
+          opened_at: string
+          opened_by: string
+          opening_amount: number
+          pix_sales: number
+          status: string
+          updated_at: string
+          withdrawals: number
+        }
+        Insert: {
+          additions?: number
+          card_sales?: number
+          cash_sales?: number
+          closed_at?: string | null
+          closing_amount?: number | null
+          created_at?: string
+          expected_amount?: number
+          id?: string
+          opened_at?: string
+          opened_by: string
+          opening_amount?: number
+          pix_sales?: number
+          status?: string
+          updated_at?: string
+          withdrawals?: number
+        }
+        Update: {
+          additions?: number
+          card_sales?: number
+          cash_sales?: number
+          closed_at?: string | null
+          closing_amount?: number | null
+          created_at?: string
+          expected_amount?: number
+          id?: string
+          opened_at?: string
+          opened_by?: string
+          opening_amount?: number
+          pix_sales?: number
+          status?: string
+          updated_at?: string
+          withdrawals?: number
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string

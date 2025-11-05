@@ -25,7 +25,7 @@ interface CashRegister {
   pix_sales: number;
   withdrawals: number;
   additions: number;
-  status: 'open' | 'closed';
+  status: string; // 'open' | 'closed'
 }
 
 export default function CashRegister() {
@@ -89,7 +89,7 @@ export default function CashRegister() {
         // Aqui você precisaria ter um campo payment_method na tabela orders
         // Por enquanto, vou simular:
         const totalSales = orders?.reduce((sum, o) => 
-          sum + parseFloat(o.total_amount) + parseFloat(o.shipping_cost), 0
+          sum + (parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost))), 0
         ) || 0;
 
         setSalesSummary({

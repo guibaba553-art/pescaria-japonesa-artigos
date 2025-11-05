@@ -81,7 +81,7 @@ export default function Dashboard() {
       // Calcular receita total (apenas pedidos entregues)
       const deliveredOrders = orders?.filter(o => o.status === 'entregado') || [];
       const totalRevenue = deliveredOrders.reduce((sum, o) => 
-        sum + parseFloat(o.total_amount) + parseFloat(o.shipping_cost), 0
+        sum + (parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost))), 0
       );
 
       // Calcular crescimento (últimos 30 dias vs 30 dias anteriores)
@@ -97,10 +97,10 @@ export default function Dashboard() {
       );
 
       const recentRevenue = recentOrders.reduce((sum, o) => 
-        sum + parseFloat(o.total_amount) + parseFloat(o.shipping_cost), 0
+        sum + (parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost))), 0
       );
       const previousRevenue = previousOrders.reduce((sum, o) => 
-        sum + parseFloat(o.total_amount) + parseFloat(o.shipping_cost), 0
+        sum + (parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost))), 0
       );
 
       const revenueGrowth = previousRevenue > 0 
@@ -128,7 +128,7 @@ export default function Dashboard() {
         if (!salesByDay[date]) {
           salesByDay[date] = { revenue: 0, orders: 0 };
         }
-        salesByDay[date].revenue += parseFloat(order.total_amount) + parseFloat(order.shipping_cost);
+        salesByDay[date].revenue += parseFloat(String(order.total_amount)) + parseFloat(String(order.shipping_cost));
         salesByDay[date].orders += 1;
       });
 
