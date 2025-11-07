@@ -38,7 +38,7 @@ export function Header() {
                   {isAdmin && (
                     <Button 
                       variant="default" 
-                      onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
+                      onClick={() => navigate('/pdv')}
                       className="hidden sm:flex"
                     >
                       <ShoppingCart className="w-4 h-4 mr-2" />
@@ -47,7 +47,7 @@ export function Header() {
                   )}
                   <Button 
                     variant="outline" 
-                    onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
+                    onClick={() => navigate('/admin')}
                     className="hidden sm:flex"
                   >
                     <User className="w-4 h-4 mr-2" />
