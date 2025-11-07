@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ExcelImporter } from "@/components/ExcelImporter";
+import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,7 +83,7 @@ export default function FiscalTools() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
+              onClick={() => navigate('/admin')}
             >
               <Package className="w-4 h-4 mr-2" />
               Admin
@@ -90,7 +91,7 @@ export default function FiscalTools() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
+              onClick={() => navigate('/pdv')}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
               PDV
@@ -98,7 +99,7 @@ export default function FiscalTools() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`${window.location.origin}/dashboard`, '_blank')}
+              onClick={() => navigate('/dashboard')}
             >
               <BarChart3 className="w-4 h-4 mr-2" />
               Dashboard
@@ -106,7 +107,7 @@ export default function FiscalTools() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`${window.location.origin}/`, '_blank')}
+              onClick={() => navigate('/')}
             >
               <Home className="w-4 h-4 mr-2" />
               Loja
@@ -125,10 +126,14 @@ export default function FiscalTools() {
 
       <div className="container mx-auto p-6 space-y-6">
         <Tabs defaultValue="calculator" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="calculator">
               <Calculator className="w-4 h-4 mr-2" />
               Calculadora Fiscal
+            </TabsTrigger>
+            <TabsTrigger value="xml">
+              <Receipt className="w-4 h-4 mr-2" />
+              Importar XML NFe
             </TabsTrigger>
             <TabsTrigger value="excel">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
@@ -142,6 +147,10 @@ export default function FiscalTools() {
 
           <TabsContent value="calculator">
             <FiscalCalculator products={products} />
+          </TabsContent>
+
+          <TabsContent value="xml">
+            <XMLImporter />
           </TabsContent>
 
           <TabsContent value="excel">
@@ -185,7 +194,7 @@ export default function FiscalTools() {
                 </p>
                 <Button
                   className="mt-4"
-                  onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
+                  onClick={() => navigate('/admin')}
                 >
                   <Receipt className="w-4 h-4 mr-2" />
                   Ir para Sistema Fiscal

@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.calculate-fiscal]
 verify_jwt = true
+
+[functions.parse-nfe-xml]
+verify_jwt = true
