@@ -66,7 +66,9 @@ export default function Admin() {
   } = useProductVariations();
 
   useEffect(() => {
+    console.log('[Admin] Auth check - loading:', loading, 'isEmployee:', isEmployee, 'isAdmin:', isAdmin, 'user:', user?.id);
     if (!loading && !isEmployee && !isAdmin) {
+      console.log('[Admin] Redirecting to /auth - not admin/employee');
       navigate('/auth');
     }
   }, [user, isEmployee, isAdmin, loading, navigate]);

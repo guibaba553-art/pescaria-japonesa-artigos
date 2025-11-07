@@ -38,7 +38,11 @@ export function Header() {
                   {isAdmin && (
                     <Button 
                       variant="default" 
-                      onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
+                      onClick={() => {
+                        const url = `${window.location.origin}/pdv`;
+                        console.log('[Header] Opening PDV in new tab:', url);
+                        window.open(url, '_blank');
+                      }}
                       className="hidden sm:flex"
                     >
                       <ShoppingCart className="w-4 h-4 mr-2" />
@@ -47,7 +51,11 @@ export function Header() {
                   )}
                   <Button 
                     variant="outline" 
-                    onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
+                    onClick={() => {
+                      const url = `${window.location.origin}/admin`;
+                      console.log('[Header] Opening Admin in new tab:', url);
+                      window.open(url, '_blank');
+                    }}
                     className="hidden sm:flex"
                   >
                     <User className="w-4 h-4 mr-2" />

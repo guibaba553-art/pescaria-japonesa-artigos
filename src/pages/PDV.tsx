@@ -87,7 +87,9 @@ export default function PDV() {
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
 
   useEffect(() => {
+    console.log('[PDV] Auth check - loading:', loading, 'isAdmin:', isAdmin, 'user:', user?.id);
     if (!loading && !isAdmin) {
+      console.log('[PDV] Redirecting to /auth - not admin');
       navigate('/auth');
     }
   }, [user, isAdmin, loading, navigate]);
