@@ -415,7 +415,7 @@ export default function Admin() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => window.open(`${window.location.origin}/dashboard`, '_blank')}
+              onClick={() => navigate('/dashboard')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -430,7 +430,7 @@ export default function Admin() {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
+              onClick={() => navigate('/pdv')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -445,7 +445,7 @@ export default function Admin() {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => window.open(`${window.location.origin}/fechamento-caixa`, '_blank')}
+              onClick={() => navigate('/fechamento-caixa')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export default function Admin() {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => window.open(`${window.location.origin}/ferramentas-fiscais`, '_blank')}
+              onClick={() => navigate('/ferramentas-fiscais')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
