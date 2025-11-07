@@ -199,32 +199,13 @@ export default function FiscalTools() {
           <TabsContent value="nfe">
             <Card>
               <CardHeader>
-                <CardTitle>Notas Fiscais</CardTitle>
+                <CardTitle>Notas Fiscais Emitidas</CardTitle>
                 <CardDescription>
                   Visualize notas de entrada e saída separadamente
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="saida" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="saida">
-                      <Receipt className="w-4 h-4 mr-2" />
-                      Notas de Saída
-                    </TabsTrigger>
-                    <TabsTrigger value="entrada">
-                      <FileSpreadsheet className="w-4 h-4 mr-2" />
-                      Notas de Entrada
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="saida">
-                    <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} tipo="saida" />
-                  </TabsContent>
-                  
-                  <TabsContent value="entrada">
-                    <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} tipo="entrada" />
-                  </TabsContent>
-                </Tabs>
+                <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
               </CardContent>
             </Card>
           </TabsContent>

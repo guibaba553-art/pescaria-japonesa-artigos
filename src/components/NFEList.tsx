@@ -3,8 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, Send, AlertCircle } from 'lucide-react';
+import { FileText, Download, AlertCircle, ArrowDown, ArrowUp } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface NFE {
@@ -17,7 +18,7 @@ interface NFE {
   error_message: string | null;
   emitted_at: string | null;
   created_at: string;
-  tipo: 'entrada' | 'saida';
+  tipo: string;
   fornecedor_nome: string | null;
   fornecedor_cnpj: string | null;
 }
@@ -25,34 +26,26 @@ interface NFE {
 interface NFEListProps {
   settings: any;
   onRefresh: () => void;
-  tipo?: 'entrada' | 'saida';
 }
 
-export function NFEList({ settings, onRefresh, tipo }: NFEListProps) {
+export function NFEList({ settings, onRefresh }: NFEListProps) {
   const [nfes, setNfes] = useState<NFE[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadNFEs();
-  }, [tipo]);
+  }, []);
 
   const loadNFEs = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('nfe_emissions')
         .select('*')
         .order('created_at', { ascending: false });
 
-      // Filtrar por tipo se especificado
-      if (tipo) {
-        query = query.eq('tipo', tipo);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
-      setNfes((data || []) as NFE[]);
+      setNfes(data || []);
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar NF-es',
@@ -64,35 +57,86 @@ export function NFEList({ settings, onRefresh, tipo }: NFEListProps) {
     }
   };
 
-  const emitNFE = async (orderId: string) => {
-    try {
-      toast({
-        title: 'Emitindo NF-e...',
-        description: 'Aguarde enquanto processamos a nota fiscal.',
-      });
+  const renderNFETable = (tipo: 'entrada' | 'saida') => {
+    const filteredNfes = nfes.filter(nfe => nfe.tipo === tipo);
 
-      const { data, error } = await supabase.functions.invoke('emit-nfe', {
-        body: { orderId }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'NF-e emitida!',
-        description: 'A nota fiscal foi emitida com sucesso.',
-      });
-
-      loadNFEs();
-    } catch (error: any) {
-      toast({
-        title: 'Erro ao emitir NF-e',
-        description: error.message,
-        variant: 'destructive'
-      });
+    if (filteredNfes.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Nenhuma nota fiscal de {tipo} registrada</p>
+        </div>
+      );
     }
+
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{tipo === 'entrada' ? 'Fornecedor' : 'Pedido'}</TableHead>
+              <TableHead>Número NF-e</TableHead>
+              <TableHead>Chave</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredNfes.map((nfe) => (
+              <TableRow key={nfe.id}>
+                <TableCell>
+                  {tipo === 'entrada' ? (
+                    <div>
+                      <div className="font-medium">{nfe.fornecedor_nome || '-'}</div>
+                      <div className="text-xs text-muted-foreground font-mono">
+                        {nfe.fornecedor_cnpj || '-'}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs">
+                      {nfe.order_id.slice(0, 8)}...
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>{nfe.nfe_number || '-'}</TableCell>
+                <TableCell className="font-mono text-xs">
+                  {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={
+                      nfe.status === 'success' ? 'default' :
+                      nfe.status === 'pending' ? 'secondary' : 'destructive'
+                    }
+                  >
+                    {nfe.status === 'success' ? 'Emitida' :
+                     nfe.status === 'pending' ? 'Pendente' : 'Erro'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {nfe.emitted_at ? new Date(nfe.emitted_at).toLocaleString('pt-BR') : '-'}
+                </TableCell>
+                <TableCell className="text-right">
+                  {nfe.status === 'success' && nfe.nfe_xml_url && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      XML
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
   };
 
-  // Sempre mostrar notas já emitidas, mesmo se o sistema estiver desabilitado
   if (!settings?.nfe_enabled && nfes.length === 0) {
     return (
       <Alert>
@@ -108,129 +152,29 @@ export function NFEList({ settings, onRefresh, tipo }: NFEListProps) {
     return <div className="text-center py-12 text-muted-foreground">Carregando notas fiscais...</div>;
   }
 
-  if (nfes.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>
-          {tipo === 'entrada' 
-            ? 'Nenhuma nota fiscal de entrada registrada'
-            : tipo === 'saida'
-            ? 'Nenhuma nota fiscal de saída emitida'
-            : 'Nenhuma nota fiscal registrada'}
-        </p>
-      </div>
-    );
-  }
+  const nfesEntrada = nfes.filter(nfe => nfe.tipo === 'entrada').length;
+  const nfesSaida = nfes.filter(nfe => nfe.tipo === 'saida').length;
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {tipo === 'entrada' ? (
-                <>
-                  <TableHead>Fornecedor</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead>Número NF-e</TableHead>
-                  <TableHead>Chave</TableHead>
-                  <TableHead>Registrada em</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </>
-              ) : (
-                <>
-                  <TableHead>Pedido</TableHead>
-                  <TableHead>Número NF-e</TableHead>
-                  <TableHead>Chave</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Emitida em</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {nfes.map((nfe) => (
-              <TableRow key={nfe.id}>
-                {nfe.tipo === 'entrada' ? (
-                  <>
-                    <TableCell>{nfe.fornecedor_nome || '-'}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {nfe.fornecedor_cnpj || '-'}
-                    </TableCell>
-                    <TableCell>{nfe.nfe_number || '-'}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(nfe.created_at).toLocaleString('pt-BR')}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {nfe.nfe_xml_url && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          XML
-                        </Button>
-                      )}
-                    </TableCell>
-                  </>
-                ) : (
-                  <>
-                    <TableCell className="font-mono text-xs">
-                      {nfe.order_id.slice(0, 8)}...
-                    </TableCell>
-                    <TableCell>{nfe.nfe_number || '-'}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={
-                          nfe.status === 'success' ? 'default' :
-                          nfe.status === 'pending' ? 'secondary' : 'destructive'
-                        }
-                      >
-                        {nfe.status === 'success' ? 'Emitida' :
-                         nfe.status === 'pending' ? 'Pendente' : 'Erro'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {nfe.emitted_at ? new Date(nfe.emitted_at).toLocaleString('pt-BR') : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {nfe.status === 'success' && nfe.nfe_xml_url && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          XML
-                        </Button>
-                      )}
-                      {nfe.status === 'error' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => emitNFE(nfe.order_id)}
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Reemitir
-                        </Button>
-                      )}
-                    </TableCell>
-                  </>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <Tabs defaultValue="saida" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="saida" className="flex items-center gap-2">
+          <ArrowUp className="w-4 h-4" />
+          Notas de Saída ({nfesSaida})
+        </TabsTrigger>
+        <TabsTrigger value="entrada" className="flex items-center gap-2">
+          <ArrowDown className="w-4 h-4" />
+          Notas de Entrada ({nfesEntrada})
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="saida" className="space-y-4">
+        {renderNFETable('saida')}
+      </TabsContent>
+
+      <TabsContent value="entrada" className="space-y-4">
+        {renderNFETable('entrada')}
+      </TabsContent>
+    </Tabs>
   );
 }
