@@ -35,7 +35,34 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'Você é um especialista em extrair dados de XML de Notas Fiscais Eletrônicas (NFe) brasileiras. Extraia todos os dados estruturados dos produtos.'
+            content: `Você é um especialista em extrair dados de XML de Notas Fiscais Eletrônicas (NFe) brasileiras. 
+
+INSTRUÇÕES IMPORTANTES:
+1. Extraia TODOS os dados estruturados dos produtos
+2. SEMPRE extraia o código de barras EAN/GTIN de cada produto
+3. O código de barras pode estar nas tags: cEAN, cEANTrib, ou GTIN dentro de det > prod
+4. Se o código de barras não existir ou for vazio, retorne "SEM GTIN"
+5. NUNCA deixe o campo ean como null, undefined ou vazio
+6. Preste atenção especial aos impostos (ICMS, IPI, PIS, COFINS) dentro de det > imposto
+
+Exemplo de estrutura XML:
+<det nItem="1">
+  <prod>
+    <cProd>123</cProd>
+    <cEAN>7891234567890</cEAN> <!-- CÓDIGO DE BARRAS AQUI -->
+    <xProd>Nome do Produto</xProd>
+    <NCM>12345678</NCM>
+    <qCom>10.00</qCom>
+    <vUnCom>15.50</vUnCom>
+    <vProd>155.00</vProd>
+  </prod>
+  <imposto>
+    <ICMS><ICMS00><vICMS>12.40</vICMS></ICMS00></ICMS>
+    <IPI><IPITrib><vIPI>5.00</vIPI></IPITrib></IPI>
+    <PIS><PISAliq><vPIS>2.50</vPIS></PISAliq></PIS>
+    <COFINS><COFINSAliq><vCOFINS>11.63</vCOFINS></COFINSAliq></COFINS>
+  </imposto>
+</det>`
           },
           {
             role: 'user',
@@ -66,18 +93,18 @@ serve(async (req) => {
                     type: 'array',
                     items: {
                       type: 'object',
-                      properties: {
-                        sku: { type: 'string', description: 'Código do produto (tag cProd)' },
-                        ean: { type: 'string', description: 'Código de barras EAN/GTIN (tag cEAN ou cEANTrib)' },
-                        nome: { type: 'string', description: 'Nome/descrição do produto (tag xProd)' },
-                        ncm: { type: 'string', description: 'Código NCM (tag NCM)' },
-                        quantidade: { type: 'number', description: 'Quantidade (tag qCom)' },
-                        valor_unitario: { type: 'number', description: 'Valor unitário (tag vUnCom)' },
-                        valor_total: { type: 'number', description: 'Valor total do item (tag vProd)' },
-                        icms: { type: 'number', description: 'Valor do ICMS (tag vICMS ou 0 se não houver)' },
-                        ipi: { type: 'number', description: 'Valor do IPI (tag vIPI ou 0 se não houver)' },
-                        pis: { type: 'number', description: 'Valor do PIS (tag vPIS ou 0 se não houver)' },
-                        cofins: { type: 'number', description: 'Valor do COFINS (tag vCOFINS ou 0 se não houver)' }
+                       properties: {
+                        sku: { type: 'string', description: 'Código do produto (tag cProd dentro de det > prod)' },
+                        ean: { type: 'string', description: 'IMPORTANTE: Código de barras EAN/GTIN do produto. Procurar nas tags: cEAN, cEANTrib, ou GTIN dentro de det > prod. Se não existir ou for vazio, retornar "SEM GTIN". NUNCA deixar null ou undefined.' },
+                        nome: { type: 'string', description: 'Nome/descrição do produto (tag xProd dentro de det > prod)' },
+                        ncm: { type: 'string', description: 'Código NCM (tag NCM dentro de det > prod)' },
+                        quantidade: { type: 'number', description: 'Quantidade comercial (tag qCom dentro de det > prod)' },
+                        valor_unitario: { type: 'number', description: 'Valor unitário comercial (tag vUnCom dentro de det > prod)' },
+                        valor_total: { type: 'number', description: 'Valor total do item (tag vProd dentro de det > prod)' },
+                        icms: { type: 'number', description: 'Valor do ICMS (tag vICMS dentro de det > imposto > ICMS ou 0 se não houver)' },
+                        ipi: { type: 'number', description: 'Valor do IPI (tag vIPI dentro de det > imposto > IPI ou 0 se não houver)' },
+                        pis: { type: 'number', description: 'Valor do PIS (tag vPIS dentro de det > imposto > PIS ou 0 se não houver)' },
+                        cofins: { type: 'number', description: 'Valor do COFINS (tag vCOFINS dentro de det > imposto > COFINS ou 0 se não houver)' }
                       },
                       required: ['nome', 'quantidade', 'valor_unitario', 'valor_total']
                     }
