@@ -13,7 +13,6 @@ import RemoveLogoBackground from "./pages/RemoveLogoBackground";
 import PDV from "./pages/PDV";
 import Dashboard from "./pages/Dashboard";
 import CashRegister from "./pages/CashRegister";
-import StoreSettings from "./pages/StoreSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,7 +30,6 @@ const App = () => (
           <Route path="/pdv" element={<PDV />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/fechamento-caixa" element={<CashRegister />} />
-          <Route path="/configuracoes-loja" element={<StoreSettings />} />
           <Route path="/conta" element={<Account />} />
           <Route path="/produtos" element={<Products />} />
           <Route path="/produto/:id" element={<ProductDetails />} />
