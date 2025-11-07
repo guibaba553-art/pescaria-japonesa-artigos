@@ -51,17 +51,32 @@ serve(async (req) => {
       console.log(`  Custo total/unid: R$ ${custoTotal.toFixed(2)}`);
       console.log(`  Preço venda: R$ ${precoVenda.toFixed(2)}`);
 
-      // Verificar se produto já existe pelo SKU ou nome
+      // Verificar se produto já existe pelo EAN (código de barras), SKU ou nome
       let produtoExistente = null;
-      if (produto.sku) {
+      
+      // Prioridade 1: Buscar por EAN (código de barras)
+      if (produto.ean && produto.ean !== 'SEM GTIN') {
+        const { data } = await supabase
+          .from('products')
+          .select('*')
+          .eq('sku', produto.ean)
+          .maybeSingle();
+        produtoExistente = data;
+        console.log(`  Buscando por EAN: ${produto.ean}`, produtoExistente ? '✓ encontrado' : '✗ não encontrado');
+      }
+
+      // Prioridade 2: Buscar por SKU
+      if (!produtoExistente && produto.sku) {
         const { data } = await supabase
           .from('products')
           .select('*')
           .eq('sku', produto.sku)
           .maybeSingle();
         produtoExistente = data;
+        console.log(`  Buscando por SKU: ${produto.sku}`, produtoExistente ? '✓ encontrado' : '✗ não encontrado');
       }
 
+      // Prioridade 3: Buscar por nome
       if (!produtoExistente) {
         const { data } = await supabase
           .from('products')
@@ -69,18 +84,27 @@ serve(async (req) => {
           .ilike('name', produto.nome)
           .maybeSingle();
         produtoExistente = data;
+        console.log(`  Buscando por nome: ${produto.nome}`, produtoExistente ? '✓ encontrado' : '✗ não encontrado');
       }
 
       if (produtoExistente) {
-        // Atualizar estoque e preço do produto existente
+        // Atualizar estoque, preço e EAN do produto existente
         const novoEstoque = produtoExistente.stock + produto.quantidade;
+        const updateData: any = {
+          stock: novoEstoque,
+          price: precoVenda,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Se o produto não tem SKU ou o SKU atual não é um EAN válido, atualizar com o EAN da nota
+        if (produto.ean && produto.ean !== 'SEM GTIN' && !produtoExistente.sku) {
+          updateData.sku = produto.ean;
+          console.log(`  Atualizando EAN do produto: ${produto.ean}`);
+        }
+        
         const { error: updateError } = await supabase
           .from('products')
-          .update({
-            stock: novoEstoque,
-            price: precoVenda,
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', produtoExistente.id);
 
         if (updateError) throw updateError;
@@ -93,17 +117,19 @@ serve(async (req) => {
           acao: 'atualizado'
         });
       } else {
-        // Criar novo produto
+        // Criar novo produto com EAN (código de barras)
+        const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
+        
         const { data: novoProduto, error: insertError } = await supabase
           .from('products')
           .insert({
             name: produto.nome,
-            description: `${produto.nome} - NCM: ${produto.ncm || 'N/A'}`,
+            description: `${produto.nome} - NCM: ${produto.ncm || 'N/A'}${produto.ean && produto.ean !== 'SEM GTIN' ? ` - EAN: ${produto.ean}` : ''}`,
             short_description: produto.nome,
             price: precoVenda,
             category: 'Geral',
             stock: produto.quantidade,
-            sku: produto.sku || undefined,
+            sku: skuValue || undefined,
             featured: false,
             on_sale: false,
             include_in_nfe: true
