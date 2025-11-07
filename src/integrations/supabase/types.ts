@@ -246,6 +246,7 @@ export type Database = {
           nfe_number: string | null
           nfe_xml_url: string | null
           order_id: string
+          products_count: number | null
           status: string
           tipo: string
           updated_at: string
@@ -261,6 +262,7 @@ export type Database = {
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id: string
+          products_count?: number | null
           status?: string
           tipo?: string
           updated_at?: string
@@ -276,6 +278,7 @@ export type Database = {
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id?: string
+          products_count?: number | null
           status?: string
           tipo?: string
           updated_at?: string

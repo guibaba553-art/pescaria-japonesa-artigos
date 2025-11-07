@@ -7,6 +7,7 @@ import { ExcelImporter } from "@/components/ExcelImporter";
 import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
+import { NFEHistory } from "@/components/NFEHistory";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut } from "lucide-react";
@@ -167,7 +168,10 @@ export default function FiscalTools() {
           </TabsContent>
 
           <TabsContent value="xml">
-            <XMLImporter />
+            <div className="space-y-6">
+              <XMLImporter />
+              <NFEHistory />
+            </div>
           </TabsContent>
 
           <TabsContent value="excel">

@@ -158,7 +158,8 @@ serve(async (req) => {
         nfe_number: nfeData.numero,
         nfe_key: nfeData.chave_acesso || null,
         status: 'success',
-        emitted_at: nfeData.data_emissao
+        emitted_at: nfeData.data_emissao,
+        products_count: nfeData.produtos.length
       })
       .select()
       .single();
