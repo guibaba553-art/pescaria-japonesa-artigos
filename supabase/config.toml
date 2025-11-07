@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.sync-tga]
 verify_jwt = true
+
+[functions.calculate-fiscal]
+verify_jwt = true
