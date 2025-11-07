@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.parse-nfe-xml]
 verify_jwt = true
+
+[functions.process-nfe-entrada]
+verify_jwt = true

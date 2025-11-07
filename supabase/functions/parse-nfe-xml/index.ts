@@ -73,12 +73,18 @@ serve(async (req) => {
                         ncm: { type: 'string', description: 'Código NCM (tag NCM)' },
                         quantidade: { type: 'number', description: 'Quantidade (tag qCom)' },
                         valor_unitario: { type: 'number', description: 'Valor unitário (tag vUnCom)' },
-                        valor_total: { type: 'number', description: 'Valor total do item (tag vProd)' }
+                        valor_total: { type: 'number', description: 'Valor total do item (tag vProd)' },
+                        icms: { type: 'number', description: 'Valor do ICMS (tag vICMS ou 0 se não houver)' },
+                        ipi: { type: 'number', description: 'Valor do IPI (tag vIPI ou 0 se não houver)' },
+                        pis: { type: 'number', description: 'Valor do PIS (tag vPIS ou 0 se não houver)' },
+                        cofins: { type: 'number', description: 'Valor do COFINS (tag vCOFINS ou 0 se não houver)' }
                       },
                       required: ['nome', 'quantidade', 'valor_unitario', 'valor_total']
                     }
                   },
-                  valor_total: { type: 'number', description: 'Valor total da NFe (tag vNF)' }
+                  valor_total: { type: 'number', description: 'Valor total da NFe (tag vNF)' },
+                  valor_frete: { type: 'number', description: 'Valor total do frete da NFe (tag vFrete ou 0)' },
+                  chave_acesso: { type: 'string', description: 'Chave de acesso da NFe com 44 dígitos (tag chNFe ou infNFe Id)' }
                 },
                 required: ['numero', 'serie', 'data_emissao', 'fornecedor', 'produtos', 'valor_total'],
                 additionalProperties: false

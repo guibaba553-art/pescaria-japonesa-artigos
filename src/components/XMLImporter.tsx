@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2, Download, CheckCircle } from 'lucide-react';
+import { Upload, FileText, Loader2, Download, CheckCircle, Save } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface NFEProduct {
   sku: string;
@@ -14,6 +16,10 @@ interface NFEProduct {
   quantidade: number;
   valor_unitario: number;
   valor_total: number;
+  icms?: number;
+  ipi?: number;
+  pis?: number;
+  cofins?: number;
 }
 
 interface NFEData {
@@ -26,12 +32,16 @@ interface NFEData {
   };
   produtos: NFEProduct[];
   valor_total: number;
+  valor_frete?: number;
+  chave_acesso?: string;
 }
 
 export function XMLImporter() {
   const [file, setFile] = useState<File | null>(null);
   const [nfeData, setNfeData] = useState<NFEData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [margemLucro, setMargemLucro] = useState<number>(30);
+  const [processando, setProcessando] = useState(false);
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +87,40 @@ export function XMLImporter() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const registrarProdutos = async () => {
+    if (!nfeData) return;
+
+    setProcessando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-nfe-entrada', {
+        body: { 
+          nfeData,
+          margemLucro 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Produtos registrados!',
+        description: data.message,
+      });
+
+      // Limpar dados após registro
+      setNfeData(null);
+      setFile(null);
+    } catch (error: any) {
+      console.error('Erro ao registrar produtos:', error);
+      toast({
+        title: 'Erro ao registrar produtos',
+        description: error.message || 'Não foi possível registrar os produtos.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessando(false);
     }
   };
 
@@ -152,27 +196,72 @@ export function XMLImporter() {
           </div>
 
           {nfeData && (
-            <div className="p-4 bg-primary/5 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                NFe processada com sucesso
+            <div className="space-y-4">
+              <div className="p-4 bg-primary/5 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  NFe processada com sucesso
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Número:</span> {nfeData.numero}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Série:</span> {nfeData.serie}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Data:</span> {new Date(nfeData.data_emissao).toLocaleDateString('pt-BR')}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Valor Total:</span> R$ {nfeData.valor_total.toFixed(2)}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Fornecedor:</span> {nfeData.fornecedor.nome} ({nfeData.fornecedor.cnpj})
+                  </div>
+                  {nfeData.valor_frete && nfeData.valor_frete > 0 && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Frete:</span> R$ {nfeData.valor_frete.toFixed(2)}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Número:</span> {nfeData.numero}
+
+              <div className="p-4 border rounded-lg space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="margem-lucro">Margem de Lucro (%)</Label>
+                  <Input
+                    id="margem-lucro"
+                    type="number"
+                    min="0"
+                    max="500"
+                    step="0.1"
+                    value={margemLucro}
+                    onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Define a margem de lucro que será aplicada sobre o custo (produto + impostos + frete) para calcular o preço de venda
+                  </p>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Série:</span> {nfeData.serie}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Data:</span> {new Date(nfeData.data_emissao).toLocaleDateString('pt-BR')}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Valor Total:</span> R$ {nfeData.valor_total.toFixed(2)}
-                </div>
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Fornecedor:</span> {nfeData.fornecedor.nome} ({nfeData.fornecedor.cnpj})
-                </div>
+
+                <Button 
+                  onClick={registrarProdutos} 
+                  disabled={processando}
+                  className="w-full"
+                  size="lg"
+                >
+                  {processando ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Registrando produtos...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Registrar {nfeData.produtos.length} Produto(s) Automaticamente
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           )}
