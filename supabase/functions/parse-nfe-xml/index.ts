@@ -35,17 +35,37 @@ serve(async (req) => {
     const systemPrompt = isPdf 
       ? `Você é um especialista em extrair dados de PDFs de Notas Fiscais Eletrônicas (NFe) brasileiras.
 
-INSTRUÇÕES IMPORTANTES:
-1. Extraia TODOS os dados estruturados dos produtos da nota fiscal
-2. SEMPRE extraia o código de barras EAN/GTIN de cada produto
-3. O código de barras pode estar identificado como: EAN, GTIN, Cód. Barras, ou código similar
-4. Se o código de barras não existir, retorne "SEM GTIN"
-5. NUNCA deixe o campo ean como null, undefined ou vazio
-6. Extraia impostos quando disponíveis (ICMS, IPI, PIS, COFINS)
-7. Procure por informações do fornecedor/emitente (nome, CNPJ)
-8. Extraia número, série e data de emissão da nota
-9. Extraia valores totais de produtos e frete quando disponíveis`
-      : `Você é um especialista em extrair dados de XML de Notas Fiscais Eletrônicas (NFe) brasileiras. 
+REGRAS CRÍTICAS - SIGA RIGOROSAMENTE:
+1. APENAS extraia informações que REALMENTE EXISTEM no PDF
+2. SE NÃO CONSEGUIR LER UM VALOR COM CERTEZA, retorne 0 ou "SEM GTIN"
+3. NUNCA invente, deduza ou adivinhe valores de produtos
+4. SE um campo não estiver claramente visível, use valores padrão:
+   - ean: "SEM GTIN"
+   - sku: "SEM SKU"
+   - ncm: ""
+   - impostos: 0
+5. Extraia APENAS produtos que estão EXPLICITAMENTE listados na nota
+6. NÃO duplique produtos
+7. NÃO crie produtos fictícios
+8. Valores devem ser EXATAMENTE como aparecem no PDF
+9. CNPJ e números devem estar exatamente como impressos
+10. Se houver dúvida sobre um produto, PULE-O ao invés de inventar
+
+DADOS A EXTRAIR:
+- Número da nota, série, data de emissão
+- Fornecedor: nome completo e CNPJ (exatamente como aparece)
+- Produtos: SOMENTE os que você consegue ler claramente
+  * Nome do produto (texto completo)
+  * Quantidade (número exato)
+  * Valor unitário (número exato com decimais)
+  * Valor total (número exato)
+  * EAN/GTIN se visível, senão "SEM GTIN"
+  * Impostos se claramente especificados
+- Valor total da nota (número na parte inferior)
+- Valor do frete se houver
+
+ATENÇÃO: Prefira retornar MENOS produtos corretos do que MAIS produtos com dados inventados.`
+      : `Você é um especialista em extrair dados de XML de Notas Fiscais Eletrônicas (NFe) brasileiras.
 
 INSTRUÇÕES IMPORTANTES:
 1. Extraia TODOS os dados estruturados dos produtos
@@ -81,7 +101,7 @@ Exemplo de estrutura XML:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: isPdf ? 'google/gemini-2.5-pro' : 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -89,7 +109,9 @@ Exemplo de estrutura XML:
           },
           {
             role: 'user',
-            content: `Extraia os dados desta NFe ${isPdf ? 'PDF' : 'XML'}:\n\n${contentToProcess}`
+            content: isPdf 
+              ? `Analise este PDF de NFe com MUITO CUIDADO. Extraia APENAS os dados que você tem CERTEZA ABSOLUTA que existem. NÃO invente nada:\n\n${contentToProcess}`
+              : `Extraia os dados desta NFe XML:\n\n${contentToProcess}`
           }
         ],
         tools: [
@@ -174,18 +196,44 @@ Exemplo de estrutura XML:
 
     const nfeData = JSON.parse(toolCall.function.arguments);
     
-    // Garantir que todos os produtos tenham EAN
-    nfeData.produtos = nfeData.produtos.map((p: any) => ({
-      ...p,
-      ean: p.ean || 'SEM GTIN',
-      sku: p.sku || p.ean || 'SEM SKU',
-      icms: p.icms || 0,
-      ipi: p.ipi || 0,
-      pis: p.pis || 0,
-      cofins: p.cofins || 0
-    }));
+    // Validações rigorosas
+    if (!nfeData.produtos || nfeData.produtos.length === 0) {
+      throw new Error('Nenhum produto encontrado na nota fiscal');
+    }
     
-    console.log('NFe data extracted:', nfeData.produtos.length, 'products');
+    // Filtrar produtos inválidos e normalizar dados
+    nfeData.produtos = nfeData.produtos
+      .filter((p: any) => {
+        // Validar que o produto tem dados mínimos válidos
+        return p.nome && 
+               p.quantidade > 0 && 
+               p.valor_unitario >= 0 && 
+               p.valor_total >= 0;
+      })
+      .map((p: any) => ({
+        ...p,
+        nome: String(p.nome).trim(),
+        ean: p.ean && p.ean !== 'null' && p.ean !== 'undefined' ? String(p.ean).trim() : 'SEM GTIN',
+        sku: p.sku || p.ean || 'SEM SKU',
+        ncm: p.ncm || '',
+        quantidade: Number(p.quantidade) || 0,
+        valor_unitario: Number(p.valor_unitario) || 0,
+        valor_total: Number(p.valor_total) || 0,
+        icms: Number(p.icms) || 0,
+        ipi: Number(p.ipi) || 0,
+        pis: Number(p.pis) || 0,
+        cofins: Number(p.cofins) || 0
+      }));
+    
+    // Verificar se sobrou algum produto após filtragem
+    if (nfeData.produtos.length === 0) {
+      throw new Error('Nenhum produto válido encontrado após validação');
+    }
+    
+    console.log('NFe data extracted and validated:', nfeData.produtos.length, 'valid products');
+    if (isPdf) {
+      console.log('PDF processed with gemini-2.5-pro for higher accuracy');
+    }
 
     return new Response(
       JSON.stringify(nfeData),
