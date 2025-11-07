@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ExcelImporter } from "@/components/ExcelImporter";
 import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
+import { NFEList } from "@/components/NFEList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut } from "lucide-react";
@@ -22,6 +23,7 @@ export default function FiscalTools() {
   const { isAdmin, loading, signOut } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [fiscalSettings, setFiscalSettings] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -31,6 +33,7 @@ export default function FiscalTools() {
 
   useEffect(() => {
     loadProducts();
+    loadFiscalSettings();
   }, []);
 
   const loadProducts = async () => {
@@ -46,6 +49,20 @@ export default function FiscalTools() {
       console.error('Erro ao carregar produtos:', error);
     } finally {
       setLoadingProducts(false);
+    }
+  };
+
+  const loadFiscalSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('fiscal_settings')
+        .select('*')
+        .maybeSingle();
+
+      if (error) throw error;
+      setFiscalSettings(data);
+    } catch (error) {
+      console.error('Erro ao carregar configurações fiscais:', error);
     }
   };
 
@@ -182,23 +199,13 @@ export default function FiscalTools() {
           <TabsContent value="nfe">
             <Card>
               <CardHeader>
-                <CardTitle>Visualizar Notas Fiscais</CardTitle>
+                <CardTitle>Notas Fiscais Emitidas</CardTitle>
                 <CardDescription>
                   Lista de todas as NF-es emitidas pelo sistema
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  Funcionalidade de visualização de NFes será implementada aqui.
-                  Você pode acessar as NFes através do Painel Admin &gt; Sistema Fiscal &gt; Notas Fiscais.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => navigate('/admin')}
-                >
-                  <Receipt className="w-4 h-4 mr-2" />
-                  Ir para Sistema Fiscal
-                </Button>
+                <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
               </CardContent>
             </Card>
           </TabsContent>
