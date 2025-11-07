@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Settings } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
@@ -412,7 +412,7 @@ export default function Admin() {
 
         {/* Cards de Acesso Rápido */}
         {isAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
               onClick={() => navigate('/dashboard')}
@@ -454,6 +454,21 @@ export default function Admin() {
                 </CardTitle>
                 <CardDescription>
                   Abertura, sangrias e fechamento
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
+              onClick={() => navigate('/configuracoes-loja')}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Configurações da Loja
+                </CardTitle>
+                <CardDescription>
+                  Nome, logo, cores e integrações
                 </CardDescription>
               </CardHeader>
             </Card>

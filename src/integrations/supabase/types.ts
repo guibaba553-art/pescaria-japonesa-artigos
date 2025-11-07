@@ -605,6 +605,69 @@ export type Database = {
           },
         ]
       }
+      store_settings: {
+        Row: {
+          accent_color: string | null
+          cep_origin: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          contact_whatsapp: string | null
+          created_at: string
+          footer_text: string | null
+          hero_image_url: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          mercado_pago_public_key: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          store_description: string | null
+          store_logo_url: string | null
+          store_name: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string | null
+          cep_origin?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          created_at?: string
+          footer_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          mercado_pago_public_key?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          store_description?: string | null
+          store_logo_url?: string | null
+          store_name?: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string | null
+          cep_origin?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_whatsapp?: string | null
+          created_at?: string
+          footer_text?: string | null
+          hero_image_url?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          mercado_pago_public_key?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          store_description?: string | null
+          store_logo_url?: string | null
+          store_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tga_sync_log: {
         Row: {
           created_at: string
