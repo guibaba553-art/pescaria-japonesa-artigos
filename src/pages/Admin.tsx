@@ -415,7 +415,7 @@ export default function Admin() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => window.open('/dashboard', '_blank')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -430,7 +430,7 @@ export default function Admin() {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/pdv')}
+              onClick={() => window.open('/pdv', '_blank')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -445,7 +445,7 @@ export default function Admin() {
 
             <Card 
               className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/fechamento-caixa')}
+              onClick={() => window.open('/fechamento-caixa', '_blank')}
             >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
