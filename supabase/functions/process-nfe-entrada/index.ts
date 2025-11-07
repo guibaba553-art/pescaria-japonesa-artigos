@@ -12,10 +12,10 @@ serve(async (req) => {
   }
 
   try {
-    const { nfeData, margemLucro } = await req.json();
+    const { nfeData } = await req.json();
     
-    if (!nfeData || !margemLucro) {
-      throw new Error('NFe data and profit margin are required');
+    if (!nfeData) {
+      throw new Error('NFe data is required');
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -23,7 +23,6 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     console.log('Processing NFe entrada with', nfeData.produtos.length, 'products');
-    console.log('Profit margin:', margemLucro, '%');
 
     // Calcular frete proporcional por produto baseado no valor
     const valorTotalProdutos = nfeData.produtos.reduce((sum: number, p: any) => sum + p.valor_total, 0);
@@ -32,24 +31,24 @@ serve(async (req) => {
     const produtosProcessados = [];
 
     for (const produto of nfeData.produtos) {
+      // Margem individual do produto ou 30% padrão
+      const margemLucro = produto.margem_lucro || 30;
+      
       // Calcular frete proporcional deste produto
       const freteProporcional = (produto.valor_total / valorTotalProdutos) * freteTotal;
       
       // Calcular impostos totais do produto
       const impostosTotal = (produto.icms || 0) + (produto.ipi || 0) + (produto.pis || 0) + (produto.cofins || 0);
       
-      // Custo total = valor do produto + impostos + frete proporcional
-      const custoTotal = produto.valor_unitario + (impostosTotal / produto.quantidade) + (freteProporcional / produto.quantidade);
-      
-      // Preço de venda = custo * (1 + margem/100)
-      const precoVenda = custoTotal * (1 + margemLucro / 100);
+      // Custo unitário da nova entrada = valor do produto + impostos + frete proporcional
+      const custoNovaEntrada = produto.valor_unitario + (impostosTotal / produto.quantidade) + (freteProporcional / produto.quantidade);
 
       console.log(`Produto: ${produto.nome}`);
       console.log(`  Valor unitário: R$ ${produto.valor_unitario.toFixed(2)}`);
       console.log(`  Impostos/unid: R$ ${(impostosTotal / produto.quantidade).toFixed(2)}`);
       console.log(`  Frete/unid: R$ ${(freteProporcional / produto.quantidade).toFixed(2)}`);
-      console.log(`  Custo total/unid: R$ ${custoTotal.toFixed(2)}`);
-      console.log(`  Preço venda: R$ ${precoVenda.toFixed(2)}`);
+      console.log(`  Custo nova entrada/unid: R$ ${custoNovaEntrada.toFixed(2)}`);
+      console.log(`  Margem: ${margemLucro}%`);
 
       // Verificar se produto já existe pelo EAN (código de barras), SKU ou nome
       let produtoExistente = null;
@@ -88,8 +87,28 @@ serve(async (req) => {
       }
 
       if (produtoExistente) {
-        // Atualizar estoque, preço e EAN do produto existente
-        const novoEstoque = produtoExistente.stock + produto.quantidade;
+        // Calcular custo médio ponderado
+        const estoqueAtual = produtoExistente.stock;
+        const precoAtual = produtoExistente.price;
+        
+        // Reverter o preço atual para custo (assumindo que foi aplicada a mesma margem)
+        // Se não conseguirmos calcular, usar o preço atual como custo
+        const custoAtual = precoAtual / (1 + margemLucro / 100);
+        
+        // Custo médio ponderado = (custo_atual * estoque_atual + custo_nova_entrada * qtd_nova) / (estoque_atual + qtd_nova)
+        const custoMedioPonderado = estoqueAtual > 0 
+          ? ((custoAtual * estoqueAtual) + (custoNovaEntrada * produto.quantidade)) / (estoqueAtual + produto.quantidade)
+          : custoNovaEntrada;
+        
+        // Preço de venda com a margem aplicada sobre o custo médio
+        const precoVenda = custoMedioPonderado * (1 + margemLucro / 100);
+        
+        const novoEstoque = estoqueAtual + produto.quantidade;
+        
+        console.log(`  Estoque atual: ${estoqueAtual} (custo: R$ ${custoAtual.toFixed(2)})`);
+        console.log(`  Custo médio ponderado: R$ ${custoMedioPonderado.toFixed(2)}`);
+        console.log(`  Preço venda final: R$ ${precoVenda.toFixed(2)}`);
+        
         const updateData: any = {
           stock: novoEstoque,
           price: precoVenda,
@@ -117,7 +136,10 @@ serve(async (req) => {
           acao: 'atualizado'
         });
       } else {
-        // Criar novo produto com EAN (código de barras)
+        // Criar novo produto - preço = custo da entrada + margem
+        const precoVenda = custoNovaEntrada * (1 + margemLucro / 100);
+        console.log(`  Preço venda novo produto: R$ ${precoVenda.toFixed(2)}`);
+        
         const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
         
         const { data: novoProduto, error: insertError } = await supabase

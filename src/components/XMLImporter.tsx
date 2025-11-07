@@ -22,6 +22,7 @@ interface NFEProduct {
   ipi?: number;
   pis?: number;
   cofins?: number;
+  margem_lucro?: number;
 }
 
 interface NFEData {
@@ -46,6 +47,7 @@ export function XMLImporter() {
   const [processando, setProcessando] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
+  const [produtosComMargem, setProdutosComMargem] = useState<NFEProduct[]>([]);
   const { toast } = useToast();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,6 +118,7 @@ export function XMLImporter() {
         
         if (data) {
           setNfeData(data);
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
           toast({
             title: 'PDF processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -133,6 +136,7 @@ export function XMLImporter() {
         
         if (data) {
           setNfeData(data);
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
           toast({
             title: 'XML processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -158,8 +162,10 @@ export function XMLImporter() {
     try {
       const { data, error } = await supabase.functions.invoke('process-nfe-entrada', {
         body: { 
-          nfeData,
-          margemLucro 
+          nfeData: {
+            ...nfeData,
+            produtos: produtosComMargem
+          }
         }
       });
 
@@ -173,6 +179,7 @@ export function XMLImporter() {
       // Limpar dados após registro
       setNfeData(null);
       setFile(null);
+      setProdutosComMargem([]);
     } catch (error: any) {
       console.error('Erro ao registrar produtos:', error);
       toast({
@@ -183,6 +190,22 @@ export function XMLImporter() {
     } finally {
       setProcessando(false);
     }
+  };
+
+  const updateMargemProduto = (index: number, margem: number) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], margem_lucro: margem };
+      return updated;
+    });
+  };
+
+  const aplicarMargemTodos = () => {
+    setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro })));
+    toast({
+      title: 'Margem aplicada!',
+      description: `Margem de ${margemLucro}% aplicada a todos os produtos.`,
+    });
   };
 
   const exportToExcel = () => {
@@ -301,19 +324,24 @@ export function XMLImporter() {
 
               <div className="p-4 border rounded-lg space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="margem-lucro">Margem de Lucro (%)</Label>
-                  <Input
-                    id="margem-lucro"
-                    type="number"
-                    min="0"
-                    max="500"
-                    step="0.1"
-                    value={margemLucro}
-                    onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
-                    className="w-full"
-                  />
+                  <Label htmlFor="margem-lucro">Margem de Lucro Padrão (%)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="margem-lucro"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.1"
+                      value={margemLucro}
+                      onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
+                      className="flex-1"
+                    />
+                    <Button onClick={aplicarMargemTodos} variant="outline">
+                      Aplicar a Todos
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Define a margem de lucro que será aplicada sobre o custo (produto + impostos + frete) para calcular o preço de venda
+                    Define a margem de lucro padrão. Você pode personalizar cada produto na tabela abaixo.
                   </p>
                 </div>
 
@@ -369,10 +397,11 @@ export function XMLImporter() {
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead className="text-right">Valor Unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Margem %</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {nfeData.produtos.map((produto, index) => (
+                  {produtosComMargem.map((produto, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-mono text-xs">{produto.sku || '-'}</TableCell>
                       <TableCell className="font-mono text-xs">{produto.ean || '-'}</TableCell>
@@ -381,6 +410,17 @@ export function XMLImporter() {
                       <TableCell className="text-right">{produto.quantidade}</TableCell>
                       <TableCell className="text-right">R$ {produto.valor_unitario.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-medium">R$ {produto.valor_total.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="500"
+                          step="0.1"
+                          value={produto.margem_lucro || margemLucro}
+                          onChange={(e) => updateMargemProduto(index, parseFloat(e.target.value) || 0)}
+                          className="w-20 text-right"
+                        />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
