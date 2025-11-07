@@ -239,36 +239,45 @@ export type Database = {
           created_at: string
           emitted_at: string | null
           error_message: string | null
+          fornecedor_cnpj: string | null
+          fornecedor_nome: string | null
           id: string
           nfe_key: string | null
           nfe_number: string | null
           nfe_xml_url: string | null
           order_id: string
           status: string
+          tipo: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           emitted_at?: string | null
           error_message?: string | null
+          fornecedor_cnpj?: string | null
+          fornecedor_nome?: string | null
           id?: string
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id: string
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           emitted_at?: string | null
           error_message?: string | null
+          fornecedor_cnpj?: string | null
+          fornecedor_nome?: string | null
           id?: string
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id?: string
           status?: string
+          tipo?: string
           updated_at?: string
         }
         Relationships: [

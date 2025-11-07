@@ -17,31 +17,42 @@ interface NFE {
   error_message: string | null;
   emitted_at: string | null;
   created_at: string;
+  tipo: 'entrada' | 'saida';
+  fornecedor_nome: string | null;
+  fornecedor_cnpj: string | null;
 }
 
 interface NFEListProps {
   settings: any;
   onRefresh: () => void;
+  tipo?: 'entrada' | 'saida';
 }
 
-export function NFEList({ settings, onRefresh }: NFEListProps) {
+export function NFEList({ settings, onRefresh, tipo }: NFEListProps) {
   const [nfes, setNfes] = useState<NFE[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     loadNFEs();
-  }, []);
+  }, [tipo]);
 
   const loadNFEs = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('nfe_emissions')
         .select('*')
         .order('created_at', { ascending: false });
 
+      // Filtrar por tipo se especificado
+      if (tipo) {
+        query = query.eq('tipo', tipo);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setNfes(data || []);
+      setNfes((data || []) as NFE[]);
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar NF-es',
@@ -101,7 +112,13 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>Nenhuma nota fiscal emitida ainda</p>
+        <p>
+          {tipo === 'entrada' 
+            ? 'Nenhuma nota fiscal de entrada registrada'
+            : tipo === 'saida'
+            ? 'Nenhuma nota fiscal de saída emitida'
+            : 'Nenhuma nota fiscal registrada'}
+        </p>
       </div>
     );
   }
@@ -112,62 +129,103 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Pedido</TableHead>
-              <TableHead>Número NF-e</TableHead>
-              <TableHead>Chave</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Emitida em</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              {tipo === 'entrada' ? (
+                <>
+                  <TableHead>Fornecedor</TableHead>
+                  <TableHead>CNPJ</TableHead>
+                  <TableHead>Número NF-e</TableHead>
+                  <TableHead>Chave</TableHead>
+                  <TableHead>Registrada em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead>Pedido</TableHead>
+                  <TableHead>Número NF-e</TableHead>
+                  <TableHead>Chave</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Emitida em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {nfes.map((nfe) => (
               <TableRow key={nfe.id}>
-                <TableCell className="font-mono text-xs">
-                  {nfe.order_id.slice(0, 8)}...
-                </TableCell>
-                <TableCell>
-                  {nfe.nfe_number || '-'}
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={
-                      nfe.status === 'success' ? 'default' :
-                      nfe.status === 'pending' ? 'secondary' : 'destructive'
-                    }
-                  >
-                    {nfe.status === 'success' ? 'Emitida' :
-                     nfe.status === 'pending' ? 'Pendente' : 'Erro'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {nfe.emitted_at ? new Date(nfe.emitted_at).toLocaleString('pt-BR') : '-'}
-                </TableCell>
-                <TableCell className="text-right">
-                  {nfe.status === 'success' && nfe.nfe_xml_url && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      XML
-                    </Button>
-                  )}
-                  {nfe.status === 'error' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => emitNFE(nfe.order_id)}
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Reemitir
-                    </Button>
-                  )}
-                </TableCell>
+                {nfe.tipo === 'entrada' ? (
+                  <>
+                    <TableCell>{nfe.fornecedor_nome || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {nfe.fornecedor_cnpj || '-'}
+                    </TableCell>
+                    <TableCell>{nfe.nfe_number || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(nfe.created_at).toLocaleString('pt-BR')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {nfe.nfe_xml_url && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          XML
+                        </Button>
+                      )}
+                    </TableCell>
+                  </>
+                ) : (
+                  <>
+                    <TableCell className="font-mono text-xs">
+                      {nfe.order_id.slice(0, 8)}...
+                    </TableCell>
+                    <TableCell>{nfe.nfe_number || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {nfe.nfe_key ? `${nfe.nfe_key.slice(0, 8)}...` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          nfe.status === 'success' ? 'default' :
+                          nfe.status === 'pending' ? 'secondary' : 'destructive'
+                        }
+                      >
+                        {nfe.status === 'success' ? 'Emitida' :
+                         nfe.status === 'pending' ? 'Pendente' : 'Erro'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {nfe.emitted_at ? new Date(nfe.emitted_at).toLocaleString('pt-BR') : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {nfe.status === 'success' && nfe.nfe_xml_url && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          XML
+                        </Button>
+                      )}
+                      {nfe.status === 'error' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => emitNFE(nfe.order_id)}
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Reemitir
+                        </Button>
+                      )}
+                    </TableCell>
+                  </>
+                )}
               </TableRow>
             ))}
           </TableBody>
