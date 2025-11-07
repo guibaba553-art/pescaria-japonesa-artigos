@@ -11,10 +11,24 @@ serve(async (req) => {
   }
 
   try {
-    const { xmlContent } = await req.json();
+    const { xmlContent, pdfContent, isPdf } = await req.json();
     
-    if (!xmlContent) {
-      throw new Error('XML content is required');
+    if (!xmlContent && !pdfContent) {
+      throw new Error('XML or PDF content is required');
+    }
+
+    let contentToProcess = xmlContent;
+
+    // Se for PDF, extrair o texto primeiro
+    if (isPdf && pdfContent) {
+      console.log('Processing PDF file...');
+      
+      // Decodificar base64 e extrair texto
+      const pdfBytes = Uint8Array.from(atob(pdfContent), c => c.charCodeAt(0));
+      const pdfText = new TextDecoder().decode(pdfBytes);
+      
+      console.log('PDF text extracted, length:', pdfText.length);
+      contentToProcess = pdfText;
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -22,7 +36,7 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    console.log('Parsing NFe XML with AI...');
+    console.log('Parsing NFe content with AI...');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -66,7 +80,7 @@ Exemplo de estrutura XML:
           },
           {
             role: 'user',
-            content: `Extraia os dados desta NFe XML:\n\n${xmlContent}`
+            content: `Extraia os dados desta NFe ${isPdf ? 'PDF' : 'XML'}:\n\n${contentToProcess}`
           }
         ],
         tools: [

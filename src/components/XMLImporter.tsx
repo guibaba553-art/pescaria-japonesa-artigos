@@ -47,10 +47,13 @@ export function XMLImporter() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (!selectedFile.name.endsWith('.xml')) {
+      const isXml = selectedFile.name.endsWith('.xml');
+      const isPdf = selectedFile.name.endsWith('.pdf');
+      
+      if (!isXml && !isPdf) {
         toast({
           title: 'Formato inválido',
-          description: 'Por favor, selecione um arquivo XML.',
+          description: 'Por favor, selecione um arquivo XML ou PDF.',
           variant: 'destructive',
         });
         return;
@@ -65,24 +68,52 @@ export function XMLImporter() {
 
     setLoading(true);
     try {
-      const xmlText = await file.text();
+      let contentToProcess = '';
       
-      const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
-        body: { xmlContent: xmlText }
-      });
+      if (file.name.endsWith('.pdf')) {
+        // Para PDF, ler como base64 e enviar
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = reader.result as string;
+            resolve(base64.split(',')[1]); // Remove o prefixo data:application/pdf;base64,
+          };
+          reader.onerror = reject;
+        });
+        reader.readAsDataURL(file);
+        
+        const base64Content = await base64Promise;
+        
+        const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
+          body: { 
+            pdfContent: base64Content,
+            isPdf: true
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        setNfeData(data);
+      } else {
+        // Para XML, processar como antes
+        contentToProcess = await file.text();
+        
+        const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
+          body: { xmlContent: contentToProcess }
+        });
 
-      setNfeData(data);
+        if (error) throw error;
+        setNfeData(data);
+      }
+
       toast({
-        title: 'XML processado!',
-        description: `${data.produtos.length} produto(s) encontrado(s).`,
+        title: 'Arquivo processado!',
+        description: `${nfeData?.produtos.length || 0} produto(s) encontrado(s).`,
       });
     } catch (error: any) {
-      console.error('Erro ao processar XML:', error);
+      console.error('Erro ao processar arquivo:', error);
       toast({
-        title: 'Erro ao processar XML',
-        description: error.message || 'Não foi possível processar o arquivo XML.',
+        title: 'Erro ao processar arquivo',
+        description: error.message || 'Não foi possível processar o arquivo.',
         variant: 'destructive',
       });
     } finally {
@@ -155,7 +186,7 @@ export function XMLImporter() {
             Importar XML da NFe
           </CardTitle>
           <CardDescription>
-            Faça upload do arquivo XML da Nota Fiscal Eletrônica para extrair automaticamente os dados dos produtos
+            Faça upload do arquivo XML ou PDF da Nota Fiscal Eletrônica para extrair automaticamente os dados dos produtos
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -163,7 +194,7 @@ export function XMLImporter() {
             <div className="flex-1">
               <input
                 type="file"
-                accept=".xml"
+                accept=".xml,.pdf"
                 onChange={handleFileChange}
                 className="hidden"
                 id="xml-upload"
@@ -173,7 +204,7 @@ export function XMLImporter() {
                 className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
               >
                 <Upload className="w-4 h-4" />
-                {file ? file.name : 'Selecionar arquivo XML'}
+                {file ? file.name : 'Selecionar arquivo XML ou PDF'}
               </label>
             </div>
             <Button
