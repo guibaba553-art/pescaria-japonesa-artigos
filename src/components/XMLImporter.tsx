@@ -4,9 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2, Download, CheckCircle, Save } from 'lucide-react';
+import { Upload, FileText, Loader2, Download, CheckCircle, Save, Eye, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NFEProduct {
   sku: string;
@@ -42,9 +44,11 @@ export function XMLImporter() {
   const [loading, setLoading] = useState(false);
   const [margemLucro, setMargemLucro] = useState<number>(30);
   const [processando, setProcessando] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       const isXml = selectedFile.name.endsWith('.xml');
@@ -58,8 +62,20 @@ export function XMLImporter() {
         });
         return;
       }
+      
       setFile(selectedFile);
       setNfeData(null);
+      
+      // Se for PDF, criar preview
+      if (isPdf) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPdfPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(selectedFile);
+      } else {
+        setPdfPreview(null);
+      }
     }
   };
 
@@ -68,52 +84,66 @@ export function XMLImporter() {
 
     setLoading(true);
     try {
-      let contentToProcess = '';
-      
       if (file.name.endsWith('.pdf')) {
-        // Para PDF, ler como base64 e enviar
+        // Para PDF, ler como texto e enviar
         const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onload = () => {
-            const base64 = reader.result as string;
-            resolve(base64.split(',')[1]); // Remove o prefixo data:application/pdf;base64,
+        const textPromise = new Promise<string>((resolve, reject) => {
+          reader.onload = async () => {
+            try {
+              const arrayBuffer = reader.result as ArrayBuffer;
+              const uint8Array = new Uint8Array(arrayBuffer);
+              const text = new TextDecoder().decode(uint8Array);
+              resolve(text);
+            } catch (error) {
+              reject(error);
+            }
           };
           reader.onerror = reject;
         });
-        reader.readAsDataURL(file);
+        reader.readAsArrayBuffer(file);
         
-        const base64Content = await base64Promise;
+        const pdfText = await textPromise;
         
         const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
           body: { 
-            pdfContent: base64Content,
-            isPdf: true
+            xmlContent: pdfText,
+            isPdf: true,
+            fileName: file.name
           }
         });
 
         if (error) throw error;
-        setNfeData(data);
+        
+        if (data) {
+          setNfeData(data);
+          toast({
+            title: 'PDF processado!',
+            description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
+          });
+        }
       } else {
-        // Para XML, processar como antes
-        contentToProcess = await file.text();
+        // Para XML, processar como texto
+        const xmlContent = await file.text();
         
         const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
-          body: { xmlContent: contentToProcess }
+          body: { xmlContent }
         });
 
         if (error) throw error;
-        setNfeData(data);
+        
+        if (data) {
+          setNfeData(data);
+          toast({
+            title: 'XML processado!',
+            description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
+          });
+        }
       }
-
-      toast({
-        title: 'Arquivo processado!',
-        description: `${nfeData?.produtos.length || 0} produto(s) encontrado(s).`,
-      });
     } catch (error: any) {
       console.error('Erro ao processar arquivo:', error);
       toast({
         title: 'Erro ao processar arquivo',
-        description: error.message || 'Não foi possível processar o arquivo.',
+        description: error.message || 'Não foi possível processar o arquivo. Para PDFs complexos, tente fazer upload diretamente no chat.',
         variant: 'destructive',
       });
     } finally {
@@ -207,6 +237,18 @@ export function XMLImporter() {
                 {file ? file.name : 'Selecionar arquivo XML ou PDF'}
               </label>
             </div>
+            
+            {pdfPreview && (
+              <Button
+                onClick={() => setShowPreview(true)}
+                variant="outline"
+                className="sm:w-auto w-full"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Visualizar PDF
+              </Button>
+            )}
+            
             <Button
               onClick={handleUpload}
               disabled={!file || loading}
@@ -220,7 +262,7 @@ export function XMLImporter() {
               ) : (
                 <>
                   <Upload className="w-4 h-4 mr-2" />
-                  Processar XML
+                  Processar
                 </>
               )}
             </Button>
@@ -347,6 +389,33 @@ export function XMLImporter() {
           </CardContent>
         </Card>
       )}
+      
+      {/* Dialog de Preview do PDF */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Pré-visualização do PDF</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPreview(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[70vh] w-full">
+            {pdfPreview && (
+              <iframe
+                src={pdfPreview}
+                className="w-full h-full min-h-[600px] border rounded"
+                title="PDF Preview"
+              />
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
