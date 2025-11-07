@@ -216,7 +216,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open('/admin', '_blank')}
+              onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
             >
               <Package className="w-4 h-4 mr-2" />
               Admin
@@ -224,7 +224,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open('/pdv', '_blank')}
+              onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
               PDV
@@ -232,7 +232,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open('/', '_blank')}
+              onClick={() => window.open(`${window.location.origin}/`, '_blank')}
             >
               <Home className="w-4 h-4 mr-2" />
               Loja
