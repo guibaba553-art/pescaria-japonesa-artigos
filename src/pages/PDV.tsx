@@ -17,12 +17,11 @@ import {
   DollarSign, 
   CreditCard,
   Banknote,
-  Home,
+  ArrowLeft,
   Check,
-  Package,
-  BarChart3,
-  LogOut
+  Package
 } from 'lucide-react';
+import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -66,7 +65,7 @@ interface CartItem {
 
 export default function PDV() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -423,60 +422,18 @@ export default function PDV() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header Standalone PDV */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ShoppingCart className="w-8 h-8 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold">PDV - Ponto de Venda</h1>
-              <p className="text-xs text-muted-foreground">Sistema de Vendas Presenciais</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Admin
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/dashboard`, '_blank')}
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/`, '_blank')}
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Loja
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
       
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Package className="w-6 h-6" />
-            Sistema de Vendas
-          </h2>
+      <div className="container mx-auto p-6 pt-24">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <ShoppingCart className="w-8 h-8" />
+            Ponto de Venda (PDV)
+          </h1>
+          <Button variant="outline" onClick={() => navigate('/admin')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Admin
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

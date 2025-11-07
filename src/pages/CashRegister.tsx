@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Home, DollarSign, TrendingUp, TrendingDown, Lock, Unlock, LogOut, Package, ShoppingCart, BarChart3 } from 'lucide-react';
+import { ArrowLeft, DollarSign, TrendingUp, TrendingDown, Lock, Unlock } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -29,7 +30,7 @@ interface CashRegister {
 
 export default function CashRegister() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
 
   const [currentRegister, setCurrentRegister] = useState<CashRegister | null>(null);
@@ -315,63 +316,19 @@ export default function CashRegister() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header Standalone Fechamento de Caixa */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold">Fechamento de Caixa</h1>
-              <p className="text-xs text-muted-foreground">Controle de Caixa</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Admin
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
-            >
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              PDV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/dashboard`, '_blank')}
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Dashboard
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/`, '_blank')}
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Loja
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
       
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 pt-24 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <DollarSign className="w-8 h-8" />
+            Fechamento de Caixa
+          </h1>
+          <Button variant="outline" onClick={() => navigate('/pdv')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao PDV
+          </Button>
+        </div>
 
         {!currentRegister ? (
           <Card>

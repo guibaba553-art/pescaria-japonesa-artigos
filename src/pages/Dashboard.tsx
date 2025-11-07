@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Home, TrendingUp, Package, DollarSign, Users, ShoppingCart, LogOut, BarChart3 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Package, DollarSign, Users, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,7 +33,7 @@ interface ProductSales {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { isAdmin, loading, signOut } = useAuth();
+  const { isAdmin, loading } = useAuth();
   const { toast } = useToast();
   
   const [stats, setStats] = useState<DashboardStats>({
@@ -201,55 +201,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header Standalone Dashboard */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BarChart3 className="w-8 h-8 text-primary" />
-            <div>
-              <h1 className="text-xl font-bold">Dashboard</h1>
-              <p className="text-xs text-muted-foreground">Análises e Relatórios</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/admin`, '_blank')}
-            >
-              <Package className="w-4 h-4 mr-2" />
-              Admin
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/pdv`, '_blank')}
-            >
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              PDV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(`${window.location.origin}/`, '_blank')}
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Loja
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={signOut}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
       
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="container mx-auto p-6 pt-24 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <Button variant="outline" onClick={() => navigate('/admin')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar ao Admin
+          </Button>
+        </div>
 
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
