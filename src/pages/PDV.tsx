@@ -528,7 +528,7 @@ export default function PDV() {
                             <img
                               src={product.image_url}
                               alt={product.name}
-                              className="w-full h-24 object-cover rounded"
+                              className="w-full h-16 object-cover rounded"
                             />
                           )}
                           <div>
