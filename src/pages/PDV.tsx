@@ -754,12 +754,12 @@ export default function PDV() {
                   }}
                 >
                   <CardContent className="p-3 space-y-2">
-                    <div className="w-full h-20 bg-muted rounded overflow-hidden">
+                    <div className="w-full h-20 bg-muted rounded overflow-hidden flex items-center justify-center">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt={variation.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                           onError={(e) => {
                             e.currentTarget.src = '/placeholder.svg';
                           }}
