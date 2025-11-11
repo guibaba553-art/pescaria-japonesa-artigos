@@ -238,7 +238,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                             <img 
                               src={variation.image_url} 
                               alt="Preview" 
-                              className="h-24 w-24 object-cover rounded border-2 border-primary"
+                              className="h-20 w-20 object-cover rounded border-2 border-primary"
                             />
                             <Button
                               type="button"
@@ -378,7 +378,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                   <img 
                     src={newVariation.image_url} 
                     alt="Preview" 
-                    className="h-24 w-24 object-cover rounded border-2 border-primary"
+                    className="h-20 w-20 object-cover rounded border-2 border-primary"
                   />
                   <Button
                     type="button"
