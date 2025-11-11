@@ -183,9 +183,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         </Label>
                         <Input
                           id={`sku-${variation.id}`}
+                          type="text"
                           value={variation.sku || ''}
                           onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
                           placeholder="Ex: 7891234567890"
+                          autoComplete="off"
+                          maxLength={50}
                         />
                       </div>
                       <div>
@@ -320,9 +323,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               </Label>
               <Input
                 id="new-var-sku"
+                type="text"
                 placeholder="Ex: 7891234567890"
                 value={newVariation.sku}
                 onChange={(e) => setNewVariation({ ...newVariation, sku: e.target.value })}
+                autoComplete="off"
+                maxLength={50}
               />
             </div>
             <div>
