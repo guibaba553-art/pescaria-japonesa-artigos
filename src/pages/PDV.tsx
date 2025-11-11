@@ -525,7 +525,7 @@ export default function PDV() {
                         )}
                         <CardContent className="p-3 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-32 flex items-center justify-center bg-muted rounded overflow-hidden">
+                            <div className="w-full h-40 flex items-center justify-center bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
