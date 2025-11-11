@@ -753,8 +753,8 @@ export default function PDV() {
                     }
                   }}
                 >
-                  <CardContent className="p-4 space-y-3">
-                    <div className="w-full h-32 bg-muted rounded overflow-hidden">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="w-full h-20 bg-muted rounded overflow-hidden">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
@@ -766,20 +766,20 @@ export default function PDV() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <Package className="w-12 h-12" />
+                          <Package className="w-8 h-8" />
                         </div>
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{variation.name}</h3>
+                      <h3 className="font-semibold text-sm">{variation.name}</h3>
                       {variation.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="text-xs text-muted-foreground line-clamp-1">
                           {variation.description}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-primary">
+                      <span className="text-base font-bold text-primary">
                         R$ {variation.price.toFixed(2)}
                       </span>
                       <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
