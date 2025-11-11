@@ -25,7 +25,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     price: "",
     stock: "",
     description: "",
-    image_url: ""
+    image_url: "",
+    sku: ""
   });
 
   /**
@@ -55,13 +56,13 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       stock,
       description: newVariation.description.trim() || null,
       image_url: newVariation.image_url.trim() || null,
-      sku: null
+      sku: newVariation.sku.trim() || null
     };
 
     onVariationsChange([...variations, variation]);
     
     // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "" });
+    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "" });
   };
 
   /**
@@ -175,7 +176,18 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor={`sku-${variation.id}`} className="text-xs">
+                          Código de Barra / SKU
+                        </Label>
+                        <Input
+                          id={`sku-${variation.id}`}
+                          value={variation.sku || ''}
+                          onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
+                          placeholder="Ex: 7891234567890"
+                        />
+                      </div>
                       <div>
                         <Label htmlFor={`desc-${variation.id}`} className="text-xs">
                           Descrição (opcional)
@@ -301,7 +313,18 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <Label htmlFor="new-var-sku" className="text-xs">
+                Código de Barra / SKU
+              </Label>
+              <Input
+                id="new-var-sku"
+                placeholder="Ex: 7891234567890"
+                value={newVariation.sku}
+                onChange={(e) => setNewVariation({ ...newVariation, sku: e.target.value })}
+              />
+            </div>
             <div>
               <Label htmlFor="new-var-description" className="text-xs">
                 Descrição (opcional)
@@ -364,6 +387,10 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               )}
             </div>
           </div>
+          
+          <p className="text-xs text-muted-foreground">
+            💡 O código de barra pode ser usado para leitura no PDV e pesquisa rápida
+          </p>
           
           <Button
             type="button"
