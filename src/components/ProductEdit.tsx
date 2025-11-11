@@ -45,6 +45,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : ''
   );
   const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
+  const [sku, setSku] = useState(product.sku || '');
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -76,6 +77,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSalePrice(product.sale_price?.toString() || '');
       setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
       setMinimumQuantity(product.minimum_quantity?.toString() || '1');
+      setSku(product.sku || '');
     }
   }, [open, product.id, loadVariations]);
 
@@ -197,7 +199,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           price: price ? parseFloat(price) : 0,
           category,
           stock: stock ? parseInt(stock) : 0,
-          sku: product.sku || null,
+          sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
@@ -407,20 +409,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 <Label htmlFor="edit-sku">Código de Barras (SKU)</Label>
                 <Input
                   id="edit-sku"
-                  value={product.sku || ''}
-                  onChange={(e) => {
-                    // Update SKU in parent product
-                    supabase
-                      .from('products')
-                      .update({ sku: e.target.value || null })
-                      .eq('id', product.id)
-                      .then(() => {
-                        toast({
-                          title: 'SKU atualizado',
-                          description: 'Código de barras salvo com sucesso',
-                        });
-                      });
-                  }}
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
                   placeholder="Digite o código de barras"
                 />
                 <p className="text-xs text-muted-foreground">
