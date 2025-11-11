@@ -189,6 +189,33 @@ export type Database = {
           },
         ]
       }
+      fiscal_rate_limits: {
+        Row: {
+          function_name: string
+          id: string
+          request_count: number
+          updated_at: string
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          function_name: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          function_name?: string
+          id?: string
+          request_count?: number
+          updated_at?: string
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       fiscal_settings: {
         Row: {
           auto_emit_nfe: boolean
@@ -684,6 +711,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_fiscal_rate_limit: {
+        Args: {
+          p_function_name: string
+          p_max_requests: number
+          p_user_id: string
+          p_window_hours: number
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

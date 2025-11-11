@@ -12,6 +12,58 @@ serve(async (req) => {
   }
 
   try {
+    // Get authenticated user for rate limiting
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Security: Rate limiting check (5 bulk imports per hour)
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: rateLimitCheck, error: rateLimitError } = await serviceClient.rpc(
+      'check_fiscal_rate_limit',
+      {
+        p_user_id: user.id,
+        p_function_name: 'process-nfe-entrada',
+        p_max_requests: 5,
+        p_window_hours: 1
+      }
+    );
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+
+    if (!rateLimitCheck) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Limite de importações excedido. Máximo de 5 importações em lote por hora. Tente novamente mais tarde.' 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { nfeData } = await req.json();
     
     if (!nfeData) {

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +12,68 @@ serve(async (req) => {
   }
 
   try {
+    // Get authenticated user for rate limiting
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Security: Rate limiting check (10 files per hour)
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const { data: rateLimitCheck, error: rateLimitError } = await serviceClient.rpc(
+      'check_fiscal_rate_limit',
+      {
+        p_user_id: user.id,
+        p_function_name: 'parse-nfe-xml',
+        p_max_requests: 10,
+        p_window_hours: 1
+      }
+    );
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+
+    if (!rateLimitCheck) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Limite de requisições excedido. Máximo de 10 arquivos por hora. Tente novamente mais tarde.' 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { xmlContent, isPdf, fileName } = await req.json();
+
+    // Security: Content size validation (10MB max after base64 decode)
+    const MAX_CONTENT_SIZE = 10 * 1024 * 1024;
+    if (xmlContent && xmlContent.length > MAX_CONTENT_SIZE * 1.4) { // base64 is ~1.37x larger
+      return new Response(
+        JSON.stringify({ error: 'Conteúdo muito grande. Tamanho máximo: 10MB' }),
+        { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!xmlContent && !isPdf) {
       throw new Error('XML content is required');

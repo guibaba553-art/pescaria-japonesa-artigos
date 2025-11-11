@@ -30,6 +30,30 @@ serve(async (req) => {
       });
     }
 
+    // Security: Rate limiting check (20 emissions per hour)
+    const { data: rateLimitCheck, error: rateLimitError } = await supabase.rpc(
+      'check_fiscal_rate_limit',
+      {
+        p_user_id: user.id,
+        p_function_name: 'emit-nfe',
+        p_max_requests: 20,
+        p_window_hours: 1
+      }
+    );
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+
+    if (!rateLimitCheck) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Limite de emissões excedido. Máximo de 20 NF-es por hora. Tente novamente mais tarde.' 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { orderId } = await req.json();
 
     if (!orderId) {

@@ -247,6 +247,24 @@ export default function Admin() {
       if (productError) throw productError;
       console.log('✅ Produto criado:', newProduct.id);
 
+      // Security: Audit logging for product creation
+      try {
+        await supabase.rpc('log_admin_access', {
+          p_action: 'PRODUCT_CREATE',
+          p_table_name: 'products',
+          p_record_id: newProduct.id,
+          p_details: { 
+            product_name: name,
+            category: category,
+            price: parseFloat(price),
+            stock: parseInt(stock),
+            has_variations: newProductVariations.length > 0
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log audit:', logError);
+      }
+
       // Processar imagens das variações (converter base64 para URLs públicas)
       if (newProductVariations.length > 0 && newProduct) {
         console.log(`🔄 Processando ${newProductVariations.length} variações...`);
@@ -373,6 +391,22 @@ export default function Admin() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Security: Audit logging for product deletion
+      try {
+        const deletedProduct = products.find(p => p.id === id);
+        await supabase.rpc('log_admin_access', {
+          p_action: 'PRODUCT_DELETE',
+          p_table_name: 'products',
+          p_record_id: id,
+          p_details: { 
+            product_name: deletedProduct?.name,
+            category: deletedProduct?.category
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log audit:', logError);
+      }
 
       toast({
         title: 'Produto deletado',

@@ -30,6 +30,30 @@ serve(async (req) => {
       });
     }
 
+    // Security: Rate limiting check (10 syncs per day = 24 hours)
+    const { data: rateLimitCheck, error: rateLimitError } = await supabase.rpc(
+      'check_fiscal_rate_limit',
+      {
+        p_user_id: user.id,
+        p_function_name: 'sync-tga',
+        p_max_requests: 10,
+        p_window_hours: 24
+      }
+    );
+
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+
+    if (!rateLimitCheck) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Limite de sincronizações excedido. Máximo de 10 sincronizações por dia. Tente novamente mais tarde.' 
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { action, orderId, credentials } = await req.json();
 
     // Buscar configurações TGA

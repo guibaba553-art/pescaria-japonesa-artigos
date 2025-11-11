@@ -53,10 +53,25 @@ export function XMLImporter() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      // Security: File size validation (10MB max)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        toast({
+          title: 'Arquivo muito grande',
+          description: 'Tamanho máximo permitido: 10MB',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const isXml = selectedFile.name.endsWith('.xml');
       const isPdf = selectedFile.name.endsWith('.pdf');
       
-      if (!isXml && !isPdf) {
+      // Security: MIME type validation
+      const allowedTypes = ['application/pdf', 'text/xml', 'application/xml'];
+      const isValidMimeType = allowedTypes.includes(selectedFile.type);
+      
+      if (!isXml && !isPdf && !isValidMimeType) {
         toast({
           title: 'Formato inválido',
           description: 'Por favor, selecione um arquivo XML ou PDF.',
