@@ -28,6 +28,7 @@ export interface Product {
   sale_price?: number;
   sale_ends_at?: string;
   minimum_quantity?: number;
+  sku?: string | null;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;

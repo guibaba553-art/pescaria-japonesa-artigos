@@ -198,38 +198,62 @@ export default function PDV() {
     if (!barcode.trim()) return;
 
     try {
-      // Buscar produto por SKU/código de barras
-      const { data: product, error } = await supabase
-        .from('products')
-        .select('*')
+      console.log('🔍 Buscando por código:', barcode.trim());
+      
+      // Primeiro buscar variação por SKU
+      const { data: variation, error: varError } = await supabase
+        .from('product_variations')
+        .select('*, product:products(*)')
         .eq('sku', barcode.trim())
         .gt('stock', 0)
         .maybeSingle();
 
-      if (error) throw error;
+      if (varError) throw varError;
+
+      if (variation) {
+        console.log('✅ Variação encontrada:', variation.name);
+        const product = variation.product as unknown as Product;
+        
+        // Carregar todas as variações do produto
+        const { data: allVariations } = await supabase
+          .from('product_variations')
+          .select('*')
+          .eq('product_id', product.id);
+        
+        product.variations = allVariations || [];
+        
+        addToCart(product, variation);
+        setBarcodeInput('');
+        
+        // Som de "beep" para feedback
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
+        audio.play().catch(() => {});
+        return;
+      }
+
+      // Se não encontrou variação, buscar produto principal por SKU
+      const { data: product, error: prodError } = await supabase
+        .from('products')
+        .select(`
+          *,
+          variations:product_variations(*)
+        `)
+        .eq('sku', barcode.trim())
+        .gt('stock', 0)
+        .maybeSingle();
+
+      if (prodError) throw prodError;
 
       if (product) {
-        // Se tem variações, buscar a variação pelo SKU
-        const productWithVariations = product as Product;
-        if (productWithVariations.variations && productWithVariations.variations.length > 0) {
-          const { data: variation } = await supabase
-            .from('product_variations')
-            .select('*')
-            .eq('sku', barcode.trim())
-            .eq('product_id', productWithVariations.id)
-            .gt('stock', 0)
-            .maybeSingle();
-          
-          addToCart(productWithVariations, variation || undefined);
-        } else {
-          addToCart(productWithVariations, undefined);
-        }
-        
+        console.log('✅ Produto encontrado:', product.name);
+        addToCart(product, undefined);
         setBarcodeInput('');
+        
         // Som de "beep" para feedback
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
-        audio.play().catch(() => {}); // Ignora erro se o áudio não puder ser reproduzido
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
+        audio.play().catch(() => {});
       } else {
+        console.log('❌ Nenhum produto ou variação encontrado');
         toast({
           title: 'Produto não encontrado',
           description: `Código de barras: ${barcode}`,
@@ -238,6 +262,7 @@ export default function PDV() {
         setBarcodeInput('');
       }
     } catch (error: any) {
+      console.error('❌ Erro ao buscar:', error);
       toast({
         title: 'Erro ao buscar produto',
         description: error.message,

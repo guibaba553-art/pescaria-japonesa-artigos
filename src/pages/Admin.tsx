@@ -37,6 +37,7 @@ interface Product {
   sale_price?: number;
   sale_ends_at?: string;
   minimum_quantity?: number;
+  sku?: string | null;
 }
 
 export default function Admin() {
@@ -723,6 +724,7 @@ export default function Admin() {
                   <TableHead>Imagem</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>SKU</TableHead>
                   <TableHead>Preço</TableHead>
                   <TableHead>Estoque</TableHead>
                   <TableHead>Status</TableHead>
@@ -731,7 +733,11 @@ export default function Admin() {
               </TableHeader>
               <TableBody>
                 {products
-                  .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .filter(p => 
+                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+                  )
                   .map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
@@ -749,6 +755,11 @@ export default function Admin() {
                     </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">
+                        {product.sku || '-'}
+                      </code>
+                    </TableCell>
                     <TableCell>
                       {product.on_sale && product.sale_price ? (
                         <div className="flex flex-col">

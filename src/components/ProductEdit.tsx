@@ -197,6 +197,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           price: price ? parseFloat(price) : 0,
           category,
           stock: stock ? parseInt(stock) : 0,
+          sku: product.sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
@@ -403,7 +404,28 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 </p>
               </div>
               <div className="space-y-2">
-                {/* Espaço para outros campos no futuro */}
+                <Label htmlFor="edit-sku">Código de Barras (SKU)</Label>
+                <Input
+                  id="edit-sku"
+                  value={product.sku || ''}
+                  onChange={(e) => {
+                    // Update SKU in parent product
+                    supabase
+                      .from('products')
+                      .update({ sku: e.target.value || null })
+                      .eq('id', product.id)
+                      .then(() => {
+                        toast({
+                          title: 'SKU atualizado',
+                          description: 'Código de barras salvo com sucesso',
+                        });
+                      });
+                  }}
+                  placeholder="Digite o código de barras"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Código para leitura no PDV
+                </p>
               </div>
             </div>
 
