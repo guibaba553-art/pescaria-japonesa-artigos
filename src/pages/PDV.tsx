@@ -738,47 +738,63 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {selectedProduct?.variations?.map((variation) => (
-              <Card
-                key={variation.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => {
-                  addToCart(selectedProduct, variation);
-                  setShowVariationsDialog(false);
-                }}
-              >
-                <CardContent className="p-4 space-y-3">
-                  {variation.image_url && (
-                    <img
-                      src={variation.image_url}
-                      alt={variation.name}
-                      className="w-full h-32 object-cover rounded"
-                    />
-                  )}
-                  <div>
-                    <h3 className="font-semibold">{variation.name}</h3>
-                    {variation.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {variation.description}
+            {selectedProduct?.variations?.map((variation) => {
+              // Usar imagem da variação ou fallback para imagem do produto
+              const imageUrl = variation.image_url || selectedProduct?.image_url;
+              
+              return (
+                <Card
+                  key={variation.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    if (variation.stock > 0) {
+                      addToCart(selectedProduct, variation);
+                      setShowVariationsDialog(false);
+                    }
+                  }}
+                >
+                  <CardContent className="p-4 space-y-3">
+                    <div className="w-full h-32 bg-muted rounded overflow-hidden">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={variation.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <Package className="w-12 h-12" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{variation.name}</h3>
+                      {variation.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {variation.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-primary">
+                        R$ {variation.price.toFixed(2)}
+                      </span>
+                      <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
+                        {variation.stock > 0 ? `${variation.stock} un` : 'Esgotado'}
+                      </Badge>
+                    </div>
+                    {variation.sku && (
+                      <p className="text-xs text-muted-foreground font-mono">
+                        SKU: {variation.sku}
                       </p>
                     )}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-primary">
-                      R$ {variation.price.toFixed(2)}
-                    </span>
-                    <Badge variant={variation.stock > 5 ? "secondary" : "destructive"} className="text-xs">
-                      {variation.stock} un
-                    </Badge>
-                  </div>
-                  {variation.sku && (
-                    <p className="text-xs text-muted-foreground font-mono">
-                      SKU: {variation.sku}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
