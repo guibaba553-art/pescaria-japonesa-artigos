@@ -189,6 +189,45 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          cep: string
+          cpf: string
+          created_at: string
+          created_by: string | null
+          full_name: string
+          id: string
+          neighborhood: string
+          number: string
+          street: string
+          updated_at: string
+        }
+        Insert: {
+          cep: string
+          cpf: string
+          created_at?: string
+          created_by?: string | null
+          full_name: string
+          id?: string
+          neighborhood: string
+          number: string
+          street: string
+          updated_at?: string
+        }
+        Update: {
+          cep?: string
+          cpf?: string
+          created_at?: string
+          created_by?: string | null
+          full_name?: string
+          id?: string
+          neighborhood?: string
+          number?: string
+          street?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fiscal_rate_limits: {
         Row: {
           function_name: string
@@ -365,6 +404,7 @@ export type Database = {
       orders: {
         Row: {
           created_at: string
+          customer_id: string | null
           delivery_type: string
           id: string
           payment_id: string | null
@@ -383,6 +423,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           delivery_type?: string
           id?: string
           payment_id?: string | null
@@ -401,6 +442,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           delivery_type?: string
           id?: string
           payment_id?: string | null
@@ -417,7 +459,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_rate_limits: {
         Row: {
