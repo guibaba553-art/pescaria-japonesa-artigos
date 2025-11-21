@@ -76,10 +76,11 @@ export default function PDV() {
   const [processing, setProcessing] = useState(false);
   
   // Pagamento
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'pix'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit' | 'pix'>('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
+  const [installments, setInstallments] = useState(1);
   
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -416,6 +417,7 @@ export default function PDV() {
       setCashReceived('');
       setCustomerName('');
       setCustomerCPF('');
+      setInstallments(1);
       loadProducts();
 
     } catch (error: any) {
@@ -669,14 +671,18 @@ export default function PDV() {
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
                     <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <TabsList className="grid w-full grid-cols-3">
+                      <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="cash">
                           <Banknote className="w-4 h-4 mr-2" />
                           Dinheiro
                         </TabsTrigger>
-                        <TabsTrigger value="card">
+                        <TabsTrigger value="debit">
                           <CreditCard className="w-4 h-4 mr-2" />
-                          Cartão
+                          Débito
+                        </TabsTrigger>
+                        <TabsTrigger value="credit">
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Crédito
                         </TabsTrigger>
                         <TabsTrigger value="pix">
                           <DollarSign className="w-4 h-4 mr-2" />
@@ -709,6 +715,48 @@ export default function PDV() {
                         </div>
                       )}
                     </>
+                  )}
+
+                  {paymentMethod === 'credit' && (
+                    <div className="space-y-2">
+                      <Label>Número de Parcelas</Label>
+                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
+                        <TabsList className="grid w-full grid-cols-4 h-auto">
+                          <TabsTrigger value="1" className="text-xs py-2">1x</TabsTrigger>
+                          <TabsTrigger value="2" className="text-xs py-2">2x</TabsTrigger>
+                          <TabsTrigger value="3" className="text-xs py-2">3x</TabsTrigger>
+                          <TabsTrigger value="4" className="text-xs py-2">4x</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
+                        <TabsList className="grid w-full grid-cols-4 h-auto">
+                          <TabsTrigger value="5" className="text-xs py-2">5x</TabsTrigger>
+                          <TabsTrigger value="6" className="text-xs py-2">6x</TabsTrigger>
+                          <TabsTrigger value="7" className="text-xs py-2">7x</TabsTrigger>
+                          <TabsTrigger value="8" className="text-xs py-2">8x</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
+                        <TabsList className="grid w-full grid-cols-4 h-auto">
+                          <TabsTrigger value="9" className="text-xs py-2">9x</TabsTrigger>
+                          <TabsTrigger value="10" className="text-xs py-2">10x</TabsTrigger>
+                          <TabsTrigger value="11" className="text-xs py-2">11x</TabsTrigger>
+                          <TabsTrigger value="12" className="text-xs py-2">12x</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      <div className="p-3 bg-muted rounded-lg space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>Valor da Parcela:</span>
+                          <span className="font-bold">
+                            R$ {(total / installments).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Total:</span>
+                          <span>R$ {total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <Button
