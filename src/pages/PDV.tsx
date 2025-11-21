@@ -19,7 +19,8 @@ import {
   Banknote,
   ArrowLeft,
   Check,
-  Package
+  Package,
+  User
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +33,13 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface ProductVariation {
   id: string;
@@ -87,6 +95,7 @@ export default function PDV() {
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
   
   // Cliente
+  const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
@@ -106,6 +115,7 @@ export default function PDV() {
 
   useEffect(() => {
     loadProducts();
+    loadCustomers();
   }, []);
 
   const loadProducts = async () => {
@@ -129,6 +139,20 @@ export default function PDV() {
       });
     } finally {
       setLoadingProducts(false);
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('full_name');
+
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar clientes:', error);
     }
   };
 
@@ -379,6 +403,9 @@ export default function PDV() {
         title: 'Cliente cadastrado!',
         description: `${data.full_name} foi adicionado com sucesso`
       });
+      
+      // Recarregar lista de clientes
+      loadCustomers();
     } catch (error: any) {
       toast({
         title: 'Erro ao cadastrar cliente',
@@ -752,20 +779,53 @@ export default function PDV() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          onClick={() => setShowCustomerDialog(true)}
-                          className="bg-orange-500 hover:bg-orange-600"
+                      <div className="space-y-2">
+                        <Select
+                          value={selectedCustomer?.id || ''}
+                          onValueChange={(customerId) => {
+                            const customer = customers.find(c => c.id === customerId);
+                            if (customer) {
+                              setSelectedCustomer(customer);
+                              toast({
+                                title: 'Cliente selecionado',
+                                description: customer.full_name
+                              });
+                            }
+                          }}
                         >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Cadastrar Cliente
-                        </Button>
-                        <Button
-                          onClick={handleConsumidorFinal}
-                          variant="outline"
-                        >
-                          Consumidor Final
-                        </Button>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecionar cliente cadastrado..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customers.map((customer) => (
+                              <SelectItem key={customer.id} value={customer.id}>
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  <div>
+                                    <p className="font-medium">{customer.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">CPF: {customer.cpf}</p>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            onClick={() => setShowCustomerDialog(true)}
+                            className="bg-orange-500 hover:bg-orange-600"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Cadastrar
+                          </Button>
+                          <Button
+                            onClick={handleConsumidorFinal}
+                            variant="outline"
+                          >
+                            Consumidor Final
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
