@@ -11,6 +11,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  updatePassword: (newPassword: string) => Promise<{ error: any }>;
   isEmployee: boolean;
   isAdmin: boolean;
   loading: boolean;
@@ -183,13 +185,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+    
+    if (error) {
+      toast({
+        title: "Erro ao solicitar recuperação",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+    
+    toast({
+      title: "Email enviado!",
+      description: "Verifique sua caixa de entrada para redefinir sua senha.",
+    });
+    return { error: null };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    
+    if (error) {
+      toast({
+        title: "Erro ao atualizar senha",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
+    
+    toast({
+      title: "Senha atualizada!",
+      description: "Sua senha foi atualizada com sucesso.",
+    });
+    return { error: null };
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       session, 
       signUp, 
       signIn, 
-      signOut, 
+      signOut,
+      resetPassword,
+      updatePassword,
       isEmployee,
       isAdmin,
       loading 

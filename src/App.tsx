@@ -14,6 +14,8 @@ import PDV from "./pages/PDV";
 import Dashboard from "./pages/Dashboard";
 import CashRegister from "./pages/CashRegister";
 import FiscalTools from "./pages/FiscalTools";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,8 @@ const App = () => (
           <Route path="/produtos" element={<Products />} />
           <Route path="/produto/:id" element={<ProductDetails />} />
           <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
