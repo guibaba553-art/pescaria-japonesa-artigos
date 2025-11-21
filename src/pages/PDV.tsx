@@ -85,6 +85,18 @@ export default function PDV() {
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
+  
+  // Cliente
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [customerForm, setCustomerForm] = useState({
+    full_name: '',
+    cpf: '',
+    cep: '',
+    street: '',
+    number: '',
+    neighborhood: ''
+  });
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -327,6 +339,63 @@ export default function PDV() {
     return Math.max(0, received - calculateTotal());
   };
 
+  const handleSaveCustomer = async () => {
+    // Validar campos
+    if (!customerForm.full_name.trim() || !customerForm.cpf.trim() || 
+        !customerForm.cep.trim() || !customerForm.street.trim() || 
+        !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos do cliente',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([{
+          ...customerForm,
+          created_by: user!.id
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSelectedCustomer(data);
+      setShowCustomerDialog(false);
+      setCustomerForm({
+        full_name: '',
+        cpf: '',
+        cep: '',
+        street: '',
+        number: '',
+        neighborhood: ''
+      });
+
+      toast({
+        title: 'Cliente cadastrado!',
+        description: `${data.full_name} foi adicionado com sucesso`
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao cadastrar cliente',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleConsumidorFinal = () => {
+    setSelectedCustomer(null);
+    toast({
+      title: 'Consumidor Final',
+      description: 'Venda sem cadastro de cliente'
+    });
+  };
+
   const finalizeSale = async () => {
     if (cart.length === 0) {
       toast({
@@ -360,8 +429,9 @@ export default function PDV() {
           shipping_cost: 0,
           status: 'entregado',
           delivery_type: 'pickup',
-          shipping_address: 'Venda Presencial',
-          shipping_cep: '00000000'
+          shipping_address: selectedCustomer ? `${selectedCustomer.street}, ${selectedCustomer.number} - ${selectedCustomer.neighborhood}` : 'Venda Presencial',
+          shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
+          customer_id: selectedCustomer?.id || null
         }])
         .select()
         .single();
@@ -418,6 +488,7 @@ export default function PDV() {
       setCustomerName('');
       setCustomerCPF('');
       setInstallments(1);
+      setSelectedCustomer(null);
       loadProducts();
 
     } catch (error: any) {
@@ -660,12 +731,43 @@ export default function PDV() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Cliente (opcional)</Label>
-                    <Input
-                      placeholder="Nome do cliente"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                    />
+                    <Label>Cliente</Label>
+                    {selectedCustomer ? (
+                      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold">{selectedCustomer.full_name}</p>
+                            <p className="text-sm text-muted-foreground">CPF: {selectedCustomer.cpf}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {selectedCustomer.street}, {selectedCustomer.number} - {selectedCustomer.neighborhood}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedCustomer(null)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={() => setShowCustomerDialog(true)}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Cadastrar Cliente
+                        </Button>
+                        <Button
+                          onClick={handleConsumidorFinal}
+                          variant="outline"
+                        >
+                          Consumidor Final
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -830,6 +932,101 @@ export default function PDV() {
                 </Card>
               );
             })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de cadastro de cliente */}
+      <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Cliente</DialogTitle>
+            <DialogDescription>
+              Preencha os dados do cliente para vincular à venda
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="full_name">Nome Completo *</Label>
+              <Input
+                id="full_name"
+                placeholder="Nome completo do cliente"
+                value={customerForm.full_name}
+                onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cpf">CPF *</Label>
+              <Input
+                id="cpf"
+                placeholder="000.000.000-00"
+                value={customerForm.cpf}
+                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
+                maxLength={14}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cep">CEP *</Label>
+              <Input
+                id="cep"
+                placeholder="00000-000"
+                value={customerForm.cep}
+                onChange={(e) => setCustomerForm({ ...customerForm, cep: e.target.value })}
+                maxLength={9}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="street">Rua *</Label>
+              <Input
+                id="street"
+                placeholder="Nome da rua"
+                value={customerForm.street}
+                onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="number">Número *</Label>
+                <Input
+                  id="number"
+                  placeholder="123"
+                  value={customerForm.number}
+                  onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="neighborhood">Bairro *</Label>
+                <Input
+                  id="neighborhood"
+                  placeholder="Bairro"
+                  value={customerForm.neighborhood}
+                  onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowCustomerDialog(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveCustomer}
+                className="flex-1 bg-orange-500 hover:bg-orange-600"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Salvar Cliente
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
