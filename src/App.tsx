@@ -11,6 +11,7 @@ import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import RemoveLogoBackground from "./pages/RemoveLogoBackground";
 import PDV from "./pages/PDV";
+import SalesHistory from "./pages/SalesHistory";
 import Dashboard from "./pages/Dashboard";
 import CashRegister from "./pages/CashRegister";
 import FiscalTools from "./pages/FiscalTools";
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/pdv" element={<PDV />} />
+          <Route path="/pdv/sales-history" element={<SalesHistory />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/fechamento-caixa" element={<CashRegister />} />
           <Route path="/ferramentas-fiscais" element={<FiscalTools />} />

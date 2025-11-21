@@ -20,7 +20,10 @@ import {
   ArrowLeft,
   Check,
   Package,
-  User
+  User,
+  Save,
+  FolderOpen,
+  History
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -106,6 +109,11 @@ export default function PDV() {
     number: '',
     neighborhood: ''
   });
+  
+  // Vendas salvas
+  const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
+  const [savedSales, setSavedSales] = useState<any[]>([]);
+  const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -116,6 +124,7 @@ export default function PDV() {
   useEffect(() => {
     loadProducts();
     loadCustomers();
+    loadSavedSales();
   }, []);
 
   const loadProducts = async () => {
@@ -154,6 +163,130 @@ export default function PDV() {
     } catch (error: any) {
       console.error('Erro ao carregar clientes:', error);
     }
+  };
+
+  const loadSavedSales = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('saved_sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSavedSales(data || []);
+    } catch (error: any) {
+      console.error('Erro ao carregar vendas salvas:', error);
+    }
+  };
+
+  const saveSale = async () => {
+    if (cart.length === 0) {
+      toast({
+        title: 'Carrinho vazio',
+        description: 'Adicione produtos antes de salvar',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      const saleData = {
+        user_id: user!.id,
+        cart_data: JSON.parse(JSON.stringify(cart)),
+        customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
+        payment_method: paymentMethod,
+        total_amount: calculateTotal(),
+        notes: ''
+      };
+
+      if (currentSaleId) {
+        // Atualizar venda existente
+        const { error } = await supabase
+          .from('saved_sales')
+          .update(saleData)
+          .eq('id', currentSaleId);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Venda atualizada!',
+          description: 'A venda foi atualizada com sucesso'
+        });
+      } else {
+        // Criar nova venda salva
+        const { data, error } = await supabase
+          .from('saved_sales')
+          .insert([saleData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setCurrentSaleId(data.id);
+        toast({
+          title: 'Venda salva!',
+          description: 'Você pode retomar esta venda depois'
+        });
+      }
+
+      loadSavedSales();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao salvar venda',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const loadSale = (sale: any) => {
+    setCart(sale.cart_data);
+    setSelectedCustomer(sale.customer_data);
+    setPaymentMethod(sale.payment_method || 'cash');
+    setCurrentSaleId(sale.id);
+    setShowSavedSalesDialog(false);
+    
+    toast({
+      title: 'Venda carregada!',
+      description: `Total: R$ ${sale.total_amount.toFixed(2)}`
+    });
+  };
+
+  const deleteSavedSale = async (saleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('saved_sales')
+        .delete()
+        .eq('id', saleId);
+
+      if (error) throw error;
+
+      loadSavedSales();
+      
+      if (currentSaleId === saleId) {
+        setCurrentSaleId(null);
+      }
+
+      toast({
+        title: 'Venda excluída',
+        description: 'A venda salva foi removida'
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao excluir venda',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const clearSale = () => {
+    setCart([]);
+    setCashReceived('');
+    setSelectedCustomer(null);
+    setPaymentMethod('cash');
+    setInstallments(1);
+    setCurrentSaleId(null);
   };
 
   const handleProductClick = (product: Product) => {
@@ -509,13 +642,17 @@ export default function PDV() {
         description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
+      // Se a venda estava salva, deletar da lista de rascunhos
+      if (currentSaleId) {
+        await supabase
+          .from('saved_sales')
+          .delete()
+          .eq('id', currentSaleId);
+        loadSavedSales();
+      }
+
       // Limpar carrinho
-      setCart([]);
-      setCashReceived('');
-      setCustomerName('');
-      setCustomerCPF('');
-      setInstallments(1);
-      setSelectedCustomer(null);
+      clearSale();
       loadProducts();
 
     } catch (error: any) {
@@ -555,10 +692,19 @@ export default function PDV() {
             <ShoppingCart className="w-8 h-8" />
             Ponto de Venda (PDV)
           </h1>
-          <Button variant="outline" onClick={() => navigate('/admin')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Admin
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/pdv/sales-history')}
+            >
+              <History className="w-4 h-4 mr-2" />
+              Histórico
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/admin')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Admin
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -740,13 +886,49 @@ export default function PDV() {
 
                 <Separator className="my-4" />
 
-                <div className="space-y-2 text-lg">
-                  <div className="flex justify-between font-bold">
+                <div className="space-y-3">
+                  <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
                     <span className="text-2xl text-primary">
                       R$ {total.toFixed(2)}
                     </span>
                   </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={saveSale}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {currentSaleId ? 'Atualizar' : 'Salvar Venda'}
+                    </Button>
+                    <Button
+                      onClick={() => setShowSavedSalesDialog(true)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <FolderOpen className="w-4 h-4 mr-2" />
+                      Vendas Salvas
+                      {savedSales.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {savedSales.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </div>
+                  
+                  {currentSaleId && (
+                    <Button
+                      onClick={clearSale}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Limpar e Nova Venda
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1088,6 +1270,93 @@ export default function PDV() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de vendas salvas */}
+      <Dialog open={showSavedSalesDialog} onOpenChange={setShowSavedSalesDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vendas Salvas</DialogTitle>
+            <DialogDescription>
+              Selecione uma venda salva para retomar
+            </DialogDescription>
+          </DialogHeader>
+          
+          {savedSales.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <FolderOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>Nenhuma venda salva</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedSales.map((sale) => (
+                <Card 
+                  key={sale.id} 
+                  className={`cursor-pointer hover:shadow-lg transition-shadow ${currentSaleId === sale.id ? 'border-primary border-2' : ''}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold">
+                            Venda #{sale.id.slice(0, 8)}
+                          </h3>
+                          {currentSaleId === sale.id && (
+                            <Badge variant="default">Atual</Badge>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            <strong>Total:</strong> R$ {sale.total_amount.toFixed(2)}
+                          </p>
+                          <p>
+                            <strong>Itens:</strong> {(sale.cart_data as any[]).length} produto(s)
+                          </p>
+                          {sale.customer_data && (
+                            <p>
+                              <strong>Cliente:</strong> {(sale.customer_data as any).full_name}
+                            </p>
+                          )}
+                          <p>
+                            <strong>Método:</strong> {
+                              sale.payment_method === 'cash' ? 'Dinheiro' :
+                              sale.payment_method === 'credit' ? 'Crédito' :
+                              sale.payment_method === 'debit' ? 'Débito' :
+                              sale.payment_method === 'pix' ? 'PIX' : 'N/A'
+                            }
+                          </p>
+                          <p className="text-xs">
+                            <strong>Salva em:</strong> {new Date(sale.created_at).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          onClick={() => loadSale(sale)}
+                          disabled={currentSaleId === sale.id}
+                        >
+                          <FolderOpen className="w-4 h-4 mr-2" />
+                          {currentSaleId === sale.id ? 'Carregada' : 'Carregar'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteSavedSale(sale.id)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
