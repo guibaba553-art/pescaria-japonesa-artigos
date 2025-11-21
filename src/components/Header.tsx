@@ -39,7 +39,6 @@ export function Header() {
                     <Button 
                       variant="default" 
                       onClick={() => navigate('/pdv')}
-                      className="hidden sm:flex"
                     >
                       <ShoppingCart className="w-4 h-4 mr-2" />
                       PDV
@@ -48,7 +47,6 @@ export function Header() {
                   <Button 
                     variant="outline" 
                     onClick={() => navigate('/admin')}
-                    className="hidden sm:flex"
                   >
                     <User className="w-4 h-4 mr-2" />
                     Painel Admin
