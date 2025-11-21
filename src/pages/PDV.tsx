@@ -720,30 +720,17 @@ export default function PDV() {
                   {paymentMethod === 'credit' && (
                     <div className="space-y-2">
                       <Label>Número de Parcelas</Label>
-                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
-                        <TabsList className="grid w-full grid-cols-4 h-auto">
-                          <TabsTrigger value="1" className="text-xs py-2">1x</TabsTrigger>
-                          <TabsTrigger value="2" className="text-xs py-2">2x</TabsTrigger>
-                          <TabsTrigger value="3" className="text-xs py-2">3x</TabsTrigger>
-                          <TabsTrigger value="4" className="text-xs py-2">4x</TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
-                        <TabsList className="grid w-full grid-cols-4 h-auto">
-                          <TabsTrigger value="5" className="text-xs py-2">5x</TabsTrigger>
-                          <TabsTrigger value="6" className="text-xs py-2">6x</TabsTrigger>
-                          <TabsTrigger value="7" className="text-xs py-2">7x</TabsTrigger>
-                          <TabsTrigger value="8" className="text-xs py-2">8x</TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                      <Tabs value={installments.toString()} onValueChange={(v) => setInstallments(Number(v))}>
-                        <TabsList className="grid w-full grid-cols-4 h-auto">
-                          <TabsTrigger value="9" className="text-xs py-2">9x</TabsTrigger>
-                          <TabsTrigger value="10" className="text-xs py-2">10x</TabsTrigger>
-                          <TabsTrigger value="11" className="text-xs py-2">11x</TabsTrigger>
-                          <TabsTrigger value="12" className="text-xs py-2">12x</TabsTrigger>
-                        </TabsList>
-                      </Tabs>
+                      <select
+                        value={installments}
+                        onChange={(e) => setInstallments(Number(e.target.value))}
+                        className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                          <option key={num} value={num}>
+                            {num}x de R$ {(total / num).toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
                       <div className="p-3 bg-muted rounded-lg space-y-1">
                         <div className="flex justify-between text-sm">
                           <span>Valor da Parcela:</span>
