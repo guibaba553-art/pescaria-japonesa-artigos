@@ -694,6 +694,42 @@ export type Database = {
           },
         ]
       }
+      saved_sales: {
+        Row: {
+          cart_data: Json
+          created_at: string
+          customer_data: Json | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cart_data: Json
+          created_at?: string
+          customer_data?: Json | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          total_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cart_data?: Json
+          created_at?: string
+          customer_data?: Json | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tga_sync_log: {
         Row: {
           created_at: string
