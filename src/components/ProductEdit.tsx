@@ -46,6 +46,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   );
   const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
   const [sku, setSku] = useState(product.sku || '');
+  const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -78,6 +79,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSaleEndsAt(product.sale_ends_at ? new Date(product.sale_ends_at).toISOString().slice(0, 16) : '');
       setMinimumQuantity(product.minimum_quantity?.toString() || '1');
       setSku(product.sku || '');
+      setSoldByWeight(product.sold_by_weight || false);
     }
   }, [open, product.id, loadVariations]);
 
@@ -201,6 +203,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           stock: stock ? parseInt(stock) : 0,
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
+          sold_by_weight: soldByWeight,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
           featured,
@@ -482,6 +485,20 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   id="on-sale"
                   checked={onSale}
                   onCheckedChange={setOnSale}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sold-by-weight">Venda por Peso</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Produto vendido por quilo (kg)
+                  </p>
+                </div>
+                <Switch
+                  id="sold-by-weight"
+                  checked={soldByWeight}
+                  onCheckedChange={setSoldByWeight}
                 />
               </div>
 

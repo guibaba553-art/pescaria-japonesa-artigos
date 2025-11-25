@@ -64,6 +64,7 @@ interface Product {
   category: string;
   sku?: string | null;
   minimum_quantity?: number;
+  sold_by_weight?: boolean;
   variations?: ProductVariation[];
 }
 
@@ -96,6 +97,10 @@ export default function PDV() {
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
+  
+  // Peso
+  const [showWeightDialog, setShowWeightDialog] = useState(false);
+  const [weightInput, setWeightInput] = useState('');
   
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
@@ -294,26 +299,33 @@ export default function PDV() {
     if (product.variations && product.variations.length > 0) {
       setSelectedProduct(product);
       setShowVariationsDialog(true);
+    } else if (product.sold_by_weight) {
+      // Se é vendido por peso, mostrar diálogo de entrada de peso
+      setSelectedProduct(product);
+      setWeightInput('');
+      setShowWeightDialog(true);
     } else {
-      addToCart(product, undefined);
+      addToCart(product, undefined, 1);
     }
   };
 
-  const addToCart = (product: Product, variation?: ProductVariation) => {
+  const addToCart = (product: Product, variation?: ProductVariation, quantity: number = 1) => {
     const cartItemKey = variation 
       ? `${product.id}-${variation.id}`
       : product.id;
     
     const existingItem = cart.find(item => item.cartItemKey === cartItemKey);
-    const minimumQty = product.minimum_quantity || 1;
+    const minimumQty = product.sold_by_weight ? 0.001 : (product.minimum_quantity || 1);
     const availableStock = variation ? variation.stock : product.stock;
     const itemPrice = variation ? variation.price : product.price;
     
     if (existingItem) {
-      if (existingItem.quantity >= availableStock) {
+      const newQuantity = existingItem.quantity + quantity;
+      
+      if (newQuantity > availableStock) {
         toast({
           title: 'Estoque insuficiente',
-          description: `Apenas ${availableStock} unidades disponíveis`,
+          description: `Apenas ${availableStock} ${product.sold_by_weight ? 'kg' : 'unidades'} disponíveis`,
           variant: 'destructive'
         });
         return;
@@ -321,14 +333,23 @@ export default function PDV() {
       
       setCart(cart.map(item =>
         item.cartItemKey === cartItemKey
-          ? { ...item, quantity: item.quantity + 1 }
+          ? { ...item, quantity: newQuantity }
           : item
       ));
     } else {
-      if (availableStock < minimumQty) {
+      if (quantity < minimumQty) {
+        toast({
+          title: 'Quantidade inválida',
+          description: `Quantidade mínima: ${minimumQty} ${product.sold_by_weight ? 'kg' : 'unidades'}`,
+          variant: 'destructive'
+        });
+        return;
+      }
+      
+      if (quantity > availableStock) {
         toast({
           title: 'Estoque insuficiente',
-          description: `Este produto requer no mínimo ${minimumQty} unidades, mas há apenas ${availableStock} em estoque`,
+          description: `Apenas ${availableStock} ${product.sold_by_weight ? 'kg' : 'unidades'} disponíveis`,
           variant: 'destructive'
         });
         return;
@@ -336,24 +357,18 @@ export default function PDV() {
       
       setCart([...cart, { 
         product, 
-        quantity: minimumQty, 
+        quantity, 
         variation,
         cartItemKey 
       }]);
       
       const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
+      const unit = product.sold_by_weight ? 'kg' : (quantity > 1 ? 'unidades' : 'unidade');
       
-      if (minimumQty > 1) {
-        toast({
-          title: 'Produto adicionado',
-          description: `${itemName} adicionado ao carrinho (quantidade mínima: ${minimumQty})`,
-        });
-      } else {
-        toast({
-          title: 'Produto adicionado',
-          description: `${itemName} adicionado ao carrinho`,
-        });
-      }
+      toast({
+        title: 'Produto adicionado',
+        description: `${itemName} - ${quantity} ${unit}`,
+      });
       return;
     }
 
@@ -362,6 +377,26 @@ export default function PDV() {
       title: 'Produto adicionado',
       description: `${itemName} adicionado ao carrinho`,
     });
+  };
+
+  const handleWeightSubmit = () => {
+    if (!selectedProduct) return;
+    
+    const weight = parseFloat(weightInput.replace(',', '.'));
+    
+    if (isNaN(weight) || weight <= 0) {
+      toast({
+        title: 'Peso inválido',
+        description: 'Digite um peso válido',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    addToCart(selectedProduct, undefined, weight);
+    setShowWeightDialog(false);
+    setWeightInput('');
+    setSelectedProduct(null);
   };
 
   const handleBarcodeSearch = async (barcode: string) => {
@@ -392,8 +427,15 @@ export default function PDV() {
         
         product.variations = allVariations || [];
         
-        addToCart(product, variation);
-        setBarcodeInput('');
+        if (product.sold_by_weight) {
+          setSelectedProduct(product);
+          setWeightInput('');
+          setShowWeightDialog(true);
+          setBarcodeInput('');
+        } else {
+          addToCart(product, variation, 1);
+          setBarcodeInput('');
+        }
         
         // Som de "beep" para feedback
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
@@ -416,8 +458,15 @@ export default function PDV() {
 
       if (product) {
         console.log('✅ Produto encontrado:', product.name);
-        addToCart(product, undefined);
-        setBarcodeInput('');
+        if (product.sold_by_weight) {
+          setSelectedProduct(product);
+          setWeightInput('');
+          setShowWeightDialog(true);
+          setBarcodeInput('');
+        } else {
+          addToCart(product, undefined, 1);
+          setBarcodeInput('');
+        }
         
         // Som de "beep" para feedback
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
@@ -456,14 +505,17 @@ export default function PDV() {
   const updateQuantity = (cartItemKey: string, delta: number) => {
     setCart(cart.map(item => {
       if (item.cartItemKey === cartItemKey) {
-        const newQuantity = item.quantity + delta;
-        const minimumQty = item.product.minimum_quantity || 1;
+        const isByWeight = item.product.sold_by_weight;
+        const increment = isByWeight ? 0.1 : 1; // 100g para produtos por peso
+        const newQuantity = Math.max(0, item.quantity + (delta * increment));
+        const minimumQty = isByWeight ? 0.001 : (item.product.minimum_quantity || 1);
         const availableStock = item.variation ? item.variation.stock : item.product.stock;
+        const unit = isByWeight ? 'kg' : 'unidades';
         
         if (newQuantity < minimumQty) {
           toast({
             title: 'Quantidade mínima',
-            description: `Este produto requer no mínimo ${minimumQty} unidades`,
+            description: `Este produto requer no mínimo ${minimumQty} ${unit}`,
             variant: 'destructive'
           });
           return item;
@@ -472,12 +524,12 @@ export default function PDV() {
         if (newQuantity > availableStock) {
           toast({
             title: 'Estoque insuficiente',
-            description: `Apenas ${availableStock} unidades disponíveis`,
+            description: `Apenas ${availableStock} ${unit} disponíveis`,
             variant: 'destructive'
           });
           return item;
         }
-        return { ...item, quantity: newQuantity };
+        return { ...item, quantity: parseFloat(newQuantity.toFixed(3)) };
       }
       return item;
     }));
@@ -787,6 +839,11 @@ export default function PDV() {
                               <Badge variant="outline" className="text-xs">
                                 {product.category}
                               </Badge>
+                              {product.sold_by_weight && (
+                                <Badge variant="default" className="text-xs bg-green-600">
+                                  Por kg
+                                </Badge>
+                              )}
                               {product.minimum_quantity && product.minimum_quantity > 1 && (
                                 <Badge variant="default" className="text-xs">
                                   Min: {product.minimum_quantity}
@@ -794,12 +851,12 @@ export default function PDV() {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center justify-between">
+                           <div className="flex items-center justify-between">
                             <span className="text-lg font-bold text-primary">
-                              R$ {product.price.toFixed(2)}
+                              R$ {product.price.toFixed(2)}{product.sold_by_weight && '/kg'}
                             </span>
                             <Badge variant="secondary" className="text-xs">
-                              {product.stock} un
+                              {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
                             </Badge>
                           </div>
                         </CardContent>
@@ -842,7 +899,7 @@ export default function PDV() {
                                 {itemName}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                R$ {itemPrice.toFixed(2)} × {item.quantity}
+                                R$ {itemPrice.toFixed(2)} × {item.product.sold_by_weight ? `${item.quantity.toFixed(3)} kg` : item.quantity}
                               </p>
                             </div>
                             <div className="flex items-center gap-1">
@@ -1267,6 +1324,75 @@ export default function PDV() {
               >
                 <Check className="w-4 h-4 mr-2" />
                 Salvar Cliente
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de entrada de peso */}
+      <Dialog open={showWeightDialog} onOpenChange={setShowWeightDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Informe o Peso</DialogTitle>
+            <DialogDescription>
+              {selectedProduct?.name} - R$ {selectedProduct?.price.toFixed(2)}/kg
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="weight">Peso (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.001"
+                min="0.001"
+                placeholder="0.000"
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleWeightSubmit();
+                  }
+                }}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Use ponto ou vírgula para separar decimais (ex: 0.5 ou 0,5)
+              </p>
+            </div>
+
+            {weightInput && !isNaN(parseFloat(weightInput.replace(',', '.'))) && (
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span className="font-bold text-lg">
+                    R$ {(parseFloat(weightInput.replace(',', '.')) * (selectedProduct?.price || 0)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  setShowWeightDialog(false);
+                  setWeightInput('');
+                  setSelectedProduct(null);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleWeightSubmit}
+                className="flex-1"
+                disabled={!weightInput || isNaN(parseFloat(weightInput.replace(',', '.')))}
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Adicionar
               </Button>
             </div>
           </div>

@@ -29,6 +29,7 @@ export interface Product {
   sale_ends_at?: string;
   minimum_quantity?: number;
   sku?: string | null;
+  sold_by_weight?: boolean;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;

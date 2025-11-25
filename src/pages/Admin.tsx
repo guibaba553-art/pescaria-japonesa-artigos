@@ -17,6 +17,7 @@ import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
 import { FiscalSystem } from '@/components/FiscalSystem';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PRODUCT_CATEGORIES } from '@/config/constants';
 import { ProductVariations } from '@/components/ProductVariations';
@@ -52,6 +53,7 @@ export default function Admin() {
   const [stock, setStock] = useState('');
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
+  const [soldByWeight, setSoldByWeight] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -237,6 +239,7 @@ export default function Admin() {
               stock: stock ? parseInt(stock) : 0,
               sku: sku || null,
               minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
+              sold_by_weight: soldByWeight,
               images: imageUrls,
               image_url: imageUrls.length > 0 ? imageUrls[0] : null,
               created_by: user?.id
@@ -357,6 +360,7 @@ export default function Admin() {
       setStock('');
       setSku('');
       setMinimumQuantity('1');
+      setSoldByWeight(false);
       setImages([]);
       setNewProductVariations([]);
       
@@ -613,11 +617,26 @@ export default function Admin() {
                     min="1"
                     value={minimumQuantity}
                     onChange={(e) => setMinimumQuantity(e.target.value)}
+                    disabled={soldByWeight}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Quantidade mínima que deve ser comprada (ex: 10 para tuviras)
+                    {soldByWeight ? 'Não se aplica a produtos vendidos por peso' : 'Quantidade mínima que deve ser comprada (ex: 10 para tuviras)'}
                   </p>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between border p-3 rounded-lg">
+                <div className="space-y-0.5">
+                  <Label htmlFor="soldByWeight">Venda por Peso</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Produto vendido por quilo (kg)
+                  </p>
+                </div>
+                <Switch
+                  id="soldByWeight"
+                  checked={soldByWeight}
+                  onCheckedChange={setSoldByWeight}
+                />
               </div>
 
               <div className="space-y-2">
