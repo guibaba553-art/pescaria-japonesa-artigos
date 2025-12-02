@@ -101,6 +101,7 @@ export default function PDV() {
   // Peso
   const [showWeightDialog, setShowWeightDialog] = useState(false);
   const [weightInput, setWeightInput] = useState('');
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'g'>('g'); // Padrão em gramas
   
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
@@ -382,9 +383,9 @@ export default function PDV() {
   const handleWeightSubmit = () => {
     if (!selectedProduct) return;
     
-    const weight = parseFloat(weightInput.replace(',', '.'));
+    const inputValue = parseFloat(weightInput.replace(',', '.'));
     
-    if (isNaN(weight) || weight <= 0) {
+    if (isNaN(inputValue) || inputValue <= 0) {
       toast({
         title: 'Peso inválido',
         description: 'Digite um peso válido',
@@ -393,10 +394,20 @@ export default function PDV() {
       return;
     }
     
-    addToCart(selectedProduct, undefined, weight);
+    // Converter para kg se entrada foi em gramas
+    const weightInKg = weightUnit === 'g' ? inputValue / 1000 : inputValue;
+    
+    addToCart(selectedProduct, undefined, weightInKg);
     setShowWeightDialog(false);
     setWeightInput('');
     setSelectedProduct(null);
+  };
+
+  // Função auxiliar para calcular peso em kg baseado na unidade
+  const getWeightInKg = () => {
+    const inputValue = parseFloat(weightInput.replace(',', '.'));
+    if (isNaN(inputValue) || inputValue <= 0) return 0;
+    return weightUnit === 'g' ? inputValue / 1000 : inputValue;
   };
 
   const handleBarcodeSearch = async (barcode: string) => {
@@ -1341,63 +1352,119 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Seletor de unidade */}
+            <div className="flex gap-2">
+              <Button
+                variant={weightUnit === 'g' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => {
+                  if (weightUnit === 'kg' && weightInput) {
+                    // Converter de kg para g
+                    const val = parseFloat(weightInput.replace(',', '.'));
+                    if (!isNaN(val)) setWeightInput((val * 1000).toString());
+                  }
+                  setWeightUnit('g');
+                }}
+              >
+                Gramas (g)
+              </Button>
+              <Button
+                variant={weightUnit === 'kg' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => {
+                  if (weightUnit === 'g' && weightInput) {
+                    // Converter de g para kg
+                    const val = parseFloat(weightInput.replace(',', '.'));
+                    if (!isNaN(val)) setWeightInput((val / 1000).toString());
+                  }
+                  setWeightUnit('kg');
+                }}
+              >
+                Quilos (kg)
+              </Button>
+            </div>
+
             {/* Botões de atalho para pesos comuns */}
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">Atalhos rápidos</Label>
               <div className="grid grid-cols-4 gap-2">
-                {[0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5].map((weight) => (
-                  <Button
-                    key={weight}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWeightInput(weight.toString())}
-                    className="text-xs"
-                  >
-                    {weight < 1 ? `${weight * 1000}g` : `${weight}kg`}
-                  </Button>
-                ))}
+                {weightUnit === 'g' 
+                  ? [100, 150, 200, 250, 300, 400, 500, 750].map((weight) => (
+                      <Button
+                        key={weight}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setWeightInput(weight.toString())}
+                        className="text-xs"
+                      >
+                        {weight}g
+                      </Button>
+                    ))
+                  : [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5].map((weight) => (
+                      <Button
+                        key={weight}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setWeightInput(weight.toString())}
+                        className="text-xs"
+                      >
+                        {weight}kg
+                      </Button>
+                    ))
+                }
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="weight">Peso (kg)</Label>
-              <Input
-                id="weight"
-                type="text"
-                inputMode="decimal"
-                placeholder="0.000"
-                value={weightInput}
-                onChange={(e) => {
-                  // Permite apenas números, ponto e vírgula
-                  const value = e.target.value.replace(/[^0-9.,]/g, '');
-                  setWeightInput(value);
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleWeightSubmit();
-                  }
-                }}
-                autoFocus
-                className="text-2xl font-bold text-center h-14"
-              />
+              <Label htmlFor="weight">Peso ({weightUnit})</Label>
+              <div className="relative">
+                <Input
+                  id="weight"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={weightUnit === 'g' ? '452' : '0.452'}
+                  value={weightInput}
+                  onChange={(e) => {
+                    // Permite apenas números, ponto e vírgula
+                    const value = e.target.value.replace(/[^0-9.,]/g, '');
+                    setWeightInput(value);
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleWeightSubmit();
+                    }
+                  }}
+                  autoFocus
+                  className="text-3xl font-bold text-center h-16 pr-12"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl text-muted-foreground font-medium">
+                  {weightUnit}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground text-center">
-                Digite o peso em kg (ex: 0.5 para 500g)
+                {weightUnit === 'g' 
+                  ? 'Digite o peso em gramas (ex: 452 para 452g)'
+                  : 'Digite o peso em kg (ex: 0.452 para 452g)'
+                }
               </p>
             </div>
 
             {weightInput && !isNaN(parseFloat(weightInput.replace(',', '.'))) && parseFloat(weightInput.replace(',', '.')) > 0 && (
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Peso:</span>
+                  <span className="font-medium">
+                    {weightUnit === 'g' 
+                      ? `${parseFloat(weightInput.replace(',', '.'))}g (${(parseFloat(weightInput.replace(',', '.')) / 1000).toFixed(3)}kg)`
+                      : `${parseFloat(weightInput.replace(',', '.')).toFixed(3)}kg (${(parseFloat(weightInput.replace(',', '.')) * 1000).toFixed(0)}g)`
+                    }
+                  </span>
+                </div>
                 <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Peso: </span>
-                    <span className="font-medium">{parseFloat(weightInput.replace(',', '.')).toFixed(3)} kg</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm text-muted-foreground">Total: </span>
-                    <span className="font-bold text-xl text-primary">
-                      R$ {(parseFloat(weightInput.replace(',', '.')) * (selectedProduct?.price || 0)).toFixed(2)}
-                    </span>
-                  </div>
+                  <span className="text-muted-foreground">Total:</span>
+                  <span className="font-bold text-2xl text-primary">
+                    R$ {(getWeightInKg() * (selectedProduct?.price || 0)).toFixed(2)}
+                  </span>
                 </div>
               </div>
             )}
