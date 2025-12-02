@@ -175,7 +175,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             securityCode: cardData.cvv,
           });
 
-          console.log('Token do cartão criado:', cardToken);
+          // Token created successfully - not logging for security
 
           if (cardToken.error) {
             console.error('Erro ao criar token:', cardToken.error);
