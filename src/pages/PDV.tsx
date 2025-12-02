@@ -1332,7 +1332,7 @@ export default function PDV() {
 
       {/* Diálogo de entrada de peso */}
       <Dialog open={showWeightDialog} onOpenChange={setShowWeightDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Informe o Peso</DialogTitle>
             <DialogDescription>
@@ -1341,35 +1341,63 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Botões de atalho para pesos comuns */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Atalhos rápidos</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {[0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5].map((weight) => (
+                  <Button
+                    key={weight}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeightInput(weight.toString())}
+                    className="text-xs"
+                  >
+                    {weight < 1 ? `${weight * 1000}g` : `${weight}kg`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="weight">Peso (kg)</Label>
               <Input
                 id="weight"
-                type="number"
-                step="0.001"
-                min="0.001"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.000"
                 value={weightInput}
-                onChange={(e) => setWeightInput(e.target.value)}
+                onChange={(e) => {
+                  // Permite apenas números, ponto e vírgula
+                  const value = e.target.value.replace(/[^0-9.,]/g, '');
+                  setWeightInput(value);
+                }}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleWeightSubmit();
                   }
                 }}
                 autoFocus
+                className="text-2xl font-bold text-center h-14"
               />
-              <p className="text-xs text-muted-foreground">
-                Use ponto ou vírgula para separar decimais (ex: 0.5 ou 0,5)
+              <p className="text-xs text-muted-foreground text-center">
+                Digite o peso em kg (ex: 0.5 para 500g)
               </p>
             </div>
 
-            {weightInput && !isNaN(parseFloat(weightInput.replace(',', '.'))) && (
-              <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span className="font-bold text-lg">
-                    R$ {(parseFloat(weightInput.replace(',', '.')) * (selectedProduct?.price || 0)).toFixed(2)}
-                  </span>
+            {weightInput && !isNaN(parseFloat(weightInput.replace(',', '.'))) && parseFloat(weightInput.replace(',', '.')) > 0 && (
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Peso: </span>
+                    <span className="font-medium">{parseFloat(weightInput.replace(',', '.')).toFixed(3)} kg</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm text-muted-foreground">Total: </span>
+                    <span className="font-bold text-xl text-primary">
+                      R$ {(parseFloat(weightInput.replace(',', '.')) * (selectedProduct?.price || 0)).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -1389,7 +1417,7 @@ export default function PDV() {
               <Button
                 onClick={handleWeightSubmit}
                 className="flex-1"
-                disabled={!weightInput || isNaN(parseFloat(weightInput.replace(',', '.')))}
+                disabled={!weightInput || isNaN(parseFloat(weightInput.replace(',', '.'))) || parseFloat(weightInput.replace(',', '.')) <= 0}
               >
                 <Check className="w-4 h-4 mr-2" />
                 Adicionar
