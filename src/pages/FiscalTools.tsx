@@ -8,10 +8,9 @@ import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
 import { NFEHistory } from "@/components/NFEHistory";
-import { FocusNFeSettings } from "@/components/FocusNFeSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings } from "lucide-react";
+import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut } from "lucide-react";
 
 interface Product {
   id: string;
@@ -145,35 +144,27 @@ export default function FiscalTools() {
 
       <div className="container mx-auto p-6 space-y-6">
         <Tabs defaultValue="calculator" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="calculator">
               <Calculator className="w-4 h-4 mr-2" />
-              Calculadora
-            </TabsTrigger>
-            <TabsTrigger value="focus-nfe">
-              <Settings className="w-4 h-4 mr-2" />
-              Focus NFe
+              Calculadora Fiscal
             </TabsTrigger>
             <TabsTrigger value="xml">
               <Receipt className="w-4 h-4 mr-2" />
-              Importar XML
+              Importar XML NFe
             </TabsTrigger>
             <TabsTrigger value="excel">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Excel
+              Importar Excel
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
-              Notas Emitidas
+              Notas Fiscais
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="calculator">
             <FiscalCalculator products={products} />
-          </TabsContent>
-
-          <TabsContent value="focus-nfe">
-            <FocusNFeSettings />
           </TabsContent>
 
           <TabsContent value="xml">
