@@ -189,6 +189,75 @@ export type Database = {
           },
         ]
       }
+      company_fiscal_data: {
+        Row: {
+          bairro: string
+          cep: string
+          cnae_principal: string | null
+          cnpj: string
+          codigo_municipio: string | null
+          complemento: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inscricao_estadual: string
+          inscricao_municipal: string | null
+          logradouro: string
+          municipio: string
+          nome_fantasia: string | null
+          numero: string
+          razao_social: string
+          regime_tributario: string
+          telefone: string | null
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          bairro: string
+          cep: string
+          cnae_principal?: string | null
+          cnpj: string
+          codigo_municipio?: string | null
+          complemento?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inscricao_estadual: string
+          inscricao_municipal?: string | null
+          logradouro: string
+          municipio: string
+          nome_fantasia?: string | null
+          numero: string
+          razao_social: string
+          regime_tributario?: string
+          telefone?: string | null
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string
+          cep?: string
+          cnae_principal?: string | null
+          cnpj?: string
+          codigo_municipio?: string | null
+          complemento?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inscricao_estadual?: string
+          inscricao_municipal?: string | null
+          logradouro?: string
+          municipio?: string
+          nome_fantasia?: string | null
+          numero?: string
+          razao_social?: string
+          regime_tributario?: string
+          telefone?: string | null
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cep: string
@@ -300,54 +369,138 @@ export type Database = {
         }
         Relationships: []
       }
+      focus_nfe_settings: {
+        Row: {
+          ambiente: string
+          auto_emit_nfce_pdv: boolean
+          auto_emit_nfe_pedido_pago: boolean
+          cfop_interestadual: string
+          cfop_padrao: string
+          created_at: string
+          csc_id: string | null
+          csc_token: string | null
+          csosn_padrao: string
+          enabled: boolean
+          id: string
+          ncm_padrao: string | null
+          origem_padrao: string
+          serie_nfce: number
+          serie_nfe: number
+          unidade_padrao: string
+          updated_at: string
+        }
+        Insert: {
+          ambiente?: string
+          auto_emit_nfce_pdv?: boolean
+          auto_emit_nfe_pedido_pago?: boolean
+          cfop_interestadual?: string
+          cfop_padrao?: string
+          created_at?: string
+          csc_id?: string | null
+          csc_token?: string | null
+          csosn_padrao?: string
+          enabled?: boolean
+          id?: string
+          ncm_padrao?: string | null
+          origem_padrao?: string
+          serie_nfce?: number
+          serie_nfe?: number
+          unidade_padrao?: string
+          updated_at?: string
+        }
+        Update: {
+          ambiente?: string
+          auto_emit_nfce_pdv?: boolean
+          auto_emit_nfe_pedido_pago?: boolean
+          cfop_interestadual?: string
+          cfop_padrao?: string
+          created_at?: string
+          csc_id?: string | null
+          csc_token?: string | null
+          csosn_padrao?: string
+          enabled?: boolean
+          id?: string
+          ncm_padrao?: string | null
+          origem_padrao?: string
+          serie_nfce?: number
+          serie_nfe?: number
+          unidade_padrao?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nfe_emissions: {
         Row: {
+          ambiente: string
+          cancelled_at: string | null
           created_at: string
+          danfe_url: string | null
           emitted_at: string | null
           error_message: string | null
           fornecedor_cnpj: string | null
           fornecedor_nome: string | null
           id: string
+          modelo: string
+          motivo_cancelamento: string | null
           nfe_key: string | null
           nfe_number: string | null
           nfe_xml_url: string | null
           order_id: string
           products_count: number | null
+          protocolo: string | null
+          ref_focus: string | null
           status: string
           tipo: string
           updated_at: string
+          valor_total: number | null
         }
         Insert: {
+          ambiente?: string
+          cancelled_at?: string | null
           created_at?: string
+          danfe_url?: string | null
           emitted_at?: string | null
           error_message?: string | null
           fornecedor_cnpj?: string | null
           fornecedor_nome?: string | null
           id?: string
+          modelo?: string
+          motivo_cancelamento?: string | null
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id: string
           products_count?: number | null
+          protocolo?: string | null
+          ref_focus?: string | null
           status?: string
           tipo?: string
           updated_at?: string
+          valor_total?: number | null
         }
         Update: {
+          ambiente?: string
+          cancelled_at?: string | null
           created_at?: string
+          danfe_url?: string | null
           emitted_at?: string | null
           error_message?: string | null
           fornecedor_cnpj?: string | null
           fornecedor_nome?: string | null
           id?: string
+          modelo?: string
+          motivo_cancelamento?: string | null
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
           order_id?: string
           products_count?: number | null
+          protocolo?: string | null
+          ref_focus?: string | null
           status?: string
           tipo?: string
           updated_at?: string
+          valor_total?: number | null
         }
         Relationships: [
           {
@@ -546,8 +699,11 @@ export type Database = {
       products: {
         Row: {
           category: string
+          cest: string | null
+          cfop: string | null
           created_at: string
           created_by: string | null
+          csosn: string | null
           description: string
           featured: boolean
           id: string
@@ -556,7 +712,9 @@ export type Database = {
           include_in_nfe: boolean
           minimum_quantity: number
           name: string
+          ncm: string | null
           on_sale: boolean
+          origem: string | null
           price: number
           rating: number | null
           sale_ends_at: string | null
@@ -565,12 +723,16 @@ export type Database = {
           sku: string | null
           sold_by_weight: boolean
           stock: number
+          unidade_comercial: string | null
           updated_at: string
         }
         Insert: {
           category: string
+          cest?: string | null
+          cfop?: string | null
           created_at?: string
           created_by?: string | null
+          csosn?: string | null
           description: string
           featured?: boolean
           id?: string
@@ -579,7 +741,9 @@ export type Database = {
           include_in_nfe?: boolean
           minimum_quantity?: number
           name: string
+          ncm?: string | null
           on_sale?: boolean
+          origem?: string | null
           price: number
           rating?: number | null
           sale_ends_at?: string | null
@@ -588,12 +752,16 @@ export type Database = {
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
+          unidade_comercial?: string | null
           updated_at?: string
         }
         Update: {
           category?: string
+          cest?: string | null
+          cfop?: string | null
           created_at?: string
           created_by?: string | null
+          csosn?: string | null
           description?: string
           featured?: boolean
           id?: string
@@ -602,7 +770,9 @@ export type Database = {
           include_in_nfe?: boolean
           minimum_quantity?: number
           name?: string
+          ncm?: string | null
           on_sale?: boolean
+          origem?: string | null
           price?: number
           rating?: number | null
           sale_ends_at?: string | null
@@ -611,6 +781,7 @@ export type Database = {
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
+          unidade_comercial?: string | null
           updated_at?: string
         }
         Relationships: []
