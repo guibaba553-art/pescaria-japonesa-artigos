@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EmitNFeButton } from '@/components/NFeActions';
 
 interface OrderItem {
   id: string;
@@ -191,6 +192,9 @@ const OrdersTable = ({
                       >
                         {getNextStatusLabel(order.status, order.delivery_type)}
                       </Button>
+                    )}
+                    {(order.status === 'em_preparo' || order.status === 'enviado' || order.status === 'entregado') && (
+                      <EmitNFeButton orderId={order.id} modelo="55" size="sm" variant="outline" />
                     )}
                   </div>
                 </TableCell>
