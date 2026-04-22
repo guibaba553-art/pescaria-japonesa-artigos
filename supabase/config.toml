@@ -23,3 +23,12 @@ verify_jwt = true
 
 [functions.process-nfe-entrada]
 verify_jwt = true
+
+[functions.emit-nfe-focus]
+verify_jwt = true
+
+[functions.consult-nfe-focus]
+verify_jwt = true
+
+[functions.cancel-nfe-focus]
+verify_jwt = true
