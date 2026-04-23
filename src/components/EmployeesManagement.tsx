@@ -3,11 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { Trash2, UserPlus, Loader2, Users, ShieldCheck, ShieldOff } from 'lucide-react';
+import { PanelHeader } from '@/components/admin/PanelHeader';
 
 interface EmployeeRow {
   user_id: string;
@@ -25,7 +26,6 @@ export function EmployeesManagement() {
 
   const load = async () => {
     setLoading(true);
-    // Get all employees from user_roles
     const { data: roles, error: rolesErr } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -85,9 +85,6 @@ export function EmployeesManagement() {
     if (!email) return;
     setAdding(true);
 
-    // Find user by email in profiles via full_name fallback won't work; try matching profile through auth metadata is unavailable client-side.
-    // We search profiles by matching a placeholder: we ask user to enter email and look up the user via profiles.full_name OR ask them to provide the user id.
-    // Best-effort: query profiles where full_name = email (handle_new_user uses email when full_name is null).
     const { data: matches, error } = await supabase
       .from('profiles')
       .select('id, full_name')
@@ -147,73 +144,115 @@ export function EmployeesManagement() {
     load();
   };
 
+  const withPdv = employees.filter((e) => e.can_access_pdv).length;
+  const withoutPdv = employees.length - withPdv;
+
+  const initials = (name: string | null) =>
+    (name || '?')
+      .split(' ')
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gerenciar Funcionários</CardTitle>
-        <CardDescription>
-          Adicione funcionários por email e controle individualmente os acessos.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <Label htmlFor="new-employee-email">Email do funcionário</Label>
+    <Card className="overflow-hidden border-0 shadow-sm">
+      <PanelHeader
+        icon={Users}
+        title="Gestão de Funcionários"
+        description="Adicione funcionários por email e controle individualmente os acessos"
+        kpis={[
+          { label: 'Total', value: employees.length },
+          { label: 'Com PDV', value: withPdv, tone: 'success' },
+          { label: 'Sem PDV', value: withoutPdv, tone: 'warning' },
+        ]}
+      />
+
+      <CardContent className="p-4 md:p-6 space-y-6">
+        {/* Adicionar funcionário */}
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <Label htmlFor="new-employee-email" className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+            Adicionar novo funcionário
+          </Label>
+          <div className="flex gap-2 items-center mt-2">
             <Input
               id="new-employee-email"
               type="email"
               placeholder="funcionario@email.com"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
+              className="flex-1"
             />
+            <Button onClick={addEmployee} disabled={adding || !newEmail.trim()} className="gap-2">
+              {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              Adicionar
+            </Button>
           </div>
-          <Button onClick={addEmployee} disabled={adding || !newEmail.trim()}>
-            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-            Adicionar
-          </Button>
         </div>
 
+        {/* Lista */}
         {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin" />
+          <div className="flex justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : employees.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado.</p>
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+            <Users className="w-14 h-14 mb-3 opacity-40" />
+            <p className="text-sm font-medium">Nenhum funcionário cadastrado</p>
+            <p className="text-xs opacity-70 mt-1">Adicione o primeiro funcionário pelo email acima</p>
+          </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Funcionário</TableHead>
-                <TableHead className="text-center">Acesso ao PDV</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map((emp) => (
-                <TableRow key={emp.user_id}>
-                  <TableCell>
-                    <div className="font-medium">{emp.full_name || 'Sem nome'}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{emp.user_id.slice(0, 8)}...</div>
-                  </TableCell>
-                  <TableCell className="text-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {employees.map((emp) => (
+              <Card
+                key={emp.user_id}
+                className={`border-l-4 transition-all hover:shadow-md ${
+                  emp.can_access_pdv ? 'border-l-emerald-500' : 'border-l-orange-500'
+                }`}
+              >
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary font-bold">
+                    {initials(emp.full_name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{emp.full_name || 'Sem nome'}</p>
+                    <p className="text-xs text-muted-foreground font-mono truncate">
+                      {emp.user_id.slice(0, 8)}...
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={`mt-1.5 text-[10px] uppercase font-semibold ${
+                        emp.can_access_pdv
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                          : 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30'
+                      }`}
+                    >
+                      {emp.can_access_pdv ? (
+                        <><ShieldCheck className="w-3 h-3 mr-1" /> PDV liberado</>
+                      ) : (
+                        <><ShieldOff className="w-3 h-3 mr-1" /> PDV bloqueado</>
+                      )}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
                     <Switch
                       checked={emp.can_access_pdv}
                       onCheckedChange={(v) => togglePdv(emp.user_id, v)}
                     />
-                  </TableCell>
-                  <TableCell className="text-right">
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                       onClick={() => removeEmployee(emp.user_id)}
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
