@@ -24,6 +24,7 @@ export default function Auth() {
   const [signupPhone, setSignupPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   if (user) {
@@ -43,6 +44,10 @@ export default function Auth() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      toast.error('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupCep, signupPhone);
     setLoading(false);
@@ -195,7 +200,21 @@ export default function Auth() {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <div className="flex items-start gap-2 pt-2">
+                  <Checkbox
+                    id="accept-terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(c) => setAcceptedTerms(c === true)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="accept-terms" className="text-sm font-normal leading-snug cursor-pointer">
+                    Li e aceito os{' '}
+                    <Link to="/termos-de-uso" target="_blank" className="text-primary underline">Termos de Uso</Link>
+                    {' '}e a{' '}
+                    <Link to="/politica-privacidade" target="_blank" className="text-primary underline">Política de Privacidade</Link>.
+                  </Label>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading || !acceptedTerms}>
                   {loading ? 'Criando conta...' : 'Criar Conta'}
                 </Button>
               </form>
