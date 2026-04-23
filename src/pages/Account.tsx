@@ -27,7 +27,7 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado';
   created_at: string;
   tracking_code?: string;
   order_items: OrderItem[];
@@ -37,12 +37,16 @@ interface Order {
   pix_expiration: string | null;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; icon: typeof Package; color: string }> = {
   aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Package, color: 'bg-orange-500' },
   em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
-  entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
+  entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
+  entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
 };
+
+const getStatusConfig = (status: string) =>
+  statusConfig[status] ?? { label: status, icon: Package, color: 'bg-gray-500' };
 
 export default function Account() {
   const navigate = useNavigate();
@@ -192,7 +196,8 @@ export default function Account() {
               </p>
             ) : (
               orders.map((order) => {
-                const StatusIcon = statusConfig[order.status].icon;
+                const cfg = getStatusConfig(order.status);
+                const StatusIcon = cfg.icon;
                 return (
                   <div key={order.id} className="border rounded-lg p-4 space-y-4">
                     <div className="flex justify-between items-start">
@@ -209,9 +214,9 @@ export default function Account() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-2 items-end">
-                        <Badge className={statusConfig[order.status].color}>
+                        <Badge className={cfg.color}>
                           <StatusIcon className="w-3 h-3 mr-1" />
-                          {statusConfig[order.status].label}
+                          {cfg.label}
                         </Badge>
                         {order.status === 'aguardando_pagamento' && order.qr_code && order.qr_code_base64 && (
                           <Button
