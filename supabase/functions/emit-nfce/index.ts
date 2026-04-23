@@ -151,16 +151,17 @@ serve(async (req) => {
 
     const isProducao = focusSettings.ambiente === 'producao';
 
-    // Seleciona o token de acordo com o ambiente configurado
+    // Em produção usamos o Token Principal (mesmo usado para gestão da empresa).
+    // Em homologação seguimos com o token de homologação.
     const focusToken = isProducao
-      ? Deno.env.get('FOCUS_NFE_TOKEN_PRODUCAO')
+      ? Deno.env.get('FOCUS_NFE_TOKEN_PRINCIPAL')
       : Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
 
     if (!focusToken) {
       return new Response(
         JSON.stringify({
           error: isProducao
-            ? 'Token Focus NFe de PRODUÇÃO não configurado'
+            ? 'Token Principal Focus NFe não configurado (FOCUS_NFE_TOKEN_PRINCIPAL)'
             : 'Token Focus NFe de HOMOLOGAÇÃO não configurado',
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
