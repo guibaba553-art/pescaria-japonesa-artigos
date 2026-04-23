@@ -16,10 +16,11 @@ import { useCategories } from '@/hooks/useCategories';
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category') || '';
+  const subcategoryParam = searchParams.get('subcategory') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { categories: dbCategories } = useCategories();
+  const { primaries, getSubcategoriesOf } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -29,14 +30,14 @@ export default function Products() {
 
   useEffect(() => {
     loadProducts();
-  }, [categoryParam]);
+  }, [categoryParam, subcategoryParam]);
 
   // Reset filters quando muda categoria
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
     setSelectedSizes([]);
-  }, [categoryParam]);
+  }, [categoryParam, subcategoryParam]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -47,6 +48,7 @@ export default function Products() {
       .order('name', { ascending: true });
 
     if (categoryParam) query = query.eq('category', categoryParam);
+    if (subcategoryParam) query = query.eq('subcategory', subcategoryParam);
 
     const { data, error } = await query;
 
@@ -60,6 +62,11 @@ export default function Products() {
 
   const handleCategoryChange = (category: string) => {
     setSearchParams(category ? { category } : {});
+  };
+
+  const handleSubcategoryChange = (subcategory: string) => {
+    if (!categoryParam) return;
+    setSearchParams(subcategory ? { category: categoryParam, subcategory } : { category: categoryParam });
   };
 
   // Opções dinâmicas a partir dos produtos carregados
