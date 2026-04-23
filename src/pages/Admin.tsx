@@ -57,6 +57,9 @@ export default function Admin() {
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
+  const [brand, setBrand] = useState('');
+  const [poundTest, setPoundTest] = useState('');
+  const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -243,6 +246,9 @@ export default function Admin() {
               sku: sku || null,
               minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
               sold_by_weight: soldByWeight,
+              brand: brand || null,
+              pound_test: poundTest || null,
+              size: size || null,
               images: imageUrls,
               image_url: imageUrls.length > 0 ? imageUrls[0] : null,
               created_by: user?.id
@@ -364,6 +370,9 @@ export default function Admin() {
       setSku('');
       setMinimumQuantity('1');
       setSoldByWeight(false);
+      setBrand('');
+      setPoundTest('');
+      setSize('');
       setImages([]);
       setNewProductVariations([]);
       
@@ -641,6 +650,27 @@ export default function Admin() {
                   checked={soldByWeight}
                   onCheckedChange={setSoldByWeight}
                 />
+              </div>
+
+              <div className="space-y-3 border p-4 rounded-lg bg-muted/30">
+                <div>
+                  <h4 className="font-semibold text-sm">Atributos para Filtros</h4>
+                  <p className="text-xs text-muted-foreground">Opcional — ajuda o cliente a encontrar o produto na loja</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="brand" className="text-xs">Marca</Label>
+                    <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Shimano" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="poundTest" className="text-xs">Libragem</Label>
+                    <Input id="poundTest" value={poundTest} onChange={(e) => setPoundTest(e.target.value)} placeholder="Ex: 20lb" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="size" className="text-xs">Tamanho</Label>
+                    <Input id="size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="Ex: 1,80m" />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

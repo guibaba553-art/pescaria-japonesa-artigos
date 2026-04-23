@@ -47,6 +47,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
   const [sku, setSku] = useState(product.sku || '');
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
+  const [brand, setBrand] = useState(product.brand || '');
+  const [poundTest, setPoundTest] = useState(product.pound_test || '');
+  const [size, setSize] = useState(product.size || '');
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -80,6 +83,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setMinimumQuantity(product.minimum_quantity?.toString() || '1');
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
+      setBrand(product.brand || '');
+      setPoundTest(product.pound_test || '');
+      setSize(product.size || '');
     }
   }, [open, product.id, loadVariations]);
 
@@ -204,6 +210,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
+          brand: brand || null,
+          pound_test: poundTest || null,
+          size: size || null,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
           featured,
@@ -422,6 +431,27 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 <p className="text-xs text-muted-foreground">
                   Código para leitura no PDV
                 </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 border p-4 rounded-lg bg-muted/30">
+              <div>
+                <h4 className="font-semibold text-sm">Atributos para Filtros</h4>
+                <p className="text-xs text-muted-foreground">Opcional — aparece nos filtros da loja</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-brand" className="text-xs">Marca</Label>
+                  <Input id="edit-brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Shimano" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-poundTest" className="text-xs">Libragem</Label>
+                  <Input id="edit-poundTest" value={poundTest} onChange={(e) => setPoundTest(e.target.value)} placeholder="Ex: 20lb" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-size" className="text-xs">Tamanho</Label>
+                  <Input id="edit-size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="Ex: 1,80m" />
+                </div>
               </div>
             </div>
 

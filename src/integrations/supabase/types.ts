@@ -725,6 +725,7 @@ export type Database = {
       }
       products: {
         Row: {
+          brand: string | null
           category: string
           cest: string | null
           cfop: string | null
@@ -742,11 +743,13 @@ export type Database = {
           ncm: string | null
           on_sale: boolean
           origem: string | null
+          pound_test: string | null
           price: number
           rating: number | null
           sale_ends_at: string | null
           sale_price: number | null
           short_description: string | null
+          size: string | null
           sku: string | null
           sold_by_weight: boolean
           stock: number
@@ -754,6 +757,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           category: string
           cest?: string | null
           cfop?: string | null
@@ -771,11 +775,13 @@ export type Database = {
           ncm?: string | null
           on_sale?: boolean
           origem?: string | null
+          pound_test?: string | null
           price: number
           rating?: number | null
           sale_ends_at?: string | null
           sale_price?: number | null
           short_description?: string | null
+          size?: string | null
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
@@ -783,6 +789,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           category?: string
           cest?: string | null
           cfop?: string | null
@@ -800,11 +807,13 @@ export type Database = {
           ncm?: string | null
           on_sale?: boolean
           origem?: string | null
+          pound_test?: string | null
           price?: number
           rating?: number | null
           sale_ends_at?: string | null
           sale_price?: number | null
           short_description?: string | null
+          size?: string | null
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
