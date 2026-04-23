@@ -825,45 +825,6 @@ export default function Admin() {
                               </Button>
                             </div>
                           </div>
-
-                          <div className="p-4 flex-1 flex flex-col gap-2">
-                            <div>
-                              <Badge variant="outline" className="text-[10px] mb-1.5">{product.category}</Badge>
-                              <p className="font-semibold leading-tight line-clamp-2">{product.name}</p>
-                            </div>
-
-                            <div className="flex items-end justify-between gap-2 pt-1">
-                              <div>
-                                {product.on_sale && product.sale_price ? (
-                                  <>
-                                    <p className="line-through text-xs text-muted-foreground">R$ {product.price.toFixed(2)}</p>
-                                    <p className="text-lg font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
-                                  </>
-                                ) : (
-                                  <p className="text-lg font-bold text-primary">R$ {product.price.toFixed(2)}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Estoque</p>
-                                <p className={`font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>
-                                  {product.stock === 0 ? 'ESGOTADO' : product.stock}
-                                </p>
-                              </div>
-                            </div>
-
-                            {product.sku && (
-                              <code className="text-[10px] bg-muted px-2 py-1 rounded font-mono truncate">{product.sku}</code>
-                            )}
-
-                            <div className="flex gap-2 mt-auto pt-2 border-t">
-                              <div className="flex-1">
-                                <ProductEdit product={product} onUpdate={loadProducts} />
-                              </div>
-                              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={() => handleDelete(product.id, product.image_url)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
                         </Card>
                       );
                     })}
