@@ -704,7 +704,44 @@ export function OrdersManagement() {
     }
   };
 
-  if (loading) {
+  const emitNFCe = async (orderId: string) => {
+    setEmittingNFCe(prev => new Set(prev).add(orderId));
+    toast({
+      title: 'Emitindo NFC-e...',
+      description: 'Enviando dados para a SEFAZ. Isso pode levar alguns segundos.',
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('emit-nfce', {
+        body: { orderId }
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: 'NFC-e emitida com sucesso! ✅',
+        description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+      });
+      loadOrders();
+    } catch (error: any) {
+      console.error('Erro ao emitir NFC-e:', error);
+      toast({
+        title: 'Erro ao emitir NFC-e',
+        description: error.message || 'Verifique as configurações fiscais e tente novamente.',
+        variant: 'destructive'
+      });
+    } finally {
+      setEmittingNFCe(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
     return <div>Carregando pedidos...</div>;
   }
 
@@ -736,6 +773,8 @@ export function OrdersManagement() {
     trackingCodes,
     setTrackingCodes,
     updateTrackingCode,
+    emitNFCe,
+    emittingNFCe,
   };
 
   const renderSiteTabs = () => (
