@@ -24,6 +24,16 @@ interface OrderItem {
   };
 }
 
+interface NfeEmission {
+  id: string;
+  status: string;
+  nfe_number: string | null;
+  nfe_key: string | null;
+  danfe_url: string | null;
+  nfe_xml_url: string | null;
+  emitted_at: string | null;
+}
+
 interface Order {
   id: string;
   total_amount: number;
@@ -38,6 +48,7 @@ interface Order {
   qr_code_base64: string | null;
   ticket_url: string | null;
   pix_expiration: string | null;
+  nfe_emissions?: NfeEmission[];
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Package; color: string }> = {
