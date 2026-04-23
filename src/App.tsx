@@ -18,7 +18,12 @@ import FiscalTools from "./pages/FiscalTools";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
+import TermosUso from "./pages/TermosUso";
+import PoliticaTrocas from "./pages/PoliticaTrocas";
+import MeusDados from "./pages/MeusDados";
 import { PageViewTracker } from "./components/PageViewTracker";
+import CookieBanner from "./components/CookieBanner";
 
 const queryClient = new QueryClient();
 
@@ -44,9 +49,14 @@ const App = () => (
           <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+          <Route path="/termos-de-uso" element={<TermosUso />} />
+          <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
+          <Route path="/meus-dados" element={<MeusDados />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <CookieBanner />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
