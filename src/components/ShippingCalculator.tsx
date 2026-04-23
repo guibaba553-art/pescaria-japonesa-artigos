@@ -14,13 +14,21 @@ interface ShippingOption {
   nome: string;
   valor: number;
   prazoEntrega: number;
+  company?: string | null;
+  servico?: string | null;
+}
+
+interface ShippingProduct {
+  id?: string;
+  quantity: number;
 }
 
 interface ShippingCalculatorProps {
   onSelectShipping?: (option: ShippingOption) => void;
+  products?: ShippingProduct[];
 }
 
-export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps) {
+export function ShippingCalculator({ onSelectShipping, products }: ShippingCalculatorProps) {
   const [cep, setCep] = useState('');
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState<ShippingOption[]>([]);
@@ -69,9 +77,24 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
     setSelectedOption(null); // Resetar seleção ao calcular novo frete
 
     try {
+      // Montar lista de produtos para Melhor Envio. Se não vier nada, usa pacote padrão.
+      const meProducts = products && products.length > 0
+        ? products.map((p, i) => ({
+            id: p.id || String(i + 1),
+            width: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width,
+            height: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height,
+            length: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
+            weight: SHIPPING_CONFIG.DEFAULT_WEIGHT / 1000, // g -> kg
+            insurance_value: 0,
+            quantity: p.quantity,
+          }))
+        : undefined;
+
       const { data, error } = await supabase.functions.invoke('calculate-shipping', {
         body: {
           cepDestino: cep,
+          products: meProducts,
+          // Fallback (caso products esteja vazio):
           peso: SHIPPING_CONFIG.DEFAULT_WEIGHT,
           formato: SHIPPING_CONFIG.DEFAULT_FORMAT,
           comprimento: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
@@ -186,7 +209,7 @@ export function ShippingCalculator({ onSelectShipping }: ShippingCalculatorProps
                   </div>
                 </div>
                 <p className="font-bold text-lg">
-                  R$ {option.valor.toFixed(2)}
+                  {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
                 </p>
               </div>
             </Card>
