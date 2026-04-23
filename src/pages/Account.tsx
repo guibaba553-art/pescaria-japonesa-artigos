@@ -108,6 +108,62 @@ export default function Account() {
     }
   }, [user]);
 
+  // Tratar retorno do checkout do Mercado Pago (Google Pay / cartão)
+  useEffect(() => {
+    if (!user) return;
+    const paymentParam = searchParams.get('payment');
+    if (!paymentParam) return;
+
+    const pendingRaw = sessionStorage.getItem('pendingCheckout');
+    const pending = pendingRaw ? (() => { try { return JSON.parse(pendingRaw); } catch { return null; } })() : null;
+
+    const cleanup = () => {
+      sessionStorage.removeItem('pendingCheckout');
+      searchParams.delete('payment');
+      searchParams.delete('status');
+      searchParams.delete('collection_status');
+      searchParams.delete('payment_id');
+      searchParams.delete('preference_id');
+      searchParams.delete('external_reference');
+      setSearchParams(searchParams, { replace: true });
+    };
+
+    if (paymentParam === 'success') {
+      // Pagamento confirmado — limpar carrinho e atualizar pedidos
+      clearCart();
+      toast({
+        title: '✅ Pagamento confirmado!',
+        description: 'Seu pedido foi recebido e está sendo processado.',
+      });
+      loadOrders();
+      cleanup();
+      return;
+    }
+
+    // failure ou pending (usuário voltou / cancelou / recusado):
+    // cancelar o pedido pendente e manter o carrinho intacto
+    (async () => {
+      const orderId = pending?.orderId;
+      if (orderId) {
+        try {
+          await supabase.functions.invoke('cancel-checkout-order', {
+            body: { orderId },
+          });
+        } catch (err) {
+          console.error('Erro ao cancelar pedido pendente', err);
+        }
+      }
+      toast({
+        title: paymentParam === 'failure' ? '❌ Pagamento não concluído' : 'Pagamento cancelado',
+        description: 'Seus itens continuam no carrinho. Você pode tentar novamente quando quiser.',
+        variant: 'destructive',
+      });
+      loadOrders();
+      cleanup();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, searchParams.get('payment')]);
+
   const loadOrders = async () => {
     if (!user) return;
     
