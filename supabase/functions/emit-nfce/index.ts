@@ -285,10 +285,30 @@ serve(async (req) => {
       body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result: any;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      result = { mensagem: responseText || `HTTP ${response.status}` };
+    }
 
     if (!response.ok) {
-      console.error('Focus NFe error:', result);
+      console.error('Focus NFe error:', response.status, responseText);
+
+      // 401 = token inválido para o ambiente configurado
+      if (response.status === 401) {
+        const envLabel = isProducao ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO';
+        const errMsg = `Token Focus NFe de ${envLabel} inválido ou não autorizado. Verifique o token cadastrado em Secrets ou troque o ambiente nas Configurações.`;
+        if (emission) {
+          await supabase.from('nfe_emissions').update({ status: 'error', error_message: errMsg }).eq('id', emission.id);
+        }
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (emission) {
         await supabase
           .from('nfe_emissions')
