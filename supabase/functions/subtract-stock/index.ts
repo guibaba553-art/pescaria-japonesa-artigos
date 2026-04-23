@@ -84,7 +84,7 @@ serve(async (req) => {
     // Buscar itens do pedido com informações sobre variações
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
-      .select('product_id, quantity')
+      .select('product_id, variation_id, quantity')
       .eq('order_id', orderId);
 
     if (itemsError) {
@@ -105,37 +105,55 @@ serve(async (req) => {
     // Subtrair estoque de cada produto/variação
     const updates = [];
     for (const item of orderItems) {
-      // Primeiro verificar se é uma variação (product_variations) ou produto direto (products)
-      const { data: variation } = await supabase
-        .from('product_variations')
-        .select('stock, product_id')
-        .eq('id', item.product_id)
-        .maybeSingle();
+      // Se tiver variation_id, descontar da variação. Caso contrário, descontar do produto.
+      // Fallback (compatibilidade com pedidos antigos): se variation_id for null, tentar
+      // identificar se product_id na verdade aponta para uma variação.
+      let variationId: string | null = item.variation_id ?? null;
 
-      if (variation) {
-        // É uma variação - subtrair estoque da tabela product_variations
+      if (!variationId) {
+        const { data: maybeVariation } = await supabase
+          .from('product_variations')
+          .select('id')
+          .eq('id', item.product_id)
+          .maybeSingle();
+        if (maybeVariation) {
+          variationId = maybeVariation.id;
+        }
+      }
+
+      if (variationId) {
+        const { data: variation } = await supabase
+          .from('product_variations')
+          .select('stock, product_id')
+          .eq('id', variationId)
+          .maybeSingle();
+
+        if (!variation) {
+          console.error('Variation not found:', variationId);
+          continue;
+        }
+
         const newStock = Math.max(0, variation.stock - item.quantity);
-        
         const { error: updateError } = await supabase
           .from('product_variations')
           .update({ stock: newStock })
-          .eq('id', item.product_id);
+          .eq('id', variationId);
 
         if (updateError) {
-          console.error('Error updating stock for variation:', item.product_id, updateError);
+          console.error('Error updating stock for variation:', variationId, updateError);
         } else {
           updates.push({
             type: 'variation',
-            variation_id: item.product_id,
+            variation_id: variationId,
             product_id: variation.product_id,
             old_stock: variation.stock,
             new_stock: newStock,
             quantity_removed: item.quantity
           });
-          console.log(`Stock updated for variation ${item.product_id}: ${variation.stock} -> ${newStock}`);
+          console.log(`Stock updated for variation ${variationId}: ${variation.stock} -> ${newStock}`);
         }
       } else {
-        // É um produto direto - subtrair estoque da tabela products
+        // Produto direto
         const { data: product, error: productError } = await supabase
           .from('products')
           .select('stock')
@@ -148,7 +166,6 @@ serve(async (req) => {
         }
 
         const newStock = Math.max(0, product.stock - item.quantity);
-        
         const { error: updateError } = await supabase
           .from('products')
           .update({ stock: newStock })
