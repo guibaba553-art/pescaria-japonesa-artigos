@@ -50,12 +50,13 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, isEmployee, isAdmin, loading, signOut } = useAuth();
   const { toast } = useToast();
-  const { categories: dbCategories } = useCategories();
+  const { categories: dbCategories, primaries, getSubcategoriesOf } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
   const [stock, setStock] = useState('');
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
@@ -245,6 +246,7 @@ export default function Admin() {
               short_description: shortDescription,
               price: price ? parseFloat(price) : 0,
               category,
+              subcategory: subcategory || null,
               stock: stock ? parseInt(stock) : 0,
               sku: sku || null,
               minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
@@ -369,6 +371,7 @@ export default function Admin() {
       setShortDescription('');
       setPrice('');
       setCategory('');
+      setSubcategory('');
       setStock('');
       setSku('');
       setMinimumQuantity('1');
@@ -588,13 +591,13 @@ export default function Admin() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select value={category} onValueChange={setCategory} required>
+                  <Label htmlFor="category">Categoria *</Label>
+                  <Select value={category} onValueChange={(v) => { setCategory(v); setSubcategory(''); }} required>
                     <SelectTrigger id="category">
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {dbCategories.map((cat) => (
+                      {primaries.map((cat) => (
                         <SelectItem key={cat.id} value={cat.name}>
                           {cat.name}
                         </SelectItem>
@@ -602,6 +605,33 @@ export default function Admin() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subcategory">Subcategoria (opcional)</Label>
+                  {(() => {
+                    const parent = primaries.find(p => p.name === category);
+                    const subs = parent ? getSubcategoriesOf(parent.id) : [];
+                    return (
+                      <Select
+                        value={subcategory || 'none'}
+                        onValueChange={(v) => setSubcategory(v === 'none' ? '' : v)}
+                        disabled={!parent || subs.length === 0}
+                      >
+                        <SelectTrigger id="subcategory">
+                          <SelectValue placeholder={!parent ? 'Escolha a categoria primeiro' : subs.length === 0 ? 'Sem subcategorias' : 'Selecione (opcional)'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {subs.map((s) => (
+                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="sku">Código de Barras / SKU (opcional)</Label>
                   <Input

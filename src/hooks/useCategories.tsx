@@ -8,6 +8,8 @@ export interface Category {
   description: string | null;
   icon: string | null;
   display_order: number;
+  parent_id: string | null;
+  is_primary: boolean;
 }
 
 export function useCategories() {
@@ -22,7 +24,7 @@ export function useCategories() {
       .order('display_order', { ascending: true });
 
     if (!error && data) {
-      setCategories(data);
+      setCategories(data as Category[]);
     }
     setLoading(false);
   };
@@ -30,7 +32,6 @@ export function useCategories() {
   useEffect(() => {
     load();
 
-    // Realtime updates so admin changes reflect everywhere
     const channel = supabase
       .channel('categories-changes')
       .on(
@@ -45,5 +46,21 @@ export function useCategories() {
     };
   }, []);
 
-  return { categories, loading, reload: load };
+  // Helpers
+  const primaries = categories.filter((c) => c.is_primary);
+  const subcategories = categories.filter((c) => !c.is_primary);
+  const getSubcategoriesOf = (primaryId: string) =>
+    categories.filter((c) => c.parent_id === primaryId);
+  const getPrimaryByName = (name: string) =>
+    categories.find((c) => c.is_primary && c.name === name);
+
+  return {
+    categories,
+    primaries,
+    subcategories,
+    getSubcategoriesOf,
+    getPrimaryByName,
+    loading,
+    reload: load,
+  };
 }

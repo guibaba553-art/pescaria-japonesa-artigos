@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -13,9 +14,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, GripVertical } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight } from 'lucide-react';
 
 const slugify = (s: string) =>
   s
@@ -26,7 +33,7 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, '');
 
 export function CategoriesManagement() {
-  const { categories, reload } = useCategories();
+  const { categories, primaries, getSubcategoriesOf, reload } = useCategories();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -34,14 +41,16 @@ export function CategoriesManagement() {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
   const [displayOrder, setDisplayOrder] = useState('0');
+  const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
-  const openNew = () => {
+  const openNew = (presetParentId?: string) => {
     setEditing(null);
     setName('');
     setDescription('');
     setIcon('');
-    setDisplayOrder(String(categories.length + 1));
+    setDisplayOrder('0');
+    setParentId(presetParentId || '');
     setOpen(true);
   };
 
@@ -51,6 +60,7 @@ export function CategoriesManagement() {
     setDescription(cat.description || '');
     setIcon(cat.icon || '');
     setDisplayOrder(String(cat.display_order));
+    setParentId(cat.parent_id || '');
     setOpen(true);
   };
 
@@ -59,16 +69,29 @@ export function CategoriesManagement() {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
+    if (!parentId && !editing?.is_primary) {
+      toast({
+        title: 'Categoria pai obrigatória',
+        description: 'Subcategorias precisam de uma categoria primária pai.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSaving(true);
     try {
-      const payload = {
-        name: name.trim(),
+      const payload: any = {
         slug: slugify(name),
         description: description.trim() || null,
         icon: icon.trim() || null,
         display_order: parseInt(displayOrder) || 0,
+        parent_id: parentId || null,
       };
+
+      // Don't send name on primary edit (DB blocks it anyway)
+      if (!editing?.is_primary) {
+        payload.name = name.trim();
+      }
 
       if (editing) {
         const { error } = await supabase
@@ -78,9 +101,11 @@ export function CategoriesManagement() {
         if (error) throw error;
         toast({ title: 'Categoria atualizada!' });
       } else {
-        const { error } = await supabase.from('categories').insert([payload]);
+        const { error } = await supabase
+          .from('categories')
+          .insert([{ ...payload, name: name.trim() }]);
         if (error) throw error;
-        toast({ title: 'Categoria criada!' });
+        toast({ title: 'Subcategoria criada!' });
       }
 
       setOpen(false);
@@ -97,28 +122,36 @@ export function CategoriesManagement() {
   };
 
   const handleDelete = async (cat: Category) => {
-    // Check if any product uses this category
-    const { count } = await supabase
-      .from('products')
-      .select('id', { count: 'exact', head: true })
-      .eq('category', cat.name);
-
-    if (count && count > 0) {
+    if (cat.is_primary) {
       toast({
-        title: 'Não é possível excluir',
-        description: `Existem ${count} produto(s) usando esta categoria. Reclassifique-os antes.`,
+        title: 'Categoria primária protegida',
+        description: 'Categorias primárias não podem ser excluídas.',
         variant: 'destructive',
       });
       return;
     }
 
-    if (!confirm(`Excluir a categoria "${cat.name}"?`)) return;
+    const { count } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('subcategory', cat.name);
+
+    if (count && count > 0) {
+      toast({
+        title: 'Não é possível excluir',
+        description: `Existem ${count} produto(s) usando esta subcategoria. Reclassifique-os antes.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!confirm(`Excluir a subcategoria "${cat.name}"?`)) return;
 
     const { error } = await supabase.from('categories').delete().eq('id', cat.id);
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Categoria excluída!' });
+      toast({ title: 'Subcategoria excluída!' });
       reload();
     }
   };
@@ -126,85 +159,149 @@ export function CategoriesManagement() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Gerenciar Categorias</CardTitle>
-        <Button onClick={openNew}>
+        <div>
+          <CardTitle>Gerenciar Categorias</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            Categorias primárias são fixas. Você pode criar subcategorias dentro de cada uma.
+          </p>
+        </div>
+        <Button onClick={() => openNew()}>
           <Plus className="w-4 h-4 mr-2" />
-          Nova Categoria
+          Nova Subcategoria
         </Button>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16">Ordem</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Ícone</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Nenhuma categoria cadastrada
-                </TableCell>
-              </TableRow>
-            ) : (
-              categories.map((cat) => (
-                <TableRow key={cat.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <GripVertical className="w-4 h-4" />
-                      {cat.display_order}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{cat.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {cat.description || '—'}
-                  </TableCell>
-                  <TableCell className="text-sm font-mono">{cat.icon || '—'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(cat)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
+      <CardContent className="space-y-6">
+        {primaries.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            Nenhuma categoria primária encontrada.
+          </p>
+        ) : (
+          primaries.map((primary) => {
+            const subs = getSubcategoriesOf(primary.id);
+            return (
+              <div key={primary.id} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-lg">{primary.name}</h3>
+                    <Badge variant="secondary" className="text-xs">
+                      Primária
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {subs.length} subcategoria{subs.length !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDelete(cat)}
-                      className="text-destructive hover:text-destructive"
+                      onClick={() => openEdit(primary)}
+                      title="Editar ícone, descrição ou ordem"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Pencil className="w-4 h-4" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openNew(primary.id)}
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      Adicionar sub
+                    </Button>
+                  </div>
+                </div>
+
+                {subs.length > 0 && (
+                  <div className="pl-6 space-y-2">
+                    {subs.map((sub) => (
+                      <div
+                        key={sub.id}
+                        className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="font-medium">{sub.name}</span>
+                          {sub.description && (
+                            <span className="text-xs text-muted-foreground">
+                              — {sub.description}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(sub)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(sub)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </CardContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
+            <DialogTitle>
+              {editing
+                ? editing.is_primary
+                  ? `Editar Primária: ${editing.name}`
+                  : 'Editar Subcategoria'
+                : 'Nova Subcategoria'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {!editing?.is_primary && (
+              <div>
+                <Label>Categoria primária (pai) *</Label>
+                <Select value={parentId} onValueChange={setParentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha a primária" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {primaries.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>Nome *</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Varas, Iscas, Molinetes"
+                placeholder="Ex: Iscas artificiais, Varas de carbono"
                 maxLength={50}
+                disabled={editing?.is_primary}
               />
+              {editing?.is_primary && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  O nome de categorias primárias não pode ser alterado.
+                </p>
+              )}
             </div>
+
             <div>
               <Label>Descrição</Label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Breve descrição exibida na home"
+                placeholder="Breve descrição"
                 maxLength={200}
                 rows={2}
               />
@@ -215,10 +312,10 @@ export function CategoriesManagement() {
                 <Input
                   value={icon}
                   onChange={(e) => setIcon(e.target.value)}
-                  placeholder="Ex: Fish, Anchor, Package"
+                  placeholder="Ex: Fish, Anchor"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Veja em lucide.dev/icons
+                  lucide.dev/icons
                 </p>
               </div>
               <div>

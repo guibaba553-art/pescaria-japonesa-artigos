@@ -27,13 +27,14 @@ interface ProductEditProps {
 
 export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const { toast } = useToast();
-  const { categories } = useCategories();
+  const { categories, primaries, getSubcategoriesOf } = useCategories();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
   const [shortDescription, setShortDescription] = useState(product.short_description || '');
   const [price, setPrice] = useState(product.price.toString());
   const [category, setCategory] = useState(product.category);
+  const [subcategory, setSubcategory] = useState((product as any).subcategory || '');
   const [stock, setStock] = useState(product.stock.toString());
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -74,6 +75,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setShortDescription(product.short_description || '');
       setPrice(product.price.toString());
       setCategory(product.category);
+      setSubcategory((product as any).subcategory || '');
       setStock(product.stock.toString());
       setExistingImages(product.images || []);
       setNewImages([]);
@@ -207,6 +209,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           short_description: shortDescription,
           price: price ? parseFloat(price) : 0,
           category,
+          subcategory: subcategory || null,
           stock: stock ? parseInt(stock) : 0,
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
@@ -370,13 +373,13 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Categoria</Label>
-                <Select value={category} onValueChange={setCategory} required>
+                <Label htmlFor="edit-category">Categoria *</Label>
+                <Select value={category} onValueChange={(v) => { setCategory(v); setSubcategory(''); }} required>
                   <SelectTrigger id="edit-category">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {primaries.map((cat) => (
                       <SelectItem key={cat.id} value={cat.name}>
                         {cat.name}
                       </SelectItem>
@@ -384,6 +387,33 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-subcategory">Subcategoria (opcional)</Label>
+                {(() => {
+                  const parent = primaries.find(p => p.name === category);
+                  const subs = parent ? getSubcategoriesOf(parent.id) : [];
+                  return (
+                    <Select
+                      value={subcategory || 'none'}
+                      onValueChange={(v) => setSubcategory(v === 'none' ? '' : v)}
+                      disabled={!parent || subs.length === 0}
+                    >
+                      <SelectTrigger id="edit-subcategory">
+                        <SelectValue placeholder={!parent ? 'Escolha a categoria' : subs.length === 0 ? 'Sem subcategorias' : 'Selecione (opcional)'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {subs.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-stock">
                   Estoque {variations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}

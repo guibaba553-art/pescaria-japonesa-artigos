@@ -16,10 +16,11 @@ import { useCategories } from '@/hooks/useCategories';
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category') || '';
+  const subcategoryParam = searchParams.get('subcategory') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const { categories: dbCategories } = useCategories();
+  const { primaries, getSubcategoriesOf } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -29,14 +30,14 @@ export default function Products() {
 
   useEffect(() => {
     loadProducts();
-  }, [categoryParam]);
+  }, [categoryParam, subcategoryParam]);
 
   // Reset filters quando muda categoria
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
     setSelectedSizes([]);
-  }, [categoryParam]);
+  }, [categoryParam, subcategoryParam]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -47,6 +48,7 @@ export default function Products() {
       .order('name', { ascending: true });
 
     if (categoryParam) query = query.eq('category', categoryParam);
+    if (subcategoryParam) query = query.eq('subcategory', subcategoryParam);
 
     const { data, error } = await query;
 
@@ -60,6 +62,11 @@ export default function Products() {
 
   const handleCategoryChange = (category: string) => {
     setSearchParams(category ? { category } : {});
+  };
+
+  const handleSubcategoryChange = (subcategory: string) => {
+    if (!categoryParam) return;
+    setSearchParams(subcategory ? { category: categoryParam, subcategory } : { category: categoryParam });
   };
 
   // Opções dinâmicas a partir dos produtos carregados
@@ -164,8 +171,8 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Filtros de Categoria */}
-        <div className="flex flex-wrap gap-3 justify-center mb-8">
+        {/* Filtros de Categoria Primária */}
+        <div className="flex flex-wrap gap-3 justify-center mb-4">
           <Badge
             variant={categoryParam === '' ? 'default' : 'outline'}
             className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -173,7 +180,7 @@ export default function Products() {
           >
             Todas
           </Badge>
-          {dbCategories.map((cat) => (
+          {primaries.map((cat) => (
             <Badge
               key={cat.id}
               variant={categoryParam === cat.name ? 'default' : 'outline'}
@@ -184,6 +191,34 @@ export default function Products() {
             </Badge>
           ))}
         </div>
+
+        {/* Sub-filtros (subcategorias da primária selecionada) */}
+        {(() => {
+          const activePrimary = primaries.find(p => p.name === categoryParam);
+          const subs = activePrimary ? getSubcategoriesOf(activePrimary.id) : [];
+          if (subs.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              <Badge
+                variant={subcategoryParam === '' ? 'secondary' : 'outline'}
+                className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
+                onClick={() => handleSubcategoryChange('')}
+              >
+                Todas em {activePrimary!.name}
+              </Badge>
+              {subs.map((sub) => (
+                <Badge
+                  key={sub.id}
+                  variant={subcategoryParam === sub.name ? 'secondary' : 'outline'}
+                  className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
+                  onClick={() => handleSubcategoryChange(sub.name)}
+                >
+                  {sub.name}
+                </Badge>
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar de Filtros */}
