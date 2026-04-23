@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 
 interface OrderItem {
   id: string;
