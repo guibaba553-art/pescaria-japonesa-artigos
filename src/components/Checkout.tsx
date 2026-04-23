@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, DollarSign, Loader2 } from 'lucide-react';
+import { CreditCard, Smartphone, DollarSign, Loader2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -32,7 +32,7 @@ interface CheckoutProps {
   shippingInfo: { nome: string; prazoEntrega: number } | null;
 }
 
-type PaymentMethod = 'pix' | 'credit' | 'debit';
+type PaymentMethod = 'pix' | 'credit' | 'debit' | 'google_pay';
 
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
@@ -246,6 +246,44 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
       await supabase.from('order_items').insert(orderItems);
 
+      // Para Google Pay (via Mercado Pago Checkout Pro), redirecionamos
+      if (paymentMethod === 'google_pay') {
+        const { data: prefData, error: prefError } = await supabase.functions.invoke(
+          'create-checkout-preference',
+          {
+            body: {
+              orderId: orderData.id,
+              items: items.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                variationId: item.variationId,
+              })),
+              shippingCost,
+              successUrl: `${window.location.origin}/conta?payment=success`,
+              failureUrl: `${window.location.origin}/conta?payment=failure`,
+              pendingUrl: `${window.location.origin}/conta?payment=pending`,
+              payerEmail: user?.email,
+            },
+          }
+        );
+
+        if (prefError || !prefData?.success || !prefData?.initPoint) {
+          await supabase.from('order_items').delete().eq('order_id', orderData.id);
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          throw new Error(prefData?.error || prefError?.message || 'Erro ao criar checkout');
+        }
+
+        toast({
+          title: 'Redirecionando para o pagamento…',
+          description: 'Você será levado ao checkout seguro do Mercado Pago.',
+        });
+        clearCart();
+        window.location.href = prefData.initPoint;
+        return;
+      }
+
       // Processar pagamento com o orderId
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
@@ -447,6 +485,19 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   <div>
                     <p className="font-medium">Cartão de Débito</p>
                     <p className="text-sm text-muted-foreground">À vista</p>
+                  </div>
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
+                <RadioGroupItem value="google_pay" id="google_pay" />
+                <Label htmlFor="google_pay" className="flex items-center gap-2 cursor-pointer flex-1">
+                  <Wallet className="w-5 h-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="font-medium">Google Pay / Outras carteiras</p>
+                    <p className="text-sm text-muted-foreground">
+                      Checkout seguro do Mercado Pago — Google Pay aparece no Chrome/Android
+                    </p>
                   </div>
                 </Label>
               </div>
