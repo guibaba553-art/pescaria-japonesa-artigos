@@ -654,7 +654,8 @@ export default function PDV() {
           delivery_type: 'pickup',
           shipping_address: selectedCustomer ? `${selectedCustomer.street}, ${selectedCustomer.number} - ${selectedCustomer.neighborhood}` : 'Venda Presencial',
           shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
-          customer_id: selectedCustomer?.id || null
+          customer_id: selectedCustomer?.id || null,
+          source: 'pdv'
         }])
         .select()
         .single();

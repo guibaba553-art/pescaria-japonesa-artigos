@@ -591,6 +591,7 @@ export type Database = {
           shipping_address: string
           shipping_cep: string
           shipping_cost: number
+          source: string
           status: Database["public"]["Enums"]["order_status"]
           ticket_url: string | null
           total_amount: number
@@ -610,6 +611,7 @@ export type Database = {
           shipping_address: string
           shipping_cep: string
           shipping_cost?: number
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           ticket_url?: string | null
           total_amount: number
@@ -629,6 +631,7 @@ export type Database = {
           shipping_address?: string
           shipping_cep?: string
           shipping_cost?: number
+          source?: string
           status?: Database["public"]["Enums"]["order_status"]
           ticket_url?: string | null
           total_amount?: number
