@@ -6,7 +6,8 @@ import { useCategories } from "@/hooks/useCategories";
 
 const Categories = () => {
   const navigate = useNavigate();
-  const { categories, loading } = useCategories();
+  const { primaries, loading } = useCategories();
+  const categories = primaries;
 
   if (loading || categories.length === 0) {
     return null;
