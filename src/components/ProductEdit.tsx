@@ -27,13 +27,14 @@ interface ProductEditProps {
 
 export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const { toast } = useToast();
-  const { categories } = useCategories();
+  const { categories, primaries, getSubcategoriesOf } = useCategories();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
   const [shortDescription, setShortDescription] = useState(product.short_description || '');
   const [price, setPrice] = useState(product.price.toString());
   const [category, setCategory] = useState(product.category);
+  const [subcategory, setSubcategory] = useState((product as any).subcategory || '');
   const [stock, setStock] = useState(product.stock.toString());
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
@@ -74,6 +75,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setShortDescription(product.short_description || '');
       setPrice(product.price.toString());
       setCategory(product.category);
+      setSubcategory((product as any).subcategory || '');
       setStock(product.stock.toString());
       setExistingImages(product.images || []);
       setNewImages([]);
@@ -207,6 +209,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           short_description: shortDescription,
           price: price ? parseFloat(price) : 0,
           category,
+          subcategory: subcategory || null,
           stock: stock ? parseInt(stock) : 0,
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
