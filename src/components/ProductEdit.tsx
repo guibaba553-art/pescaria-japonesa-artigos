@@ -373,13 +373,13 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-category">Categoria</Label>
-                <Select value={category} onValueChange={setCategory} required>
+                <Label htmlFor="edit-category">Categoria *</Label>
+                <Select value={category} onValueChange={(v) => { setCategory(v); setSubcategory(''); }} required>
                   <SelectTrigger id="edit-category">
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((cat) => (
+                    {primaries.map((cat) => (
                       <SelectItem key={cat.id} value={cat.name}>
                         {cat.name}
                       </SelectItem>
@@ -387,6 +387,31 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-subcategory">Subcategoria (opcional)</Label>
+                {(() => {
+                  const parent = primaries.find(p => p.name === category);
+                  const subs = parent ? getSubcategoriesOf(parent.id) : [];
+                  return (
+                    <Select
+                      value={subcategory || 'none'}
+                      onValueChange={(v) => setSubcategory(v === 'none' ? '' : v)}
+                      disabled={!parent || subs.length === 0}
+                    >
+                      <SelectTrigger id="edit-subcategory">
+                        <SelectValue placeholder={!parent ? 'Escolha a categoria' : subs.length === 0 ? 'Sem subcategorias' : 'Selecione (opcional)'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {subs.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
+              </div>
+            </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-stock">
                   Estoque {variations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
