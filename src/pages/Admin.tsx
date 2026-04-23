@@ -765,7 +765,7 @@ export default function Admin() {
                     <p className="text-sm font-medium">Nenhum produto encontrado</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {filteredProducts.map((product) => {
                       const accent =
                         product.stock === 0 ? 'border-l-destructive'
@@ -774,54 +774,54 @@ export default function Admin() {
                         : 'border-l-primary/40';
                       return (
                         <Card key={product.id} className={`border-l-4 ${accent} overflow-hidden transition-all hover:shadow-md flex flex-col`}>
-                          <div className="aspect-video bg-muted relative overflow-hidden">
+                          <div className="aspect-square bg-muted relative overflow-hidden">
                             {product.image_url ? (
                               <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Sem imagem</div>
+                              <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                             )}
-                            <div className="absolute top-2 right-2 flex flex-col gap-1">
-                              {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[10px]">⭐ Destaque</Badge>}
-                              {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[10px]">🏷️ Promoção</Badge>}
-                              {product.stock === 0 && <Badge variant="destructive" className="text-[10px]">Esgotado</Badge>}
+                            <div className="absolute top-1 right-1 flex flex-col gap-1">
+                              {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
+                              {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
+                              {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
                             </div>
                           </div>
 
-                          <div className="p-4 flex-1 flex flex-col gap-2">
+                          <div className="p-2.5 flex-1 flex flex-col gap-1.5">
                             <div>
-                              <Badge variant="outline" className="text-[10px] mb-1.5">{product.category}</Badge>
-                              <p className="font-semibold leading-tight line-clamp-2">{product.name}</p>
+                              <Badge variant="outline" className="text-[9px] mb-1 px-1.5 py-0">{product.category}</Badge>
+                              <p className="font-semibold text-sm leading-tight line-clamp-2">{product.name}</p>
                             </div>
 
-                            <div className="flex items-end justify-between gap-2 pt-1">
+                            <div className="flex items-end justify-between gap-2 pt-0.5">
                               <div>
                                 {product.on_sale && product.sale_price ? (
                                   <>
-                                    <p className="line-through text-xs text-muted-foreground">R$ {product.price.toFixed(2)}</p>
-                                    <p className="text-lg font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
+                                    <p className="line-through text-[10px] text-muted-foreground">R$ {product.price.toFixed(2)}</p>
+                                    <p className="text-sm font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
                                   </>
                                 ) : (
-                                  <p className="text-lg font-bold text-primary">R$ {product.price.toFixed(2)}</p>
+                                  <p className="text-sm font-bold text-primary">R$ {product.price.toFixed(2)}</p>
                                 )}
                               </div>
                               <div className="text-right">
-                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Estoque</p>
-                                <p className={`font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>
-                                  {product.stock === 0 ? 'ESGOTADO' : product.stock}
+                                <p className="text-[9px] text-muted-foreground uppercase font-semibold">Estoque</p>
+                                <p className={`text-sm font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>
+                                  {product.stock === 0 ? '0' : product.stock}
                                 </p>
                               </div>
                             </div>
 
                             {product.sku && (
-                              <code className="text-[10px] bg-muted px-2 py-1 rounded font-mono truncate">{product.sku}</code>
+                              <code className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono truncate">{product.sku}</code>
                             )}
 
-                            <div className="flex gap-2 mt-auto pt-2 border-t">
+                            <div className="flex gap-1 mt-auto pt-1.5 border-t">
                               <div className="flex-1">
                                 <ProductEdit product={product} onUpdate={loadProducts} />
                               </div>
-                              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={() => handleDelete(product.id, product.image_url)}>
-                                <Trash2 className="w-4 h-4" />
+                              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0 h-8 w-8" onClick={() => handleDelete(product.id, product.image_url)}>
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </div>
                           </div>
