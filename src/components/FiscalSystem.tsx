@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { NFESettings } from './NFESettings';
 import { TGASettings } from './TGASettings';
+import { FocusNFeSettings } from './FocusNFeSettings';
 import { NFEList } from './NFEList';
 import { XMLExporter } from './XMLExporter';
 import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
@@ -91,15 +92,19 @@ export function FiscalSystem() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="nfe" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="focus" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="focus" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Focus NFe
+              </TabsTrigger>
               <TabsTrigger value="nfe" className="flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Notas Fiscais
               </TabsTrigger>
               <TabsTrigger value="settings-nfe" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
-                Config. NFe
+                Config. NFe.io
               </TabsTrigger>
               <TabsTrigger value="settings-tga" className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
@@ -110,6 +115,10 @@ export function FiscalSystem() {
                 Exportar XMLs
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="focus" className="space-y-4">
+              <FocusNFeSettings />
+            </TabsContent>
 
             <TabsContent value="nfe" className="space-y-4">
               <NFEList settings={settings} onRefresh={loadSettings} />
