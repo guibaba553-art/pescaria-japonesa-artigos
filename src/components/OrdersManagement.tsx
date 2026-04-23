@@ -178,7 +178,7 @@ const OrdersTable = ({
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">
-                      {statusConfig[order.status].label}
+                      {getStatusLabel(order.status, order.delivery_type)}
                     </Badge>
                     {order.status === 'aguardando_pagamento' && (
                       <Button
