@@ -236,7 +236,7 @@ export default function Account() {
                     <div className="space-y-2">
                       {order.order_items.map((item) => {
                         const isReviewed = reviewedProducts.has(`${order.id}_${item.product_id}`);
-                        const canReview = order.status === 'entregue' && !isReviewed;
+                        const canReview = (order.status === 'entregue' || order.status === 'entregado') && !isReviewed;
                         
                         return (
                           <div key={item.id} className="flex gap-3 items-start">
