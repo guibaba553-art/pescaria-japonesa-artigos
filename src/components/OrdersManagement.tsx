@@ -756,7 +756,10 @@ export function OrdersManagement() {
         body: payload
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = await error.context.json().catch(() => null);
+        throw new Error(errorMessage?.error || error.message || 'Falha ao emitir NFC-e');
+      }
       if (data?.error) throw new Error(data.error);
 
       toast({
