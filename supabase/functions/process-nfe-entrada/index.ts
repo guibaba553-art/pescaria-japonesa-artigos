@@ -172,6 +172,12 @@ serve(async (req) => {
           updateData.sku = produto.ean;
           console.log(`  Atualizando EAN do produto: ${produto.ean}`);
         }
+
+        // REGRA: NCM da nota prevalece sobre o cadastrado
+        if (produto.ncm && produto.ncm !== produtoExistente.ncm) {
+          updateData.ncm = produto.ncm;
+          console.log(`  NCM atualizado: ${produtoExistente.ncm || 'vazio'} → ${produto.ncm} (prevalece o da NF)`);
+        }
         
         const { error: updateError } = await supabase
           .from('products')
@@ -185,12 +191,16 @@ serve(async (req) => {
           ...produtoExistente,
           stock: novoEstoque,
           price: precoVenda,
+          ncm: updateData.ncm || produtoExistente.ncm,
           acao: 'atualizado'
         });
       } else {
-        // Criar novo produto - preço = custo da entrada + margem
+        // Criar novo produto como RASCUNHO (não aparece na loja)
+        // - include_in_nfe: false → oculto até admin revisar
+        // - category: "Pendente Revisão" → fácil de filtrar no admin
         const precoVenda = custoNovaEntrada * (1 + margemLucro / 100);
-        console.log(`  Preço venda novo produto: R$ ${precoVenda.toFixed(2)}`);
+        console.log(`  Criando produto como RASCUNHO (Pendente Revisão)`);
+        console.log(`  Preço venda sugerido: R$ ${precoVenda.toFixed(2)}`);
         
         const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
         
@@ -198,25 +208,26 @@ serve(async (req) => {
           .from('products')
           .insert({
             name: produto.nome,
-            description: `${produto.nome} - NCM: ${produto.ncm || 'N/A'}${produto.ean && produto.ean !== 'SEM GTIN' ? ` - EAN: ${produto.ean}` : ''}`,
+            description: `[RASCUNHO - revisar] ${produto.nome}\nNCM: ${produto.ncm || 'N/A'}${produto.ean && produto.ean !== 'SEM GTIN' ? `\nEAN: ${produto.ean}` : ''}\nFornecedor: ${nfeData.fornecedor?.nome || 'N/A'}`,
             short_description: produto.nome,
             price: precoVenda,
-            category: 'Geral',
+            category: 'Pendente Revisão',
             stock: produto.quantidade,
             sku: skuValue || undefined,
+            ncm: produto.ncm || null,
             featured: false,
             on_sale: false,
-            include_in_nfe: true
+            include_in_nfe: false
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
 
-        console.log(`  ✓ Produto criado`);
+        console.log(`  ✓ Produto criado como rascunho`);
         produtosProcessados.push({
           ...novoProduto,
-          acao: 'criado'
+          acao: 'criado_rascunho'
         });
       }
     }
