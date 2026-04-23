@@ -21,11 +21,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 
 interface OrderItem {
   id: string;
   quantity: number;
   price_at_purchase: number;
+  product_id: string;
   products: {
     name: string;
   };
@@ -127,6 +129,7 @@ const OrdersTable = ({
   updateTrackingCode,
   emitNFCe,
   emittingNFCe,
+  openLabelDialog,
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -140,6 +143,7 @@ const OrdersTable = ({
   updateTrackingCode: (orderId: string) => void;
   emitNFCe: (orderId: string) => void;
   emittingNFCe: Set<string>;
+  openLabelDialog: (order: Order) => void;
 }) => {
   if (orders.length === 0) {
     return (
@@ -229,6 +233,18 @@ const OrdersTable = ({
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
                     {getNextStatusLabel(order.status, order.delivery_type)}
+                  </Button>
+                )}
+
+                {order.source !== 'pdv' && order.delivery_type === 'delivery' && (order.status === 'em_preparo' || order.status === 'enviado') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openLabelDialog(order)}
+                    className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    {order.tracking_code ? 'Nova Etiqueta' : 'Gerar Etiqueta'}
                   </Button>
                 )}
 
@@ -411,6 +427,7 @@ export function OrdersManagement() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
+  const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -830,6 +847,7 @@ export function OrdersManagement() {
     updateTrackingCode,
     emitNFCe,
     emittingNFCe,
+    openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
   const renderSiteTabs = () => (
@@ -967,6 +985,13 @@ export function OrdersManagement() {
           <TabsContent value="pdv">{renderPdvTabs()}</TabsContent>
         </Tabs>
       </CardContent>
+
+      <MelhorEnvioLabelDialog
+        open={!!labelOrder}
+        onOpenChange={(o) => { if (!o) setLabelOrder(null); }}
+        order={labelOrder}
+        onSuccess={loadOrders}
+      />
     </Card>
   );
 }
