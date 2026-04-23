@@ -263,7 +263,7 @@ export default function Account() {
               </p>
             ) : (
               orders.map((order) => {
-                const cfg = getStatusConfig(order.status);
+                const cfg = getStatusConfig(order.status, order.delivery_type);
                 const StatusIcon = cfg.icon;
                 return (
                   <div key={order.id} className="border rounded-lg p-4 space-y-4">
