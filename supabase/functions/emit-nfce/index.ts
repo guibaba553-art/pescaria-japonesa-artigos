@@ -145,16 +145,24 @@ serve(async (req) => {
       );
     }
 
-    // Token Focus NFe (usa o de homologação por enquanto)
-    const focusToken = Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
+    const isProducao = focusSettings.ambiente === 'producao';
+
+    // Seleciona o token de acordo com o ambiente configurado
+    const focusToken = isProducao
+      ? Deno.env.get('FOCUS_NFE_TOKEN_PRODUCAO')
+      : Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
+
     if (!focusToken) {
       return new Response(
-        JSON.stringify({ error: 'Token Focus NFe não configurado' }),
+        JSON.stringify({
+          error: isProducao
+            ? 'Token Focus NFe de PRODUÇÃO não configurado'
+            : 'Token Focus NFe de HOMOLOGAÇÃO não configurado',
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const isProducao = focusSettings.ambiente === 'producao';
     const focusBaseUrl = isProducao
       ? 'https://api.focusnfe.com.br'
       : 'https://homologacao.focusnfe.com.br';
