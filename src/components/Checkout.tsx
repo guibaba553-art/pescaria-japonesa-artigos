@@ -237,11 +237,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       }
 
       // Criar itens do pedido
-      // IMPORTANTE: product_id sempre referencia products.id (FK).
-      // Para variações, gravamos o id do produto pai; o preço da variação fica em price_at_purchase.
+      // product_id sempre referencia products.id (FK do produto pai).
+      // variation_id (opcional) referencia product_variations.id quando há variação.
       const orderItems = items.map(item => ({
         order_id: orderData.id,
         product_id: item.id,
+        variation_id: item.variationId || null,
         quantity: item.quantity,
         price_at_purchase: item.price
       }));
