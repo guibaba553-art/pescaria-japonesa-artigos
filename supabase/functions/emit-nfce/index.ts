@@ -131,17 +131,9 @@ serve(async (req) => {
       );
     }
 
-    // Validar CSC (obrigatório para NFC-e)
-    const cscId = (focusSettings.csc_id || '').toString().trim();
-    const cscToken = (focusSettings.csc_token || '').toString().trim();
-    if (!cscId || !cscToken) {
-      return new Response(
-        JSON.stringify({
-          error: 'CSC não configurado. Cadastre o CSC ID e o CSC Token nas Configurações Focus NFe (obtidos no portal da SEFAZ).',
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // CSC: a Focus NFe usa o CSC cadastrado no painel deles para a empresa.
+    // Não enviamos csc_id/csc_token no payload — a Focus assina o QR Code
+    // automaticamente com o CSC vinculado ao CNPJ no painel.
 
     // Buscar dados da empresa emitente
     const { data: company, error: companyError } = await supabase
@@ -264,9 +256,8 @@ serve(async (req) => {
         local_destino: 1,
         consumidor_final: 1,
         indicador_inscricao_estadual_destinatario: 9,
-        // CSC obrigatório para NFC-e (assinatura do QR Code)
-        csc_id: cscId,
-        csc_token: cscToken,
+        // CSC: assinado automaticamente pela Focus NFe com base no CSC
+        // cadastrado no painel da Focus para o CNPJ emitente.
         items: focusItems,
         formas_pagamento: [
           {
