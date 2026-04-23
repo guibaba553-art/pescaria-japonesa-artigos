@@ -663,9 +663,11 @@ export default function PDV() {
       if (orderError) throw orderError;
 
       // Criar itens do pedido
+      // IMPORTANTE: product_id sempre referencia products.id (FK).
+      // Para variações, usamos o id do produto pai; o preço da variação é preservado em price_at_purchase.
       const orderItems = cart.map(item => ({
         order_id: order.id,
-        product_id: item.variation ? item.variation.id : item.product.id,
+        product_id: item.product.id,
         quantity: item.quantity,
         price_at_purchase: item.variation ? item.variation.price : item.product.price
       }));
