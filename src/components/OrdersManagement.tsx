@@ -426,6 +426,7 @@ export function OrdersManagement() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
+  const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
