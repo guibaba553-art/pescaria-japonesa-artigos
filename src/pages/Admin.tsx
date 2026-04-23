@@ -23,7 +23,8 @@ import { DraftProducts } from '@/components/DraftProducts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PRODUCT_CATEGORIES } from '@/config/constants';
+import { useCategories } from '@/hooks/useCategories';
+import { CategoriesManagement } from '@/components/CategoriesManagement';
 import { ProductVariations } from '@/components/ProductVariations';
 import { validateProductForm } from '@/utils/productValidation';
 
@@ -49,6 +50,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, isEmployee, isAdmin, loading, signOut } = useAuth();
   const { toast } = useToast();
+  const { categories: dbCategories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -528,8 +530,9 @@ export default function Admin() {
         )}
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="products">Produtos</TabsTrigger>
+            <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="drafts" className="gap-1.5">
               <FileEdit className="w-3.5 h-3.5" />
               Rascunhos
@@ -591,9 +594,9 @@ export default function Admin() {
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {PRODUCT_CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
+                      {dbCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>
+                          {cat.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

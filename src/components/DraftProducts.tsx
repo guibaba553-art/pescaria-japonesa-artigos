@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { PRODUCT_CATEGORIES } from '@/config/constants';
+import { useCategories } from '@/hooks/useCategories';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { FileEdit, CheckCircle2, Trash2, Package, Hash } from 'lucide-react';
 
@@ -264,9 +264,9 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
                     <SelectValue placeholder="Escolha a categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

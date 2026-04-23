@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Search, X, ShoppingCart } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { PRODUCT_CATEGORIES } from "@/config/constants";
+import { useCategories } from "@/hooks/useCategories";
 import { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
@@ -130,9 +130,9 @@ export function SearchSection() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas Categorias</SelectItem>
-                {PRODUCT_CATEGORIES.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>
