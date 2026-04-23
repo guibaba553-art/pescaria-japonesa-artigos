@@ -16,6 +16,7 @@ import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
 import { FiscalSystem } from '@/components/FiscalSystem';
+import { EmployeesManagement } from '@/components/EmployeesManagement';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -515,11 +516,12 @@ export default function Admin() {
         )}
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="products">Produtos</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="featured">Produtos Destaque</TabsTrigger>
             <TabsTrigger value="fiscal">Sistema Fiscal</TabsTrigger>
+            {isAdmin && <TabsTrigger value="employees">Funcionários</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="products" className="space-y-6">
@@ -883,6 +885,12 @@ export default function Admin() {
           <TabsContent value="fiscal">
             <FiscalSystem />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="employees">
+              <EmployeesManagement />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

@@ -15,6 +15,7 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
   isEmployee: boolean;
   isAdmin: boolean;
+  canAccessPdv: boolean;
   loading: boolean;
 }
 
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canAccessPdv, setCanAccessPdv] = useState(true);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -41,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setIsEmployee(false);
           setIsAdmin(false);
+          setCanAccessPdv(true);
         }
       }
     );
@@ -66,8 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       const roles = data.map(r => r.role);
-      setIsEmployee(roles.includes('employee'));
-      setIsAdmin(roles.includes('admin'));
+      const employee = roles.includes('employee');
+      const admin = roles.includes('admin');
+      setIsEmployee(employee);
+      setIsAdmin(admin);
+
+      // Admins always have full access. For employees, check granular permissions.
+      if (admin) {
+        setCanAccessPdv(true);
+      } else if (employee) {
+        const { data: perm } = await supabase
+          .from('employee_permissions')
+          .select('can_access_pdv')
+          .eq('user_id', userId)
+          .maybeSingle();
+        setCanAccessPdv(perm?.can_access_pdv ?? true);
+      } else {
+        setCanAccessPdv(true);
+      }
     }
   };
 
@@ -239,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       updatePassword,
       isEmployee,
       isAdmin,
+      canAccessPdv,
       loading 
     }}>
       {children}

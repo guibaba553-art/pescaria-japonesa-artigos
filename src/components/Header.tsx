@@ -9,7 +9,7 @@ import japaLogo from '@/assets/japa-logo.png';
 
 export function Header() {
   const navigate = useNavigate();
-  const { user, signOut, isEmployee, isAdmin } = useAuth();
+  const { user, signOut, isEmployee, isAdmin, canAccessPdv } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
@@ -64,7 +64,7 @@ export function Header() {
               </Button>
               {(isEmployee || isAdmin) && (
                 <>
-                  {isAdmin && (
+                  {(isAdmin || (isEmployee && canAccessPdv)) && (
                     <Button 
                       variant="default" 
                       onClick={() => navigate('/pdv')}
