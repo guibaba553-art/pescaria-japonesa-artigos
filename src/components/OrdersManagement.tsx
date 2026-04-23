@@ -27,6 +27,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   price_at_purchase: number;
+  product_id: string;
   products: {
     name: string;
   };
