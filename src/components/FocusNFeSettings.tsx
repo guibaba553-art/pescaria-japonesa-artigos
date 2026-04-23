@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Save, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export function FocusNFeSettings() {
   const { toast } = useToast();
@@ -16,6 +16,28 @@ export function FocusNFeSettings() {
   const [saving, setSaving] = useState(false);
   const [showCsc, setShowCsc] = useState(false);
   const [settingsId, setSettingsId] = useState<string | null>(null);
+  const [syncingCsc, setSyncingCsc] = useState(false);
+
+  const handleSyncCsc = async () => {
+    setSyncingCsc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-focus-empresa');
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast({
+        title: '✅ CSC sincronizado!',
+        description: (data as any)?.message || 'CSC enviado para o cadastro da empresa na Focus NFe.',
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao sincronizar CSC',
+        description: e.message || 'Falha ao enviar o CSC para a Focus NFe.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingCsc(false);
+    }
+  };
 
   const [form, setForm] = useState({
     enabled: false,
@@ -216,6 +238,30 @@ export function FocusNFeSettings() {
               </Button>
             </div>
           </div>
+
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-3">
+              <p>
+                Depois de salvar, clique em <strong>Sincronizar CSC com a Focus</strong> para
+                gravar o CSC no cadastro da empresa na Focus NFe (necessário para emitir NFC-e).
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleSyncCsc}
+                disabled={syncingCsc || !form.csc_id || !form.csc_token}
+              >
+                {syncingCsc ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Sincronizar CSC com a Focus
+              </Button>
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
 
