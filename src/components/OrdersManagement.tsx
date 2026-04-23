@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -124,7 +124,9 @@ const OrdersTable = ({
   verifyPayment,
   trackingCodes,
   setTrackingCodes,
-  updateTrackingCode
+  updateTrackingCode,
+  emitNFCe,
+  emittingNFCe,
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -136,6 +138,8 @@ const OrdersTable = ({
   trackingCodes: Record<string, string>;
   setTrackingCodes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   updateTrackingCode: (orderId: string) => void;
+  emitNFCe: (orderId: string) => void;
+  emittingNFCe: Set<string>;
 }) => {
   if (orders.length === 0) {
     return (
