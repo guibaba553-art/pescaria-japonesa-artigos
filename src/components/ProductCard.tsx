@@ -94,13 +94,21 @@ export function ProductCard({
   );
 
   return (
-    <Card className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl">
+    <Card
+      className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl cursor-pointer"
+      onClick={handleImageClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleImageClick();
+        }
+      }}
+    >
       <CardContent className="p-0">
         {/* Imagem do Produto */}
-        <div 
-          className="relative overflow-hidden aspect-square cursor-pointer"
-          onClick={handleImageClick}
-        >
+        <div className="relative overflow-hidden aspect-square">
           <img
             src={product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem'}
             alt={product.name}
@@ -144,13 +152,13 @@ export function ProductCard({
             ) : hasVariations ? (
               <Button 
                 className="w-full"
-                onClick={handleImageClick}
+                onClick={(e) => { e.stopPropagation(); handleImageClick(); }}
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Ver Opções
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <ProductQuantitySelector
                   quantity={quantity}
                   maxQuantity={product.stock}
@@ -161,7 +169,7 @@ export function ProductCard({
                 />
                 <Button 
                   className="flex-1"
-                  onClick={onAddToCart}
+                  onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
                   disabled={product.stock === 0}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
