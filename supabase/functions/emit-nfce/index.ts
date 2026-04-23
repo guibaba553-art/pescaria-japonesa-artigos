@@ -275,7 +275,7 @@ serve(async (req) => {
       return payload;
     };
 
-    let futureOffsetMinutes = 2;
+    let futureOffsetMinutes = 5;
     let dataEmissao = buildDataEmissao(futureOffsetMinutes);
     let payload = buildPayload(dataEmissao);
 
@@ -338,7 +338,7 @@ serve(async (req) => {
     const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
 
     if (!response.ok && isLateEmissionError) {
-      futureOffsetMinutes = 5;
+      futureOffsetMinutes = 8;
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
       ref = `${baseRef}-2`;
