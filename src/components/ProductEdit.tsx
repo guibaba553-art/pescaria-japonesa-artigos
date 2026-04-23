@@ -27,6 +27,7 @@ interface ProductEditProps {
 
 export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const { toast } = useToast();
+  const { categories } = useCategories();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);

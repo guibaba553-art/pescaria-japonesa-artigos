@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 export function SearchSection() {
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { categories } = useCategories();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
