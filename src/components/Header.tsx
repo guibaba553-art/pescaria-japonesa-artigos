@@ -1,26 +1,55 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart, Search } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 export function Header() {
   const navigate = useNavigate();
   const { user, signOut, isEmployee, isAdmin } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchQuery.trim();
+    if (query) {
+      navigate(`/produtos?search=${encodeURIComponent(query)}`);
+    } else {
+      navigate('/produtos');
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         <div 
-          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
           onClick={() => navigate('/')}
         >
           <img src={japaLogo} alt="JAPAS" className="h-10 w-10 object-contain" />
-          <span className="text-xl font-bold text-foreground">JAPAS Pesca</span>
+          <span className="text-xl font-bold text-foreground hidden sm:inline">JAPAS Pesca</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <form onSubmit={handleSearch} className="flex-1 max-w-md flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Buscar produtos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button type="submit" size="icon" variant="default" aria-label="Buscar">
+            <Search className="w-4 h-4" />
+          </Button>
+        </form>
+
+        <div className="flex items-center gap-3 flex-shrink-0">
           <Cart />
           
           {user ? (
