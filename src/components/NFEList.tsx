@@ -14,6 +14,7 @@ interface NFE {
   nfe_number: string | null;
   nfe_key: string | null;
   nfe_xml_url: string | null;
+  danfe_url: string | null;
   status: string;
   error_message: string | null;
   emitted_at: string | null;
