@@ -1,61 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Fish, Anchor, GitBranch, Wand2, Waves, CircleDot, Package } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const categories = [
-  {
-    icon: Fish,
-    title: "Iscas",
-    description: "Artificiais, naturais e vivas",
-    color: "from-primary to-primary/80",
-    category: "Iscas"
-  },
-  {
-    icon: Anchor,
-    title: "Anzóis",
-    description: "Diversos tamanhos e modelos",
-    color: "from-secondary to-secondary/80",
-    category: "Anzóis"
-  },
-  {
-    icon: GitBranch,
-    title: "Linhas",
-    description: "Multifilamento e monofilamento",
-    color: "from-primary/80 to-primary",
-    category: "Linhas"
-  },
-  {
-    icon: Wand2,
-    title: "Varas",
-    description: "Telescópicas e resistentes",
-    color: "from-secondary/70 to-secondary",
-    category: "Varas"
-  },
-  {
-    icon: CircleDot,
-    title: "Molinetes e Carretilhas",
-    description: "Alta performance e precisão",
-    color: "from-primary/70 to-primary/90",
-    category: "Molinetes e Carretilhas"
-  },
-  {
-    icon: Waves,
-    title: "Acessórios",
-    description: "Tudo para sua pescaria",
-    color: "from-primary/60 to-primary/80",
-    category: "Acessórios"
-  },
-  {
-    icon: Package,
-    title: "Variedades",
-    description: "Lanternas, fogareiros e mais",
-    color: "from-secondary/60 to-secondary/90",
-    category: "Variedades"
-  }
-];
+import { useCategories } from "@/hooks/useCategories";
 
 const Categories = () => {
   const navigate = useNavigate();
+  const { categories, loading } = useCategories();
+
+  if (loading || categories.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-20 bg-muted/30">
@@ -68,30 +23,37 @@ const Categories = () => {
             Explore nossa ampla variedade de produtos para todos os tipos de pescaria
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-6">
-          {categories.map((category, index) => (
-            <Card 
-              key={index} 
-              className="group hover:shadow-glow transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 overflow-hidden"
-              onClick={() => navigate(`/produtos?category=${category.category}`)}
-            >
-              <CardContent className="p-8 text-center relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-                <div className="relative z-10">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <category.icon className="w-10 h-10 text-primary-foreground" />
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+          {categories.map((category) => {
+            const IconComponent =
+              (category.icon && (LucideIcons as any)[category.icon]) || Package;
+
+            return (
+              <Card
+                key={category.id}
+                className="group hover:shadow-glow transition-all duration-300 cursor-pointer border-2 hover:border-primary/50 overflow-hidden"
+                onClick={() => navigate(`/produtos?category=${encodeURIComponent(category.name)}`)}
+              >
+                <CardContent className="p-8 text-center relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/80 opacity-0 group-hover:opacity-10 transition-opacity duration-300" />
+                  <div className="relative z-10">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <IconComponent className="w-10 h-10 text-primary-foreground" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      {category.name}
+                    </h3>
+                    {category.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {category.description}
+                      </p>
+                    )}
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">
-                    {category.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {category.description}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </section>
