@@ -880,6 +880,10 @@ export default function Admin() {
         })()}
           </TabsContent>
 
+          <TabsContent value="categories">
+            <CategoriesManagement />
+          </TabsContent>
+
           <TabsContent value="drafts">
             <DraftProducts onChange={loadProducts} />
           </TabsContent>
