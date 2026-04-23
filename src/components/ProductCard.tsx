@@ -152,13 +152,13 @@ export function ProductCard({
             ) : hasVariations ? (
               <Button 
                 className="w-full"
-                onClick={handleImageClick}
+                onClick={(e) => { e.stopPropagation(); handleImageClick(); }}
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Ver Opções
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <ProductQuantitySelector
                   quantity={quantity}
                   maxQuantity={product.stock}
@@ -169,7 +169,7 @@ export function ProductCard({
                 />
                 <Button 
                   className="flex-1"
-                  onClick={onAddToCart}
+                  onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
                   disabled={product.stock === 0}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
