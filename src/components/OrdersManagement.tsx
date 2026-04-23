@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -62,11 +62,31 @@ interface Profile {
 }
 
 const statusConfig = {
-  aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Clock, color: 'bg-orange-500' },
-  em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
-  enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
-  entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
-};
+  aguardando_pagamento: {
+    label: 'Aguardando Pagamento',
+    icon: Clock,
+    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    accentClass: 'border-l-orange-500',
+  },
+  em_preparo: {
+    label: 'Em Preparo',
+    icon: Package,
+    badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20',
+    accentClass: 'border-l-amber-500',
+  },
+  enviado: {
+    label: 'Enviado',
+    icon: Truck,
+    badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/20',
+    accentClass: 'border-l-blue-500',
+  },
+  entregado: {
+    label: 'Entregue',
+    icon: CheckCircle,
+    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
+    accentClass: 'border-l-emerald-500',
+  },
+} as const;
 
 // Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
 const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_type']): string => {
@@ -119,110 +139,113 @@ const OrdersTable = ({
 }) => {
   if (orders.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>Nenhum pedido nesta categoria</p>
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+        <Package className="w-14 h-14 mb-3 opacity-40" />
+        <p className="text-sm font-medium">Nenhum pedido nesta categoria</p>
+        <p className="text-xs opacity-70 mt-1">Os pedidos aparecerão aqui assim que forem criados</p>
       </div>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Cliente</TableHead>
-          <TableHead>CPF</TableHead>
-          <TableHead>CEP</TableHead>
-          <TableHead>Itens</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Data</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.map((order) => {
-          const isExpanded = expandedOrders.has(order.id);
-          return (
-            <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)}>
-              <TableRow>
-                <TableCell className="font-mono text-xs">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 mr-1" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 mr-1" />
-                      )}
-                      <span>{order.id.slice(0, 8)}</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                </TableCell>
-                <TableCell>{profiles[order.user_id]?.name || 'Carregando...'}</TableCell>
-                <TableCell className="font-mono text-sm">
-                  {profiles[order.user_id]?.cpf || 'N/A'}
-                </TableCell>
-                <TableCell className="font-mono text-sm">
-                  {order.shipping_cep || 'N/A'}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
-                  </Badge>
-                </TableCell>
-                <TableCell>R$ {order.total_amount.toFixed(2)}</TableCell>
-                <TableCell>
-                  {new Date(order.created_at).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {getStatusLabel(order.status, order.delivery_type)}
-                    </Badge>
-                    {order.status === 'aguardando_pagamento' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => verifyPayment(order.id)}
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        Verificar Pagamento
-                      </Button>
-                    )}
-                    {getNextStatus(order.status, order.delivery_type) && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const nextStatus = getNextStatus(order.status, order.delivery_type);
-                          if (nextStatus) updateOrderStatus(order.id, nextStatus);
-                        }}
-                      >
-                        {getNextStatusLabel(order.status, order.delivery_type)}
-                      </Button>
-                    )}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {orders.map((order) => {
+        const isExpanded = expandedOrders.has(order.id);
+        const cfg = statusConfig[order.status];
+        const StatusIcon = cfg.icon;
+        const nextStatus = getNextStatus(order.status, order.delivery_type);
+        const customerName = profiles[order.user_id]?.name || 'Carregando...';
+        const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+
+        return (
+          <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)} asChild>
+            <Card className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden`}>
+              {/* Header do card */}
+              <div className="p-4 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${cfg.badgeClass} border`}>
+                    <StatusIcon className="w-5 h-5" />
                   </div>
-                </TableCell>
-                <TableCell className="text-right">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                      <Badge variant="outline" className={`${cfg.badgeClass} border text-[10px] font-semibold uppercase tracking-wide`}>
+                        {getStatusLabel(order.status, order.delivery_type)}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] font-medium">
+                        {order.delivery_type === 'pickup' ? '🏪 Retirada' : '🚚 Entrega'}
+                      </Badge>
+                    </div>
+                    <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(order.created_at).toLocaleString('pt-BR', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-2xl font-bold text-primary leading-tight">
+                    R$ {order.total_amount.toFixed(2)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div className="px-4 pb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground border-t pt-3">
+                <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
+                <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
+              </div>
+
+              {/* Ações */}
+              <div className="px-4 pb-4 flex flex-wrap items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                  </Button>
+                </CollapsibleTrigger>
+
+                {order.status === 'aguardando_pagamento' && (
+                  <Button size="sm" variant="outline" onClick={() => verifyPayment(order.id)} className="gap-1">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Verificar Pagamento
+                  </Button>
+                )}
+
+                {nextStatus && (
+                  <Button
+                    size="sm"
+                    onClick={() => updateOrderStatus(order.id, nextStatus)}
+                    className="gap-1"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    {getNextStatusLabel(order.status, order.delivery_type)}
+                  </Button>
+                )}
+
+                <div className="ml-auto">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="hover:bg-destructive/10 hover:text-destructive"
-                      >
+                      <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive h-8 w-8">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
-                          <div className="mt-2 p-2 bg-muted rounded-md text-sm">
-                            <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
-                            <strong>Cliente:</strong> {profiles[order.user_id]?.name}<br />
-                            <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
+                        <AlertDialogDescription asChild>
+                          <div>
+                            Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
+                            <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                              <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
+                              <strong>Cliente:</strong> {customerName}<br />
+                              <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
+                            </div>
                           </div>
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -237,164 +260,126 @@ const OrdersTable = ({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </TableCell>
-              </TableRow>
-              <CollapsibleContent asChild>
-                <TableRow>
-                  <TableCell colSpan={9} className="bg-muted/50">
-                    <div className="py-4 px-6 grid grid-cols-2 gap-6">
-                      {/* Informações do Cliente */}
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm border-b pb-2">Informações do Cliente</h4>
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">Cliente</p>
-                            <p className="font-medium">{profiles[order.user_id]?.name || 'Carregando...'}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">CPF</p>
-                            <p className="font-mono">{profiles[order.user_id]?.cpf || 'N/A'}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground uppercase">CEP</p>
-                            <p className="font-mono">{order.shipping_cep || 'N/A'}</p>
-                          </div>
-                        </div>
-                      </div>
+                </div>
+              </div>
 
-                      {/* Itens do Pedido */}
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm border-b pb-2">Itens do Pedido</h4>
-                        <div className="space-y-2">
-                          {order.order_items.map((item) => (
-                            <div 
-                              key={item.id}
-                              className="flex items-center justify-between p-3 bg-background rounded-lg border"
-                            >
-                              <div className="flex-1">
-                                <p className="font-medium">{item.products.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  Quantidade: {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold">
-                                  R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="pt-3 border-t space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>Subtotal:</span>
-                            <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Frete:</span>
-                            <span>R$ {order.shipping_cost.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between font-bold text-base pt-2 border-t">
-                            <span>Total:</span>
-                            <span>R$ {order.total_amount.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Nota Fiscal */}
-                    {order.nfe_emissions && order.nfe_emissions.length > 0 && (
-                      <div className="col-span-2 mt-4 p-4 bg-background rounded-lg border">
-                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          📄 Nota Fiscal Eletrônica
-                        </h4>
-                        {order.nfe_emissions.map((nfe) => (
-                          <div key={nfe.id} className="space-y-2">
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <p className="text-xs text-muted-foreground uppercase">Número</p>
-                                <p className="font-mono font-semibold">{nfe.nfe_number || 'N/A'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground uppercase">Chave</p>
-                                <p className="font-mono text-xs">{nfe.nfe_key || 'N/A'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground uppercase">Status</p>
-                                <Badge 
-                                  variant={
-                                    nfe.status === 'success' ? 'default' :
-                                    nfe.status === 'pending' ? 'secondary' : 'destructive'
-                                  }
-                                  className="mt-1"
-                                >
-                                  {nfe.status === 'success' ? '✅ Emitida' :
-                                   nfe.status === 'pending' ? '⏳ Pendente' : '❌ Erro'}
-                                </Badge>
-                              </div>
-                            </div>
-                            {nfe.emitted_at && (
+              {/* Detalhes expandidos */}
+              <CollapsibleContent>
+                <div className="px-4 pb-4 pt-0 space-y-4 bg-muted/30 border-t">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    {/* Itens */}
+                    <div>
+                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Itens do Pedido</h4>
+                      <div className="space-y-1.5">
+                        {order.order_items.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between p-2.5 bg-background rounded-lg border text-sm">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <p className="font-medium truncate">{item.products.name}</p>
                               <p className="text-xs text-muted-foreground">
-                                Emitida em: {new Date(nfe.emitted_at).toLocaleString('pt-BR')}
+                                {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
                               </p>
-                            )}
-                            {nfe.status === 'success' && nfe.nfe_xml_url && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
-                                className="w-full"
-                              >
-                                📥 Download XML
-                              </Button>
-                            )}
-                            {nfe.error_message && (
-                              <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-                                Erro: {nfe.error_message}
-                              </div>
-                            )}
+                            </div>
+                            <p className="font-semibold text-sm shrink-0">
+                              R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
+                            </p>
                           </div>
                         ))}
                       </div>
-                    )}
+                    </div>
 
-                    {/* Código de Rastreio */}
-                    {order.status === 'enviado' && (
-                      <div className="col-span-2 mt-4 p-4 bg-background rounded-lg border">
-                        <h4 className="font-semibold text-sm mb-3">Código de Rastreio</h4>
-                        <div className="flex gap-2">
-                          <Input
-                            value={trackingCodes[order.id] || order.tracking_code || ''}
-                            onChange={(e) => setTrackingCodes(prev => ({
-                              ...prev,
-                              [order.id]: e.target.value
-                            }))}
-                            placeholder="Digite o código de rastreio"
-                            className="flex-1"
-                          />
-                          <Button
-                            onClick={() => updateTrackingCode(order.id)}
-                            size="sm"
-                            disabled={!trackingCodes[order.id] || trackingCodes[order.id] === order.tracking_code}
-                          >
-                            Salvar
-                          </Button>
+                    {/* Resumo */}
+                    <div>
+                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Resumo</h4>
+                      <div className="bg-background rounded-lg border p-3 space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
                         </div>
-                        {order.tracking_code && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Código atual: <span className="font-mono font-semibold">{order.tracking_code}</span>
-                          </p>
-                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Frete</span>
+                          <span>R$ {order.shipping_cost.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold pt-2 border-t mt-1">
+                          <span>Total</span>
+                          <span className="text-primary">R$ {order.total_amount.toFixed(2)}</span>
+                        </div>
                       </div>
-                    )}
-                  </TableCell>
-                </TableRow>
+                    </div>
+                  </div>
+
+                  {/* NF-e */}
+                  {order.nfe_emissions && order.nfe_emissions.length > 0 && (
+                    <div className="bg-background rounded-lg border p-3">
+                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
+                        📄 Nota Fiscal Eletrônica
+                      </h4>
+                      {order.nfe_emissions.map((nfe) => (
+                        <div key={nfe.id} className="space-y-2">
+                          <div className="grid grid-cols-3 gap-3 text-sm">
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase">Número</p>
+                              <p className="font-mono font-semibold">{nfe.nfe_number || 'N/A'}</p>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] text-muted-foreground uppercase">Chave</p>
+                              <p className="font-mono text-xs truncate">{nfe.nfe_key || 'N/A'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-muted-foreground uppercase">Status</p>
+                              <Badge
+                                variant={nfe.status === 'success' ? 'default' : nfe.status === 'pending' ? 'secondary' : 'destructive'}
+                                className="mt-0.5"
+                              >
+                                {nfe.status === 'success' ? '✅ Emitida' : nfe.status === 'pending' ? '⏳ Pendente' : '❌ Erro'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {nfe.status === 'success' && nfe.nfe_xml_url && (
+                            <Button size="sm" variant="outline" onClick={() => window.open(nfe.nfe_xml_url!, '_blank')} className="w-full">
+                              📥 Download XML
+                            </Button>
+                          )}
+                          {nfe.error_message && (
+                            <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">Erro: {nfe.error_message}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Rastreio */}
+                  {order.status === 'enviado' && (
+                    <div className="bg-background rounded-lg border p-3">
+                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Código de Rastreio</h4>
+                      <div className="flex gap-2">
+                        <Input
+                          value={trackingCodes[order.id] || order.tracking_code || ''}
+                          onChange={(e) => setTrackingCodes(prev => ({ ...prev, [order.id]: e.target.value }))}
+                          placeholder="Digite o código de rastreio"
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => updateTrackingCode(order.id)}
+                          size="sm"
+                          disabled={!trackingCodes[order.id] || trackingCodes[order.id] === order.tracking_code}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                      {order.tracking_code && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Código atual: <span className="font-mono font-semibold">{order.tracking_code}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CollapsibleContent>
-            </Collapsible>
-          );
-        })}
-      </TableBody>
-    </Table>
+            </Card>
+          </Collapsible>
+        );
+      })}
+    </div>
   );
 };
 
@@ -811,22 +796,54 @@ export function OrdersManagement() {
     </Tabs>
   );
 
+  const totalRevenue = orders
+    .filter(o => o.status !== 'aguardando_pagamento')
+    .reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const pendingCount = orders.filter(o => o.status === 'aguardando_pagamento').length;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gestão de Pedidos ({orders.length})</CardTitle>
-        <CardDescription>Pedidos do site e vendas do PDV separados por origem</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card className="overflow-hidden border-0 shadow-sm">
+      {/* Header com gradient */}
+      <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-b">
+        <div className="p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Package className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Gestão de Pedidos</h2>
+                <p className="text-sm text-muted-foreground">Pedidos do site e vendas do PDV organizados por status</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total</p>
+              <p className="text-xl font-bold">{orders.length}</p>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pendentes</p>
+              <p className="text-xl font-bold text-orange-500">{pendingCount}</p>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Receita</p>
+              <p className="text-xl font-bold text-primary">R$ {totalRevenue.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <CardContent className="p-4 md:p-6">
         <Tabs defaultValue="site" className="space-y-4">
-          <TabsList className="grid grid-cols-2 max-w-md">
-            <TabsTrigger value="site">
+          <TabsList className="grid grid-cols-2 max-w-md h-11">
+            <TabsTrigger value="site" className="gap-2">
               🌐 Site
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{siteOrders.length}</Badge>
+              <Badge className="h-5 min-w-5 px-1.5" variant="secondary">{siteOrders.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="pdv">
+            <TabsTrigger value="pdv" className="gap-2">
               🏪 PDV
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdvOrders.length}</Badge>
+              <Badge className="h-5 min-w-5 px-1.5" variant="secondary">{pdvOrders.length}</Badge>
             </TabsTrigger>
           </TabsList>
 
