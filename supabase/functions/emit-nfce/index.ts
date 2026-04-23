@@ -211,73 +211,83 @@ serve(async (req) => {
       };
     });
 
-    // Referência única para idempotência
-    const ref = `nfce-${user.id.substring(0, 8)}-${Date.now()}`;
+    const baseRef = `nfce-${user.id.substring(0, 8)}-${Date.now()}`;
+    let ref = `${baseRef}-1`;
 
-    // Data de emissão no fuso local da empresa.
-    // Para MT, o offset correto é -04:00; forçar -03:00 pode gerar rejeição na SEFAZ.
-    // Adicionamos +2 minutos para compensar o tempo de processamento Focus -> SEFAZ
-    // (a SEFAZ tolera até ~10 min no futuro, então 2 min é seguro e evita
-    // a rejeição "Data-Hora de emissão atrasada" quando o fluxo demora).
-    const FUTURE_OFFSET_MINUTES = 2;
-    const now = new Date(Date.now() + FUTURE_OFFSET_MINUTES * 60 * 1000);
     const issuerUf = (company.uf || '').toUpperCase();
     const timezoneOffset = issuerUf === 'AC' ? '-05:00' : ['AM', 'MT', 'MS', 'RO', 'RR'].includes(issuerUf) ? '-04:00' : '-03:00';
-    const timezoneOffsetMs = Number(timezoneOffset.slice(0, 3)) * 60 * 60 * 1000;
-    const localIssuerTime = new Date(now.getTime() + timezoneOffsetMs);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const dataEmissao =
-      `${localIssuerTime.getUTCFullYear()}-${pad(localIssuerTime.getUTCMonth() + 1)}-${pad(localIssuerTime.getUTCDate())}` +
-      `T${pad(localIssuerTime.getUTCHours())}:${pad(localIssuerTime.getUTCMinutes())}:${pad(localIssuerTime.getUTCSeconds())}${timezoneOffset}`;
 
-    console.log('Data emissão NFC-e:', { dataEmissao, issuerUf, timezoneOffset, futureOffsetMinutes: FUTURE_OFFSET_MINUTES });
+    const buildDataEmissao = (futureOffsetMinutes: number) => {
+      const now = new Date(Date.now() + futureOffsetMinutes * 60 * 1000);
+      const timezoneOffsetMs = Number(timezoneOffset.slice(0, 3)) * 60 * 60 * 1000;
+      const localIssuerTime = new Date(now.getTime() + timezoneOffsetMs);
+      const pad = (n: number) => String(n).padStart(2, '0');
 
-    // Payload Focus NFe NFC-e (modelo 65)
-    const payload: Record<string, unknown> = {
-      natureza_operacao: 'Venda ao consumidor',
-      data_emissao: dataEmissao,
-      tipo_documento: 1,
-      finalidade_emissao: 1,
-      cnpj_emitente: cleanDoc(company.cnpj),
-      nome_emitente: company.razao_social,
-      nome_fantasia_emitente: company.nome_fantasia || company.razao_social,
-      logradouro_emitente: company.logradouro,
-      numero_emitente: company.numero,
-      ...(company.complemento ? { complemento_emitente: company.complemento } : {}),
-      bairro_emitente: company.bairro,
-      municipio_emitente: company.municipio,
-      uf_emitente: company.uf,
-      cep_emitente: cleanDoc(company.cep),
-      inscricao_estadual_emitente: company.inscricao_estadual,
-      regime_tributario_emitente: company.regime_tributario === 'simples_nacional' ? 1 : 3,
-      presenca_comprador: 1, // 1 = Operação presencial (NFC-e)
-      modalidade_frete: 9, // 9 = Sem ocorrência de transporte
-      local_destino: 1, // 1 = Operação interna
-      consumidor_final: 1,
-      indicador_inscricao_estadual_destinatario: 9, // 9 = Não contribuinte
-      items: focusItems,
-      formas_pagamento: [
-        {
-          forma_pagamento: getPaymentCode(body.payment_method),
-          valor_pagamento: body.total_amount.toFixed(2),
-        },
-      ],
+      return (
+        `${localIssuerTime.getUTCFullYear()}-${pad(localIssuerTime.getUTCMonth() + 1)}-${pad(localIssuerTime.getUTCDate())}` +
+        `T${pad(localIssuerTime.getUTCHours())}:${pad(localIssuerTime.getUTCMinutes())}:${pad(localIssuerTime.getUTCSeconds())}${timezoneOffset}`
+      );
     };
 
-    // Adiciona destinatário SOMENTE se identificado
-    // Se vazio => Focus emite como "CONSUMIDOR NÃO IDENTIFICADO" automaticamente
-    if (hasIdentification) {
-      if (cpf) {
-        payload.cpf_destinatario = cpf;
-      } else if (cnpj) {
-        payload.cnpj_destinatario = cnpj;
-      }
-      if (body.customer?.nome) {
-        payload.nome_destinatario = body.customer.nome;
-      }
-    }
+    const buildPayload = (dataEmissao: string): Record<string, unknown> => {
+      const payload: Record<string, unknown> = {
+        natureza_operacao: 'Venda ao consumidor',
+        data_emissao: dataEmissao,
+        tipo_documento: 1,
+        finalidade_emissao: 1,
+        cnpj_emitente: cleanDoc(company.cnpj),
+        nome_emitente: company.razao_social,
+        nome_fantasia_emitente: company.nome_fantasia || company.razao_social,
+        logradouro_emitente: company.logradouro,
+        numero_emitente: company.numero,
+        ...(company.complemento ? { complemento_emitente: company.complemento } : {}),
+        bairro_emitente: company.bairro,
+        municipio_emitente: company.municipio,
+        uf_emitente: company.uf,
+        cep_emitente: cleanDoc(company.cep),
+        inscricao_estadual_emitente: company.inscricao_estadual,
+        regime_tributario_emitente: company.regime_tributario === 'simples_nacional' ? 1 : 3,
+        presenca_comprador: 1,
+        modalidade_frete: 9,
+        local_destino: 1,
+        consumidor_final: 1,
+        indicador_inscricao_estadual_destinatario: 9,
+        items: focusItems,
+        formas_pagamento: [
+          {
+            forma_pagamento: getPaymentCode(body.payment_method),
+            valor_pagamento: body.total_amount.toFixed(2),
+          },
+        ],
+      };
 
-    console.log('Emitindo NFC-e:', { ref, identified: hasIdentification, total: body.total_amount });
+      if (hasIdentification) {
+        if (cpf) {
+          payload.cpf_destinatario = cpf;
+        } else if (cnpj) {
+          payload.cnpj_destinatario = cnpj;
+        }
+        if (body.customer?.nome) {
+          payload.nome_destinatario = body.customer.nome;
+        }
+      }
+
+      return payload;
+    };
+
+    let futureOffsetMinutes = 2;
+    let dataEmissao = buildDataEmissao(futureOffsetMinutes);
+    let payload = buildPayload(dataEmissao);
+
+    console.log('Emitindo NFC-e:', {
+      ref,
+      identified: hasIdentification,
+      total: body.total_amount,
+      issuerUf,
+      timezoneOffset,
+      futureOffsetMinutes,
+      dataEmissao,
+    });
 
     // Registrar emissão pendente
     const { data: emission, error: emissionError } = await supabase
