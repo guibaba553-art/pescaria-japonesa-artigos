@@ -5,26 +5,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Validation schema for shipping calculation
-const shippingRequestSchema = z.object({
-  cepDestino: z.string().regex(/^\d{8}$/, 'CEP must be exactly 8 digits'),
-  peso: z.number().min(1, 'Weight must be at least 1g').max(30000, 'Weight must not exceed 30kg'),
-  comprimento: z.number().min(11, 'Length must be at least 11cm').max(105, 'Length must not exceed 105cm'),
-  altura: z.number().min(2, 'Height must be at least 2cm').max(105, 'Height must not exceed 105cm'),
-  largura: z.number().min(11, 'Width must be at least 11cm').max(105, 'Width must not exceed 105cm'),
-  formato: z.number().int().min(1).max(3, 'Format must be 1 (box), 2 (roll), or 3 (envelope)'),
-  diametro: z.number().optional(),
+const ME_API_BASE = 'https://melhorenvio.com.br/api/v2';
+const CEP_ORIGEM = '78556100'; // Sinop - MT
+const USER_AGENT = 'JAPAS Pesca (robertobaba2@gmail.com)';
+
+const productSchema = z.object({
+  id: z.string().optional(),
+  width: z.number().min(11).max(105),
+  height: z.number().min(2).max(105),
+  length: z.number().min(11).max(105),
+  weight: z.number().min(0.01).max(30),
+  insurance_value: z.number().min(0).default(0),
+  quantity: z.number().int().min(1).default(1),
 });
 
-interface ShippingRequest {
-  cepDestino: string;
-  peso: number;
-  formato: number;
-  comprimento: number;
-  altura: number;
-  largura: number;
-  diametro?: number;
-}
+const shippingRequestSchema = z.object({
+  cepDestino: z.string().regex(/^\d{8}$/, 'CEP must be exactly 8 digits'),
+  // Backwards-compatible single-product fields
+  peso: z.number().min(1).max(30000).optional(),
+  comprimento: z.number().min(11).max(105).optional(),
+  altura: z.number().min(2).max(105).optional(),
+  largura: z.number().min(11).max(105).optional(),
+  formato: z.number().int().min(1).max(3).optional(),
+  diametro: z.number().optional(),
+  // New: list of products (preferred)
+  products: z.array(productSchema).optional(),
+  insurance_value: z.number().min(0).optional(),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -32,103 +39,126 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const rawData = await req.json();
-    
-    // Validate input data
-    const validationResult = shippingRequestSchema.safeParse(rawData);
-    if (!validationResult.success) {
-      console.error('Shipping validation failed:', validationResult.error.issues[0].message);
+    const token = Deno.env.get('MELHOR_ENVIO_TOKEN');
+    if (!token) {
+      console.error('MELHOR_ENVIO_TOKEN not configured');
       return new Response(
-        JSON.stringify({ 
-          error: 'Invalid input', 
-          details: validationResult.error.errors.map(e => e.message)
-        }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ error: 'Shipping provider not configured', success: false }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    const data: ShippingRequest = validationResult.data;
 
-    console.log('Calculating shipping for CEP:', data.cepDestino.substring(0, 5) + 'XXX');
-
-    // CEP de origem (Sinop - MT)
-    const cepOrigem = '78556100';
-
-    // Códigos de serviço dos Correios
-    const servicoCodes = ['04014', '04510'];
-
-    const shippingOptions = [];
-
-    for (const codigo of servicoCodes) {
-      // Calcular frete baseado em distância aproximada e peso
-      const cepDestinoNum = parseInt(data.cepDestino);
-      const cepOrigemNum = parseInt(cepOrigem);
-      const distanciaFator = Math.abs(cepDestinoNum - cepOrigemNum) / 10000000;
-      
-      const pesoKg = data.peso / 1000;
-      const volumeM3 = (data.comprimento * data.altura * data.largura) / 1000000;
-      const pesoCubado = Math.max(pesoKg, volumeM3 * 200);
-      
-      let valorBase = 0;
-      let prazoBase = 0;
-      let nome = '';
-
-      if (codigo === '04014') {
-        // SEDEX
-        nome = 'SEDEX';
-        prazoBase = 2 + Math.floor(distanciaFator * 3);
-      } else {
-        // PAC
-        nome = 'PAC';
-        prazoBase = 5 + Math.floor(distanciaFator * 5);
-      }
-
-      shippingOptions.push({
-        codigo,
-        nome,
-        valor: 0, // Frete grátis - custo embutido nos produtos
-        prazoEntrega: prazoBase,
-        valorMaoPropriaLabel: 'R$ 0,00',
-        valorAvisoRecebimento: 'R$ 0,00',
-        valorDeclarado: 'R$ 0,00',
-      });
+    const rawData = await req.json();
+    const validation = shippingRequestSchema.safeParse(rawData);
+    if (!validation.success) {
+      console.error('Validation failed:', validation.error.issues);
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid input',
+          details: validation.error.errors.map((e) => e.message),
+          success: false,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Adicionar opção de retirada na loja
-    shippingOptions.push({
+    const data = validation.data;
+
+    // Build products array for Melhor Envio (weight in kg, dims in cm)
+    let products;
+    if (data.products && data.products.length > 0) {
+      products = data.products.map((p, idx) => ({
+        id: p.id || String(idx + 1),
+        width: p.width,
+        height: p.height,
+        length: p.length,
+        weight: p.weight,
+        insurance_value: p.insurance_value || 0,
+        quantity: p.quantity,
+      }));
+    } else {
+      // Fallback to legacy single-package input
+      products = [
+        {
+          id: '1',
+          width: data.largura || 20,
+          height: data.altura || 20,
+          length: data.comprimento || 30,
+          weight: (data.peso || 500) / 1000, // grams -> kg
+          insurance_value: data.insurance_value || 0,
+          quantity: 1,
+        },
+      ];
+    }
+
+    console.log('Calculating shipping via Melhor Envio:', {
+      cepDestino: data.cepDestino.substring(0, 5) + 'XXX',
+      productsCount: products.length,
+    });
+
+    const meResponse = await fetch(`${ME_API_BASE}/me/shipment/calculate`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'User-Agent': USER_AGENT,
+      },
+      body: JSON.stringify({
+        from: { postal_code: CEP_ORIGEM },
+        to: { postal_code: data.cepDestino },
+        products,
+      }),
+    });
+
+    if (!meResponse.ok) {
+      const errText = await meResponse.text();
+      console.error('Melhor Envio error:', meResponse.status, errText);
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to calculate shipping',
+          status: meResponse.status,
+          success: false,
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const meData = await meResponse.json();
+
+    // Filter and normalize options
+    const options = (Array.isArray(meData) ? meData : [])
+      .filter((opt: any) => !opt.error && opt.price)
+      .map((opt: any) => ({
+        codigo: String(opt.id),
+        nome: `${opt.company?.name || ''} ${opt.name || ''}`.trim(),
+        valor: parseFloat(opt.price),
+        prazoEntrega: opt.delivery_time || opt.delivery_range?.max || 0,
+        company: opt.company?.name || null,
+        servico: opt.name || null,
+      }));
+
+    // Add pickup option
+    options.push({
       codigo: 'RETIRADA',
       nome: 'Retirar na Loja',
       valor: 0,
       prazoEntrega: 0,
-      valorMaoPropriaLabel: 'R$ 0,00',
-      valorAvisoRecebimento: 'R$ 0,00',
-      valorDeclarado: 'R$ 0,00',
+      company: 'Loja',
+      servico: 'Retirada',
     });
 
-    console.log('Shipping options calculated:', shippingOptions.length, 'options');
+    console.log('Shipping options calculated:', options.length);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        options: shippingOptions
-      }),
+      JSON.stringify({ success: true, options }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
-    console.error('Error calculating shipping:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error calculating shipping:', error instanceof Error ? error.message : 'Unknown');
     return new Response(
-      JSON.stringify({
-        error: 'Error calculating shipping',
-        success: false
-      }),
-      { 
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+      JSON.stringify({ error: 'Error calculating shipping', success: false }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

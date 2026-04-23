@@ -152,6 +152,7 @@ export function Cart() {
 
               <div className="space-y-4">
                 <ShippingCalculator 
+                  products={items.map((it) => ({ id: it.id, quantity: it.quantity }))}
                   onSelectShipping={(option) => {
                     setShippingCost(option.valor);
                     setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });

@@ -32,3 +32,12 @@ verify_jwt = true
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.calculate-shipping]
+verify_jwt = false
+
+[functions.melhor-envio-label]
+verify_jwt = true
+
+[functions.melhor-envio-tracking]
+verify_jwt = true
