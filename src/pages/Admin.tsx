@@ -57,6 +57,9 @@ export default function Admin() {
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
+  const [brand, setBrand] = useState('');
+  const [poundTest, setPoundTest] = useState('');
+  const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
