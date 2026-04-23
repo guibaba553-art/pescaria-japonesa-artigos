@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCategories } from '@/hooks/useCategories';
 import { CategoriesManagement } from '@/components/CategoriesManagement';
 import { ProductVariations } from '@/components/ProductVariations';
+import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { validateProductForm } from '@/utils/productValidation';
 
 interface Product {
@@ -607,27 +608,12 @@ export default function Admin() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="subcategory">Subcategoria (opcional)</Label>
-                  {(() => {
-                    const parent = primaries.find(p => p.name === category);
-                    const subs = parent ? getSubcategoriesOf(parent.id) : [];
-                    return (
-                      <Select
-                        value={subcategory || 'none'}
-                        onValueChange={(v) => setSubcategory(v === 'none' ? '' : v)}
-                        disabled={!parent || subs.length === 0}
-                      >
-                        <SelectTrigger id="subcategory">
-                          <SelectValue placeholder={!parent ? 'Escolha a categoria primeiro' : subs.length === 0 ? 'Sem subcategorias' : 'Selecione (opcional)'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {subs.map((s) => (
-                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    );
-                  })()}
+                  <SubcategorySelect
+                    parentCategoryName={category}
+                    value={subcategory}
+                    onChange={setSubcategory}
+                    triggerId="subcategory"
+                  />
                 </div>
               </div>
 
@@ -693,27 +679,6 @@ export default function Admin() {
                   checked={soldByWeight}
                   onCheckedChange={setSoldByWeight}
                 />
-              </div>
-
-              <div className="space-y-3 border p-4 rounded-lg bg-muted/30">
-                <div>
-                  <h4 className="font-semibold text-sm">Atributos para Filtros</h4>
-                  <p className="text-xs text-muted-foreground">Opcional — ajuda o cliente a encontrar o produto na loja</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="brand" className="text-xs">Marca</Label>
-                    <Input id="brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Shimano" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="poundTest" className="text-xs">Libragem</Label>
-                    <Input id="poundTest" value={poundTest} onChange={(e) => setPoundTest(e.target.value)} placeholder="Ex: 20lb" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="size" className="text-xs">Tamanho</Label>
-                    <Input id="size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="Ex: 1,80m" />
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-2">

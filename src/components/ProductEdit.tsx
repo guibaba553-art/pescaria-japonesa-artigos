@@ -389,27 +389,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-subcategory">Subcategoria (opcional)</Label>
-                {(() => {
-                  const parent = primaries.find(p => p.name === category);
-                  const subs = parent ? getSubcategoriesOf(parent.id) : [];
-                  return (
-                    <Select
-                      value={subcategory || 'none'}
-                      onValueChange={(v) => setSubcategory(v === 'none' ? '' : v)}
-                      disabled={!parent || subs.length === 0}
-                    >
-                      <SelectTrigger id="edit-subcategory">
-                        <SelectValue placeholder={!parent ? 'Escolha a categoria' : subs.length === 0 ? 'Sem subcategorias' : 'Selecione (opcional)'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma</SelectItem>
-                        {subs.map((s) => (
-                          <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  );
-                })()}
+                <SubcategorySelect
+                  parentCategoryName={category}
+                  value={subcategory}
+                  onChange={setSubcategory}
+                  triggerId="edit-subcategory"
+                />
               </div>
             </div>
 
@@ -462,27 +447,6 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 <p className="text-xs text-muted-foreground">
                   Código para leitura no PDV
                 </p>
-              </div>
-            </div>
-
-            <div className="space-y-3 border p-4 rounded-lg bg-muted/30">
-              <div>
-                <h4 className="font-semibold text-sm">Atributos para Filtros</h4>
-                <p className="text-xs text-muted-foreground">Opcional — aparece nos filtros da loja</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-brand" className="text-xs">Marca</Label>
-                  <Input id="edit-brand" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Ex: Shimano" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-poundTest" className="text-xs">Libragem</Label>
-                  <Input id="edit-poundTest" value={poundTest} onChange={(e) => setPoundTest(e.target.value)} placeholder="Ex: 20lb" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-size" className="text-xs">Tamanho</Label>
-                  <Input id="edit-size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="Ex: 1,80m" />
-                </div>
               </div>
             </div>
 
