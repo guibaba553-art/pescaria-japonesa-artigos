@@ -128,6 +128,7 @@ const OrdersTable = ({
   updateTrackingCode,
   emitNFCe,
   emittingNFCe,
+  openLabelDialog,
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -141,6 +142,7 @@ const OrdersTable = ({
   updateTrackingCode: (orderId: string) => void;
   emitNFCe: (orderId: string) => void;
   emittingNFCe: Set<string>;
+  openLabelDialog: (order: Order) => void;
 }) => {
   if (orders.length === 0) {
     return (
