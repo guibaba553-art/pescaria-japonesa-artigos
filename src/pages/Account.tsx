@@ -409,9 +409,9 @@ export default function Account() {
                       );
                       if (!nfe) return null;
                       return (
-                        <div className="p-3 bg-emerald-500/5 rounded-md border border-emerald-500/20 space-y-2">
+                        <div className="p-3 bg-primary/5 rounded-md border border-primary/20 space-y-2">
                           <div className="flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-emerald-600" />
+                            <FileText className="w-4 h-4 text-primary" />
                             <p className="text-sm font-medium">Nota Fiscal Eletrônica</p>
                             {nfe.nfe_number && (
                               <Badge variant="outline" className="text-xs">
