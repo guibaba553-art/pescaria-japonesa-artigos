@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 
@@ -22,6 +22,16 @@ interface OrderItem {
     name: string;
     image_url: string | null;
   };
+}
+
+interface NfeEmission {
+  id: string;
+  status: string;
+  nfe_number: string | null;
+  nfe_key: string | null;
+  danfe_url: string | null;
+  nfe_xml_url: string | null;
+  emitted_at: string | null;
 }
 
 interface Order {
@@ -38,6 +48,7 @@ interface Order {
   qr_code_base64: string | null;
   ticket_url: string | null;
   pix_expiration: string | null;
+  nfe_emissions?: NfeEmission[];
 }
 
 const statusConfig: Record<string, { label: string; icon: typeof Package; color: string }> = {
@@ -180,6 +191,9 @@ export default function Account() {
         order_items (
           *,
           products (name, image_url)
+        ),
+        nfe_emissions (
+          id, status, nfe_number, nfe_key, danfe_url, nfe_xml_url, emitted_at
         )
       `)
       .eq('user_id', user.id)
@@ -351,20 +365,86 @@ export default function Account() {
 
                     <Separator />
 
-                    {order.tracking_code && order.status === 'enviado' && (
+                    {order.tracking_code && (order.status === 'enviado' || order.status === 'entregue' || order.status === 'entregado') && (
                       <>
-                        <div className="p-3 bg-primary/5 rounded-md border border-primary/10">
-                          <p className="text-sm font-medium mb-1">📦 Código de Rastreio</p>
-                          <p className="text-base font-mono font-semibold text-primary">
-                            {order.tracking_code}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Use este código para rastrear seu pedido
-                          </p>
+                        <div className="p-3 bg-primary/5 rounded-md border border-primary/10 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-primary" />
+                            <p className="text-sm font-medium">Código de Rastreio</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <code className="text-base font-mono font-semibold text-primary bg-background px-2 py-1 rounded border">
+                              {order.tracking_code}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.tracking_code!);
+                                toast({ title: 'Código copiado!', description: 'Cole no site da transportadora.' });
+                              }}
+                            >
+                              <Copy className="w-3 h-3 mr-1" /> Copiar
+                            </Button>
+                            <Button
+                              size="sm"
+                              asChild
+                            >
+                              <a
+                                href={`https://www.melhorrastreio.com.br/rastreio/${order.tracking_code}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink className="w-3 h-3 mr-1" /> Rastrear pedido
+                              </a>
+                            </Button>
+                          </div>
                         </div>
-                        <Separator />
                       </>
                     )}
+
+                    {(() => {
+                      const nfe = order.nfe_emissions?.find(
+                        (n) => n.status === 'autorizada' || n.status === 'emitida' || n.status === 'authorized'
+                      );
+                      if (!nfe) return null;
+                      return (
+                        <div className="p-3 bg-primary/5 rounded-md border border-primary/20 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-primary" />
+                            <p className="text-sm font-medium">Nota Fiscal Eletrônica</p>
+                            {nfe.nfe_number && (
+                              <Badge variant="outline" className="text-xs">
+                                Nº {nfe.nfe_number}
+                              </Badge>
+                            )}
+                          </div>
+                          {nfe.nfe_key && (
+                            <p className="text-xs text-muted-foreground font-mono break-all">
+                              Chave: {nfe.nfe_key}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 flex-wrap pt-1">
+                            {nfe.danfe_url && (
+                              <Button size="sm" asChild>
+                                <a href={nfe.danfe_url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-3 h-3 mr-1" /> Baixar DANFE (PDF)
+                                </a>
+                              </Button>
+                            )}
+                            {nfe.nfe_xml_url && (
+                              <Button size="sm" variant="outline" asChild>
+                                <a href={nfe.nfe_xml_url} target="_blank" rel="noopener noreferrer">
+                                  <Download className="w-3 h-3 mr-1" /> Baixar XML
+                                </a>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <Separator />
 
                     <div className="flex justify-between text-sm">
                       <span>Frete:</span>
