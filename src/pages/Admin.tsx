@@ -885,6 +885,12 @@ export default function Admin() {
           <TabsContent value="fiscal">
             <FiscalSystem />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="employees">
+              <EmployeesManagement />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
