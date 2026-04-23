@@ -18,6 +18,34 @@ export function FocusNFeSettings() {
   const [settingsId, setSettingsId] = useState<string | null>(null);
   const [syncingCsc, setSyncingCsc] = useState(false);
 
+  const getSyncErrorMessage = async (error: any) => {
+    const fallbackMessage = error?.message || 'Falha ao enviar o CSC para a Focus NFe.';
+    const response = error?.context;
+
+    if (!response || typeof response.clone !== 'function') {
+      return fallbackMessage;
+    }
+
+    try {
+      const payload = await response.clone().json();
+      const mainMessage = payload?.error || payload?.message;
+      const details = typeof payload?.details === 'string' ? payload.details.trim() : '';
+
+      if (mainMessage && details && !mainMessage.includes(details)) {
+        return `${mainMessage} ${details}`;
+      }
+
+      return mainMessage || details || fallbackMessage;
+    } catch {
+      try {
+        const text = (await response.clone().text()).trim();
+        return text || fallbackMessage;
+      } catch {
+        return fallbackMessage;
+      }
+    }
+  };
+
   const handleSyncCsc = async () => {
     setSyncingCsc(true);
     try {
@@ -29,9 +57,10 @@ export function FocusNFeSettings() {
         description: (data as any)?.message || 'CSC enviado para o cadastro da empresa na Focus NFe.',
       });
     } catch (e: any) {
+      const description = await getSyncErrorMessage(e);
       toast({
         title: 'Erro ao sincronizar CSC',
-        description: e.message || 'Falha ao enviar o CSC para a Focus NFe.',
+        description,
         variant: 'destructive',
       });
     } finally {
