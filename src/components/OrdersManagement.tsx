@@ -742,6 +742,8 @@ export function OrdersManagement() {
       });
     }
   };
+
+  if (loading) {
     return <div>Carregando pedidos...</div>;
   }
 
