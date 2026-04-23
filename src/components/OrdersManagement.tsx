@@ -984,6 +984,13 @@ export function OrdersManagement() {
           <TabsContent value="pdv">{renderPdvTabs()}</TabsContent>
         </Tabs>
       </CardContent>
+
+      <MelhorEnvioLabelDialog
+        open={!!labelOrder}
+        onOpenChange={(o) => { if (!o) setLabelOrder(null); }}
+        order={labelOrder}
+        onSuccess={loadOrders}
+      />
     </Card>
   );
 }
