@@ -86,24 +86,23 @@ serve(async (req) => {
     }
 
     const isProducao = focusSettings.ambiente === 'producao';
-    const focusToken = isProducao
-      ? Deno.env.get('FOCUS_NFE_TOKEN_PRODUCAO')
-      : Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
+    // A gestão de empresas via API exige o Token Principal de Produção da Focus
+    // (independente do ambiente). Os tokens de emissão não têm permissão nessa rota.
+    const focusToken = Deno.env.get('FOCUS_NFE_TOKEN_PRINCIPAL');
 
     if (!focusToken) {
       return new Response(
         JSON.stringify({
-          error: isProducao
-            ? 'Token Focus NFe de PRODUÇÃO não configurado'
-            : 'Token Focus NFe de HOMOLOGAÇÃO não configurado',
+          error:
+            'Token Principal Focus NFe não configurado. Cadastre o secret FOCUS_NFE_TOKEN_PRINCIPAL (Painel API → Tokens → Token Principal de Produção).',
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const focusBaseUrl = isProducao
-      ? 'https://api.focusnfe.com.br'
-      : 'https://homologacao.focusnfe.com.br';
+    // Token Principal só é aceito no domínio de produção, mesmo para configurar empresas
+    // que serão usadas em homologação.
+    const focusBaseUrl = 'https://api.focusnfe.com.br';
 
     const auth = btoa(`${focusToken}:`);
     const cnpjLimpo = cleanDoc(company.cnpj);
