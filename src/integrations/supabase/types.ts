@@ -149,7 +149,9 @@ export type Database = {
           display_order: number
           icon: string | null
           id: string
+          is_primary: boolean
           name: string
+          parent_id: string | null
           slug: string
           updated_at: string
         }
@@ -159,7 +161,9 @@ export type Database = {
           display_order?: number
           icon?: string | null
           id?: string
+          is_primary?: boolean
           name: string
+          parent_id?: string | null
           slug: string
           updated_at?: string
         }
@@ -169,11 +173,21 @@ export type Database = {
           display_order?: number
           icon?: string | null
           id?: string
+          is_primary?: boolean
           name?: string
+          parent_id?: string | null
           slug?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {
@@ -786,6 +800,7 @@ export type Database = {
           sku: string | null
           sold_by_weight: boolean
           stock: number
+          subcategory: string | null
           unidade_comercial: string | null
           updated_at: string
         }
@@ -818,6 +833,7 @@ export type Database = {
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
+          subcategory?: string | null
           unidade_comercial?: string | null
           updated_at?: string
         }
@@ -850,6 +866,7 @@ export type Database = {
           sku?: string | null
           sold_by_weight?: boolean
           stock?: number
+          subcategory?: string | null
           unidade_comercial?: string | null
           updated_at?: string
         }
