@@ -215,9 +215,11 @@ serve(async (req) => {
     const ref = `nfce-${user.id.substring(0, 8)}-${Date.now()}`;
 
     // Payload Focus NFe NFC-e (modelo 65)
+    // OBS: data_emissao é OMITIDA propositalmente — a Focus NFe preenche
+    // com o horário oficial da SEFAZ, evitando rejeição "Data-Hora atrasada"
+    // por dessincronia de relógio do servidor.
     const payload: Record<string, unknown> = {
       natureza_operacao: 'Venda ao consumidor',
-      data_emissao: new Date().toISOString(),
       tipo_documento: 1,
       finalidade_emissao: 1,
       cnpj_emitente: cleanDoc(company.cnpj),
