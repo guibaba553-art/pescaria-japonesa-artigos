@@ -846,6 +846,7 @@ export function OrdersManagement() {
     updateTrackingCode,
     emitNFCe,
     emittingNFCe,
+    openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
   const renderSiteTabs = () => (
