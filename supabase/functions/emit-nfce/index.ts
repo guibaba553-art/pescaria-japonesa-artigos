@@ -309,25 +309,54 @@ serve(async (req) => {
       console.error('Erro ao registrar emissão:', emissionError);
     }
 
-    // Chamar Focus NFe
-    const url = `${focusBaseUrl}/v2/nfce?ref=${encodeURIComponent(ref)}`;
     const auth = btoa(`${focusToken}:`);
+    const sendToFocus = async (currentRef: string, currentPayload: Record<string, unknown>) => {
+      const url = `${focusBaseUrl}/v2/nfce?ref=${encodeURIComponent(currentRef)}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(currentPayload),
+      });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+      const responseText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = { mensagem: responseText || `HTTP ${response.status}` };
+      }
 
-    const responseText = await response.text();
-    let result: any;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      result = { mensagem: responseText || `HTTP ${response.status}` };
+      return { response, result, responseText };
+    };
+
+    let { response, result, responseText } = await sendToFocus(ref, payload);
+
+    const normalizedError = JSON.stringify(result).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
+
+    if (!response.ok && isLateEmissionError) {
+      futureOffsetMinutes = 5;
+      dataEmissao = buildDataEmissao(futureOffsetMinutes);
+      payload = buildPayload(dataEmissao);
+      ref = `${baseRef}-2`;
+
+      console.log('Retry NFC-e por data-hora atrasada:', {
+        ref,
+        futureOffsetMinutes,
+        dataEmissao,
+      });
+
+      if (emission) {
+        await supabase
+          .from('nfe_emissions')
+          .update({ ref_focus: ref, updated_at: new Date().toISOString() })
+          .eq('id', emission.id);
+      }
+
+      ({ response, result, responseText } = await sendToFocus(ref, payload));
     }
 
     if (!response.ok) {
