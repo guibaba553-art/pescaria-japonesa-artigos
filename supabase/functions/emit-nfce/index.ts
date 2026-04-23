@@ -264,6 +264,9 @@ serve(async (req) => {
         local_destino: 1,
         consumidor_final: 1,
         indicador_inscricao_estadual_destinatario: 9,
+        // CSC obrigatório para NFC-e (assinatura do QR Code)
+        csc_id: cscId,
+        csc_token: cscToken,
         items: focusItems,
         formas_pagamento: [
           {
