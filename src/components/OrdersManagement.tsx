@@ -62,11 +62,31 @@ interface Profile {
 }
 
 const statusConfig = {
-  aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Clock, color: 'bg-orange-500' },
-  em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
-  enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
-  entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
-};
+  aguardando_pagamento: {
+    label: 'Aguardando Pagamento',
+    icon: Clock,
+    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    accentClass: 'border-l-orange-500',
+  },
+  em_preparo: {
+    label: 'Em Preparo',
+    icon: Package,
+    badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20',
+    accentClass: 'border-l-amber-500',
+  },
+  enviado: {
+    label: 'Enviado',
+    icon: Truck,
+    badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/20',
+    accentClass: 'border-l-blue-500',
+  },
+  entregado: {
+    label: 'Entregue',
+    icon: CheckCircle,
+    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
+    accentClass: 'border-l-emerald-500',
+  },
+} as const;
 
 // Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
 const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_type']): string => {
