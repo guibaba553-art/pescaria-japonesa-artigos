@@ -246,6 +246,9 @@ export default function Admin() {
               sku: sku || null,
               minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
               sold_by_weight: soldByWeight,
+              brand: brand || null,
+              pound_test: poundTest || null,
+              size: size || null,
               images: imageUrls,
               image_url: imageUrls.length > 0 ? imageUrls[0] : null,
               created_by: user?.id
