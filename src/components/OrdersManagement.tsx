@@ -221,7 +221,7 @@ const OrdersTable = ({
                   </Button>
                 )}
 
-                {nextStatus && (
+        {nextStatus && (
                   <Button
                     size="sm"
                     onClick={() => updateOrderStatus(order.id, nextStatus)}
@@ -229,6 +229,23 @@ const OrdersTable = ({
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
                     {getNextStatusLabel(order.status, order.delivery_type)}
+                  </Button>
+                )}
+
+                {order.source === 'pdv' && order.status === 'entregado' && !order.nfe_emissions?.some(n => n.status === 'success') && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => emitNFCe(order.id)}
+                    disabled={emittingNFCe.has(order.id)}
+                    className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {emittingNFCe.has(order.id) ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Receipt className="h-3.5 w-3.5" />
+                    )}
+                    {emittingNFCe.has(order.id) ? 'Emitindo...' : 'Emitir NFC-e'}
                   </Button>
                 )}
 
@@ -393,6 +410,7 @@ export function OrdersManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
+  const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
