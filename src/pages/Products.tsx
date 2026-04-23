@@ -4,6 +4,8 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Home, X, SlidersHorizontal } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +14,8 @@ import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories } from '@/hooks/useCategories';
+
+type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,6 +28,9 @@ export default function Products() {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const { toast } = useToast();
   const { addItem } = useCart();
   const { getQuantity, setQuantity, incrementQuantity, decrementQuantity } = useProductQuantity();
@@ -37,6 +44,8 @@ export default function Products() {
     setSelectedBrands([]);
     setSelectedPounds([]);
     setSelectedSizes([]);
+    setSelectedSubcategories([]);
+    setPriceRange(null);
   }, [categoryParam, subcategoryParam]);
 
   const loadProducts = async () => {
@@ -69,21 +78,41 @@ export default function Products() {
     setSearchParams(subcategory ? { category: categoryParam, subcategory } : { category: categoryParam });
   };
 
+  // Faixa de preço dinâmica baseada nos produtos
+  const { minPrice, maxPrice } = useMemo(() => {
+    if (products.length === 0) return { minPrice: 0, maxPrice: 0 };
+    const prices = products.map(p => p.on_sale && p.sale_price ? p.sale_price : p.price);
+    return {
+      minPrice: Math.floor(Math.min(...prices)),
+      maxPrice: Math.ceil(Math.max(...prices)),
+    };
+  }, [products]);
+
+  // Inicializa o range de preço quando produtos mudam
+  useEffect(() => {
+    if (products.length > 0 && priceRange === null) {
+      setPriceRange([minPrice, maxPrice]);
+    }
+  }, [products, minPrice, maxPrice, priceRange]);
+
   // Opções dinâmicas a partir dos produtos carregados
-  const { brandOptions, poundOptions, sizeOptions } = useMemo(() => {
+  const { brandOptions, poundOptions, sizeOptions, subcategoryOptions } = useMemo(() => {
     const brands = new Set<string>();
     const pounds = new Set<string>();
     const sizes = new Set<string>();
+    const subs = new Set<string>();
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
       if (p.pound_test) pounds.add(p.pound_test);
       if (p.size) sizes.add(p.size);
+      if (p.subcategory) subs.add(p.subcategory);
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
     return {
       brandOptions: Array.from(brands).sort(sorter),
       poundOptions: Array.from(pounds).sort(sorter),
       sizeOptions: Array.from(sizes).sort(sorter),
+      subcategoryOptions: Array.from(subs).sort(sorter),
     };
   }, [products]);
 
@@ -93,23 +122,66 @@ export default function Products() {
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return products.filter(p => {
+    const filtered = products.filter(p => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
       if (selectedSizes.length && (!p.size || !selectedSizes.includes(p.size))) return false;
+      if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
+      if (priceRange) {
+        const effectivePrice = p.on_sale && p.sale_price ? p.sale_price : p.price;
+        if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;
+      }
       return true;
     });
-  }, [products, searchQuery, selectedBrands, selectedPounds, selectedSizes]);
 
-  const totalActiveFilters = selectedBrands.length + selectedPounds.length + selectedSizes.length;
+    // Ordenação
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'price_asc':
+        sorted.sort((a, b) => {
+          const pa = a.on_sale && a.sale_price ? a.sale_price : a.price;
+          const pb = b.on_sale && b.sale_price ? b.sale_price : b.price;
+          return pa - pb;
+        });
+        break;
+      case 'price_desc':
+        sorted.sort((a, b) => {
+          const pa = a.on_sale && a.sale_price ? a.sale_price : a.price;
+          const pb = b.on_sale && b.sale_price ? b.sale_price : b.price;
+          return pb - pa;
+        });
+        break;
+      case 'newest':
+        sorted.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        break;
+      case 'name_asc':
+      default:
+        sorted.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        break;
+    }
+    return sorted;
+  }, [products, searchQuery, selectedBrands, selectedPounds, selectedSizes, selectedSubcategories, priceRange, sortBy]);
+
+  const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
+  const totalActiveFilters =
+    selectedBrands.length +
+    selectedPounds.length +
+    selectedSizes.length +
+    selectedSubcategories.length +
+    (priceFilterActive ? 1 : 0);
+
   const clearAllFilters = () => {
     setSelectedBrands([]);
     setSelectedPounds([]);
     setSelectedSizes([]);
+    setSelectedSubcategories([]);
+    setPriceRange([minPrice, maxPrice]);
   };
 
-  const hasAnyAttribute = brandOptions.length + poundOptions.length + sizeOptions.length > 0;
+  const hasAnyAttribute =
+    brandOptions.length + poundOptions.length + sizeOptions.length + subcategoryOptions.length > 0
+    || maxPrice > minPrice;
 
   const renderFilterGroup = (
     title: string,
@@ -240,6 +312,31 @@ export default function Products() {
                   )}
                 </div>
 
+                {/* Faixa de preço */}
+                {maxPrice > minPrice && priceRange && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Faixa de preço
+                    </p>
+                    <Slider
+                      min={minPrice}
+                      max={maxPrice}
+                      step={1}
+                      value={priceRange}
+                      onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
+                      className="mt-2"
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>R$ {priceRange[0].toFixed(2)}</span>
+                      <span>R$ {priceRange[1].toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Subcategoria (somente quando não há subcategoria selecionada via URL) */}
+                {!subcategoryParam &&
+                  renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories)}
+
                 {renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
                 {renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
                 {renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
@@ -272,9 +369,25 @@ export default function Products() {
               </div>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {filteredProducts.length} {filteredProducts.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Ordenar por:</span>
+                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                      <SelectTrigger className="w-[200px] h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name_asc">Nome (A-Z)</SelectItem>
+                        <SelectItem value="price_asc">Menor preço</SelectItem>
+                        <SelectItem value="price_desc">Maior preço</SelectItem>
+                        <SelectItem value="newest">Mais novos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredProducts.map((product) => (
                     <ProductCard

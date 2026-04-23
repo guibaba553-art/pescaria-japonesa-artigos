@@ -33,6 +33,7 @@ export interface Product {
   brand?: string | null;
   pound_test?: string | null;
   size?: string | null;
+  subcategory?: string | null;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
