@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { NFESettings } from './NFESettings';
 import { TGASettings } from './TGASettings';
+import { FocusNFeSettings } from './FocusNFeSettings';
 import { NFEList } from './NFEList';
 import { XMLExporter } from './XMLExporter';
 import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
