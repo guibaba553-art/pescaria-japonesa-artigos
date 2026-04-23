@@ -297,6 +297,30 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_permissions: {
+        Row: {
+          can_access_pdv: boolean
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_access_pdv?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_access_pdv?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fiscal_rate_limits: {
         Row: {
           function_name: string
