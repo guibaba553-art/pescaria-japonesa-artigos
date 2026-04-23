@@ -216,7 +216,11 @@ serve(async (req) => {
 
     // Data de emissão no fuso local da empresa.
     // Para MT, o offset correto é -04:00; forçar -03:00 pode gerar rejeição na SEFAZ.
-    const now = new Date();
+    // Adicionamos +2 minutos para compensar o tempo de processamento Focus -> SEFAZ
+    // (a SEFAZ tolera até ~10 min no futuro, então 2 min é seguro e evita
+    // a rejeição "Data-Hora de emissão atrasada" quando o fluxo demora).
+    const FUTURE_OFFSET_MINUTES = 2;
+    const now = new Date(Date.now() + FUTURE_OFFSET_MINUTES * 60 * 1000);
     const issuerUf = (company.uf || '').toUpperCase();
     const timezoneOffset = issuerUf === 'AC' ? '-05:00' : ['AM', 'MT', 'MS', 'RO', 'RR'].includes(issuerUf) ? '-04:00' : '-03:00';
     const timezoneOffsetMs = Number(timezoneOffset.slice(0, 3)) * 60 * 60 * 1000;
@@ -226,7 +230,7 @@ serve(async (req) => {
       `${localIssuerTime.getUTCFullYear()}-${pad(localIssuerTime.getUTCMonth() + 1)}-${pad(localIssuerTime.getUTCDate())}` +
       `T${pad(localIssuerTime.getUTCHours())}:${pad(localIssuerTime.getUTCMinutes())}:${pad(localIssuerTime.getUTCSeconds())}${timezoneOffset}`;
 
-    console.log('Data emissão NFC-e:', { dataEmissao, issuerUf, timezoneOffset });
+    console.log('Data emissão NFC-e:', { dataEmissao, issuerUf, timezoneOffset, futureOffsetMinutes: FUTURE_OFFSET_MINUTES });
 
     // Payload Focus NFe NFC-e (modelo 65)
     const payload: Record<string, unknown> = {
