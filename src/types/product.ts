@@ -30,6 +30,9 @@ export interface Product {
   minimum_quantity?: number;
   sku?: string | null;
   sold_by_weight?: boolean;
+  brand?: string | null;
+  pound_test?: string | null;
+  size?: string | null;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
