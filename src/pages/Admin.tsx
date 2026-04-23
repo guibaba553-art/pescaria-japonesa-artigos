@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { OrdersManagement } from '@/components/OrdersManagement';
@@ -19,6 +19,7 @@ import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
 import { FiscalSystem } from '@/components/FiscalSystem';
 import { EmployeesManagement } from '@/components/EmployeesManagement';
+import { DraftProducts } from '@/components/DraftProducts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -527,8 +528,17 @@ export default function Admin() {
         )}
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="products">Produtos</TabsTrigger>
+            <TabsTrigger value="drafts" className="gap-1.5">
+              <FileEdit className="w-3.5 h-3.5" />
+              Rascunhos
+              {products.filter(p => p.category === 'Pendente Revisão').length > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  {products.filter(p => p.category === 'Pendente Revisão').length}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="featured">Produtos Destaque</TabsTrigger>
             <TabsTrigger value="fiscal">Sistema Fiscal</TabsTrigger>
@@ -766,14 +776,15 @@ export default function Admin() {
         </div>
 
         {(() => {
-          const filteredProducts = products.filter(p =>
+          const visibleProducts = products.filter(p => p.category !== 'Pendente Revisão');
+          const filteredProducts = visibleProducts.filter(p =>
             p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
           );
-          const outOfStock = products.filter(p => p.stock === 0).length;
-          const onSaleCount = products.filter(p => p.on_sale).length;
-          const featuredCount = products.filter(p => p.featured).length;
+          const outOfStock = visibleProducts.filter(p => p.stock === 0).length;
+          const onSaleCount = visibleProducts.filter(p => p.on_sale).length;
+          const featuredCount = visibleProducts.filter(p => p.featured).length;
 
           return (
             <Card className="overflow-hidden border-0 shadow-sm">
@@ -782,7 +793,7 @@ export default function Admin() {
                 title="Produtos Cadastrados"
                 description="Gerencie os produtos da loja"
                 kpis={[
-                  { label: 'Total', value: products.length },
+                  { label: 'Total', value: visibleProducts.length },
                   { label: 'Esgotados', value: outOfStock, tone: 'danger' },
                   { label: 'Promoção', value: onSaleCount, tone: 'success' },
                   { label: 'Destaque', value: featuredCount, tone: 'warning' },
@@ -864,6 +875,10 @@ export default function Admin() {
             </Card>
           );
         })()}
+          </TabsContent>
+
+          <TabsContent value="drafts">
+            <DraftProducts onChange={loadProducts} />
           </TabsContent>
 
           <TabsContent value="orders">
