@@ -279,7 +279,14 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           title: 'Redirecionando para o pagamento…',
           description: 'Você será levado ao checkout seguro do Mercado Pago.',
         });
-        clearCart();
+        // Salvar snapshot do carrinho e do orderId para poder restaurar/cancelar caso o usuário volte
+        try {
+          sessionStorage.setItem('pendingCheckout', JSON.stringify({
+            orderId: orderData.id,
+            cart: items,
+          }));
+        } catch {}
+        // NÃO limpar o carrinho ainda — só será limpo quando o pagamento for confirmado.
         window.location.href = prefData.initPoint;
         return;
       }
