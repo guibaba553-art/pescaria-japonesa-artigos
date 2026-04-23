@@ -11,17 +11,7 @@ import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
 import { ProductCard } from '@/components/ProductCard';
-
-const categories = [
-  { name: 'Todas', value: '' },
-  { name: 'Varas', value: 'Varas' },
-  { name: 'Molinetes e Carretilhas', value: 'Molinetes e Carretilhas' },
-  { name: 'Iscas', value: 'Iscas' },
-  { name: 'Anzóis', value: 'Anzóis' },
-  { name: 'Linhas', value: 'Linhas' },
-  { name: 'Acessórios', value: 'Acessórios' },
-  { name: 'Variedades', value: 'Variedades' },
-];
+import { useCategories } from '@/hooks/useCategories';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,6 +19,7 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { categories: dbCategories } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -175,12 +166,19 @@ export default function Products() {
 
         {/* Filtros de Categoria */}
         <div className="flex flex-wrap gap-3 justify-center mb-8">
-          {categories.map((cat) => (
+          <Badge
+            variant={categoryParam === '' ? 'default' : 'outline'}
+            className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
+            onClick={() => handleCategoryChange('')}
+          >
+            Todas
+          </Badge>
+          {dbCategories.map((cat) => (
             <Badge
-              key={cat.value}
-              variant={categoryParam === cat.value ? 'default' : 'outline'}
+              key={cat.id}
+              variant={categoryParam === cat.name ? 'default' : 'outline'}
               className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
-              onClick={() => handleCategoryChange(cat.value)}
+              onClick={() => handleCategoryChange(cat.name)}
             >
               {cat.name}
             </Badge>
