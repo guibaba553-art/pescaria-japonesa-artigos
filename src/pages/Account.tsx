@@ -32,6 +32,7 @@ interface Order {
   status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado';
   created_at: string;
   tracking_code?: string;
+  delivery_type?: 'delivery' | 'pickup';
   order_items: OrderItem[];
   qr_code: string | null;
   qr_code_base64: string | null;
@@ -47,8 +48,13 @@ const statusConfig: Record<string, { label: string; icon: typeof Package; color:
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
 };
 
-const getStatusConfig = (status: string) =>
-  statusConfig[status] ?? { label: status, icon: Package, color: 'bg-gray-500' };
+const getStatusConfig = (status: string, deliveryType?: string) => {
+  const cfg = statusConfig[status] ?? { label: status, icon: Package, color: 'bg-gray-500' };
+  if (status === 'em_preparo' && deliveryType === 'pickup') {
+    return { ...cfg, label: 'Pronto para Retirar', color: 'bg-emerald-500' };
+  }
+  return cfg;
+};
 
 export default function Account() {
   const navigate = useNavigate();
