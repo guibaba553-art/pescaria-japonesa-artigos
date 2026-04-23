@@ -171,8 +171,8 @@ export default function Products() {
           </div>
         </div>
 
-        {/* Filtros de Categoria */}
-        <div className="flex flex-wrap gap-3 justify-center mb-8">
+        {/* Filtros de Categoria Primária */}
+        <div className="flex flex-wrap gap-3 justify-center mb-4">
           <Badge
             variant={categoryParam === '' ? 'default' : 'outline'}
             className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -180,7 +180,7 @@ export default function Products() {
           >
             Todas
           </Badge>
-          {dbCategories.map((cat) => (
+          {primaries.map((cat) => (
             <Badge
               key={cat.id}
               variant={categoryParam === cat.name ? 'default' : 'outline'}
@@ -191,6 +191,34 @@ export default function Products() {
             </Badge>
           ))}
         </div>
+
+        {/* Sub-filtros (subcategorias da primária selecionada) */}
+        {(() => {
+          const activePrimary = primaries.find(p => p.name === categoryParam);
+          const subs = activePrimary ? getSubcategoriesOf(activePrimary.id) : [];
+          if (subs.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-2 justify-center mb-8">
+              <Badge
+                variant={subcategoryParam === '' ? 'secondary' : 'outline'}
+                className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
+                onClick={() => handleSubcategoryChange('')}
+              >
+                Todas em {activePrimary!.name}
+              </Badge>
+              {subs.map((sub) => (
+                <Badge
+                  key={sub.id}
+                  variant={subcategoryParam === sub.name ? 'secondary' : 'outline'}
+                  className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
+                  onClick={() => handleSubcategoryChange(sub.name)}
+                >
+                  {sub.name}
+                </Badge>
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar de Filtros */}
