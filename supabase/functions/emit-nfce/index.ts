@@ -340,6 +340,26 @@ serve(async (req) => {
       return { response, result, responseText };
     };
 
+    const fetchExistingNfce = async (existingRef: string) => {
+      const url = `${focusBaseUrl}/v2/nfce/${encodeURIComponent(existingRef)}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Basic ${auth}`,
+        },
+      });
+
+      const responseText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = { mensagem: responseText || `HTTP ${response.status}` };
+      }
+
+      return { response, result, responseText };
+    };
+
     let { response, result, responseText } = await sendToFocus(ref, payload);
 
     const normalize = (r: any) =>
@@ -398,6 +418,66 @@ serve(async (req) => {
           JSON.stringify({ error: errMsg }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      const finalNormalizedError = normalize(result);
+      const isDuplicityError =
+        finalNormalizedError.includes('duplicidade') ||
+        finalNormalizedError.includes('rejeicao: 539') ||
+        finalNormalizedError.includes('rejeicao 539') ||
+        finalNormalizedError.includes('chave de acesso');
+
+      if (isDuplicityError && body.order_id) {
+        const { data: previousEmissions } = await supabase
+          .from('nfe_emissions')
+          .select('id, ref_focus')
+          .eq('order_id', body.order_id)
+          .not('ref_focus', 'is', null)
+          .order('created_at', { ascending: false });
+
+        for (const previousEmission of previousEmissions || []) {
+          if (!previousEmission.ref_focus || previousEmission.ref_focus === ref) continue;
+
+          const existing = await fetchExistingNfce(previousEmission.ref_focus);
+          const existingStatus = String(existing.result?.status || '').toLowerCase();
+
+          if (existing.response.ok && existingStatus === 'autorizado') {
+            const recoveredData = {
+              status: 'success',
+              ref_focus: previousEmission.ref_focus,
+              nfe_number: existing.result.numero || null,
+              nfe_key: existing.result.chave_nfe || existing.result.chave_nfce || null,
+              nfe_xml_url: existing.result.caminho_xml_nota_fiscal
+                ? `${focusBaseUrl}${existing.result.caminho_xml_nota_fiscal}`
+                : null,
+              danfe_url: existing.result.caminho_danfe
+                ? `${focusBaseUrl}${existing.result.caminho_danfe}`
+                : null,
+              protocolo: existing.result.protocolo || null,
+              emitted_at: existing.result.data_emissao || new Date().toISOString(),
+              error_message: null,
+              updated_at: new Date().toISOString(),
+            };
+
+            if (emission) {
+              await supabase.from('nfe_emissions').update(recoveredData).eq('id', emission.id);
+            }
+
+            await supabase.from('nfe_emissions').update(recoveredData).eq('id', previousEmission.id);
+
+            return new Response(
+              JSON.stringify({
+                success: true,
+                recovered_existing_nfce: true,
+                ref: previousEmission.ref_focus,
+                status: existing.result.status,
+                consumidor_identificado: hasIdentification,
+                nfce: existing.result,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
       }
 
       if (emission) {
