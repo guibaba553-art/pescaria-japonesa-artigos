@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 
