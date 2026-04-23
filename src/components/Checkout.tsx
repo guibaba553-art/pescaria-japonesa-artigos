@@ -236,10 +236,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error('Erro ao criar pedido');
       }
 
-      // Criar itens do pedido - incluir variationId se existir
+      // Criar itens do pedido
+      // IMPORTANTE: product_id sempre referencia products.id (FK).
+      // Para variações, gravamos o id do produto pai; o preço da variação fica em price_at_purchase.
       const orderItems = items.map(item => ({
         order_id: orderData.id,
-        product_id: item.variationId || item.id, // Usar variationId se existir
+        product_id: item.id,
         quantity: item.quantity,
         price_at_purchase: item.price
       }));
