@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -124,7 +124,9 @@ const OrdersTable = ({
   verifyPayment,
   trackingCodes,
   setTrackingCodes,
-  updateTrackingCode
+  updateTrackingCode,
+  emitNFCe,
+  emittingNFCe,
 }: {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
@@ -136,6 +138,8 @@ const OrdersTable = ({
   trackingCodes: Record<string, string>;
   setTrackingCodes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   updateTrackingCode: (orderId: string) => void;
+  emitNFCe: (orderId: string) => void;
+  emittingNFCe: Set<string>;
 }) => {
   if (orders.length === 0) {
     return (
@@ -217,7 +221,7 @@ const OrdersTable = ({
                   </Button>
                 )}
 
-                {nextStatus && (
+        {nextStatus && (
                   <Button
                     size="sm"
                     onClick={() => updateOrderStatus(order.id, nextStatus)}
@@ -225,6 +229,23 @@ const OrdersTable = ({
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
                     {getNextStatusLabel(order.status, order.delivery_type)}
+                  </Button>
+                )}
+
+                {order.source === 'pdv' && order.status === 'entregado' && !order.nfe_emissions?.some(n => n.status === 'success') && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => emitNFCe(order.id)}
+                    disabled={emittingNFCe.has(order.id)}
+                    className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {emittingNFCe.has(order.id) ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Receipt className="h-3.5 w-3.5" />
+                    )}
+                    {emittingNFCe.has(order.id) ? 'Emitindo...' : 'Emitir NFC-e'}
                   </Button>
                 )}
 
@@ -389,6 +410,7 @@ export function OrdersManagement() {
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
+  const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -682,6 +704,45 @@ export function OrdersManagement() {
     }
   };
 
+  const emitNFCe = async (orderId: string) => {
+    setEmittingNFCe(prev => new Set(prev).add(orderId));
+    toast({
+      title: 'Emitindo NFC-e...',
+      description: 'Enviando dados para a SEFAZ. Isso pode levar alguns segundos.',
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('emit-nfce', {
+        body: { orderId }
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: 'NFC-e emitida com sucesso! ✅',
+        description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+      });
+      loadOrders();
+    } catch (error: any) {
+      console.error('Erro ao emitir NFC-e:', error);
+      toast({
+        title: 'Erro ao emitir NFC-e',
+        description: error.message || 'Verifique as configurações fiscais e tente novamente.',
+        variant: 'destructive'
+      });
+    } finally {
+      setEmittingNFCe(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return <div>Carregando pedidos...</div>;
   }
@@ -714,6 +775,8 @@ export function OrdersManagement() {
     trackingCodes,
     setTrackingCodes,
     updateTrackingCode,
+    emitNFCe,
+    emittingNFCe,
   };
 
   const renderSiteTabs = () => (
