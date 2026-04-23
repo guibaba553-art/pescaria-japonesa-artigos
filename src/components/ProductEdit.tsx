@@ -19,6 +19,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
 import { useProductVariations } from '@/hooks/useProductVariations';
+import { SubcategorySelect } from '@/components/SubcategorySelect';
 
 interface ProductEditProps {
   product: Product;
