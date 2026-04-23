@@ -127,7 +127,7 @@ const Footer = () => {
         
         <div className="border-t border-secondary-foreground/20 pt-8 text-center text-secondary-foreground/70 text-sm space-y-2">
           <p className="font-semibold text-secondary-foreground">JAPA PESCA E CONVENIENCIA</p>
-          <p>CNPJ: 00.000.000/0001-00 — Razão Social: JAPA PESCA E CONVENIENCIA LTDA</p>
+          <p>CNPJ: 33.169.502/0001-08 — Razão Social: JAPA PESCA E CONVENIENCIA LTDA</p>
           <p>Endereço: Sinop - MT — CEP 78556-100</p>
           <p>Encarregado de Dados (DPO): Roberto Baba — robertobaba2@gmail.com</p>
           <p className="pt-2">&copy; {new Date().getFullYear()} JAPA PESCA E CONVENIENCIA. Todos os direitos reservados.</p>
