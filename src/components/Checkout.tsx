@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, DollarSign, Loader2 } from 'lucide-react';
+import { CreditCard, Smartphone, DollarSign, Loader2, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -32,7 +32,7 @@ interface CheckoutProps {
   shippingInfo: { nome: string; prazoEntrega: number } | null;
 }
 
-type PaymentMethod = 'pix' | 'credit' | 'debit';
+type PaymentMethod = 'pix' | 'credit' | 'debit' | 'google_pay';
 
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
