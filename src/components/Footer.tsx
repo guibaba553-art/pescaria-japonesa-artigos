@@ -1,5 +1,5 @@
 import { Instagram, Mail, Phone, MapPin } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import japaLogo from "@/assets/japa-logo.png";
 
 const Footer = () => {
@@ -8,7 +8,7 @@ const Footer = () => {
   return (
     <footer className="bg-secondary text-secondary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div>
             <img 
               src={japaLogo} 
@@ -76,6 +76,16 @@ const Footer = () => {
               </li>
             </ul>
           </div>
+
+          <div>
+            <h3 className="text-xl font-bold mb-4">Institucional</h3>
+            <ul className="space-y-2 text-secondary-foreground/80">
+              <li><Link to="/politica-privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
+              <li><Link to="/termos-de-uso" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
+              <li><Link to="/politica-de-trocas" className="hover:text-primary transition-colors">Trocas e Devoluções</Link></li>
+              <li><Link to="/meus-dados" className="hover:text-primary transition-colors">Meus Dados (LGPD)</Link></li>
+            </ul>
+          </div>
           
           <div>
             <h3 className="text-xl font-bold mb-4">Contato</h3>
@@ -115,8 +125,12 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="border-t border-secondary-foreground/20 pt-8 text-center text-secondary-foreground/60">
-          <p>&copy; 2025 JAPAS - Pesca e Conveniência. Todos os direitos reservados.</p>
+        <div className="border-t border-secondary-foreground/20 pt-8 text-center text-secondary-foreground/70 text-sm space-y-2">
+          <p className="font-semibold text-secondary-foreground">JAPA PESCA E CONVENIENCIA</p>
+          <p>CNPJ: 00.000.000/0001-00 — Razão Social: JAPA PESCA E CONVENIENCIA LTDA</p>
+          <p>Endereço: Sinop - MT — CEP 78556-100</p>
+          <p>Encarregado de Dados (DPO): Roberto Baba — robertobaba2@gmail.com</p>
+          <p className="pt-2">&copy; {new Date().getFullYear()} JAPA PESCA E CONVENIENCIA. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

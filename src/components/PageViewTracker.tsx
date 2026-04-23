@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { getCookieConsent } from './CookieBanner';
 
 const SESSION_KEY = 'jp_session_id';
 
@@ -21,15 +22,28 @@ function detectDevice(ua: string): string {
 
 function shouldTrack(path: string): boolean {
   // Skip admin/internal pages
-  const blocked = ['/admin', '/dashboard', '/pdv', '/fechamento-caixa', '/ferramentas-fiscais', '/auth', '/forgot-password', '/reset-password', '/conta', '/remover-fundo-logo'];
+  const blocked = ['/admin', '/dashboard', '/pdv', '/fechamento-caixa', '/ferramentas-fiscais', '/auth', '/forgot-password', '/reset-password', '/conta', '/remover-fundo-logo', '/meus-dados'];
   return !blocked.some((p) => path.startsWith(p));
 }
 
 export function PageViewTracker() {
   const location = useLocation();
   const lastPath = useRef<string>('');
+  const [consent, setConsent] = useState(getCookieConsent());
 
   useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as 'accepted' | 'essential';
+      setConsent(detail);
+    };
+    window.addEventListener('cookie-consent-changed', handler);
+    return () => window.removeEventListener('cookie-consent-changed', handler);
+  }, []);
+
+  useEffect(() => {
+    // LGPD: only track analytics with explicit consent
+    if (consent !== 'accepted') return;
+
     const path = location.pathname;
     if (path === lastPath.current) return;
     if (!shouldTrack(path)) {
@@ -53,7 +67,8 @@ export function PageViewTracker() {
         // ignore errors silently
       });
     });
-  }, [location.pathname]);
+  }, [location.pathname, consent]);
 
   return null;
 }
+
