@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { PanelHeader } from '@/components/admin/PanelHeader';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
@@ -733,107 +735,105 @@ export default function Admin() {
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Produtos Cadastrados ({products.length})</CardTitle>
-            <CardDescription>Gerencie os produtos da loja</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Imagem</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Estoque</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products
-                  .filter(p => 
-                    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-                  )
-                  .map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-muted rounded flex items-center justify-center text-xs">
-                          Sem imagem
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.category}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {product.sku || '-'}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      {product.on_sale && product.sale_price ? (
-                        <div className="flex flex-col">
-                          <span className="line-through text-muted-foreground text-xs">
-                            R$ {product.price.toFixed(2)}
-                          </span>
-                          <span className="text-green-600 font-semibold">
-                            R$ {product.sale_price.toFixed(2)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span>R$ {product.price.toFixed(2)}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {product.stock === 0 ? (
-                        <span className="text-red-600 font-bold">ESGOTADO</span>
-                      ) : (
-                        <span>{product.stock} unidades</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {product.featured && (
-                          <span className="text-xs bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded">
-                            ⭐ Destaque
-                          </span>
-                        )}
-                        {product.on_sale && (
-                          <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
-                            🏷️ Promoção
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <div className="flex gap-2 justify-end">
-                         <ProductEdit product={product} onUpdate={loadProducts} />
-                         <Button
-                           variant="destructive"
-                           size="sm"
-                           onClick={() => handleDelete(product.id, product.image_url)}
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </Button>
-                       </div>
-                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {(() => {
+          const filteredProducts = products.filter(p =>
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+          );
+          const outOfStock = products.filter(p => p.stock === 0).length;
+          const onSaleCount = products.filter(p => p.on_sale).length;
+          const featuredCount = products.filter(p => p.featured).length;
+
+          return (
+            <Card className="overflow-hidden border-0 shadow-sm">
+              <PanelHeader
+                icon={Package}
+                title="Produtos Cadastrados"
+                description="Gerencie os produtos da loja"
+                kpis={[
+                  { label: 'Total', value: products.length },
+                  { label: 'Esgotados', value: outOfStock, tone: 'danger' },
+                  { label: 'Promoção', value: onSaleCount, tone: 'success' },
+                  { label: 'Destaque', value: featuredCount, tone: 'warning' },
+                ]}
+              />
+              <CardContent className="p-4 md:p-6">
+                {filteredProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+                    <Package className="w-14 h-14 mb-3 opacity-40" />
+                    <p className="text-sm font-medium">Nenhum produto encontrado</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredProducts.map((product) => {
+                      const accent =
+                        product.stock === 0 ? 'border-l-destructive'
+                        : product.on_sale ? 'border-l-emerald-500'
+                        : product.featured ? 'border-l-amber-500'
+                        : 'border-l-primary/40';
+                      return (
+                        <Card key={product.id} className={`border-l-4 ${accent} overflow-hidden transition-all hover:shadow-md flex flex-col`}>
+                          <div className="aspect-video bg-muted relative overflow-hidden">
+                            {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Sem imagem</div>
+                            )}
+                            <div className="absolute top-2 right-2 flex flex-col gap-1">
+                              {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[10px]">⭐ Destaque</Badge>}
+                              {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[10px]">🏷️ Promoção</Badge>}
+                              {product.stock === 0 && <Badge variant="destructive" className="text-[10px]">Esgotado</Badge>}
+                            </div>
+                          </div>
+
+                          <div className="p-4 flex-1 flex flex-col gap-2">
+                            <div>
+                              <Badge variant="outline" className="text-[10px] mb-1.5">{product.category}</Badge>
+                              <p className="font-semibold leading-tight line-clamp-2">{product.name}</p>
+                            </div>
+
+                            <div className="flex items-end justify-between gap-2 pt-1">
+                              <div>
+                                {product.on_sale && product.sale_price ? (
+                                  <>
+                                    <p className="line-through text-xs text-muted-foreground">R$ {product.price.toFixed(2)}</p>
+                                    <p className="text-lg font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
+                                  </>
+                                ) : (
+                                  <p className="text-lg font-bold text-primary">R$ {product.price.toFixed(2)}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] text-muted-foreground uppercase font-semibold">Estoque</p>
+                                <p className={`font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>
+                                  {product.stock === 0 ? 'ESGOTADO' : product.stock}
+                                </p>
+                              </div>
+                            </div>
+
+                            {product.sku && (
+                              <code className="text-[10px] bg-muted px-2 py-1 rounded font-mono truncate">{product.sku}</code>
+                            )}
+
+                            <div className="flex gap-2 mt-auto pt-2 border-t">
+                              <div className="flex-1">
+                                <ProductEdit product={product} onUpdate={loadProducts} />
+                              </div>
+                              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0" onClick={() => handleDelete(product.id, product.image_url)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
           </TabsContent>
 
           <TabsContent value="orders">
