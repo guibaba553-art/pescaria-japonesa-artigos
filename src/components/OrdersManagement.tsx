@@ -757,8 +757,21 @@ export function OrdersManagement() {
       });
 
       if (error) {
-        const errorMessage = await error.context.json().catch(() => null);
-        throw new Error(errorMessage?.error || error.message || 'Falha ao emitir NFC-e');
+        let errorMessage: string | null = null;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.clone === 'function' && typeof ctx.json === 'function') {
+            const parsed = await ctx.clone().json().catch(() => null);
+            errorMessage = parsed?.error || parsed?.message || null;
+            if (!errorMessage) {
+              const txt = await ctx.clone().text().catch(() => null);
+              if (txt) errorMessage = txt;
+            }
+          }
+        } catch {
+          // ignore parse errors
+        }
+        throw new Error(errorMessage || error.message || 'Falha ao emitir NFC-e');
       }
       if (data?.error) throw new Error(data.error);
 
