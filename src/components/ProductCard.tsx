@@ -94,13 +94,21 @@ export function ProductCard({
   );
 
   return (
-    <Card className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl">
+    <Card
+      className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl cursor-pointer"
+      onClick={handleImageClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleImageClick();
+        }
+      }}
+    >
       <CardContent className="p-0">
         {/* Imagem do Produto */}
-        <div 
-          className="relative overflow-hidden aspect-square cursor-pointer"
-          onClick={handleImageClick}
-        >
+        <div className="relative overflow-hidden aspect-square">
           <img
             src={product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem'}
             alt={product.name}
