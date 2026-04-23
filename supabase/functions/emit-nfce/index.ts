@@ -131,6 +131,18 @@ serve(async (req) => {
       );
     }
 
+    // Validar CSC (obrigatório para NFC-e)
+    const cscId = (focusSettings.csc_id || '').toString().trim();
+    const cscToken = (focusSettings.csc_token || '').toString().trim();
+    if (!cscId || !cscToken) {
+      return new Response(
+        JSON.stringify({
+          error: 'CSC não configurado. Cadastre o CSC ID e o CSC Token nas Configurações Focus NFe (obtidos no portal da SEFAZ).',
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Buscar dados da empresa emitente
     const { data: company, error: companyError } = await supabase
       .from('company_fiscal_data')
