@@ -712,15 +712,52 @@ export function OrdersManagement() {
     });
 
     try {
+      // Buscar itens completos do pedido (com dados fiscais dos produtos)
+      const { data: items, error: itemsError } = await supabase
+        .from('order_items')
+        .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
+        .eq('order_id', orderId);
+
+      if (itemsError) throw itemsError;
+      if (!items || items.length === 0) throw new Error('Pedido sem itens');
+
+      // Buscar pedido para pegar customer e total
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('total_amount, customer_id, customers(full_name, cpf)')
+        .eq('id', orderId)
+        .single();
+
+      if (orderError) throw orderError;
+
+      const payload = {
+        order_id: orderId,
+        payment_method: 'dinheiro' as const,
+        total_amount: Number(order.total_amount),
+        customer: order.customers ? {
+          cpf: (order.customers as any).cpf || undefined,
+          nome: (order.customers as any).full_name || undefined,
+        } : undefined,
+        items: items.map((it: any) => ({
+          product_id: it.product_id,
+          name: it.products?.name || 'Produto',
+          quantity: Number(it.quantity),
+          unit_price: Number(it.price_at_purchase),
+          ncm: it.products?.ncm || undefined,
+          cfop: it.products?.cfop || undefined,
+          csosn: it.products?.csosn || undefined,
+          origem: it.products?.origem || undefined,
+          unidade: it.products?.unidade_comercial || undefined,
+          cest: it.products?.cest || undefined,
+        })),
+      };
+
       const { data, error } = await supabase.functions.invoke('emit-nfce', {
-        body: { orderId }
+        body: payload
       });
 
       if (error) throw error;
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'NFC-e emitida com sucesso! ✅',
