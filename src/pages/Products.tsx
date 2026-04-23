@@ -337,10 +337,6 @@ export default function Products() {
                 {!subcategoryParam &&
                   renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories)}
 
-                {renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-                {renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
-                {renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
-
                 {totalActiveFilters === 0 && (
                   <p className="text-xs text-muted-foreground">
                     Selecione opções para refinar a busca.
