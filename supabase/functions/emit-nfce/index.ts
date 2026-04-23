@@ -214,18 +214,19 @@ serve(async (req) => {
     // Referência única para idempotência
     const ref = `nfce-${user.id.substring(0, 8)}-${Date.now()}`;
 
-    // Data de emissão no fuso de Brasília (-03:00).
-    // SEFAZ aceita emissão entre -5min e +5min do horário atual.
-    // Usamos o horário ATUAL (sem margem) para evitar rejeição por atraso.
+    // Data de emissão no fuso local da empresa.
+    // Para MT, o offset correto é -04:00; forçar -03:00 pode gerar rejeição na SEFAZ.
     const now = new Date();
-    const brasiliaOffsetMs = -3 * 60 * 60 * 1000;
-    const brasiliaTime = new Date(now.getTime() + brasiliaOffsetMs);
+    const issuerUf = (company.uf || '').toUpperCase();
+    const timezoneOffset = issuerUf === 'AC' ? '-05:00' : ['AM', 'MT', 'MS', 'RO', 'RR'].includes(issuerUf) ? '-04:00' : '-03:00';
+    const timezoneOffsetMs = Number(timezoneOffset.slice(0, 3)) * 60 * 60 * 1000;
+    const localIssuerTime = new Date(now.getTime() + timezoneOffsetMs);
     const pad = (n: number) => String(n).padStart(2, '0');
     const dataEmissao =
-      `${brasiliaTime.getUTCFullYear()}-${pad(brasiliaTime.getUTCMonth() + 1)}-${pad(brasiliaTime.getUTCDate())}` +
-      `T${pad(brasiliaTime.getUTCHours())}:${pad(brasiliaTime.getUTCMinutes())}:${pad(brasiliaTime.getUTCSeconds())}-03:00`;
-    
-    console.log('Data emissão NFC-e:', dataEmissao);
+      `${localIssuerTime.getUTCFullYear()}-${pad(localIssuerTime.getUTCMonth() + 1)}-${pad(localIssuerTime.getUTCDate())}` +
+      `T${pad(localIssuerTime.getUTCHours())}:${pad(localIssuerTime.getUTCMinutes())}:${pad(localIssuerTime.getUTCSeconds())}${timezoneOffset}`;
+
+    console.log('Data emissão NFC-e:', { dataEmissao, issuerUf, timezoneOffset });
 
     // Payload Focus NFe NFC-e (modelo 65)
     const payload: Record<string, unknown> = {
