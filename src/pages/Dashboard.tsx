@@ -9,6 +9,7 @@ import { ArrowLeft, TrendingUp, Package, DollarSign, Users, ShoppingCart } from 
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SiteAnalytics } from '@/components/SiteAnalytics';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -279,6 +280,7 @@ export default function Dashboard() {
             <TabsTrigger value="revenue">Receita</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="products">Produtos</TabsTrigger>
+            <TabsTrigger value="traffic">Tráfego do Site</TabsTrigger>
           </TabsList>
 
           <TabsContent value="revenue" className="space-y-4">
@@ -378,6 +380,9 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+          <TabsContent value="traffic" className="space-y-4">
+            <SiteAnalytics />
           </TabsContent>
         </Tabs>
       </div>
