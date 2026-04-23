@@ -701,143 +701,137 @@ export function OrdersManagement() {
     return <div>Carregando pedidos...</div>;
   }
 
-  // Filtrar pedidos por status e tipo de entrega
-  const semPagamento = orders.filter(o => o.status === 'aguardando_pagamento');
-  const paraEnviar = orders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery');
-  const paraRetirar = orders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup');
-  const emCaminho = orders.filter(o => o.status === 'enviado');
-  const entregues = orders.filter(o => o.status === 'entregado');
+  // Separar pedidos por origem (Site vs PDV)
+  const siteOrders = orders.filter(o => ((o as any).source ?? 'site') === 'site');
+  const pdvOrders = orders.filter(o => (o as any).source === 'pdv');
+
+  const site = {
+    semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
+    paraEnviar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery'),
+    prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
+    emCaminho: siteOrders.filter(o => o.status === 'enviado'),
+    entregues: siteOrders.filter(o => o.status === 'entregado'),
+  };
+
+  const pdv = {
+    semPagamento: pdvOrders.filter(o => o.status === 'aguardando_pagamento'),
+    prontoRetirar: pdvOrders.filter(o => o.status === 'em_preparo'),
+    finalizadas: pdvOrders.filter(o => o.status === 'entregado'),
+  };
+
+  const tableProps = {
+    profiles,
+    expandedOrders,
+    toggleOrderExpansion,
+    updateOrderStatus,
+    deleteOrder,
+    verifyPayment,
+    trackingCodes,
+    setTrackingCodes,
+    updateTrackingCode,
+  };
+
+  const renderSiteTabs = () => (
+    <Tabs defaultValue="sem-pagamento" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="sem-pagamento">
+          <Clock className="w-4 h-4 mr-2" />
+          Sem Pagamento
+          {site.semPagamento.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="para-enviar">
+          <Package className="w-4 h-4 mr-2" />
+          Para Enviar
+          {site.paraEnviar.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="pronto-retirar">
+          <Store className="w-4 h-4 mr-2" />
+          Pronto p/ Retirar
+          {site.prontoRetirar.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="em-caminho">
+          <Truck className="w-4 h-4 mr-2" />
+          Em Caminho
+          {site.emCaminho.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="entregues">
+          <PackageCheck className="w-4 h-4 mr-2" />
+          Entregues
+          {site.entregues.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
+          )}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
+      <TabsContent value="para-enviar"><OrdersTable orders={site.paraEnviar} {...tableProps} /></TabsContent>
+      <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
+      <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
+      <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
+    </Tabs>
+  );
+
+  const renderPdvTabs = () => (
+    <Tabs defaultValue="finalizadas" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="sem-pagamento">
+          <Clock className="w-4 h-4 mr-2" />
+          Sem Pagamento
+          {pdv.semPagamento.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.semPagamento.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="pronto-retirar">
+          <Store className="w-4 h-4 mr-2" />
+          Pronto p/ Retirar
+          {pdv.prontoRetirar.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.prontoRetirar.length}</Badge>
+          )}
+        </TabsTrigger>
+        <TabsTrigger value="finalizadas">
+          <PackageCheck className="w-4 h-4 mr-2" />
+          Finalizadas
+          {pdv.finalizadas.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.finalizadas.length}</Badge>
+          )}
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="sem-pagamento"><OrdersTable orders={pdv.semPagamento} {...tableProps} /></TabsContent>
+      <TabsContent value="pronto-retirar"><OrdersTable orders={pdv.prontoRetirar} {...tableProps} /></TabsContent>
+      <TabsContent value="finalizadas"><OrdersTable orders={pdv.finalizadas} {...tableProps} /></TabsContent>
+    </Tabs>
+  );
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Gestão de Pedidos ({orders.length})</CardTitle>
-        <CardDescription>Organize e gerencie os pedidos por status</CardDescription>
+        <CardDescription>Pedidos do site e vendas do PDV separados por origem</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="sem-pagamento" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="sem-pagamento" className="relative">
-              <Clock className="w-4 h-4 mr-2" />
-              Sem Pagamento
-              {semPagamento.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
-                  {semPagamento.length}
-                </Badge>
-              )}
+        <Tabs defaultValue="site" className="space-y-4">
+          <TabsList className="grid grid-cols-2 max-w-md">
+            <TabsTrigger value="site">
+              🌐 Site
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{siteOrders.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="para-enviar" className="relative">
-              <Package className="w-4 h-4 mr-2" />
-              Para Enviar
-              {paraEnviar.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
-                  {paraEnviar.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="para-retirar" className="relative">
-              <Store className="w-4 h-4 mr-2" />
-              Para Retirar
-              {paraRetirar.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
-                  {paraRetirar.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="em-caminho" className="relative">
-              <Truck className="w-4 h-4 mr-2" />
-              Em Caminho
-              {emCaminho.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
-                  {emCaminho.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="entregues" className="relative">
-              <PackageCheck className="w-4 h-4 mr-2" />
-              Entregues
-              {entregues.length > 0 && (
-                <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">
-                  {entregues.length}
-                </Badge>
-              )}
+            <TabsTrigger value="pdv">
+              🏪 PDV
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdvOrders.length}</Badge>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sem-pagamento">
-            <OrdersTable
-              orders={semPagamento}
-              profiles={profiles}
-              expandedOrders={expandedOrders}
-              toggleOrderExpansion={toggleOrderExpansion}
-              updateOrderStatus={updateOrderStatus}
-              deleteOrder={deleteOrder}
-              verifyPayment={verifyPayment}
-              trackingCodes={trackingCodes}
-              setTrackingCodes={setTrackingCodes}
-              updateTrackingCode={updateTrackingCode}
-            />
-          </TabsContent>
-
-          <TabsContent value="para-enviar">
-            <OrdersTable
-              orders={paraEnviar}
-              profiles={profiles}
-              expandedOrders={expandedOrders}
-              toggleOrderExpansion={toggleOrderExpansion}
-              updateOrderStatus={updateOrderStatus}
-              deleteOrder={deleteOrder}
-              verifyPayment={verifyPayment}
-              trackingCodes={trackingCodes}
-              setTrackingCodes={setTrackingCodes}
-              updateTrackingCode={updateTrackingCode}
-            />
-          </TabsContent>
-
-          <TabsContent value="para-retirar">
-            <OrdersTable
-              orders={paraRetirar}
-              profiles={profiles}
-              expandedOrders={expandedOrders}
-              toggleOrderExpansion={toggleOrderExpansion}
-              updateOrderStatus={updateOrderStatus}
-              deleteOrder={deleteOrder}
-              verifyPayment={verifyPayment}
-              trackingCodes={trackingCodes}
-              setTrackingCodes={setTrackingCodes}
-              updateTrackingCode={updateTrackingCode}
-            />
-          </TabsContent>
-
-          <TabsContent value="em-caminho">
-            <OrdersTable
-              orders={emCaminho}
-              profiles={profiles}
-              expandedOrders={expandedOrders}
-              toggleOrderExpansion={toggleOrderExpansion}
-              updateOrderStatus={updateOrderStatus}
-              deleteOrder={deleteOrder}
-              verifyPayment={verifyPayment}
-              trackingCodes={trackingCodes}
-              setTrackingCodes={setTrackingCodes}
-              updateTrackingCode={updateTrackingCode}
-            />
-          </TabsContent>
-
-          <TabsContent value="entregues">
-            <OrdersTable
-              orders={entregues}
-              profiles={profiles}
-              expandedOrders={expandedOrders}
-              toggleOrderExpansion={toggleOrderExpansion}
-              updateOrderStatus={updateOrderStatus}
-              deleteOrder={deleteOrder}
-              verifyPayment={verifyPayment}
-              trackingCodes={trackingCodes}
-              setTrackingCodes={setTrackingCodes}
-              updateTrackingCode={updateTrackingCode}
-            />
-          </TabsContent>
+          <TabsContent value="site">{renderSiteTabs()}</TabsContent>
+          <TabsContent value="pdv">{renderPdvTabs()}</TabsContent>
         </Tabs>
       </CardContent>
     </Card>
