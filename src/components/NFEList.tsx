@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash } from 'lucide-react';
+import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface NFE {
@@ -14,6 +14,7 @@ interface NFE {
   nfe_number: string | null;
   nfe_key: string | null;
   nfe_xml_url: string | null;
+  danfe_url: string | null;
   status: string;
   error_message: string | null;
   emitted_at: string | null;
@@ -133,23 +134,38 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t flex-wrap">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="w-3.5 h-3.5" />
                     {nfe.emitted_at
                       ? new Date(nfe.emitted_at).toLocaleString('pt-BR')
                       : new Date(nfe.created_at).toLocaleString('pt-BR')}
                   </span>
-                  {nfe.status === 'success' && nfe.nfe_xml_url && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
-                      className="h-7 gap-1"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      XML
-                    </Button>
+                  {nfe.status === 'success' && (
+                    <div className="flex items-center gap-1.5">
+                      {nfe.danfe_url && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => window.open(nfe.danfe_url!, '_blank')}
+                          className="h-7 gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Visualizar
+                        </Button>
+                      )}
+                      {nfe.nfe_xml_url && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(nfe.nfe_xml_url!, '_blank')}
+                          className="h-7 gap-1"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          XML
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
 
