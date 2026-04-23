@@ -52,7 +52,10 @@ const getStatusConfig = (status: string) =>
 
 export default function Account() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
+  const { clearCart } = useCart();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
