@@ -50,6 +50,7 @@ interface Order {
   user_id: string;
   shipping_cep: string;
   delivery_type: 'delivery' | 'pickup';
+  source?: 'site' | 'pdv';
   tracking_code?: string;
   order_items: OrderItem[];
   nfe_emissions?: NFEEmission[];
@@ -67,6 +68,12 @@ const statusConfig = {
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' }
 };
 
+// Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
+const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_type']): string => {
+  if (status === 'em_preparo' && deliveryType === 'pickup') return 'Pronto para Retirar';
+  return statusConfig[status].label;
+};
+
 const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
@@ -77,7 +84,9 @@ const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['deli
 };
 
 const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): string => {
-  if (currentStatus === 'aguardando_pagamento') return 'Marcar como Em Preparo';
+  if (currentStatus === 'aguardando_pagamento') {
+    return deliveryType === 'pickup' ? 'Marcar como Pronto para Retirar' : 'Marcar como Em Preparo';
+  }
   if (currentStatus === 'em_preparo') {
     return deliveryType === 'pickup' ? 'Marcar como Retirado' : 'Marcar como Enviado';
   }
