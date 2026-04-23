@@ -215,8 +215,10 @@ serve(async (req) => {
       };
     });
 
-    const baseRef = `nfce-${user.id.substring(0, 8)}-${Date.now()}`;
-    let ref = `${baseRef}-1`;
+    const userPrefix = user.id.substring(0, 8);
+    const buildFreshRef = () =>
+      `nfce-${userPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    let ref = buildFreshRef();
 
     const issuerUf = (company.uf || '').toUpperCase();
     const timezoneOffset = issuerUf === 'AC' ? '-05:00' : ['AM', 'MT', 'MS', 'RO', 'RR'].includes(issuerUf) ? '-04:00' : '-03:00';
@@ -340,17 +342,34 @@ serve(async (req) => {
 
     let { response, result, responseText } = await sendToFocus(ref, payload);
 
-    const normalizedError = JSON.stringify(result).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
+    const normalize = (r: any) =>
+      JSON.stringify(r).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-    if (!response.ok && isLateEmissionError) {
-      futureOffsetMinutes = 8;
+    let attempt = 1;
+    const maxAttempts = 3;
+
+    while (!response.ok && attempt < maxAttempts) {
+      const normalizedError = normalize(result);
+      const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
+      const isDuplicityError =
+        normalizedError.includes('duplicidade') ||
+        normalizedError.includes('rejeicao: 539') ||
+        normalizedError.includes('rejeicao 539');
+
+      if (!isLateEmissionError && !isDuplicityError) break;
+
+      attempt += 1;
+      // Sempre uma ref totalmente nova para evitar reuso de cNF na Focus
+      ref = buildFreshRef();
+      // Avança a data de emissão para frente em cada retry
+      futureOffsetMinutes = isLateEmissionError ? 8 : futureOffsetMinutes + 2;
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
-      ref = `${baseRef}-2`;
 
-      console.log('Retry NFC-e por data-hora atrasada:', {
+      console.log('Retry NFC-e:', {
+        attempt,
         ref,
+        reason: isDuplicityError ? 'duplicidade' : 'data-hora atrasada',
         futureOffsetMinutes,
         dataEmissao,
       });
