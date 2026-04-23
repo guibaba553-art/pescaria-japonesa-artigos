@@ -83,6 +83,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setMinimumQuantity(product.minimum_quantity?.toString() || '1');
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
+      setBrand(product.brand || '');
+      setPoundTest(product.pound_test || '');
+      setSize(product.size || '');
     }
   }, [open, product.id, loadVariations]);
 
@@ -207,6 +210,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
+          brand: brand || null,
+          pound_test: poundTest || null,
+          size: size || null,
           images: allImageUrls,
           image_url: allImageUrls[0] || null,
           featured,
