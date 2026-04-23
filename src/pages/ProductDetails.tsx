@@ -123,8 +123,57 @@ export default function ProductDetails() {
     setSelectedImage(displayImages[previousIndex]);
   };
 
+  const productUrl = `${window.location.origin}/produto/${product.id}`;
+  const productImage = displayImages[0] || 'https://lovable.dev/opengraph-image-p98pqg.png';
+  const effectivePrice = product.on_sale && product.sale_price ? product.sale_price : product.price;
+  const seoTitle = `${product.name} | JAPAS Pesca`;
+  const seoDescription = (product.short_description || product.description || `Compre ${product.name} na JAPAS Pesca - artigos de pesca em Sinop MT.`).slice(0, 160);
+
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDescription} />
+        <link rel="canonical" href={productUrl} />
+        <meta property="og:type" content="product" />
+        <meta property="og:title" content={seoTitle} />
+        <meta property="og:description" content={seoDescription} />
+        <meta property="og:image" content={productImage} />
+        <meta property="og:url" content={productUrl} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={seoTitle} />
+        <meta name="twitter:description" content={seoDescription} />
+        <meta name="twitter:image" content={productImage} />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product.name,
+            "description": product.description,
+            "image": displayImages.length > 0 ? displayImages : [productImage],
+            "sku": product.sku || product.id,
+            "category": product.category,
+            "brand": { "@type": "Brand", "name": "JAPAS Pesca" },
+            "offers": {
+              "@type": "Offer",
+              "url": productUrl,
+              "priceCurrency": "BRL",
+              "price": effectivePrice?.toFixed(2),
+              "availability": product.stock > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+              "seller": { "@type": "Organization", "name": "JAPAS Pesca" }
+            },
+            ...(product.rating ? {
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": product.rating,
+                "reviewCount": Math.max(1, Math.round(product.rating))
+              }
+            } : {})
+          })}
+        </script>
+      </Helmet>
       <Header />
       
       <div className="container mx-auto px-4 pt-24 pb-20">
