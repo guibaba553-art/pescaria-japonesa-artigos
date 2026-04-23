@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Pencil } from 'lucide-react';
-import { PRODUCT_CATEGORIES } from '@/config/constants';
+import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
 import { useProductVariations } from '@/hooks/useProductVariations';
@@ -27,6 +27,7 @@ interface ProductEditProps {
 
 export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const { toast } = useToast();
+  const { categories } = useCategories();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
@@ -375,9 +376,9 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
