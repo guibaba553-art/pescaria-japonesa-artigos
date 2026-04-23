@@ -370,6 +370,9 @@ export default function Admin() {
       setSku('');
       setMinimumQuantity('1');
       setSoldByWeight(false);
+      setBrand('');
+      setPoundTest('');
+      setSize('');
       setImages([]);
       setNewProductVariations([]);
       
