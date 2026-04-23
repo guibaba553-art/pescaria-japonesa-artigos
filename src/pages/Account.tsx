@@ -191,6 +191,9 @@ export default function Account() {
         order_items (
           *,
           products (name, image_url)
+        ),
+        nfe_emissions (
+          id, status, nfe_number, nfe_key, danfe_url, nfe_xml_url, emitted_at
         )
       `)
       .eq('user_id', user.id)
