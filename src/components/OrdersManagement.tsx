@@ -235,6 +235,18 @@ const OrdersTable = ({
                   </Button>
                 )}
 
+                {order.source !== 'pdv' && order.delivery_type === 'delivery' && (order.status === 'em_preparo' || order.status === 'enviado') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openLabelDialog(order)}
+                    className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    {order.tracking_code ? 'Nova Etiqueta' : 'Gerar Etiqueta'}
+                  </Button>
+                )}
+
                 {order.source === 'pdv' && order.status === 'entregado' && !order.nfe_emissions?.some(n => n.status === 'success') && (
                   <Button
                     size="sm"
