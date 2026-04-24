@@ -250,19 +250,17 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         ) : cheapest ? (
                           <>
-                            <p
-                              className={`font-bold text-lg ${
-                                cheapest.valor === 0 ? 'text-green-600' : 'text-foreground'
-                              }`}
-                            >
-                              {cheapest.valor === 0
-                                ? 'GRÁTIS'
-                                : `R$ ${cheapest.valor.toFixed(2)}`}
+                            <p className="font-bold text-lg text-foreground">
+                              R$ {cheapest.valor.toFixed(2).replace('.', ',')}
                             </p>
                             <p className="text-[11px] text-muted-foreground">
                               {cheapest.nome} · {cheapest.prazoEntrega}d
                             </p>
                           </>
+                        ) : opts ? (
+                          <span className="text-xs text-muted-foreground">
+                            Sem entrega disponível
+                          </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             Toque para calcular
