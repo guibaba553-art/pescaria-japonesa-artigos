@@ -16,7 +16,7 @@ interface ProductCardProps {
 }
 
 /**
- * Card de produto comercial — preço grande, parcelamento, frete grátis.
+ * Card de produto comercial — preço grande, parcelamento, envio rápido.
  * Mantém identidade JAPAS (laranja) com gatilhos de conversão.
  */
 export function ProductCard({
@@ -44,8 +44,6 @@ export function ProductCard({
   // 10x sem juros (para conversão)
   const installment = finalPrice / 10;
   const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
-  // Frete grátis acima de R$199
-  const freeShipping = finalPrice >= 199;
   // PIX 5% off
   const pixPrice = finalPrice * 0.95;
 
@@ -148,12 +146,12 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Free shipping — slot fixo para manter alinhamento */}
+        {/* Envio rápido — slot fixo para manter alinhamento */}
         <div className="min-h-[28px] mb-2">
-          {freeShipping && !hasVariations && (
+          {!hasVariations && (
             <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide self-start">
               <Truck className="w-3 h-3" />
-              Frete grátis
+              Envio rápido
             </div>
           )}
         </div>

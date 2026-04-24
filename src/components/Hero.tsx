@@ -39,8 +39,8 @@ const Hero = () => {
               style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
             >
               Mais de 500 produtos com preços imbatíveis.
-              <span className="font-bold text-background"> Frete grátis acima de R$ 199</span> e
-              <span className="font-bold text-background"> 10x sem juros</span>.
+              <span className="font-bold text-background"> 10x sem juros</span> e
+              <span className="font-bold text-background"> PIX com 5% OFF</span>.
             </p>
 
             {/* CTAs */}

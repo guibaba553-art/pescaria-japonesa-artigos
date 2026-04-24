@@ -234,7 +234,7 @@ export default function Products() {
                 {categoryParam || 'Todos os produtos'}
               </h1>
               <p className="text-sm sm:text-base text-background/70 mt-2">
-                Frete grátis acima de R$ 199 · 10x sem juros · PIX 5% off
+                Envio rápido · 10x sem juros · PIX 5% off
               </p>
             </div>
 
