@@ -141,10 +141,6 @@ export function ProductCard({
               ) : (
                 <div className="text-xs">&nbsp;</div>
               )}
-
-              <div className="text-xs text-success font-semibold">
-                {formatPrice(pixPrice)} no PIX
-              </div>
             </>
           )}
         </div>
