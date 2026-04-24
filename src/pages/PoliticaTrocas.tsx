@@ -25,7 +25,7 @@ export default function PoliticaTrocas() {
           <section>
             <h2 className="text-2xl font-bold mb-3">Como solicitar</h2>
             <ol className="list-decimal pl-6 space-y-2">
-              <li>Entre em contato pelo WhatsApp <a href="https://wa.me/5566996579671" className="text-primary underline">(66) 99657-9671</a> ou e-mail.</li>
+              <li>Entre em contato pelo WhatsApp <a href="https://wa.me/5566992111712" className="text-primary underline">(66) 99211-1712</a> ou e-mail.</li>
               <li>Informe o número do pedido e o motivo.</li>
               <li>Envie fotos do produto e da embalagem.</li>
               <li>Aguarde a autorização de retorno.</li>

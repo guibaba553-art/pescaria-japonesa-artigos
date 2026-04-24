@@ -17,7 +17,7 @@ const Footer = () => {
             </h2>
             <div className="flex flex-col sm:flex-row gap-3 lg:justify-end">
               <a
-                href="https://wa.me/5566996579671"
+                href="https://wa.me/5566992111712"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors btn-press"
@@ -59,7 +59,7 @@ const Footer = () => {
                 <Instagram className="w-4 h-4" />
               </a>
               <a
-                href="https://wa.me/5566996579671"
+                href="https://wa.me/5566992111712"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
@@ -111,9 +111,9 @@ const Footer = () => {
             </h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <a href="https://wa.me/5566996579671" target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-foreground transition-colors">
+                <a href="https://wa.me/5566992111712" target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-foreground transition-colors">
                   <Phone className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
-                  <span>(66) 99657-9671</span>
+                  <span>(66) 99211-1712</span>
                 </a>
               </li>
               <li>
