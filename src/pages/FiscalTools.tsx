@@ -3,16 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ExcelImporter } from "@/components/ExcelImporter";
-import { XMLImporter } from "@/components/XMLImporter";
-import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
-import { NFEHistory } from "@/components/NFEHistory";
 import { FiscalSystem } from "@/components/FiscalSystem";
 import { TaxProjection } from "@/components/TaxProjection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp } from "lucide-react";
 
 interface Product {
   id: string;
@@ -190,22 +186,10 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
-            </TabsTrigger>
-            <TabsTrigger value="calculator">
-              <Calculator className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Calculadora</span>
-            </TabsTrigger>
-            <TabsTrigger value="xml">
-              <Receipt className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Importar XML</span>
-            </TabsTrigger>
-            <TabsTrigger value="excel">
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Importar Excel</span>
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
@@ -219,43 +203,6 @@ export default function FiscalTools() {
 
           <TabsContent value="taxes">
             <TaxProjection />
-          </TabsContent>
-
-          <TabsContent value="calculator">
-            <FiscalCalculator products={products} />
-          </TabsContent>
-
-          <TabsContent value="xml">
-            <div className="space-y-6">
-              <XMLImporter />
-              <NFEHistory />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="excel">
-            <ExcelImporter
-              onDataImported={handleExcelImport}
-              expectedColumns={['nome', 'preco', 'custo', 'estoque', 'categoria']}
-            />
-            
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle>Formato Esperado</CardTitle>
-                <CardDescription>
-                  Sua planilha deve conter as seguintes colunas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li><strong>nome</strong>: Nome do produto</li>
-                  <li><strong>preco</strong>: Preço de venda (número)</li>
-                  <li><strong>custo</strong>: Custo do produto (número, opcional)</li>
-                  <li><strong>estoque</strong>: Quantidade em estoque (número)</li>
-                  <li><strong>categoria</strong>: Categoria do produto</li>
-                  <li><strong>sku</strong>: Código do produto (opcional)</li>
-                </ul>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="nfe">
