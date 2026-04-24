@@ -112,6 +112,7 @@ const Categories = () => {
         <div className="mt-4 sm:hidden text-center">
           <button
             onClick={() => navigate('/produtos')}
+            onTouchStart={prefetchProducts}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
           >
             Ver todas as categorias
