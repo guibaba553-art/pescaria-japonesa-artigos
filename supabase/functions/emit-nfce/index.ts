@@ -174,7 +174,8 @@ serve(async (req) => {
 
     const nfceSeries = String(focusSettings.serie_nfce || 1);
     const configuredNextNumber = Number(focusSettings.proximo_numero_nfce || 1);
-    const nfceNumber = String(configuredNextNumber > 0 ? configuredNextNumber : 1);
+    let currentNfceNumber = configuredNextNumber > 0 ? configuredNextNumber : 1;
+    const getCurrentNfceNumber = () => String(currentNfceNumber);
     const persistNextNfceNumber = async (nextNumber: number) => {
       if (!focusSettings.id || !Number.isFinite(nextNumber) || nextNumber < 1) return;
 
@@ -261,7 +262,7 @@ serve(async (req) => {
         data_emissao: dataEmissao,
         tipo_documento: 1,
         finalidade_emissao: 1,
-        numero: nfceNumber,
+        numero: getCurrentNfceNumber(),
         serie: nfceSeries,
         cnpj_emitente: cleanDoc(company.cnpj),
         nome_emitente: company.razao_social,
@@ -318,7 +319,7 @@ serve(async (req) => {
       futureOffsetMinutes,
       dataEmissao,
       nfceSeries,
-      nfceNumber,
+      nfceNumber: currentNfceNumber,
     });
 
     // Registrar emissão pendente
@@ -392,26 +393,36 @@ serve(async (req) => {
     let attempt = 1;
     const maxAttempts = 3;
 
-    while (!response.ok && attempt < maxAttempts) {
+    while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
       const normalizedError = normalize(result);
       const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
+      const isDuplicityError =
+        normalizedError.includes('duplicidade') ||
+        normalizedError.includes('rejeicao: 539') ||
+        normalizedError.includes('rejeicao 539') ||
+        normalizedError.includes('chave de acesso');
 
-      if (!isLateEmissionError) break;
+      if (!isLateEmissionError && !isDuplicityError) break;
 
       attempt += 1;
       ref = buildFreshRef();
-      futureOffsetMinutes = 8;
+
+      if (isDuplicityError) {
+        currentNfceNumber += 1;
+      }
+
+      futureOffsetMinutes = isLateEmissionError ? 8 : Math.max(futureOffsetMinutes, 8);
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
 
       console.log('Retry NFC-e:', {
         attempt,
         ref,
-        reason: 'data-hora atrasada',
+        reason: isDuplicityError ? 'duplicidade-539' : 'data-hora atrasada',
         futureOffsetMinutes,
         dataEmissao,
         nfceSeries,
-        nfceNumber,
+        nfceNumber: currentNfceNumber,
       });
 
       if (emission) {
@@ -456,7 +467,7 @@ serve(async (req) => {
         finalNormalizedError.includes('chave de acesso');
 
       if (isDuplicityError) {
-        await persistNextNfceNumber(configuredNextNumber + 1);
+        await persistNextNfceNumber(currentNfceNumber + 1);
       }
 
       if (isDuplicityError && body.order_id) {
@@ -535,7 +546,7 @@ serve(async (req) => {
       );
     }
 
-    const emittedNumber = Number(result.numero || nfceNumber);
+    const emittedNumber = Number(result.numero || getCurrentNfceNumber());
     if (Number.isFinite(emittedNumber) && emittedNumber > 0) {
       await persistNextNfceNumber(emittedNumber + 1);
     }
@@ -546,7 +557,7 @@ serve(async (req) => {
         .from('nfe_emissions')
         .update({
           status: result.status === 'autorizado' ? 'success' : 'pending',
-          nfe_number: result.numero || nfceNumber || null,
+          nfe_number: result.numero || getCurrentNfceNumber() || null,
           nfe_key: result.chave_nfe || result.chave_nfce || null,
           nfe_xml_url: result.caminho_xml_nota_fiscal
             ? `${focusBaseUrl}${result.caminho_xml_nota_fiscal}`
