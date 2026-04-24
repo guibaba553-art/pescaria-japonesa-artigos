@@ -326,10 +326,95 @@ export default function Products() {
           );
         })()}
 
+        {/* Toolbar mobile: Filtros + Ordenação compactos */}
+        {(hasAnyAttribute || filteredProducts.length > 0) && (
+          <div className="lg:hidden flex items-center gap-2 mb-4">
+            {hasAnyAttribute && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-full h-9 gap-1.5 relative">
+                    <Filter className="w-4 h-4" />
+                    Filtros
+                    {totalActiveFilters > 0 && (
+                      <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                        {totalActiveFilters}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0 flex flex-col">
+                  <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
+                    <SheetTitle className="text-left text-xl font-display font-bold flex items-center gap-2">
+                      <SlidersHorizontal className="w-5 h-5" />
+                      Filtros
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                    {maxPrice > minPrice && priceRange && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Faixa de preço
+                        </p>
+                        <Slider
+                          min={minPrice}
+                          max={maxPrice}
+                          step={1}
+                          value={priceRange}
+                          onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
+                          className="mt-2"
+                        />
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>R$ {priceRange[0].toFixed(2)}</span>
+                          <span>R$ {priceRange[1].toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
+                    {!subcategoryParam &&
+                      renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories)}
+                    {brandOptions.length > 0 &&
+                      renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+                    {poundOptions.length > 0 &&
+                      renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                    {sizeOptions.length > 0 &&
+                      renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
+                  </div>
+                  <SheetFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:flex-row">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-full"
+                      onClick={clearAllFilters}
+                      disabled={totalActiveFilters === 0}
+                    >
+                      Limpar
+                    </Button>
+                    <Button className="flex-1 rounded-full" asChild>
+                      <button type="button" onClick={() => (document.activeElement as HTMLElement)?.blur()}>
+                        Ver {filteredProducts.length} produtos
+                      </button>
+                    </Button>
+                  </SheetFooter>
+                </SheetContent>
+              </Sheet>
+            )}
+
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="h-9 rounded-full flex-1 max-w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name_asc">Nome (A-Z)</SelectItem>
+                <SelectItem value="price_asc">Menor preço</SelectItem>
+                <SelectItem value="price_desc">Maior preço</SelectItem>
+                <SelectItem value="newest">Mais novos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar de Filtros */}
+          {/* Sidebar de Filtros — Desktop only */}
           {hasAnyAttribute && (
-            <aside className="lg:w-64 lg:shrink-0">
+            <aside className="hidden lg:block lg:w-64 lg:shrink-0">
               <div className="lg:sticky lg:top-24 bg-card border rounded-xl p-4 space-y-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -367,9 +452,14 @@ export default function Products() {
                   </div>
                 )}
 
-                {/* Subcategoria (somente quando não há subcategoria selecionada via URL) */}
                 {!subcategoryParam &&
                   renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories)}
+                {brandOptions.length > 0 &&
+                  renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+                {poundOptions.length > 0 &&
+                  renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                {sizeOptions.length > 0 &&
+                  renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
 
                 {totalActiveFilters === 0 && (
                   <p className="text-xs text-muted-foreground">
@@ -399,7 +489,8 @@ export default function Products() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                {/* Toolbar desktop (mobile usa a toolbar acima) */}
+                <div className="hidden lg:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <p className="text-sm text-muted-foreground">
                     {filteredProducts.length} {filteredProducts.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
                   </p>
@@ -418,7 +509,7 @@ export default function Products() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                   {filteredProducts.map((product) => (
                     <ProductCard
                       key={product.id}
