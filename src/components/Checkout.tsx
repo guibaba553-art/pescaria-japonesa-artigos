@@ -24,6 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { APP_CONFIG } from '@/config/constants';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
+import { MapPin, Plus, Check } from 'lucide-react';
+import type { UserAddress } from '@/components/MyAddresses';
+import { MyAddresses } from '@/components/MyAddresses';
+import { formatCEP } from '@/utils/validation';
 
 interface CheckoutProps {
   open: boolean;
@@ -57,6 +61,35 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     expiry: '',
     cvv: '',
   });
+
+  // Endereços salvos do usuário
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const isPickup = shippingInfo?.nome === 'Retirar na Loja';
+
+  // Carrega endereços ao abrir o checkout (e ao fechar o diálogo de gerenciar)
+  useEffect(() => {
+    if (!open || isPickup) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        setSavedAddresses(data);
+        setSelectedAddressId((prev) => prev ?? data.find((a) => a.is_default)?.id ?? data[0].id);
+      } else {
+        setSavedAddresses([]);
+      }
+    })();
+  }, [open, isPickup, addressDialogOpen]);
+
+  const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId) || null;
 
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
@@ -266,16 +299,28 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
-      // Buscar CEP do usuário do perfil
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('cep')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Definir endereço de entrega: usa endereço selecionado, com fallback no perfil
+      let shippingAddressText = shippingInfo?.nome || 'Endereço não informado';
+      let shippingCepValue = '00000-000';
 
-      // Validar CEP para entregas (não validar para retirada na loja)
-      if (shippingInfo?.nome !== 'Retirar na Loja' && (!profileData?.cep || profileData.cep === '00000-000')) {
-        throw new Error('Por favor, cadastre seu CEP no perfil antes de finalizar a compra com entrega.');
+      if (!isPickup) {
+        if (selectedAddress) {
+          shippingAddressText = `${selectedAddress.recipient_name} — ${selectedAddress.street}, ${selectedAddress.number}${
+            selectedAddress.complement ? ` (${selectedAddress.complement})` : ''
+          }, ${selectedAddress.neighborhood}, ${selectedAddress.city}/${selectedAddress.state}`;
+          shippingCepValue = selectedAddress.cep;
+        } else {
+          // Fallback: CEP do perfil
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('cep')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (!profileData?.cep) {
+            throw new Error('Por favor, selecione um endereço de entrega ou cadastre um em "Meus Endereços".');
+          }
+          shippingCepValue = profileData.cep;
+        }
       }
 
       // Validar estoque ANTES de criar o pedido
@@ -302,10 +347,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           user_id: user.id,
           total_amount: finalTotal,
           shipping_cost: shippingCost,
-          shipping_address: shippingInfo?.nome || 'Endereço não informado',
-          shipping_cep: profileData?.cep || '00000-000',
+          shipping_address: shippingAddressText,
+          shipping_cep: shippingCepValue,
           status: 'aguardando_pagamento',
-          delivery_type: shippingInfo?.nome === 'Retirar na Loja' ? 'pickup' : 'delivery'
+          delivery_type: isPickup ? 'pickup' : 'delivery'
         })
         .select()
         .single();
@@ -539,6 +584,75 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
           <Separator />
 
+          {/* Seletor de Endereço de Entrega */}
+          {!isPickup && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <MapPin className="w-5 h-5" /> Endereço de entrega
+                </h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setAddressDialogOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {savedAddresses.length === 0 ? 'Cadastrar' : 'Gerenciar'}
+                </Button>
+              </div>
+
+              {savedAddresses.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-border p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Nenhum endereço salvo.</p>
+                  <Button size="sm" onClick={() => setAddressDialogOpen(true)} className="rounded-full">
+                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar endereço
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {savedAddresses.map((a) => {
+                    const sel = selectedAddressId === a.id;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setSelectedAddressId(a.id)}
+                        className={`w-full text-left rounded-2xl border p-3 transition-all ${
+                          sel ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-border hover:border-primary/40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                          }`}>
+                            {sel && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <span className="font-semibold text-sm">{a.label}</span>
+                              {a.is_default && <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Padrão</span>}
+                            </div>
+                            <p className="text-sm font-medium">{a.recipient_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {a.street}, {a.number}{a.complement ? ` — ${a.complement}` : ''} · {a.neighborhood}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {a.city}/{a.state} · CEP {formatCEP(a.cep)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <Separator />
+
           {/* Seleção de Método de Pagamento */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Método de Pagamento</h3>
@@ -738,6 +852,24 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         orderId={pixData.orderId}
       />
     )}
+
+    {/* Diálogo para gerenciar endereços direto do checkout */}
+    <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Meus Endereços</DialogTitle>
+          <DialogDescription>Adicione, edite ou escolha um endereço para entrega.</DialogDescription>
+        </DialogHeader>
+        <MyAddresses
+          compact
+          selectedId={selectedAddressId || undefined}
+          onSelect={(a) => {
+            setSelectedAddressId(a.id);
+            setAddressDialogOpen(false);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
