@@ -20,6 +20,7 @@ import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
 import { useProductVariations } from '@/hooks/useProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
+import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 
 interface ProductEditProps {
   product: Product;
