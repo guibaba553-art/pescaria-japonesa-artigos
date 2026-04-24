@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
+import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart, Search, Loader2, Package } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart, Search, Loader2, Package, Menu, X } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface Suggestion {
   id: string;
@@ -18,15 +20,27 @@ interface Suggestion {
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, signOut, isEmployee, isAdmin, canAccessPdv } = useAuth();
+  const { primaries } = useCategories();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLFormElement>(null);
 
-  // Fetch suggestions with debounce
+  // Scroll detection para header dinâmico
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 8);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Fetch suggestions com debounce
   useEffect(() => {
     const query = searchQuery.trim();
     if (query.length < 2) {
@@ -43,16 +57,13 @@ export function Header() {
         .ilike('name', `%${query}%`)
         .limit(6);
 
-      if (!error && data) {
-        setSuggestions(data);
-      }
+      if (!error && data) setSuggestions(data);
       setLoadingSuggestions(false);
     }, 250);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Close suggestions on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -67,11 +78,7 @@ export function Header() {
     e.preventDefault();
     const query = searchQuery.trim();
     setShowSuggestions(false);
-    if (query) {
-      navigate(`/produtos?search=${encodeURIComponent(query)}`);
-    } else {
-      navigate('/produtos');
-    }
+    navigate(query ? `/produtos?search=${encodeURIComponent(query)}` : '/produtos');
   };
 
   const handleSelectSuggestion = (s: Suggestion) => {
@@ -96,23 +103,54 @@ export function Header() {
     }
   };
 
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        <div 
-          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-          onClick={() => navigate('/')}
-        >
-          <img src={japaLogo} alt="JAPAS" className="h-10 w-10 object-contain" />
-          <span className="text-xl font-bold text-foreground hidden sm:inline">JAPAS Pesca</span>
-        </div>
+  const isHome = location.pathname === '/';
 
-        <form onSubmit={handleSearch} className="flex-1 max-w-md flex items-center gap-2" ref={containerRef}>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+  return (
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        scrolled || !isHome
+          ? 'bg-background/80 backdrop-blur-xl border-b border-border/60'
+          : 'bg-background/40 backdrop-blur-md border-b border-transparent'
+      }`}
+    >
+      {/* Top bar — categorias rápidas (desktop) */}
+      <div className="hidden lg:block border-b border-border/40">
+        <div className="container mx-auto h-9 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-6">
+            <span>Sinop, MT</span>
+            <a href="https://wa.me/5566996579671" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+              (66) 99657-9671
+            </a>
+          </div>
+          <div className="flex items-center gap-6">
+            <span>Frete para todo o Brasil</span>
+            <span className="text-foreground/80">•</span>
+            <span>Atendimento especializado</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main bar */}
+      <div className="container mx-auto h-16 flex items-center justify-between gap-6">
+        {/* Logo */}
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2.5 hover:opacity-70 transition-opacity flex-shrink-0 btn-press"
+          aria-label="Página inicial"
+        >
+          <img src={japaLogo} alt="JAPAS" className="h-9 w-9 object-contain" />
+          <span className="text-lg font-display font-bold tracking-tight hidden sm:inline">
+            JAPAS<span className="text-primary">.</span>
+          </span>
+        </button>
+
+        {/* Search */}
+        <form onSubmit={handleSearch} className="flex-1 max-w-xl hidden md:flex" ref={containerRef}>
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               type="text"
-              placeholder="Buscar produtos..."
+              placeholder="Buscar varas, anzóis, iscas, linhas..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -121,24 +159,24 @@ export function Header() {
               }}
               onFocus={() => setShowSuggestions(true)}
               onKeyDown={handleKeyDown}
-              className="pl-9"
+              className="pl-11 pr-4 h-11 rounded-full bg-muted/60 border-transparent focus-visible:bg-background focus-visible:border-border transition-all"
               autoComplete="off"
             />
 
             {showSuggestions && searchQuery.trim().length >= 2 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-md shadow-lg overflow-hidden z-50 max-h-96 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-2xl shadow-elevated overflow-hidden z-50 max-h-[28rem] overflow-y-auto animate-scale-in origin-top">
                 {loadingSuggestions ? (
-                  <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Buscando...
                   </div>
                 ) : suggestions.length === 0 ? (
-                  <div className="py-4 px-3 text-sm text-muted-foreground text-center">
+                  <div className="py-6 px-4 text-sm text-muted-foreground text-center">
                     Nenhum produto encontrado
                   </div>
                 ) : (
                   <>
-                    <ul className="py-1">
+                    <ul className="py-2">
                       {suggestions.map((s, idx) => (
                         <li key={s.id}>
                           <button
@@ -148,20 +186,14 @@ export function Header() {
                               handleSelectSuggestion(s);
                             }}
                             onMouseEnter={() => setHighlightedIndex(idx)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
-                              idx === highlightedIndex
-                                ? 'bg-accent text-accent-foreground'
-                                : 'hover:bg-accent/50'
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                              idx === highlightedIndex ? 'bg-muted' : 'hover:bg-muted/60'
                             }`}
                           >
                             {s.image_url ? (
-                              <img
-                                src={s.image_url}
-                                alt={s.name}
-                                className="w-10 h-10 rounded object-cover flex-shrink-0 bg-muted"
-                              />
+                              <img src={s.image_url} alt={s.name} className="w-11 h-11 rounded-lg object-cover flex-shrink-0 bg-muted" />
                             ) : (
-                              <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                              <div className="w-11 h-11 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                                 <Package className="w-4 h-4 text-muted-foreground" />
                               </div>
                             )}
@@ -169,7 +201,7 @@ export function Header() {
                               <p className="text-sm font-medium truncate">{s.name}</p>
                               <p className="text-xs text-muted-foreground truncate">{s.category}</p>
                             </div>
-                            <span className="text-sm font-semibold text-primary flex-shrink-0">
+                            <span className="text-sm font-semibold flex-shrink-0">
                               R$ {Number(s.price).toFixed(2).replace('.', ',')}
                             </span>
                           </button>
@@ -182,7 +214,7 @@ export function Header() {
                         e.preventDefault();
                         handleSearch(e as unknown as React.FormEvent);
                       }}
-                      className="w-full px-3 py-2 text-sm font-medium text-primary border-t border-border hover:bg-accent/50 transition-colors text-center"
+                      className="w-full px-4 py-3 text-sm font-medium text-primary border-t border-border hover:bg-muted/60 transition-colors text-center"
                     >
                       Ver todos os resultados para "{searchQuery.trim()}"
                     </button>
@@ -191,72 +223,160 @@ export function Header() {
               </div>
             )}
           </div>
-          <Button type="submit" size="icon" variant="default" aria-label="Buscar">
-            <Search className="w-4 h-4" />
-          </Button>
         </form>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        {/* Actions */}
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <button
+            onClick={() => navigate('/produtos')}
+            className="hidden md:inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
+          >
+            Produtos
+          </button>
+
           <Cart />
-          
+
           {user ? (
             <>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/conta')}
-                className="hidden sm:flex"
+                className="hidden sm:inline-flex rounded-full"
               >
                 <UserCircle className="w-4 h-4 mr-2" />
-                Minha Conta
+                Conta
               </Button>
               {(isEmployee || isAdmin) && (
                 <>
                   {(isAdmin || (isEmployee && canAccessPdv)) && (
-                    <Button 
-                      variant="default" 
-                      onClick={() => navigate('/pdv')}
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
+                    <Button size="sm" onClick={() => navigate('/pdv')} className="rounded-full hidden sm:inline-flex">
                       PDV
                     </Button>
                   )}
-                  <Button 
-                    variant="outline" 
-                    onClick={() => navigate('/admin')}
-                  >
-                    <User className="w-4 h-4 mr-2" />
-                    Painel Admin
+                  <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="rounded-full hidden lg:inline-flex">
+                    Admin
                   </Button>
                 </>
               )}
-              <Button 
-                variant="ghost" 
-                onClick={signOut}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
+              <Button variant="ghost" size="icon" onClick={signOut} className="rounded-full hidden sm:inline-flex" aria-label="Sair">
+                <LogOut className="w-4 h-4" />
               </Button>
             </>
           ) : (
             <>
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/auth')}
-                className="hidden sm:flex"
-              >
+              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')} className="hidden sm:inline-flex rounded-full">
                 <LogIn className="w-4 h-4 mr-2" />
                 Entrar
               </Button>
-              <Button 
-                onClick={() => navigate('/auth')}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Criar Conta
+              <Button size="sm" onClick={() => navigate('/auth')} className="rounded-full">
+                <UserPlus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Criar conta</span>
               </Button>
             </>
           )}
+
+          {/* Mobile menu */}
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden rounded-full" aria-label="Menu">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[88%] sm:w-96 p-0">
+              <div className="flex flex-col h-full">
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <img src={japaLogo} alt="JAPAS" className="h-8 w-8 object-contain" />
+                    <span className="font-display font-bold text-lg">JAPAS<span className="text-primary">.</span></span>
+                  </div>
+                </div>
+
+                <form onSubmit={(e) => { handleSearch(e); setMobileOpen(false); }} className="p-4 border-b border-border">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar produtos..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 h-11 rounded-full bg-muted/60 border-transparent"
+                    />
+                  </div>
+                </form>
+
+                <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+                  <button
+                    onClick={() => { navigate('/produtos'); setMobileOpen(false); }}
+                    className="w-full text-left px-4 py-3 rounded-xl hover:bg-muted font-medium transition-colors"
+                  >
+                    Todos os produtos
+                  </button>
+                  {primaries.length > 0 && (
+                    <>
+                      <p className="px-4 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorias</p>
+                      {primaries.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => { navigate(`/produtos?category=${encodeURIComponent(cat.name)}`); setMobileOpen(false); }}
+                          className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </nav>
+
+                <div className="p-4 border-t border-border space-y-2">
+                  {user ? (
+                    <>
+                      <Button variant="outline" className="w-full rounded-full" onClick={() => { navigate('/conta'); setMobileOpen(false); }}>
+                        <UserCircle className="w-4 h-4 mr-2" /> Minha conta
+                      </Button>
+                      <Button variant="ghost" className="w-full rounded-full" onClick={() => { signOut(); setMobileOpen(false); }}>
+                        <LogOut className="w-4 h-4 mr-2" /> Sair
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button className="w-full rounded-full" onClick={() => { navigate('/auth'); setMobileOpen(false); }}>
+                        <UserPlus className="w-4 h-4 mr-2" /> Criar conta
+                      </Button>
+                      <Button variant="outline" className="w-full rounded-full" onClick={() => { navigate('/auth'); setMobileOpen(false); }}>
+                        <LogIn className="w-4 h-4 mr-2" /> Entrar
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
+
+      {/* Categorias bar (desktop) */}
+      {primaries.length > 0 && (
+        <nav className="hidden lg:block border-t border-border/40">
+          <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
+            <button
+              onClick={() => navigate('/produtos')}
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-full whitespace-nowrap"
+            >
+              Todos
+            </button>
+            {primaries.slice(0, 8).map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => navigate(`/produtos?category=${encodeURIComponent(cat.name)}`)}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full whitespace-nowrap"
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
     </header>
   );
 }
