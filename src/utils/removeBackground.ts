@@ -1,12 +1,58 @@
-import { pipeline, env } from '@huggingface/transformers';
+import { AutoModel, AutoProcessor, env, RawImage } from '@huggingface/transformers';
 
-// Configure transformers.js to always download models
+// Configure transformers.js para baixar modelos da Hugging Face
 env.allowLocalModels = false;
-env.useBrowserCache = false;
+env.useBrowserCache = true; // cacheia o modelo após o 1º download
 
 const MAX_IMAGE_DIMENSION = 1024;
 
-function resizeImageIfNeeded(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, image: HTMLImageElement) {
+let modelPromise: Promise<{ model: any; processor: any }> | null = null;
+
+/**
+ * Carrega o modelo RMBG-1.4 da Briaai (modelo dedicado de remoção de fundo).
+ * Resultado muito superior ao Segformer (que é de segmentação de cenas).
+ */
+async function getModel() {
+  if (modelPromise) return modelPromise;
+
+  modelPromise = (async () => {
+    // Tenta WebGPU; se falhar, cai para WASM (CPU)
+    let model: any;
+    let processor: any;
+    try {
+      model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+        device: 'webgpu',
+        dtype: 'fp32',
+        config: { model_type: 'custom' } as any,
+      });
+    } catch (e) {
+      console.warn('[removeBackground] WebGPU indisponível, usando WASM:', e);
+      model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+        config: { model_type: 'custom' } as any,
+      });
+    }
+    processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4', {
+      config: {
+        do_normalize: true,
+        do_pad: false,
+        do_rescale: true,
+        do_resize: true,
+        image_mean: [0.5, 0.5, 0.5],
+        feature_extractor_type: 'ImageFeatureExtractor',
+        image_std: [1, 1, 1],
+        resample: 2,
+        rescale_factor: 0.00392156862745098,
+        return_tensors: 'pt',
+        size: { width: 1024, height: 1024 },
+      } as any,
+    });
+    return { model, processor };
+  })();
+
+  return modelPromise;
+}
+
+function drawImageOnCanvas(image: HTMLImageElement) {
   let width = image.naturalWidth;
   let height = image.naturalHeight;
 
@@ -18,88 +64,55 @@ function resizeImageIfNeeded(canvas: HTMLCanvasElement, ctx: CanvasRenderingCont
       width = Math.round((width * MAX_IMAGE_DIMENSION) / height);
       height = MAX_IMAGE_DIMENSION;
     }
-
-    canvas.width = width;
-    canvas.height = height;
-    ctx.drawImage(image, 0, 0, width, height);
-    return true;
   }
 
+  const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  ctx.drawImage(image, 0, 0);
-  return false;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+  ctx.drawImage(image, 0, 0, width, height);
+  return { canvas, ctx, width, height };
 }
 
 export const removeBackground = async (imageElement: HTMLImageElement): Promise<Blob> => {
-  try {
-    console.log('Starting background removal process...');
-    const segmenter = await pipeline('image-segmentation', 'Xenova/segformer-b0-finetuned-ade-512-512',{
-      device: 'webgpu',
-    });
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) throw new Error('Could not get canvas context');
-    
-    const wasResized = resizeImageIfNeeded(canvas, ctx, imageElement);
-    console.log(`Image ${wasResized ? 'was' : 'was not'} resized. Final dimensions: ${canvas.width}x${canvas.height}`);
-    
-    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('Image converted to base64');
-    
-    console.log('Processing with segmentation model...');
-    const result = await segmenter(imageData);
-    
-    console.log('Segmentation result:', result);
-    
-    if (!result || !Array.isArray(result) || result.length === 0 || !result[0].mask) {
-      throw new Error('Invalid segmentation result');
-    }
-    
-    const outputCanvas = document.createElement('canvas');
-    outputCanvas.width = canvas.width;
-    outputCanvas.height = canvas.height;
-    const outputCtx = outputCanvas.getContext('2d');
-    
-    if (!outputCtx) throw new Error('Could not get output canvas context');
-    
-    outputCtx.drawImage(canvas, 0, 0);
-    
-    const outputImageData = outputCtx.getImageData(
-      0, 0,
-      outputCanvas.width,
-      outputCanvas.height
-    );
-    const data = outputImageData.data;
-    
-    for (let i = 0; i < result[0].mask.data.length; i++) {
-      const alpha = Math.round((1 - result[0].mask.data[i]) * 255);
-      data[i * 4 + 3] = alpha;
-    }
-    
-    outputCtx.putImageData(outputImageData, 0, 0);
-    console.log('Mask applied successfully');
-    
-    return new Promise((resolve, reject) => {
-      outputCanvas.toBlob(
-        (blob) => {
-          if (blob) {
-            console.log('Successfully created final blob');
-            resolve(blob);
-          } else {
-            reject(new Error('Failed to create blob'));
-          }
-        },
-        'image/png',
-        1.0
-      );
-    });
-  } catch (error) {
-    console.error('Error removing background:', error);
-    throw error;
+  console.log('[removeBackground] iniciando com RMBG-1.4...');
+  const { model, processor } = await getModel();
+
+  const { canvas, ctx, width, height } = drawImageOnCanvas(imageElement);
+
+  // Converte canvas em RawImage para o processor
+  const rawImage = new RawImage(
+    new Uint8ClampedArray(ctx.getImageData(0, 0, width, height).data) as any,
+    width,
+    height,
+    4,
+  );
+
+  const { pixel_values } = await processor(rawImage);
+  const { output } = await model({ input: pixel_values });
+
+  // Output é a máscara em [1, 1, H, W] (0..1, onde 1 = primeiro plano)
+  const maskRaw = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(width, height);
+  const maskData = maskRaw.data;
+
+  // Aplica a máscara ao canvas (canal alpha)
+  const imageData = ctx.getImageData(0, 0, width, height);
+  for (let i = 0; i < maskData.length; i++) {
+    imageData.data[i * 4 + 3] = maskData[i];
   }
+  ctx.putImageData(imageData, 0, 0);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create blob'));
+      },
+      'image/png',
+      1.0,
+    );
+  });
 };
 
 export const loadImage = (file: Blob): Promise<HTMLImageElement> => {
