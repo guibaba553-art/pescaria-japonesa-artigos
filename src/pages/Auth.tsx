@@ -31,7 +31,17 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Carrega último email salvo + preferência de "lembrar"
+  useEffect(() => {
+    const remembered = localStorage.getItem(REMEMBER_ME_KEY);
+    if (remembered) {
+      setRememberMe(true);
+      setLoginEmail(remembered);
+    }
+  }, []);
 
   if (user) {
     navigate(redirectTo);
@@ -43,7 +53,17 @@ export default function Auth() {
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     setLoading(false);
-    if (!error) navigate(redirectTo);
+    if (!error) {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+        sessionStorage.removeItem('japas:sessionOnly');
+      } else {
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        // Marca sessão como temporária — será removida ao fechar o navegador
+        sessionStorage.setItem('japas:sessionOnly', '1');
+      }
+      navigate(redirectTo);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
