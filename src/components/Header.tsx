@@ -6,9 +6,8 @@ import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, LogOut, User, UserCircle, ShoppingCart, Search, Loader2, Package, Menu, X } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 interface Suggestion {
   id: string;
@@ -29,7 +28,6 @@ export function Header() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLFormElement>(null);
 
   // Scroll detection para header dinâmico
