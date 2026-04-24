@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { NFESettings } from './NFESettings';
 import { TGASettings } from './TGASettings';
 import { FocusNFeSettings } from './FocusNFeSettings';
-import { NFEList } from './NFEList';
 import { XMLExporter } from './XMLExporter';
 import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
 
@@ -93,14 +92,10 @@ export function FiscalSystem() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="focus" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="focus" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Focus NFe
-              </TabsTrigger>
-              <TabsTrigger value="nfe" className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Notas Fiscais
               </TabsTrigger>
               <TabsTrigger value="settings-nfe" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -118,10 +113,6 @@ export function FiscalSystem() {
 
             <TabsContent value="focus" className="space-y-4">
               <FocusNFeSettings />
-            </TabsContent>
-
-            <TabsContent value="nfe" className="space-y-4">
-              <NFEList settings={settings} onRefresh={loadSettings} />
             </TabsContent>
 
             <TabsContent value="settings-nfe" className="space-y-4">
