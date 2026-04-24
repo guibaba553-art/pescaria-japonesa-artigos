@@ -298,7 +298,7 @@ export default function PDV() {
     setCart([]);
     setCashReceived('');
     setSelectedCustomer(null);
-    setPaymentMethod('cash');
+    setPaymentMethod('credit');
     setInstallments(1);
     setCurrentSaleId(null);
   };
