@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const REMEMBER_ME_KEY = 'japas:rememberMe';
+import { lovable } from '@/integrations/lovable/index';
 import { sanitizeNumericInput, formatCPF, formatCEP, formatPhone } from '@/utils/validation';
 import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
+
+const REMEMBER_ME_KEY = 'japas:rememberMe';
 
 export default function Auth() {
   const navigate = useNavigate();
