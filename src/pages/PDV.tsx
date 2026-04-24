@@ -961,9 +961,14 @@ export default function PDV() {
                             </div>
                           </div>
                            <div className="flex items-center justify-between">
-                            <span className="text-lg font-bold text-primary">
-                              R$ {product.price.toFixed(2)}{product.sold_by_weight && '/kg'}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-lg font-bold text-primary leading-none">
+                                R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
+                                {paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'debit' ? 'Débito' : paymentMethod === 'credit' ? 'Crédito' : 'PIX'}
+                              </span>
+                            </div>
                             <Badge variant="secondary" className="text-xs">
                               {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
                             </Badge>
