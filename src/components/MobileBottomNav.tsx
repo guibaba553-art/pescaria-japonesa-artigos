@@ -16,7 +16,7 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { itemCount } = useCart();
-  const { user } = useAuth();
+  const { user, isEmployee, isAdmin } = useAuth();
   const { primaries } = useCategories();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
