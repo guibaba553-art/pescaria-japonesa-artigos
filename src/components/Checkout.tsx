@@ -592,7 +592,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           {paymentMethod === 'pix' && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
               <p className="text-sm font-medium text-green-800 mb-1">
-                🎉 Ganhe 5% de desconto pagando com PIX!
+                ⚡ Aprovação instantânea com PIX
               </p>
               <p className="text-sm text-green-700">
                 Ao confirmar, você receberá o código PIX para realizar o pagamento.
