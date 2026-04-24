@@ -63,12 +63,8 @@ export function ProductsManagement() {
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
-  // Preços PDV
+  // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState('');
-  const [priceCashPercent, setPriceCashPercent] = useState('0');
-  const [priceDebitPercent, setPriceDebitPercent] = useState('0');
-  const [priceCreditPercent, setPriceCreditPercent] = useState('0');
-  const [pricePixPercent, setPricePixPercent] = useState('0');
 
   const { variations: newProductVariations, setVariations: setNewProductVariations, saveVariations } =
     useProductVariations();
