@@ -318,7 +318,7 @@ export default function CashRegister() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Header />
       
-      <div className="container mx-auto p-6 pt-24 space-y-6">
+      <div className="container mx-auto p-6 pt-20 lg:pt-32 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <DollarSign className="w-8 h-8" />
