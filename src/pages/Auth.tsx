@@ -13,6 +13,8 @@ import japaLogo from '@/assets/japa-logo.png';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const { signIn, signUp, user } = useAuth();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -28,7 +30,7 @@ export default function Auth() {
   const tabsRef = useRef<HTMLDivElement>(null);
 
   if (user) {
-    navigate('/');
+    navigate(redirectTo);
     return null;
   }
 
@@ -37,7 +39,7 @@ export default function Auth() {
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     setLoading(false);
-    if (!error) navigate('/');
+    if (!error) navigate(redirectTo);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -56,7 +58,7 @@ export default function Auth() {
       return;
     }
 
-    if (!error) navigate('/');
+    if (!error) navigate(redirectTo);
   };
 
   const benefits = [
