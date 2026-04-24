@@ -1610,7 +1610,7 @@ export default function PDV() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-bold text-2xl text-primary">
-                      R$ {(getWeightInKg() * (selectedProduct?.price || 0)).toFixed(2)}
+                      R$ {(getWeightInKg() * (selectedProduct ? getPdvPrice(selectedProduct, paymentMethod) : 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>
