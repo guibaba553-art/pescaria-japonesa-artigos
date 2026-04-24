@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,7 +43,7 @@ const RouteFallback = () => (
   </div>
 );
 
-const DeferredShell = ({ children, delay = 150 }: { children: React.ReactNode; delay?: number }) => {
+const DeferredShell = ({ children, delay = 150 }: { children: ReactNode; delay?: number }) => {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
