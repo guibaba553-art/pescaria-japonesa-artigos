@@ -94,10 +94,6 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
       setPricePdv((product as any).price_pdv?.toString() || '');
-      setPriceCreditPercent(((product as any).price_credit_percent ?? 0).toString());
-      setPriceDebitPercent(((product as any).price_debit_percent ?? 0).toString());
-      setPricePixPercent(((product as any).price_pix_percent ?? 0).toString());
-      setPriceCashPercent(((product as any).price_cash_percent ?? 0).toString());
     }
   }, [open, product.id, loadVariations]);
 
