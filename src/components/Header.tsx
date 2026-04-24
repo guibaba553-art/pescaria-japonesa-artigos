@@ -113,23 +113,6 @@ export function Header() {
           : 'bg-background/40 backdrop-blur-md border-b border-transparent'
       }`}
     >
-      {/* Top bar — categorias rápidas (desktop) */}
-      <div className="hidden lg:block border-b border-border/40">
-        <div className="container mx-auto h-9 flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-6">
-            <span>Sinop, MT</span>
-            <a href="https://wa.me/5566996579671" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
-              (66) 99657-9671
-            </a>
-          </div>
-          <div className="flex items-center gap-6">
-            <span>Frete para todo o Brasil</span>
-            <span className="text-foreground/80">•</span>
-            <span>Atendimento especializado</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main bar */}
       <div className="container mx-auto h-16 flex items-center justify-between gap-6">
         {/* Logo */}
