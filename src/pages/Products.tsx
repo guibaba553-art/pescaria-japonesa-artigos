@@ -79,12 +79,21 @@ export default function Products() {
   };
 
   // Faixa de preço dinâmica baseada nos produtos
+  // Usa reduce para evitar erro "Maximum call stack" com Math.min/max(...arr) em listas grandes
   const { minPrice, maxPrice } = useMemo(() => {
     if (products.length === 0) return { minPrice: 0, maxPrice: 0 };
-    const prices = products.map(p => p.on_sale && p.sale_price ? p.sale_price : p.price);
+    let min = Infinity;
+    let max = -Infinity;
+    for (const p of products) {
+      const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
+      if (typeof price !== 'number' || !isFinite(price)) continue;
+      if (price < min) min = price;
+      if (price > max) max = price;
+    }
+    if (!isFinite(min) || !isFinite(max)) return { minPrice: 0, maxPrice: 0 };
     return {
-      minPrice: Math.floor(Math.min(...prices)),
-      maxPrice: Math.ceil(Math.max(...prices)),
+      minPrice: Math.floor(min),
+      maxPrice: Math.ceil(max),
     };
   }, [products]);
 

@@ -1472,25 +1472,28 @@ export default function PDV() {
               </p>
             </div>
 
-            {weightInput && !isNaN(parseFloat(weightInput.replace(',', '.'))) && parseFloat(weightInput.replace(',', '.')) > 0 && (
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Peso:</span>
-                  <span className="font-medium">
-                    {weightUnit === 'g' 
-                      ? `${parseFloat(weightInput.replace(',', '.'))}g (${(parseFloat(weightInput.replace(',', '.')) / 1000).toFixed(3)}kg)`
-                      : `${parseFloat(weightInput.replace(',', '.')).toFixed(3)}kg (${(parseFloat(weightInput.replace(',', '.')) * 1000).toFixed(0)}g)`
-                    }
-                  </span>
+            {(() => {
+              const parsed = parseFloat(weightInput.replace(',', '.'));
+              if (!weightInput || isNaN(parsed) || parsed <= 0) return null;
+              return (
+                <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Peso:</span>
+                    <span className="font-medium">
+                      {weightUnit === 'g'
+                        ? `${parsed}g (${(parsed / 1000).toFixed(3)}kg)`
+                        : `${parsed.toFixed(3)}kg (${(parsed * 1000).toFixed(0)}g)`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Total:</span>
+                    <span className="font-bold text-2xl text-primary">
+                      R$ {(getWeightInKg() * (selectedProduct?.price || 0)).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Total:</span>
-                  <span className="font-bold text-2xl text-primary">
-                    R$ {(getWeightInKg() * (selectedProduct?.price || 0)).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="flex gap-2">
               <Button
