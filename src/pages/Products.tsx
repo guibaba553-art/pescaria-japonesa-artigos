@@ -219,48 +219,62 @@ export default function Products() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      {/* Spacer to compensate fixed Header height */}
+      <div aria-hidden className="h-16 lg:h-[108px]" />
 
-      <div className="container mx-auto px-4 pt-24 pb-20">
-        <Button variant="ghost" className="mb-6" onClick={() => window.location.href = '/'}>
-          <Home className="w-4 h-4 mr-2" />
-          Voltar à Home
-        </Button>
+      {/* Commercial header banner */}
+      <div className="bg-foreground text-background">
+        <div className="container mx-auto py-8 sm:py-10">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold text-primary-glow uppercase tracking-wider mb-2">
+                Catálogo · {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
+              </p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-black leading-tight">
+                {categoryParam || 'Todos os produtos'}
+              </h1>
+              <p className="text-sm sm:text-base text-background/70 mt-2">
+                Frete grátis acima de R$ 199 · 10x sem juros · PIX 5% off
+              </p>
+            </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            {categoryParam || 'Todos os Produtos'}
-          </h1>
-          <p className="text-xl text-muted-foreground mb-6">
-            Encontre os melhores equipamentos de pesca
-          </p>
-          <div className="max-w-md mx-auto">
-            <Input
-              placeholder="Procurar produto por nome..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-lg"
-            />
+            <div className="w-full sm:max-w-xs">
+              <Input
+                placeholder="🔍 Buscar produto..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-11 rounded-full bg-background text-foreground border-transparent placeholder:text-muted-foreground"
+              />
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="container mx-auto pt-6 pb-16">
         {/* Filtros de Categoria Primária */}
-        <div className="flex flex-wrap gap-3 justify-center mb-4">
-          <Badge
-            variant={categoryParam === '' ? 'default' : 'outline'}
-            className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button
             onClick={() => handleCategoryChange('')}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+              categoryParam === ''
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'bg-muted text-foreground hover:bg-muted/70'
+            }`}
           >
             Todas
-          </Badge>
+          </button>
           {primaries.map((cat) => (
-            <Badge
+            <button
               key={cat.id}
-              variant={categoryParam === cat.name ? 'default' : 'outline'}
-              className="cursor-pointer px-6 py-2 text-base hover:bg-primary hover:text-primary-foreground transition-colors"
               onClick={() => handleCategoryChange(cat.name)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                categoryParam === cat.name
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-muted text-foreground hover:bg-muted/70'
+              }`}
             >
               {cat.name}
-            </Badge>
+            </button>
           ))}
         </div>
 
@@ -270,23 +284,29 @@ export default function Products() {
           const subs = activePrimary ? getSubcategoriesOf(activePrimary.id) : [];
           if (subs.length === 0) return null;
           return (
-            <div className="flex flex-wrap gap-2 justify-center mb-8">
-              <Badge
-                variant={subcategoryParam === '' ? 'secondary' : 'outline'}
-                className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
+            <div className="flex flex-wrap gap-2 mb-6">
+              <button
                 onClick={() => handleSubcategoryChange('')}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  subcategoryParam === ''
+                    ? 'bg-foreground text-background'
+                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                }`}
               >
                 Todas em {activePrimary!.name}
-              </Badge>
+              </button>
               {subs.map((sub) => (
-                <Badge
+                <button
                   key={sub.id}
-                  variant={subcategoryParam === sub.name ? 'secondary' : 'outline'}
-                  className="cursor-pointer px-4 py-1.5 text-sm hover:bg-secondary hover:text-secondary-foreground transition-colors"
                   onClick={() => handleSubcategoryChange(sub.name)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    subcategoryParam === sub.name
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
                 >
                   {sub.name}
-                </Badge>
+                </button>
               ))}
             </div>
           );

@@ -41,72 +41,82 @@ export function Cart() {
     setCheckoutOpen(true);
   };
 
+  const pixTotal = (total + (total >= 0 ? 0 : 0)) * 0.95; // PIX 5% on items only
+  const installment = total / 10;
+
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative rounded-full">
           <ShoppingCart className="h-5 w-5" />
           {itemCount > 0 && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+            <Badge
+              className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 text-[10px] font-black bg-primary text-primary-foreground border-2 border-background"
             >
               {itemCount}
             </Badge>
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Carrinho de Compras</SheetTitle>
-          <SheetDescription>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0 flex flex-col">
+        {/* Header */}
+        <SheetHeader className="px-5 py-4 border-b border-border bg-muted/30">
+          <SheetTitle className="text-xl font-display font-black flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            Seu carrinho
+          </SheetTitle>
+          <SheetDescription className="text-xs">
             {itemCount === 0
               ? 'Seu carrinho está vazio'
-              : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} no carrinho`}
+              : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-8 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                Adicione produtos ao carrinho para começar
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <ShoppingCart className="h-7 w-7 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Seu carrinho está vazio
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Adicione produtos para aproveitar as ofertas
               </p>
             </div>
           ) : (
-            <>
+            <div className="space-y-3">
               {items.map((item) => (
-                <div key={item.cartItemKey} className="flex gap-4 py-4 border-b">
+                <div key={item.cartItemKey} className="flex gap-3 p-3 rounded-xl bg-card border border-border">
                   <img
-                    src={item.image_url || 'https://placehold.co/100x100?text=Sem+Imagem'}
+                    src={item.image_url || 'https://placehold.co/100x100?text=?'}
                     alt={item.name}
-                    className="w-20 h-20 object-cover rounded"
+                    className="w-16 h-16 object-cover rounded-lg shrink-0"
                   />
-                  <div className="flex-1">
-                    <h4 className="font-semibold">{item.name}</h4>
-                    <p className="text-sm text-primary font-bold">
-                      R$ {item.price.toFixed(2)}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold leading-tight line-clamp-2 mb-1">{item.name}</h4>
+                    <p className="text-base font-display font-black text-primary leading-none">
+                      R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}
                     </p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-1 mt-2">
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-7 w-7 rounded-md"
                         onClick={() => updateQuantity(item.cartItemKey, item.quantity - 1)}
                         disabled={item.quantity <= 1}
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center font-medium">
+                      <span className="w-7 text-center text-sm font-bold">
                         {item.quantity}
                       </span>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="h-7 w-7 rounded-md"
                         onClick={async () => {
-                          // Validar estoque real antes de incrementar
                           try {
                             const { data: stockData } = await supabase
                               .from(item.variationId ? 'product_variations' : 'products')
@@ -138,67 +148,73 @@ export function Cart() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 ml-auto text-destructive"
+                        className="h-7 w-7 ml-auto text-muted-foreground hover:text-destructive"
                         onClick={() => removeItem(item.cartItemKey)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
                 </div>
               ))}
 
-              <Separator className="my-4" />
-
-              <div className="space-y-4">
-                <ShippingCalculator 
+              <div className="pt-3">
+                <ShippingCalculator
                   products={items.map((it) => ({ id: it.id, quantity: it.quantity }))}
                   onSelectShipping={(option) => {
                     setShippingCost(option.valor);
                     setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
                   }}
                 />
-
-                <Separator className="my-4" />
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>R$ {total.toFixed(2)}</span>
-                  </div>
-                  {shippingInfo && (
-                    <div className="flex justify-between text-sm">
-                      <span>{shippingInfo.nome}:</span>
-                      <span>R$ {shippingCost.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="text-primary">R$ {(total + shippingCost).toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <Button 
-                  className="w-full" 
-                  size="lg"
-                  onClick={handleCheckout}
-                  disabled={!shippingInfo}
-                >
-                  {!shippingInfo ? '⚠️ Escolha uma opção de entrega' : 'Finalizar Compra'}
-                </Button>
-                {!shippingInfo && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Selecione uma opção de entrega acima para continuar
-                  </p>
-                )}
               </div>
-            </>
+            </div>
           )}
         </div>
+
+        {/* Sticky bottom: total + CTA */}
+        {items.length > 0 && (
+          <div className="border-t border-border bg-background p-5 space-y-3">
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>R$ {total.toFixed(2).replace('.', ',')}</span>
+              </div>
+              {shippingInfo && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{shippingInfo.nome}</span>
+                  <span>R$ {shippingCost.toFixed(2).replace('.', ',')}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between items-baseline">
+                <span className="font-bold">Total</span>
+                <span className="text-2xl font-display font-black text-primary tracking-tight">
+                  R$ {(total + shippingCost).toFixed(2).replace('.', ',')}
+                </span>
+              </div>
+              {total >= 50 && (
+                <p className="text-xs text-muted-foreground text-right">
+                  ou <strong className="text-foreground">10x de R$ {((total + shippingCost) / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                </p>
+              )}
+              <p className="text-xs text-success font-semibold text-right">
+                R$ {((total + shippingCost) * 0.95).toFixed(2).replace('.', ',')} no PIX (5% OFF)
+              </p>
+            </div>
+
+            <Button
+              className="w-full h-12 rounded-full font-black text-base btn-press"
+              onClick={handleCheckout}
+              disabled={!shippingInfo}
+            >
+              {!shippingInfo ? 'Escolha o frete acima' : 'Finalizar compra'}
+            </Button>
+          </div>
+        )}
       </SheetContent>
       {user && (
-        <Checkout 
-          open={checkoutOpen} 
+        <Checkout
+          open={checkoutOpen}
           onOpenChange={setCheckoutOpen}
           shippingCost={shippingCost}
           shippingInfo={shippingInfo}

@@ -100,7 +100,8 @@ export default function ProductDetails() {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="container mx-auto px-4 pt-24 pb-20">
+        <div aria-hidden className="h-16 lg:h-[108px]" />
+        <div className="container mx-auto px-4 py-20">
           <p className="text-center text-xl text-muted-foreground">Carregando...</p>
         </div>
       </div>
@@ -175,29 +176,32 @@ export default function ProductDetails() {
         </script>
       </Helmet>
       <Header />
-      
-      <div className="container mx-auto px-4 pt-24 pb-20">
-        <div className="flex gap-2 mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-          >
-            <Home className="w-4 h-4 mr-2" />
+      {/* Spacer for fixed Header */}
+      <div aria-hidden className="h-16 lg:h-[108px]" />
+
+      <div className="container mx-auto px-4 pt-6 pb-20">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <button onClick={() => navigate('/')} className="hover:text-primary transition-colors">
             Home
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/produtos')}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          </button>
+          <span>/</span>
+          <button onClick={() => navigate('/produtos')} className="hover:text-primary transition-colors">
             Produtos
-          </Button>
-        </div>
+          </button>
+          <span>/</span>
+          <button
+            onClick={() => navigate(`/produtos?category=${encodeURIComponent(product.category)}`)}
+            className="hover:text-primary transition-colors"
+          >
+            {product.category}
+          </button>
+        </nav>
 
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
           {/* Imagens */}
           <div className="space-y-4">
-            <div className="relative aspect-square rounded-lg overflow-hidden border-2 border-border">
+            <div className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-muted/30">
               <img
                 key={selectedImage}
                 src={selectedImage || 'https://placehold.co/600x600?text=Sem+Imagem'}
@@ -206,28 +210,36 @@ export default function ProductDetails() {
                 fetchPriority="high"
                 className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-300"
               />
-              
+
+              {product.on_sale && product.sale_price && (
+                <div className="absolute top-3 left-3">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-black tracking-tight shadow-lg">
+                    −{Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
+                  </span>
+                </div>
+              )}
+
               {/* Setas de navegação */}
               {displayImages.length > 1 && (
                 <>
                   <button
                     onClick={goToPreviousImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-background/90 hover:bg-background text-foreground rounded-full p-2 shadow-md transition-all"
                     aria-label="Imagem anterior"
                   >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
                   <button
                     onClick={goToNextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-all"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-background/90 hover:bg-background text-foreground rounded-full p-2 shadow-md transition-all"
                     aria-label="Próxima imagem"
                   >
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 </>
               )}
             </div>
-            
+
             {displayImages.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
                 {displayImages.map((img, idx) => (
@@ -251,69 +263,96 @@ export default function ProductDetails() {
           </div>
 
           {/* Detalhes */}
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div>
-              <div className="flex gap-2 mb-3">
-                <Badge>{product.category}</Badge>
-                {product.on_sale && (
-                  <Badge className="bg-red-600 hover:bg-red-700">
-                    🏷️ PROMOÇÃO
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-4xl font-bold mb-4">{product.name}</h1>
-              
-              <div className="flex items-center gap-2 mb-6">
-                <div className="flex items-center gap-1">
+              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">
+                {product.category}
+              </p>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-black leading-tight mb-3">
+                {product.name}
+              </h1>
+
+              <div className="flex items-center gap-2 mb-5">
+                <div className="flex items-center gap-0.5">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-5 h-5 ${
+                      className={`w-4 h-4 ${
                         i < Math.floor(product.rating)
                           ? "fill-primary text-primary"
-                          : "text-muted"
+                          : "text-muted-foreground/40"
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-lg text-muted-foreground">
-                  ({product.rating.toFixed(1)})
+                <span className="text-sm text-muted-foreground">
+                  {product.rating.toFixed(1)}
                 </span>
               </div>
 
-              {/* Preço - apenas se não tiver variações OU se tiver uma variação selecionada */}
+              {/* Preço comercial */}
               {variations.length > 0 ? (
                 selectedVariation && (
-                  <div className="mb-6">
-                    <p className="text-sm text-muted-foreground mb-2">Preço da variação selecionada:</p>
-                    <p className="text-4xl font-bold text-primary">
-                      R$ {selectedVariation.price.toFixed(2)}
+                  <div className="bg-muted/40 rounded-2xl p-5 mb-4">
+                    <p className="text-xs text-muted-foreground mb-1">Variação selecionada:</p>
+                    <p className="text-4xl font-display font-black text-primary tracking-tight">
+                      R$ {selectedVariation.price.toFixed(2).replace('.', ',')}
+                    </p>
+                    {selectedVariation.price >= 50 && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ou <strong className="text-foreground">10x de R$ {(selectedVariation.price / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                      </p>
+                    )}
+                    <p className="text-sm text-success font-semibold mt-1">
+                      R$ {(selectedVariation.price * 0.95).toFixed(2).replace('.', ',')} no PIX (5% OFF)
                     </p>
                   </div>
                 )
-              ) : product.on_sale && product.sale_price ? (
-                <div className="mb-6">
-                  <p className="text-2xl line-through text-muted-foreground">
-                    R$ {product.price.toFixed(2)}
-                  </p>
-                  <p className="text-5xl font-bold text-red-600">
-                    R$ {product.sale_price.toFixed(2)}
-                  </p>
-                  {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Promoção válida até {new Date(product.sale_ends_at).toLocaleString('pt-BR')}
+              ) : (
+                <div className="bg-muted/40 rounded-2xl p-5 mb-4">
+                  {product.on_sale && product.sale_price ? (
+                    <>
+                      <p className="text-base line-through text-muted-foreground leading-none">
+                        De R$ {product.price.toFixed(2).replace('.', ',')}
+                      </p>
+                      <div className="flex items-baseline gap-3 mt-1">
+                        <p className="text-4xl sm:text-5xl font-display font-black text-primary tracking-tight leading-none">
+                          R$ {product.sale_price.toFixed(2).replace('.', ',')}
+                        </p>
+                        <span className="text-sm font-bold text-primary">
+                          {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-4xl sm:text-5xl font-display font-black text-primary tracking-tight leading-none">
+                      R$ {product.price.toFixed(2).replace('.', ',')}
                     </p>
                   )}
+
+                  {effectivePrice >= 50 && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      ou <strong className="text-foreground">10x de R$ {(effectivePrice / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                    </p>
+                  )}
+                  <p className="text-sm text-success font-semibold mt-1">
+                    R$ {(effectivePrice * 0.95).toFixed(2).replace('.', ',')} no PIX (5% OFF)
+                  </p>
+
+                  {effectivePrice >= 199 && (
+                    <div className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-md bg-success-soft text-success text-xs font-bold uppercase tracking-wide">
+                      🚚 Frete Grátis
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <p className="text-4xl font-bold text-primary mb-6">
-                  R$ {product.price.toFixed(2)}
-                </p>
               )}
 
               {variations.length === 0 && (
-                <p className="text-lg text-muted-foreground mb-2">
-                  Estoque disponível: <span className="font-semibold">{product.stock} unidades</span>
+                <p className="text-sm text-muted-foreground">
+                  {product.stock > 5
+                    ? `${product.stock} unidades em estoque`
+                    : <span className="text-primary font-bold">⚡ Últimas {product.stock} unidades!</span>
+                  }
                 </p>
               )}
             </div>
@@ -372,7 +411,7 @@ export default function ProductDetails() {
 
               <Button
                 size="lg"
-                className="w-full text-lg py-6"
+                className="w-full text-base py-7 rounded-full font-black btn-press"
                 disabled={
                   (variations.length > 0 && !selectedVariation) ||
                   (variations.length > 0 && selectedVariation && selectedVariation.stock === 0) ||

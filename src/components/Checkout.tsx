@@ -413,48 +413,55 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Finalizar Pedido</DialogTitle>
-          <DialogDescription>
-            Escolha a forma de pagamento e conclua sua compra
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border bg-muted/30">
+          <DialogTitle className="text-2xl font-display font-black">Finalizar pedido</DialogTitle>
+          <DialogDescription className="text-sm">
+            Escolha como pagar e conclua sua compra
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 px-6 py-5">
           {/* Resumo do Pedido */}
-          <div className="space-y-2">
-            <h3 className="font-semibold text-lg">Resumo do Pedido</h3>
-            <div className="space-y-2">
+          <div className="space-y-2 rounded-2xl bg-muted/40 p-4">
+            <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-2">Resumo</h3>
+            <div className="space-y-1.5 text-sm">
               {items.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span>{item.name} x {item.quantity}</span>
-                  <span>R$ {(item.price * item.quantity).toFixed(2)}</span>
+                <div key={item.id} className="flex justify-between gap-3">
+                  <span className="text-foreground">{item.name} <span className="text-muted-foreground">× {item.quantity}</span></span>
+                  <span className="font-medium tabular-nums">R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}</span>
                 </div>
               ))}
             </div>
-            <Separator />
+            <Separator className="my-2" />
             {shippingInfo && (
-              <div className="flex justify-between text-sm border-t pt-2">
-                <span>{shippingInfo.nome} ({shippingInfo.prazoEntrega} dias úteis):</span>
-                <span>R$ {shippingCost.toFixed(2)}</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{shippingInfo.nome} ({shippingInfo.prazoEntrega} dias)</span>
+                <span className="font-medium tabular-nums">R$ {shippingCost.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span>Subtotal:</span>
-              <span>R$ {(total + shippingCost).toFixed(2)}</span>
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium tabular-nums">R$ {(total + shippingCost).toFixed(2).replace('.', ',')}</span>
             </div>
             {paymentMethod === 'pix' && pixDiscount > 0 && (
-              <div className="flex justify-between text-sm text-green-600 font-medium">
-                <span>Desconto PIX (5%):</span>
-                <span>- R$ {pixDiscount.toFixed(2)}</span>
+              <div className="flex justify-between text-sm text-success font-bold">
+                <span>Desconto PIX (5%)</span>
+                <span className="tabular-nums">− R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
               </div>
             )}
-            <Separator />
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span className="text-primary">R$ {finalTotal.toFixed(2)}</span>
+            <Separator className="my-2" />
+            <div className="flex justify-between items-baseline">
+              <span className="font-bold text-base">Total a pagar</span>
+              <span className="text-3xl font-display font-black text-primary tracking-tight tabular-nums">
+                R$ {finalTotal.toFixed(2).replace('.', ',')}
+              </span>
             </div>
+            {paymentMethod !== 'pix' && finalTotal >= 50 && (
+              <p className="text-xs text-muted-foreground text-right">
+                ou 10x de R$ {(finalTotal / 10).toFixed(2).replace('.', ',')} sem juros
+              </p>
+            )}
           </div>
 
           <Separator />
