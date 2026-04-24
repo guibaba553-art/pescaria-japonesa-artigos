@@ -1,10 +1,10 @@
 import { Truck, CreditCard, ShieldCheck, RotateCcw } from "lucide-react";
 
 const items = [
-  { icon: Truck, label: "Frete grátis", sub: "acima de R$ 199" },
+  { icon: Truck, label: "Envio rápido", sub: "para todo o Brasil" },
   { icon: CreditCard, label: "Até 10x sem juros", sub: "no cartão" },
   { icon: ShieldCheck, label: "PIX com 5% off", sub: "pagamento na hora" },
-  { icon: RotateCcw, label: "Troca grátis", sub: "em até 7 dias" },
+  { icon: RotateCcw, label: "Troca garantida", sub: "em até 7 dias" },
 ];
 
 const TopBenefitsBar = () => {

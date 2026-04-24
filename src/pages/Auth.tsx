@@ -60,7 +60,7 @@ export default function Auth() {
   };
 
   const benefits = [
-    { icon: Truck, label: 'Frete grátis acima de R$ 199' },
+    { icon: Truck, label: 'Envio rápido para todo o Brasil' },
     { icon: CreditCard, label: '10x sem juros + PIX 5% off' },
     { icon: ShieldCheck, label: 'Compra 100% segura' },
   ];

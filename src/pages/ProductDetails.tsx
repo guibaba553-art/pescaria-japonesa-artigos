@@ -339,11 +339,9 @@ export default function ProductDetails() {
                     R$ {(effectivePrice * 0.95).toFixed(2).replace('.', ',')} no PIX (5% OFF)
                   </p>
 
-                  {effectivePrice >= 199 && (
-                    <div className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-md bg-success-soft text-success text-xs font-bold uppercase tracking-wide">
-                      🚚 Frete Grátis
-                    </div>
-                  )}
+                  <div className="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-md bg-success-soft text-success text-xs font-bold uppercase tracking-wide">
+                    🚚 Envio rápido
+                  </div>
                 </div>
               )}
 
