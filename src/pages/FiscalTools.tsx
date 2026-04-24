@@ -225,7 +225,9 @@ export default function FiscalTools() {
           </TabsList>
 
           <TabsContent value="taxes">
-            <TaxProjection />
+            <Suspense fallback={<FiscalTabFallback />}>
+              <TaxProjection />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="nfe">
@@ -237,7 +239,9 @@ export default function FiscalTools() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -254,13 +258,17 @@ export default function FiscalTools() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <NfeEntradaPendentes />
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <NfeEntradaPendentes />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="system">
-            <FiscalSystem />
+            <Suspense fallback={<FiscalTabFallback />}>
+              <FiscalSystem />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>
