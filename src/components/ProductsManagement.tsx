@@ -156,6 +156,11 @@ export function ProductsManagement() {
           images: imageUrls,
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
           created_by: user?.id,
+          price_pdv: pricePdv ? parseFloat(pricePdv) : null,
+          price_cash_percent: priceCashPercent ? parseFloat(priceCashPercent) : 0,
+          price_debit_percent: priceDebitPercent ? parseFloat(priceDebitPercent) : 0,
+          price_credit_percent: priceCreditPercent ? parseFloat(priceCreditPercent) : 0,
+          price_pix_percent: pricePixPercent ? parseFloat(pricePixPercent) : 0,
         }])
         .select()
         .single();
