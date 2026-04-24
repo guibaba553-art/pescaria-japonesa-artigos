@@ -515,6 +515,14 @@ export default function Account() {
           orderId={selectedPixPayment.orderId}
         />
       )}
+
+      {pickupQROrderId && (
+        <PickupQRDialog
+          open={!!pickupQROrderId}
+          onOpenChange={(open) => !open && setPickupQROrderId(null)}
+          orderId={pickupQROrderId}
+        />
+      )}
     </div>
   );
 }
