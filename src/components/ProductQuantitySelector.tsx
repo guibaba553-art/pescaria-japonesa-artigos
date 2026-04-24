@@ -68,7 +68,7 @@ export function ProductQuantitySelector({
             onChange(maxQuantity);
           }
         }}
-        className={`${inputClass} text-center border rounded px-2 py-1 ${size === 'sm' ? 'text-sm' : 'text-base'}`}
+        className={`${inputClass} text-center border rounded px-2 ${size === 'sm' ? 'h-8 text-sm' : 'h-10 text-base'}`}
       />
       <Button
         type="button"
