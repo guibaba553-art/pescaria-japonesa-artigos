@@ -78,25 +78,31 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        // Buscar vendas do caixa
-        const { data: orders } = await supabase
-          .from('orders')
-          .select('total_amount, shipping_cost')
-          .eq('status', 'entregado')
-          .gte('created_at', data.opened_at)
-          .is('closed_at', null);
+        // Buscar vendas do PDV deste caixa, agrupadas por forma de pagamento real
+        const { data: sales } = await supabase
+          .from('saved_sales')
+          .select('total_amount, payment_method')
+          .gte('created_at', data.opened_at);
 
-        // Aqui você precisaria ter um campo payment_method na tabela orders
-        // Por enquanto, vou simular:
-        const totalSales = orders?.reduce((sum, o) => 
-          sum + (parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost))), 0
-        ) || 0;
-
-        setSalesSummary({
-          cash: totalSales * 0.3, // 30% dinheiro (exemplo)
-          card: totalSales * 0.5, // 50% cartão
-          pix: totalSales * 0.2   // 20% pix
+        const summary = { cash: 0, card: 0, pix: 0 };
+        (sales || []).forEach((s) => {
+          const amount = Number(s.total_amount) || 0;
+          const method = (s.payment_method || '').toLowerCase();
+          if (method.includes('dinheiro') || method === 'cash') {
+            summary.cash += amount;
+          } else if (method.includes('pix')) {
+            summary.pix += amount;
+          } else if (
+            method.includes('cart') ||
+            method.includes('card') ||
+            method.includes('credit') ||
+            method.includes('debit')
+          ) {
+            summary.card += amount;
+          }
         });
+
+        setSalesSummary(summary);
       }
     } catch (error: any) {
       toast({
@@ -618,20 +624,22 @@ export default function CashRegister() {
                 onChange={(e) => setClosingAmount(e.target.value)}
               />
             </div>
-            {closingAmount && (
-              <div className={`p-4 rounded ${
-                parseFloat(closingAmount) === currentRegister?.expected_amount 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                <div className="font-bold">
-                  {parseFloat(closingAmount) === currentRegister?.expected_amount 
-                    ? '✓ Caixa conferido!' 
-                    : `⚠ Diferença: R$ ${(parseFloat(closingAmount) - (currentRegister?.expected_amount || 0)).toFixed(2)}`
-                  }
+            {closingAmount && (() => {
+              const counted = parseFloat(closingAmount);
+              const expected = currentRegister?.expected_amount ?? 0;
+              const diff = counted - expected;
+              // Tolerância de 1 centavo para evitar falsos negativos por arredondamento de float
+              const matches = Math.abs(diff) < 0.01;
+              return (
+                <div className={`p-4 rounded ${matches ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <div className="font-bold">
+                    {matches
+                      ? '✓ Caixa conferido!'
+                      : `⚠ Diferença: R$ ${diff.toFixed(2)}`}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             <Button 
               onClick={handleCloseRegister} 
               disabled={loadingAction}
