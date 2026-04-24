@@ -61,6 +61,7 @@ const App = () => (
           <Route path="/termos-de-uso" element={<TermosUso />} />
           <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
           <Route path="/meus-dados" element={<MeusDados />} />
+          <Route path="/retirada/:id" element={<PickupOrder />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
