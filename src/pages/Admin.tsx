@@ -511,460 +511,74 @@ export default function Admin() {
           </div>
         )}
 
-        <Tabs defaultValue="catalog" className="space-y-6">
-          {/* Navegação principal — botões no mesmo estilo dos cards de acesso rápido */}
-          {(() => {
-            const draftCount = products.filter(p => p.category === 'Pendente Revisão').length;
-            const sections: Array<{
-              value: string;
-              title: string;
-              desc: string;
-              icon: typeof Package;
-              badge?: number;
-              adminOnly?: boolean;
-            }> = [
-              { value: 'catalog', title: 'Catálogo', desc: 'Produtos, categorias e destaques', icon: Package, badge: draftCount },
-              { value: 'orders', title: 'Pedidos', desc: 'Vendas online', icon: ClipboardList },
-              { value: 'employees', title: 'Funcionários', desc: 'Permissões da equipe', icon: Users, adminOnly: true },
-            ];
-
-            return (
-              <TabsList className="h-auto p-0 bg-transparent grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
-                {sections
-                  .filter(s => !s.adminOnly || isAdmin)
-                  .map(({ value, title, desc, icon: Icon, badge }) => (
-                    <TabsTrigger
-                      key={value}
-                      value={value}
-                      className="group relative h-auto justify-start text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all data-[state=active]:border-primary data-[state=active]:shadow-md data-[state=active]:bg-card data-[state=active]:text-foreground"
-                    >
-                      <div className="flex flex-col items-start w-full">
-                        <div className="flex items-center justify-between w-full mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground transition-colors">
-                            <Icon className="w-5 h-5" />
-                          </div>
-                          {badge !== undefined && badge > 0 && (
-                            <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                              {badge}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="font-display font-bold text-base leading-tight">{title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5 font-normal">{desc}</div>
-                      </div>
-                    </TabsTrigger>
-                  ))}
-              </TabsList>
-            );
-          })()}
-
-          <TabsContent value="catalog" className="space-y-6">
-            <Tabs defaultValue="products" className="space-y-6">
-              <TabsList className="bg-muted/50 p-1 h-auto flex flex-wrap gap-1">
-                <TabsTrigger value="products" className="gap-2">
-                  <Package className="w-4 h-4" /> Produtos
-                </TabsTrigger>
-                <TabsTrigger value="categories" className="gap-2">
-                  <Tags className="w-4 h-4" /> Categorias
-                </TabsTrigger>
-                <TabsTrigger value="drafts" className="gap-2 relative">
-                  <FileEdit className="w-4 h-4" /> Rascunhos
-                  {products.filter(p => p.category === 'Pendente Revisão').length > 0 && (
-                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                      {products.filter(p => p.category === 'Pendente Revisão').length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="featured" className="gap-2">
-                  <Star className="w-4 h-4" /> Destaques
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="products" className="space-y-6">
-            <Card>
-          <CardHeader>
-            <CardTitle>Adicionar Novo Produto</CardTitle>
-            <CardDescription>Preencha os dados do produto</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Produto</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Preço (R$) {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
-                  </Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    required={newProductVariations.length === 0}
-                  />
-                  {newProductVariations.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Os preços serão definidos nas variações
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoria *</Label>
-                  <Select value={category} onValueChange={(v) => { setCategory(v); setSubcategory(''); }} required>
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {primaries.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subcategory">Subcategoria (opcional)</Label>
-                  <SubcategorySelect
-                    parentCategoryName={category}
-                    value={subcategory}
-                    onChange={setSubcategory}
-                    triggerId="subcategory"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sku">Código de Barras / SKU (opcional)</Label>
-                  <Input
-                    id="sku"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                    placeholder="Ex: 7891234567890"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Para uso com leitor de código de barras no PDV
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="stock">
-                    Estoque {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
-                  </Label>
-                  <Input
-                    id="stock"
-                    type="number"
-                    min="0"
-                    value={stock}
-                    onChange={(e) => setStock(e.target.value)}
-                    required={newProductVariations.length === 0}
-                  />
-                  {newProductVariations.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      O estoque será controlado nas variações
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minimumQuantity">Quantidade Mínima de Venda</Label>
-                  <Input
-                    id="minimumQuantity"
-                    type="number"
-                    min="1"
-                    value={minimumQuantity}
-                    onChange={(e) => setMinimumQuantity(e.target.value)}
-                    disabled={soldByWeight}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {soldByWeight ? 'Não se aplica a produtos vendidos por peso' : 'Quantidade mínima que deve ser comprada (ex: 10 para tuviras)'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border p-3 rounded-lg">
-                <div className="space-y-0.5">
-                  <Label htmlFor="soldByWeight">Venda por Peso</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Produto vendido por quilo (kg)
-                  </p>
-                </div>
-                <Switch
-                  id="soldByWeight"
-                  checked={soldByWeight}
-                  onCheckedChange={setSoldByWeight}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição (opcional)</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="short-description">Resumo (para listagem)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGenerateSummary}
-                    disabled={generatingSummary}
-                  >
-                    {generatingSummary ? 'Gerando...' : 'Gerar com IA'}
-                  </Button>
-                </div>
-                <Textarea
-                  id="short-description"
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  rows={2}
-                  placeholder="Resumo curto de 2 linhas (gerado automaticamente pela IA ou edite manualmente)"
-                />
-              </div>
-
-              <ProductVariations
-                variations={newProductVariations}
-                onVariationsChange={setNewProductVariations}
-              />
-
-              <div className="space-y-2">
-                <Label htmlFor="image">Imagens do Produto (múltiplas)</Label>
-                {images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    {images.map((file, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-20 object-cover rounded"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                          onClick={() => setImages(images.filter((_, i) => i !== index))}
-                        >
-                          X
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    setImages([...images, ...files]);
-                  }}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Selecione múltiplas imagens para o produto
-                </p>
-              </div>
-
-              <Button type="submit" disabled={uploading} className="w-full">
-                {uploading ? 'Adicionando...' : 'Adicionar Produto'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <div className="mb-4">
-          <Input
-            placeholder="Procurar produto por nome..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
-          />
-        </div>
-
+        {/* Cards de gestão — Catálogo, Pedidos, Funcionários como páginas dedicadas */}
         {(() => {
-          const visibleProducts = products.filter(p => p.category !== 'Pendente Revisão');
-          const filteredProducts = visibleProducts.filter(p =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
-          const outOfStock = visibleProducts.filter(p => p.stock === 0).length;
-          const onSaleCount = visibleProducts.filter(p => p.on_sale).length;
-          const featuredCount = visibleProducts.filter(p => p.featured).length;
+          const draftCount = products.filter((p) => p.category === 'Pendente Revisão').length;
+          const visible = products.filter((p) => p.category !== 'Pendente Revisão');
+          const outOfStock = visible.filter((p) => p.stock === 0).length;
+
+          const sections: Array<{
+            title: string;
+            desc: string;
+            icon: typeof Package;
+            path: string;
+            badge?: number;
+            stats?: string;
+            adminOnly?: boolean;
+          }> = [
+            {
+              title: 'Catálogo',
+              desc: 'Produtos, categorias, rascunhos e destaques',
+              icon: Package,
+              path: '/admin/catalogo',
+              badge: draftCount,
+              stats: `${visible.length} produtos · ${outOfStock} esgotados`,
+            },
+            {
+              title: 'Pedidos',
+              desc: 'Vendas online com filtros por dia',
+              icon: ClipboardList,
+              path: '/admin/pedidos',
+            },
+            {
+              title: 'Funcionários',
+              desc: 'Permissões e acessos da equipe',
+              icon: Users,
+              path: '/admin/funcionarios',
+              adminOnly: true,
+            },
+          ];
 
           return (
-            <Card className="overflow-hidden border-0 shadow-sm">
-              <PanelHeader
-                icon={Package}
-                title="Produtos Cadastrados"
-                description="Gerencie os produtos da loja"
-                kpis={[
-                  { label: 'Total', value: visibleProducts.length },
-                  { label: 'Esgotados', value: outOfStock, tone: 'danger' },
-                  { label: 'Promoção', value: onSaleCount, tone: 'success' },
-                  { label: 'Destaque', value: featuredCount, tone: 'warning' },
-                ]}
-              />
-              <CardContent className="p-4 md:p-6">
-                {filteredProducts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
-                    <Package className="w-14 h-14 mb-3 opacity-40" />
-                    <p className="text-sm font-medium">Nenhum produto encontrado</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {filteredProducts.map((product) => {
-                      const accent =
-                        product.stock === 0 ? 'border-l-destructive'
-                        : product.on_sale ? 'border-l-emerald-500'
-                        : product.featured ? 'border-l-amber-500'
-                        : 'border-l-primary/40';
-                      return (
-                        <Card key={product.id} className={`border-l-4 ${accent} overflow-hidden transition-all hover:shadow-md flex flex-col`}>
-                          <div className="aspect-square bg-muted relative overflow-hidden">
-                            {product.image_url ? (
-                              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
-                            )}
-                            <div className="absolute top-1 right-1 flex flex-col gap-1">
-                              {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
-                              {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
-                              {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
-                            </div>
-                          </div>
-
-                          <div className="p-2.5 flex-1 flex flex-col gap-1.5">
-                            <div>
-                              <Badge variant="outline" className="text-[9px] mb-1 px-1.5 py-0">{product.category}</Badge>
-                              <p className="font-semibold text-sm leading-tight line-clamp-2">{product.name}</p>
-                            </div>
-
-                            <div className="flex items-end justify-between gap-2 pt-0.5">
-                              <div>
-                                {product.on_sale && product.sale_price ? (
-                                  <>
-                                    <p className="line-through text-[10px] text-muted-foreground">R$ {product.price.toFixed(2)}</p>
-                                    <p className="text-sm font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
-                                  </>
-                                ) : (
-                                  <p className="text-sm font-bold text-primary">R$ {product.price.toFixed(2)}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[9px] text-muted-foreground uppercase font-semibold">Estoque</p>
-                                <p className={`text-sm font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>
-                                  {product.stock === 0 ? '0' : product.stock}
-                                </p>
-                              </div>
-                            </div>
-
-                            {product.sku && (
-                              <code className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono truncate">{product.sku}</code>
-                            )}
-
-                            <div className="flex gap-1 mt-auto pt-1.5 border-t">
-                              <div className="flex-1">
-                                <ProductEdit product={product} onUpdate={loadProducts} />
-                              </div>
-                              <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0 h-8 w-8" onClick={() => handleDelete(product.id, product.image_url)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {sections
+                .filter((s) => !s.adminOnly || isAdmin)
+                .map(({ title, desc, icon: Icon, path, badge, stats }) => (
+                  <button
+                    key={path}
+                    onClick={() => navigate(path)}
+                    className="group relative text-left bg-card border border-border rounded-2xl p-5 hover:border-primary/40 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      {badge !== undefined && badge > 0 && (
+                        <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                          {badge} {badge === 1 ? 'rascunho' : 'rascunhos'}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="font-display font-bold text-lg leading-tight">{title}</div>
+                    <div className="text-sm text-muted-foreground mt-1">{desc}</div>
+                    {stats && (
+                      <div className="text-xs text-muted-foreground mt-3 pt-3 border-t font-medium">{stats}</div>
+                    )}
+                  </button>
+                ))}
+            </div>
           );
         })()}
-              </TabsContent>
-
-              <TabsContent value="categories">
-                <CategoriesManagement />
-              </TabsContent>
-
-              <TabsContent value="drafts">
-                <DraftProducts onChange={loadProducts} />
-              </TabsContent>
-
-              <TabsContent value="featured">
-                <div className="mb-4">
-                  <Input
-                    placeholder="Procurar produto por nome..."
-                    value={featuredSearchQuery}
-                    onChange={(e) => setFeaturedSearchQuery(e.target.value)}
-                    className="max-w-md"
-                  />
-                </div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
-                    <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Imagem</TableHead>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Categoria</TableHead>
-                          <TableHead>Preço</TableHead>
-                          <TableHead className="text-center">Promoção</TableHead>
-                          <TableHead className="text-center">Em Destaque</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {products
-                          .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
-                          .map((product) => (
-                            <FeaturedProductRow 
-                              key={product.id} 
-                              product={product} 
-                              onUpdate={loadProducts}
-                            />
-                          ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
-
-          <TabsContent value="orders">
-            <OrdersManagement />
-          </TabsContent>
-
-          {isAdmin && (
-            <TabsContent value="employees">
-              <EmployeesManagement />
-            </TabsContent>
-          )}
-        </Tabs>
       </div>
     </div>
   );
