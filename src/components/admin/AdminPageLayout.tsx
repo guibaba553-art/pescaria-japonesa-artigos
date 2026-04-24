@@ -24,10 +24,27 @@ export function AdminPageLayout({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 pb-20 md:pb-0">
       <Header />
 
-      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-10">
+      {/* Compact mobile back bar (sticky) */}
+      <div className="md:hidden sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-4 h-12 flex items-center justify-between gap-2">
+          <button
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-1.5 text-sm font-medium text-foreground active:opacity-60"
+          >
+            <ArrowLeft className="w-4 h-4" /> Admin
+          </button>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <Icon className="w-3.5 h-3.5 text-primary" />
+            <span>{eyebrow}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hero (desktop only) */}
+      <div className="hidden md:block bg-foreground text-background pt-20 lg:pt-32 pb-10">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="flex items-start gap-4">
@@ -57,7 +74,16 @@ export function AdminPageLayout({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-6 -mt-4 space-y-6">{children}</div>
+      {/* Compact mobile title (no dark hero, saves space) */}
+      <div className="md:hidden px-4 pt-4 pb-2">
+        <h1 className="text-2xl font-display font-black tracking-tight leading-tight">{title}</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        {actions && <div className="flex flex-wrap gap-2 mt-3">{actions}</div>}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-3 md:px-6 pt-3 md:-mt-4 md:pt-0 space-y-4 md:space-y-6">
+        {children}
+      </div>
     </div>
   );
 }
