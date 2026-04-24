@@ -206,15 +206,15 @@ export function ProductCard({
                 </button>
               </div>
               <Button
-                className="flex-1 min-w-0 h-9 rounded-lg btn-press font-bold px-2"
+                className="flex-1 min-w-0 h-9 rounded-lg btn-press flex items-center justify-center"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToCart();
                 }}
                 disabled={product.stock === 0}
+                aria-label="Adicionar ao carrinho"
               >
-                <ShoppingCart className="w-3.5 h-3.5 shrink-0 sm:mr-1.5" />
-                <span className="hidden sm:inline truncate">Comprar</span>
+                <ShoppingCart className="w-4 h-4" />
               </Button>
             </div>
           )}
