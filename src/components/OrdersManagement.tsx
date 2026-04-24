@@ -522,8 +522,44 @@ const OrdersTable = ({
               </CollapsibleContent>
             </Card>
           </Collapsible>
-        );
-      })}
+    );
+  };
+
+  return (
+    <div>
+      {FiltersBar}
+      <div className="space-y-4">
+        {groupedByDay.map((group) => {
+          const isCollapsed = collapsedDays.has(group.key);
+          return (
+            <div key={group.key} className="space-y-3">
+              <button
+                onClick={() => toggleDay(group.key)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 bg-muted/50 hover:bg-muted rounded-lg border transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                  <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="font-semibold text-sm capitalize truncate">{group.label}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Badge variant="secondary" className="text-xs">
+                    {group.orders.length} {group.orders.length === 1 ? 'pedido' : 'pedidos'}
+                  </Badge>
+                  <span className="text-sm font-bold text-primary">
+                    R$ {group.total.toFixed(2)}
+                  </span>
+                </div>
+              </button>
+              {!isCollapsed && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {group.orders.map(renderOrderCard)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
