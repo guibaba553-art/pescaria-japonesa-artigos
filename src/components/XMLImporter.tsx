@@ -414,6 +414,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
           )}
         </CardContent>
       </Card>
+      )}
 
       {nfeData && nfeData.produtos.length > 0 && (
         <Card>
