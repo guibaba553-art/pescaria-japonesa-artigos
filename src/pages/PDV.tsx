@@ -604,11 +604,16 @@ export default function PDV() {
     }));
   };
 
+  // Helper: preço unitário aplicando o método de pagamento atual
+  const getItemUnitPrice = (item: CartItem) => {
+    if (item.variation) {
+      return getPdvPriceForVariation(item.product, item.variation.price, paymentMethod);
+    }
+    return getPdvPrice(item.product, paymentMethod);
+  };
+
   const calculateTotal = () => {
-    return cart.reduce((sum, item) => {
-      const itemPrice = item.variation ? item.variation.price : item.product.price;
-      return sum + (itemPrice * item.quantity);
-    }, 0);
+    return cart.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0);
   };
 
   const calculateChange = () => {
