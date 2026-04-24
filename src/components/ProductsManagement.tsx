@@ -19,6 +19,7 @@ import { ProductVariations } from '@/components/ProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { validateProductForm } from '@/utils/productValidation';
 import { useSalesVelocity } from '@/hooks/useSalesVelocity';
+import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 
 interface Product {
   id: string;
