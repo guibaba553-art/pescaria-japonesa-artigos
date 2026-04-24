@@ -1139,6 +1139,7 @@ export type Database = {
         | "enviado"
         | "entregado"
         | "aguardando_pagamento"
+        | "retirado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1272,6 +1273,7 @@ export const Constants = {
         "enviado",
         "entregado",
         "aguardando_pagamento",
+        "retirado",
       ],
     },
   },
