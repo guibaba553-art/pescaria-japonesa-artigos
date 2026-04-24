@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, Search, ShoppingBag, User } from 'lucide-react';
+import { Home, LayoutGrid, Search, ShoppingBag, User, LayoutDashboard } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
@@ -16,7 +16,7 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { itemCount } = useCart();
-  const { user } = useAuth();
+  const { user, isEmployee, isAdmin } = useAuth();
   const { primaries } = useCategories();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -97,8 +97,24 @@ export function MobileBottomNav() {
     </button>
   );
 
+  const showAdminFab = (isAdmin || isEmployee) && !location.pathname.startsWith('/admin');
+
   return (
     <>
+      {/* FAB Painel Admin — visível apenas para admin/funcionário */}
+      {showAdminFab && (
+        <button
+          type="button"
+          onClick={() => navigate('/admin')}
+          className="md:hidden fixed right-4 z-40 h-12 px-4 rounded-full bg-foreground text-background shadow-lg flex items-center gap-2 font-bold text-sm active:scale-95 transition-transform"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4rem)' }}
+          aria-label="Acessar painel administrativo"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Painel
+        </button>
+      )}
+
       {/* Bottom nav bar */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border"
