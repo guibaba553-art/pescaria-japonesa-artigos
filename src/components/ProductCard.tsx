@@ -220,8 +220,6 @@ export function ProductCard({
               </button>
             </div>
           )}
-            </div>
-          )}
         </div>
       </div>
     </article>
