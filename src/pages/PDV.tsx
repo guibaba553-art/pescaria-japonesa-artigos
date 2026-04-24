@@ -301,6 +301,7 @@ export default function PDV() {
     setSelectedCustomer(null);
     setPaymentMethod('credit');
     setInstallments(1);
+    setDiscountInput('');
     setCurrentSaleId(null);
   };
 
