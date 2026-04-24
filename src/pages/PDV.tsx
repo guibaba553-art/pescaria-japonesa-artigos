@@ -118,7 +118,10 @@ export default function PDV() {
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
+    doc_type: 'cpf' as 'cpf' | 'cnpj',
     cpf: '',
+    cnpj: '',
+    company_name: '',
     cep: '',
     street: '',
     number: '',
