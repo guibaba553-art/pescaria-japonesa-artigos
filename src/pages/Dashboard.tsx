@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe } from 'lucide-react';
+import { ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
