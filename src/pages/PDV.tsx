@@ -95,8 +95,8 @@ export default function PDV() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [processing, setProcessing] = useState(false);
   
-  // Pagamento
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit' | 'pix'>('cash');
+  // Pagamento — padrão é crédito (mesmo preço usado nas etiquetas dos cards)
+  const [paymentMethod, setPaymentMethod] = useState<PdvPaymentMethod>('credit');
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
