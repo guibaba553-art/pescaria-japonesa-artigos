@@ -25,6 +25,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import PoliticaTrocas from "./pages/PoliticaTrocas";
 import MeusDados from "./pages/MeusDados";
+import PickupOrder from "./pages/PickupOrder";
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
