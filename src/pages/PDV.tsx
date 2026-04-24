@@ -1059,6 +1059,15 @@ export default function PDV() {
                       )}
                     </Button>
                   </div>
+
+                  <Button
+                    onClick={newOrder}
+                    variant="default"
+                    className="w-full bg-primary/90 hover:bg-primary"
+                  >
+                    <FilePlus className="w-4 h-4 mr-2" />
+                    Novo Pedido
+                  </Button>
                   
                   {currentSaleId && (
                     <Button
