@@ -271,3 +271,19 @@ export default function FiscalTools() {
     </div>
   );
 }
+
+function KpiBox({
+  label, value, icon, accent,
+}: { label: string; value: string; icon: React.ReactNode; accent?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>
+          <span className="text-muted-foreground">{icon}</span>
+        </div>
+        <div className={`text-lg font-bold mt-1 ${accent || ''}`}>{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
