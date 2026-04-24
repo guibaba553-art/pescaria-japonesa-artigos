@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             checkUserRole(session.user.id);
+            checkProfileCompleteness(session.user.id);
           }, 0);
         } else {
           setIsEmployee(false);
@@ -54,12 +55,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (session?.user) {
         checkUserRole(session.user.id);
+        checkProfileCompleteness(session.user.id);
       }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Usuários vindos de OAuth (Google) podem chegar sem CPF/CEP/telefone preenchidos.
+  // Se faltarem dados, redireciona para a página de completar cadastro.
+  const checkProfileCompleteness = async (userId: string) => {
+    const path = window.location.pathname;
+    const skipPaths = ['/completar-cadastro', '/auth', '/forgot-password', '/reset-password', '/~oauth'];
+    if (skipPaths.some((p) => path.startsWith(p))) return;
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('cpf, cep, phone')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data && (!data.cpf || !data.cep || !data.phone)) {
+      const redirect = encodeURIComponent(path + window.location.search);
+      window.location.href = `/completar-cadastro?redirect=${redirect}`;
+    }
+  };
 
   const checkUserRole = async (userId: string) => {
     const { data, error } = await supabase
