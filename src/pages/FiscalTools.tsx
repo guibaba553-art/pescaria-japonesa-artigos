@@ -3,16 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ExcelImporter } from "@/components/ExcelImporter";
-import { XMLImporter } from "@/components/XMLImporter";
-import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
-import { NFEHistory } from "@/components/NFEHistory";
 import { FiscalSystem } from "@/components/FiscalSystem";
 import { TaxProjection } from "@/components/TaxProjection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp } from "lucide-react";
 
 interface Product {
   id: string;
