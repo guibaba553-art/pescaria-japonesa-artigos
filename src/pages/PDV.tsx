@@ -1492,7 +1492,7 @@ export default function PDV() {
           <DialogHeader>
             <DialogTitle>Informe o Peso</DialogTitle>
             <DialogDescription>
-              {selectedProduct?.name} - R$ {selectedProduct?.price.toFixed(2)}/kg
+              {selectedProduct?.name} - R$ {selectedProduct ? getPdvPrice(selectedProduct, paymentMethod).toFixed(2) : '0.00'}/kg
             </DialogDescription>
           </DialogHeader>
           
