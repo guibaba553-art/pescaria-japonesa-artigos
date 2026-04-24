@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+let categoriesCache: Category[] | null = null;
+let categoriesPromise: Promise<Category[]> | null = null;
+
 export interface Category {
   id: string;
   name: string;
@@ -14,18 +17,40 @@ export interface Category {
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !categoriesCache);
 
-  const load = async () => {
+  const load = async (force = false) => {
+    if (!force && categoriesCache) {
+      setCategories(categoriesCache);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data, error } = await supabase
+
+    if (!force && categoriesPromise) {
+      const sharedData = await categoriesPromise;
+      setCategories(sharedData);
+      setLoading(false);
+      return;
+    }
+
+    categoriesPromise = supabase
       .from('categories')
       .select('*')
-      .order('display_order', { ascending: true });
+      .order('display_order', { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          categoriesCache = data as Category[];
+        }
+        return categoriesCache ?? [];
+      })
+      .finally(() => {
+        categoriesPromise = null;
+      });
 
-    if (!error && data) {
-      setCategories(data as Category[]);
-    }
+    const nextCategories = await categoriesPromise;
+    setCategories(nextCategories);
     setLoading(false);
   };
 
@@ -37,7 +62,10 @@ export function useCategories() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'categories' },
-        () => load()
+        () => {
+          categoriesCache = null;
+          load(true);
+        }
       )
       .subscribe();
 
