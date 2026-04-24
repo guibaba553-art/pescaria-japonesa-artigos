@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/hooks/useCart";
@@ -7,20 +7,51 @@ import { useToast } from "@/hooks/use-toast";
 import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
-import { Zap, ArrowRight } from "lucide-react";
+import { Zap, ArrowRight, Clock } from "lucide-react";
 
-// End time: today 23:59:59
+const pad = (n: number) => String(n).padStart(2, "0");
+
+const computeTimeLeft = (target: number) => {
+  const diff = Math.max(0, target - Date.now());
+  return {
+    diff,
+    d: Math.floor(diff / 86_400_000),
+    h: Math.floor((diff % 86_400_000) / 3_600_000),
+    m: Math.floor((diff % 3_600_000) / 60_000),
+    s: Math.floor((diff % 60_000) / 1000),
+  };
+};
+
 const getEndOfDay = () => {
   const d = new Date();
   d.setHours(23, 59, 59, 999);
   return d.getTime();
 };
 
+// Mini badge per-card timer (overlays each product if it has its own sale_ends_at)
+const MiniTimer = ({ endsAt }: { endsAt: string }) => {
+  const target = new Date(endsAt).getTime();
+  const [t, setT] = useState(() => computeTimeLeft(target));
+  useEffect(() => {
+    const id = setInterval(() => setT(computeTimeLeft(target)), 1000);
+    return () => clearInterval(id);
+  }, [target]);
+  if (t.diff <= 0) return null;
+  return (
+    <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center justify-center gap-1 rounded-md bg-foreground/90 backdrop-blur-sm text-background text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-lg">
+      <Clock className="w-3 h-3" />
+      <span className="tabular-nums">
+        {t.d > 0 ? `${t.d}d ` : ""}
+        {pad(t.h)}:{pad(t.m)}:{pad(t.s)}
+      </span>
+    </div>
+  );
+};
+
 const FlashDealsCountdown = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
   const { toast } = useToast();
   const { addItem } = useCart();
   const { getQuantity, setQuantity, incrementQuantity, decrementQuantity } = useProductQuantity();
@@ -33,30 +64,42 @@ const FlashDealsCountdown = () => {
         .eq("on_sale", true)
         .gt("stock", 0)
         .not("sale_price", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(4);
-      setProducts((data as Product[]) || []);
+        .order("sale_ends_at", { ascending: true, nullsFirst: false })
+        .limit(8);
+
+      // Filter out expired sale_ends_at
+      const now = Date.now();
+      const valid = ((data as Product[]) || []).filter(
+        (p) => !p.sale_ends_at || new Date(p.sale_ends_at).getTime() > now,
+      );
+      setProducts(valid.slice(0, 4));
       setLoading(false);
     };
     load();
   }, []);
 
+  // Master target: nearest sale_ends_at among shown products, else end of day
+  const masterTarget = useMemo(() => {
+    const ends = products
+      .map((p) => (p.sale_ends_at ? new Date(p.sale_ends_at).getTime() : null))
+      .filter((v): v is number => v !== null && v > Date.now());
+    if (ends.length > 0) return Math.min(...ends);
+    return getEndOfDay();
+  }, [products]);
+
+  const [timeLeft, setTimeLeft] = useState(() => computeTimeLeft(masterTarget));
+
   useEffect(() => {
-    const tick = () => {
-      const diff = Math.max(0, getEndOfDay() - Date.now());
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      const s = Math.floor((diff % 60_000) / 1000);
-      setTimeLeft({ h, m, s });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
+    setTimeLeft(computeTimeLeft(masterTarget));
+    const id = setInterval(() => setTimeLeft(computeTimeLeft(masterTarget)), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [masterTarget]);
 
   if (loading || products.length === 0) return null;
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const hasSpecificEnd = products.some(
+    (p) => p.sale_ends_at && new Date(p.sale_ends_at).getTime() > Date.now(),
+  );
 
   return (
     <section className="py-12 sm:py-16 bg-gradient-to-br from-primary via-primary to-[hsl(16_100%_48%)] text-primary-foreground relative overflow-hidden">
@@ -73,7 +116,7 @@ const FlashDealsCountdown = () => {
               <span className="text-xs font-bold uppercase tracking-wider">Oferta relâmpago</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-black leading-tight">
-              Só hoje. Até zerar o estoque.
+              {hasSpecificEnd ? "Ofertas por tempo limitado" : "Só hoje. Até zerar o estoque."}
             </h2>
           </div>
 
@@ -83,6 +126,7 @@ const FlashDealsCountdown = () => {
             </span>
             <div className="flex items-center gap-1.5">
               {[
+                ...(timeLeft.d > 0 ? [{ v: timeLeft.d, l: "dias" }] : []),
                 { v: timeLeft.h, l: "h" },
                 { v: timeLeft.m, l: "min" },
                 { v: timeLeft.s, l: "s" },
@@ -106,28 +150,35 @@ const FlashDealsCountdown = () => {
         {/* Products */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
           {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              quantity={getQuantity(product.id)}
-              onQuantityChange={(qty) => setQuantity(product.id, qty)}
-              onIncrement={() => incrementQuantity(product.id, product.stock)}
-              onDecrement={() => decrementQuantity(product.id)}
-              onAddToCart={() => {
-                const qty = getQuantity(product.id);
-                addItem(
-                  {
-                    id: product.id,
-                    name: product.name,
-                    price: product.on_sale && product.sale_price ? product.sale_price : product.price,
-                    image_url: product.image_url,
-                  },
-                  qty,
-                );
-                toast({ title: "Adicionado ao carrinho", description: `${qty} × ${product.name}` });
-              }}
-              showDescription={false}
-            />
+            <div key={product.id} className="relative">
+              <ProductCard
+                product={product}
+                quantity={getQuantity(product.id)}
+                onQuantityChange={(qty) => setQuantity(product.id, qty)}
+                onIncrement={() => incrementQuantity(product.id, product.stock)}
+                onDecrement={() => decrementQuantity(product.id)}
+                onAddToCart={() => {
+                  const qty = getQuantity(product.id);
+                  addItem(
+                    {
+                      id: product.id,
+                      name: product.name,
+                      price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                      image_url: product.image_url,
+                    },
+                    qty,
+                  );
+                  toast({ title: "Adicionado ao carrinho", description: `${qty} × ${product.name}` });
+                }}
+                showDescription={false}
+              />
+              {/* Per-product countdown overlay (only if product has specific sale_ends_at) */}
+              {product.sale_ends_at && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square">
+                  <MiniTimer endsAt={product.sale_ends_at} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
