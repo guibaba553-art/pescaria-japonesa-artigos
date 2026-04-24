@@ -852,6 +852,24 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         orderId={pixData.orderId}
       />
     )}
+
+    {/* Diálogo para gerenciar endereços direto do checkout */}
+    <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Meus Endereços</DialogTitle>
+          <DialogDescription>Adicione, edite ou escolha um endereço para entrega.</DialogDescription>
+        </DialogHeader>
+        <MyAddresses
+          compact
+          selectedId={selectedAddressId || undefined}
+          onSelect={(a) => {
+            setSelectedAddressId(a.id);
+            setAddressDialogOpen(false);
+          }}
+        />
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
