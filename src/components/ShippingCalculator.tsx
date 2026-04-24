@@ -174,6 +174,29 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     return [...delivery].sort((a, b) => a.valor - b.valor)[0];
   };
 
+  // Identifica o mais barato e o mais rápido em uma lista de opções
+  const getHighlights = (opts: ShippingOption[]) => {
+    if (!opts || opts.length === 0) return { cheapestCode: null, fastestCode: null };
+    const cheapest = [...opts].sort((a, b) => a.valor - b.valor)[0];
+    const fastest = [...opts].sort((a, b) => a.prazoEntrega - b.prazoEntrega)[0];
+    return {
+      cheapestCode: cheapest?.codigo ?? null,
+      fastestCode: fastest?.codigo ?? null,
+    };
+  };
+
+  // Ordena: mais barato primeiro, depois mais rápido, depois o resto por preço
+  const sortByCheapestThenFastest = (opts: ShippingOption[]) => {
+    const { cheapestCode, fastestCode } = getHighlights(opts);
+    return [...opts].sort((a, b) => {
+      if (a.codigo === cheapestCode) return -1;
+      if (b.codigo === cheapestCode) return 1;
+      if (a.codigo === fastestCode) return -1;
+      if (b.codigo === fastestCode) return 1;
+      return a.valor - b.valor;
+    });
+  };
+
   const handleSelectOption = (option: ShippingOption) => {
     setSelectedOption(option.codigo);
     onSelectShipping?.(option);
@@ -281,11 +304,14 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                           Nenhuma transportadora atende esse CEP no momento.
                         </p>
                       ) : (
-                        [...filterDeliveryOnly(opts)]
-                          .sort((x, y) => x.valor - y.valor)
-                          .map((option) => {
+                        (() => {
+                          const delivery = filterDeliveryOnly(opts);
+                          const { cheapestCode, fastestCode } = getHighlights(delivery);
+                          return sortByCheapestThenFastest(delivery).map((option) => {
                             const tag = tagFor(option.codigo);
                             const sel = selectedOption === tag;
+                            const isCheapest = option.codigo === cheapestCode;
+                            const isFastest = option.codigo === fastestCode && !isCheapest;
                             return (
                               <button
                                 key={tag}
@@ -310,7 +336,19 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                                   </div>
                                   <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                   <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate">{option.nome}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-sm font-medium truncate">{option.nome}</p>
+                                      {isCheapest && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                          Mais barato
+                                        </span>
+                                      )}
+                                      {isFastest && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                                          Mais rápido
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                       Entrega em {option.prazoEntrega} dias úteis
                                     </p>
@@ -321,7 +359,8 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                                 </p>
                               </button>
                             );
-                          })
+                          });
+                        })()
                       )}
                       <button
                         type="button"
@@ -395,36 +434,60 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </div>
       </div>
 
-      {options.length > 0 && (
-        <div className="space-y-2">
-          {options.map((option) => (
-            <Card
-              key={option.codigo}
-              className={`p-3 cursor-pointer transition-all ${
-                selectedOption === option.codigo
-                  ? 'border-primary bg-primary/5 border-2'
-                  : 'hover:bg-accent'
-              }`}
-              onClick={() => handleSelectOption(option)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{option.nome}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Entrega em {option.prazoEntrega} dias úteis
+      {options.length > 0 && (() => {
+        const delivery = filterDeliveryOnly(options);
+        const pickup = options.filter((o) => !delivery.includes(o));
+        const { cheapestCode, fastestCode } = getHighlights(delivery);
+        const sorted = [...sortByCheapestThenFastest(delivery), ...pickup];
+        return (
+          <div className="space-y-2">
+            {sorted.map((option) => {
+              const isCheapest = option.codigo === cheapestCode;
+              const isFastest = option.codigo === fastestCode && !isCheapest;
+              return (
+                <Card
+                  key={option.codigo}
+                  className={`p-3 cursor-pointer transition-all ${
+                    selectedOption === option.codigo
+                      ? 'border-primary bg-primary/5 border-2'
+                      : 'hover:bg-accent'
+                  }`}
+                  onClick={() => handleSelectOption(option)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium">{option.nome}</p>
+                          {isCheapest && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                              Mais barato
+                            </span>
+                          )}
+                          {isFastest && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                              Mais rápido
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {option.codigo === 'RETIRADA'
+                            ? 'Disponível em até 24h após pagamento'
+                            : `Entrega em ${option.prazoEntrega} dias úteis`}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-bold text-lg">
+                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
                     </p>
                   </div>
-                </div>
-                <p className="font-bold text-lg">
-                  {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
-                </p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <AddressFormDialog
         open={newAddressOpen}
