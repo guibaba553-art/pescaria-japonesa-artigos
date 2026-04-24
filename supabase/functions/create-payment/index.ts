@@ -417,9 +417,57 @@ serve(async (req) => {
         );
       }
 
-      // Resolver payment_method_id: usar o do frontend ou detectar via BIN do cartão
+      // Detectar bandeira do cartão pelo BIN (primeiros dígitos)
+      const detectCardBrand = (cardNumber: string, method: 'credit' | 'debit'): string | null => {
+        const num = cardNumber.replace(/\D/g, '');
+        const first6 = num.substring(0, 6);
+        const first4 = num.substring(0, 4);
+        const first2 = num.substring(0, 2);
+        const first1 = num.substring(0, 1);
+
+        // Visa: começa com 4
+        if (first1 === '4') {
+          return method === 'debit' ? 'debvisa' : 'visa';
+        }
+        // Mastercard: 51-55 ou 2221-2720
+        const n2 = parseInt(first2);
+        const n4 = parseInt(first4);
+        if ((n2 >= 51 && n2 <= 55) || (n4 >= 2221 && n4 <= 2720)) {
+          return method === 'debit' ? 'debmaster' : 'master';
+        }
+        // Elo (BINs principais)
+        const eloBins = ['401178','401179','438935','457631','457632','504175','627780','636297','636368'];
+        if (eloBins.some(bin => first6.startsWith(bin))) {
+          return method === 'debit' ? 'debelo' : 'elo';
+        }
+        // Hipercard
+        if (first6.startsWith('606282') || first6.startsWith('384100') || first6.startsWith('384140') || first6.startsWith('384160')) {
+          return 'hipercard';
+        }
+        // Amex: 34 ou 37
+        if (first2 === '34' || first2 === '37') {
+          return 'amex';
+        }
+        // Diners: 300-305, 36, 38
+        if ((n2 >= 30 && n2 <= 30 && parseInt(num.substring(2,3)) <= 5) || first2 === '36' || first2 === '38') {
+          return 'diners';
+        }
+        return null;
+      };
+
+      // Resolver payment_method_id: usar o do frontend, ou detectar localmente, ou via API MP
       let paymentMethodId = data.cardData.paymentMethodId;
+      
       if (!paymentMethodId) {
+        // Tentar detecção local primeiro (mais rápido e confiável)
+        paymentMethodId = detectCardBrand(data.cardData.cardNumber, data.paymentMethod as 'credit' | 'debit');
+        if (paymentMethodId) {
+          console.log('Payment method detected locally:', paymentMethodId);
+        }
+      }
+      
+      if (!paymentMethodId) {
+        // Fallback: API de BIN do Mercado Pago
         try {
           const bin = data.cardData.cardNumber.substring(0, 8);
           const binResp = await fetch(
@@ -429,11 +477,12 @@ serve(async (req) => {
           if (binResp.ok) {
             const binData = await binResp.json();
             const results = binData?.results || [];
-            // Filtrar pelo tipo (credit_card / debit_card)
             const wanted = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
             const match = results.find((r: any) => r.payment_type_id === wanted) || results[0];
             paymentMethodId = match?.id;
-            console.log('Payment method detected via BIN:', paymentMethodId);
+            console.log('Payment method detected via BIN API:', paymentMethodId);
+          } else {
+            console.error('BIN API returned status:', binResp.status);
           }
         } catch (e) {
           console.error('Error detecting payment method via BIN:', e);
@@ -441,6 +490,7 @@ serve(async (req) => {
       }
 
       if (!paymentMethodId) {
+        console.error('Could not detect card brand. Card starts with:', data.cardData.cardNumber.substring(0, 6));
         return new Response(
           JSON.stringify({ error: 'Não foi possível identificar a bandeira do cartão. Tente novamente.', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
