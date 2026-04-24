@@ -638,25 +638,37 @@ export default function PDV() {
   };
 
   const handleSaveCustomer = async () => {
+    const isCnpj = customerForm.doc_type === 'cnpj';
+    const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
+
     // Validar campos
-    if (!customerForm.full_name.trim() || !customerForm.cpf.trim() || 
-        !customerForm.cep.trim() || !customerForm.street.trim() || 
+    if (!customerForm.full_name.trim() || !docValue.trim() ||
+        !customerForm.cep.trim() || !customerForm.street.trim() ||
         !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
       toast({
         title: 'Campos obrigatórios',
-        description: 'Preencha todos os campos do cliente',
+        description: `Preencha todos os campos do cliente (incluindo ${isCnpj ? 'CNPJ' : 'CPF'})`,
         variant: 'destructive'
       });
       return;
     }
 
     try {
+      const payload: any = {
+        full_name: customerForm.full_name,
+        cep: customerForm.cep,
+        street: customerForm.street,
+        number: customerForm.number,
+        neighborhood: customerForm.neighborhood,
+        cpf: isCnpj ? null : customerForm.cpf,
+        cnpj: isCnpj ? customerForm.cnpj : null,
+        company_name: isCnpj ? (customerForm.company_name || null) : null,
+        created_by: user!.id
+      };
+
       const { data, error } = await supabase
         .from('customers')
-        .insert([{
-          ...customerForm,
-          created_by: user!.id
-        }])
+        .insert([payload])
         .select()
         .single();
 
@@ -666,7 +678,10 @@ export default function PDV() {
       setShowCustomerDialog(false);
       setCustomerForm({
         full_name: '',
+        doc_type: 'cpf',
         cpf: '',
+        cnpj: '',
+        company_name: '',
         cep: '',
         street: '',
         number: '',
