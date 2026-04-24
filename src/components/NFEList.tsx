@@ -169,7 +169,7 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                   )}
                 </div>
 
-                {nfe.error_message && (
+                {nfe.status === 'error' && nfe.error_message && (
                   <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">
                     {nfe.error_message}
                   </p>
