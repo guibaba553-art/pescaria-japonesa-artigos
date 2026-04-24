@@ -40,7 +40,7 @@ const Hero = () => {
             >
               Mais de 500 produtos com preços imbatíveis.
               <span className="font-bold text-background"> 10x sem juros</span> e
-              <span className="font-bold text-background"> PIX com 5% OFF</span>.
+              <span className="font-bold text-background"> envio em 24h</span> para todo Brasil.
             </p>
 
             {/* CTAs */}
