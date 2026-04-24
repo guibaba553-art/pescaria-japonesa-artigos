@@ -23,7 +23,8 @@ import {
   User,
   Save,
   FolderOpen,
-  History
+  History,
+  FilePlus
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
