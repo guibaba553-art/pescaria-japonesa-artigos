@@ -1001,7 +1001,7 @@ export default function PDV() {
                   ) : (
                     <div className="space-y-3">
                       {cart.map(item => {
-                        const itemPrice = item.variation ? item.variation.price : item.product.price;
+                        const itemPrice = getItemUnitPrice(item);
                         const itemName = item.variation 
                           ? `${item.product.name} - ${item.variation.name}` 
                           : item.product.name;
