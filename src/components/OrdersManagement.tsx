@@ -266,17 +266,15 @@ const OrdersTable = ({
   }
 
   const renderOrderCard = (order: Order) => {
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {orders.map((order) => {
-        const isExpanded = expandedOrders.has(order.id);
-        const cfg = statusConfig[order.status];
-        const StatusIcon = cfg.icon;
-        const nextStatus = getNextStatus(order.status, order.delivery_type);
-        const customerName = profiles[order.user_id]?.name || 'Carregando...';
-        const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+    const isExpanded = expandedOrders.has(order.id);
+    const cfg = statusConfig[order.status];
+    const StatusIcon = cfg.icon;
+    const nextStatus = getNextStatus(order.status, order.delivery_type);
+    const customerName = profiles[order.user_id]?.name || 'Carregando...';
+    const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
 
-        return (
-          <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)} asChild>
+    return (
+      <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)} asChild>
             <Card className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden`}>
               {/* Header do card */}
               <div className="p-4 flex items-start justify-between gap-3">
