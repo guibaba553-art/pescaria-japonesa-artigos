@@ -210,6 +210,10 @@ export default function FiscalTools() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="system">
+            <FiscalSystem />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
