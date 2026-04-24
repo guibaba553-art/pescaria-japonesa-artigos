@@ -16,19 +16,16 @@ interface TGASettingsProps {
 export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
   const [tgaEnabled, setTgaEnabled] = useState(settings?.tga_enabled || false);
   const [apiUrl, setApiUrl] = useState(settings?.tga_api_url || '');
-  const [username, setUsername] = useState(settings?.tga_username || '');
-  const [password, setPassword] = useState(settings?.tga_password || '');
   const [autoSync, setAutoSync] = useState(settings?.auto_sync_tga || false);
-  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const { toast } = useToast();
 
   const handleTest = async () => {
-    if (!apiUrl || !username || !password) {
+    if (!apiUrl) {
       toast({
-        title: 'Preencha todos os campos',
-        description: 'URL, usuário e senha são obrigatórios para testar a conexão',
+        title: 'URL é obrigatória',
+        description: 'Informe a URL do TGA. As credenciais são lidas do cofre de segredos no servidor.',
         variant: 'destructive'
       });
       return;
@@ -39,7 +36,7 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
       const { data, error } = await supabase.functions.invoke('sync-tga', {
         body: {
           action: 'test',
-          credentials: { apiUrl, username, password }
+          credentials: { apiUrl }
         }
       });
 
@@ -72,8 +69,6 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
         .update({
           tga_enabled: tgaEnabled,
           tga_api_url: apiUrl || null,
-          tga_username: username || null,
-          tga_password: password || null,
           auto_sync_tga: autoSync
         })
         .eq('id', settings.id);
@@ -136,42 +131,12 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tga-username">Usuário TGA</Label>
-              <Input
-                id="tga-username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Usuário do sistema"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tga-password">Senha</Label>
-              <div className="relative">
-                <Input
-                  id="tga-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Senha do usuário"
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                O <strong>usuário e senha do TGA</strong> agora são armazenados de forma segura no cofre de segredos do servidor. Configure as variáveis <code>TGA_USERNAME</code> e <code>TGA_PASSWORD</code> nos segredos do projeto.
+              </AlertDescription>
+            </Alert>
 
             <div className="flex items-center justify-between pt-4">
               <div className="space-y-0.5">

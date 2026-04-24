@@ -15,10 +15,8 @@ interface NFESettingsProps {
 
 export function NFESettings({ settings, onUpdate }: NFESettingsProps) {
   const [nfeEnabled, setNfeEnabled] = useState(settings?.nfe_enabled || false);
-  const [apiKey, setApiKey] = useState(settings?.nfe_api_key || '');
   const [companyId, setCompanyId] = useState(settings?.nfe_company_id || '');
   const [autoEmit, setAutoEmit] = useState(settings?.auto_emit_nfe || false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -29,7 +27,6 @@ export function NFESettings({ settings, onUpdate }: NFESettingsProps) {
         .from('fiscal_settings')
         .update({
           nfe_enabled: nfeEnabled,
-          nfe_api_key: apiKey || null,
           nfe_company_id: companyId || null,
           auto_emit_nfe: autoEmit
         })
@@ -93,35 +90,12 @@ export function NFESettings({ settings, onUpdate }: NFESettingsProps) {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="api-key">Chave API (NFe.io)</Label>
-              <div className="relative">
-                <Input
-                  id="api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Insira sua chave API"
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Gere em: NFe.io → API → Gerar Nova Chave
-              </p>
-            </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                A <strong>chave da API NFe.io</strong> agora é armazenada de forma segura no cofre de segredos do servidor (não mais no banco). Solicite ao suporte da Lovable a configuração da variável de ambiente <code>NFEIO_API_KEY</code>.
+              </AlertDescription>
+            </Alert>
 
             <div className="flex items-center justify-between pt-4">
               <div className="space-y-0.5">
