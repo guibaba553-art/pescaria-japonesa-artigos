@@ -733,7 +733,7 @@ export default function PDV() {
         product_id: item.product.id,
         variation_id: item.variation ? item.variation.id : null,
         quantity: item.quantity,
-        price_at_purchase: item.variation ? item.variation.price : item.product.price
+        price_at_purchase: getItemUnitPrice(item)
       }));
 
       const { error: itemsError } = await supabase
