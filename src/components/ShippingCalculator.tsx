@@ -135,14 +135,32 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     setLoading(false);
   };
 
-  const handleCalculateForAddress = async (addr: UserAddress) => {
+  const handleCalculateForAddress = async (addr: UserAddress, expand = true) => {
     setLoadingAddressId(addr.id);
-    setExpandedAddressId(addr.id);
+    if (expand) setExpandedAddressId(addr.id);
     const opts = await fetchShippingForCep(addr.cep);
     if (opts) {
       setAddressOptions((prev) => ({ ...prev, [addr.id]: opts }));
     }
     setLoadingAddressId(null);
+    return opts;
+  };
+
+  // Carrega automaticamente o frete mais barato de cada endereço (sem expandir)
+  useEffect(() => {
+    if (!user || savedAddresses.length === 0) return;
+    savedAddresses.forEach((a) => {
+      if (!addressOptions[a.id] && loadingAddressId !== a.id) {
+        handleCalculateForAddress(a, false);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedAddresses, user?.id]);
+
+  const cheapestFor = (addrId: string): ShippingOption | null => {
+    const opts = addressOptions[addrId];
+    if (!opts || opts.length === 0) return null;
+    return [...opts].sort((a, b) => a.valor - b.valor)[0];
   };
 
   const handleSelectOption = (option: ShippingOption) => {
