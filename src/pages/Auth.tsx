@@ -72,7 +72,7 @@ export default function Auth() {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupCep, signupPhone);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupPhone);
     setLoading(false);
 
     if (error && error.message === 'EMAIL_ALREADY_EXISTS') {
