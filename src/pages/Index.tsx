@@ -16,24 +16,25 @@ const Index = () => {
   const [showDeferredSections, setShowDeferredSections] = useState(false);
 
   useEffect(() => {
-    const schedule =
-      "requestIdleCallback" in window
-        ? (window as Window & { requestIdleCallback: (cb: IdleRequestCallback) => number }).requestIdleCallback(
-            () => setShowDeferredSections(true),
-            { timeout: 800 }
-          )
-        : window.setTimeout(() => setShowDeferredSections(true), 250);
+    let idleId: number | null = null;
+    let timeoutId: number | null = null;
+
+    if ("requestIdleCallback" in window) {
+      idleId = (window as Window & { requestIdleCallback: (cb: IdleRequestCallback, options?: IdleRequestOptions) => number }).requestIdleCallback(
+        () => setShowDeferredSections(true),
+        { timeout: 800 }
+      );
+    } else {
+      timeoutId = window.setTimeout(() => setShowDeferredSections(true), 250);
+    }
 
     return () => {
-      if (typeof schedule === "number") {
-        if ("cancelIdleCallback" in window && showDeferredSections === false) {
-          (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(schedule);
-        } else {
-          window.clearTimeout(schedule);
-        }
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
       }
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [showDeferredSections]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
