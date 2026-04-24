@@ -1,15 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Package, Tags, FileEdit, Star } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
-import { ProductsManagement } from '@/components/ProductsManagement';
-import { CategoriesManagement } from '@/components/CategoriesManagement';
-import { DraftProducts } from '@/components/DraftProducts';
-import { FeaturedManagement } from '@/components/FeaturedManagement';
+
+// Cada aba é um pacote pesado — só baixa quando o usuário abre
+const ProductsManagement = lazy(() =>
+  import('@/components/ProductsManagement').then((m) => ({ default: m.ProductsManagement }))
+);
+const CategoriesManagement = lazy(() =>
+  import('@/components/CategoriesManagement').then((m) => ({ default: m.CategoriesManagement }))
+);
+const DraftProducts = lazy(() =>
+  import('@/components/DraftProducts').then((m) => ({ default: m.DraftProducts }))
+);
+const FeaturedManagement = lazy(() =>
+  import('@/components/FeaturedManagement').then((m) => ({ default: m.FeaturedManagement }))
+);
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-16 text-muted-foreground">
+    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+    Carregando...
+  </div>
+);
 
 export default function AdminCatalog() {
   const navigate = useNavigate();
@@ -67,10 +84,18 @@ export default function AdminCatalog() {
           </TabsList>
         </div>
 
-        <TabsContent value="products"><ProductsManagement /></TabsContent>
-        <TabsContent value="categories"><CategoriesManagement /></TabsContent>
-        <TabsContent value="drafts"><DraftProducts onChange={loadDraftCount} /></TabsContent>
-        <TabsContent value="featured"><FeaturedManagement /></TabsContent>
+        <TabsContent value="products">
+          <Suspense fallback={<TabFallback />}><ProductsManagement /></Suspense>
+        </TabsContent>
+        <TabsContent value="categories">
+          <Suspense fallback={<TabFallback />}><CategoriesManagement /></Suspense>
+        </TabsContent>
+        <TabsContent value="drafts">
+          <Suspense fallback={<TabFallback />}><DraftProducts onChange={loadDraftCount} /></Suspense>
+        </TabsContent>
+        <TabsContent value="featured">
+          <Suspense fallback={<TabFallback />}><FeaturedManagement /></Suspense>
+        </TabsContent>
       </Tabs>
     </AdminPageLayout>
   );
