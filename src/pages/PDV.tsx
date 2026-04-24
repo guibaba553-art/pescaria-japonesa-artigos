@@ -1207,8 +1207,17 @@ export default function PDV() {
                       <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold">{selectedCustomer.full_name}</p>
-                            <p className="text-sm text-muted-foreground">CPF: {selectedCustomer.cpf}</p>
+                            <p className="font-semibold">
+                              {selectedCustomer.company_name || selectedCustomer.full_name}
+                            </p>
+                            {selectedCustomer.company_name && (
+                              <p className="text-xs text-muted-foreground">Resp.: {selectedCustomer.full_name}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {selectedCustomer.cnpj
+                                ? `CNPJ: ${selectedCustomer.cnpj}`
+                                : `CPF: ${selectedCustomer.cpf}`}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.street}, {selectedCustomer.number} - {selectedCustomer.neighborhood}
                             </p>
