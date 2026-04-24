@@ -801,11 +801,33 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
       <Header />
 
-      {/* Commercial dark banner */}
-      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+      {/* Compact mobile back bar */}
+      <div className="lg:hidden sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-4 h-12 flex items-center justify-between gap-2">
+          <button
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-1.5 text-sm font-medium active:opacity-60"
+          >
+            <ArrowLeft className="w-4 h-4" /> Admin
+          </button>
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <ShoppingCart className="w-3.5 h-3.5 text-primary" />
+            <span>PDV</span>
+          </div>
+          <button
+            onClick={() => navigate('/pdv/sales-history')}
+            className="flex items-center gap-1.5 text-sm font-medium active:opacity-60"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Commercial dark banner — desktop only */}
+      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-32 pb-8">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -842,7 +864,7 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="container mx-auto p-6 -mt-4">
+      <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Produtos */}
