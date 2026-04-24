@@ -446,7 +446,7 @@ serve(async (req) => {
       JSON.stringify(r).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     let attempt = 1;
-    const maxAttempts = 10;
+    const maxAttempts = 50;
 
     while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
       const normalizedError = normalize(result);
@@ -590,17 +590,21 @@ serve(async (req) => {
       const errorMessage =
         result.mensagem_sefaz || result.mensagem || result.erros?.[0]?.mensagem || JSON.stringify(result);
 
+      const enrichedErrorMessage = isDuplicityError
+        ? `${errorMessage}. Último número tentado: ${getCurrentNfceNumber()}. A sequência continuará automaticamente a partir do próximo número livre.`
+        : errorMessage;
+
       if (emission) {
         await supabase
           .from('nfe_emissions')
           .update({
             status: 'error',
-            error_message: errorMessage,
+            error_message: enrichedErrorMessage,
           })
           .eq('id', emission.id);
       }
       return new Response(
-        JSON.stringify({ error: errorMessage || 'Erro ao emitir NFC-e', details: result }),
+        JSON.stringify({ error: enrichedErrorMessage || 'Erro ao emitir NFC-e', details: result }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
