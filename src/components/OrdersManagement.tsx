@@ -723,7 +723,7 @@ export function OrdersManagement() {
   const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ status: newStatus as any })
       .eq('id', orderId);
 
     if (error) {
