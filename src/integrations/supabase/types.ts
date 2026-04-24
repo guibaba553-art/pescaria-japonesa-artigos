@@ -308,7 +308,9 @@ export type Database = {
       customers: {
         Row: {
           cep: string
-          cpf: string
+          cnpj: string | null
+          company_name: string | null
+          cpf: string | null
           created_at: string
           created_by: string | null
           full_name: string
@@ -320,7 +322,9 @@ export type Database = {
         }
         Insert: {
           cep: string
-          cpf: string
+          cnpj?: string | null
+          company_name?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           full_name: string
@@ -332,7 +336,9 @@ export type Database = {
         }
         Update: {
           cep?: string
-          cpf?: string
+          cnpj?: string | null
+          company_name?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           full_name?: string

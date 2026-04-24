@@ -922,19 +922,21 @@ export function OrdersManagement() {
       // Buscar pedido para pegar customer e total
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .select('total_amount, customer_id, customers(full_name, cpf)')
+        .select('total_amount, customer_id, customers(full_name, cpf, cnpj, company_name)')
         .eq('id', orderId)
         .single();
 
       if (orderError) throw orderError;
 
+      const cust = order.customers as any;
       const payload = {
         order_id: orderId,
         payment_method: 'dinheiro' as const,
         total_amount: Number(order.total_amount),
-        customer: order.customers ? {
-          cpf: (order.customers as any).cpf || undefined,
-          nome: (order.customers as any).full_name || undefined,
+        customer: cust ? {
+          cpf: cust.cpf || undefined,
+          cnpj: cust.cnpj || undefined,
+          nome: cust.company_name || cust.full_name || undefined,
         } : undefined,
         items: items.map((it: any) => ({
           product_id: it.product_id,

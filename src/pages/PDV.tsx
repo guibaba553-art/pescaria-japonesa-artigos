@@ -118,7 +118,10 @@ export default function PDV() {
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
+    doc_type: 'cpf' as 'cpf' | 'cnpj',
     cpf: '',
+    cnpj: '',
+    company_name: '',
     cep: '',
     street: '',
     number: '',
@@ -635,25 +638,37 @@ export default function PDV() {
   };
 
   const handleSaveCustomer = async () => {
+    const isCnpj = customerForm.doc_type === 'cnpj';
+    const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
+
     // Validar campos
-    if (!customerForm.full_name.trim() || !customerForm.cpf.trim() || 
-        !customerForm.cep.trim() || !customerForm.street.trim() || 
+    if (!customerForm.full_name.trim() || !docValue.trim() ||
+        !customerForm.cep.trim() || !customerForm.street.trim() ||
         !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
       toast({
         title: 'Campos obrigatórios',
-        description: 'Preencha todos os campos do cliente',
+        description: `Preencha todos os campos do cliente (incluindo ${isCnpj ? 'CNPJ' : 'CPF'})`,
         variant: 'destructive'
       });
       return;
     }
 
     try {
+      const payload: any = {
+        full_name: customerForm.full_name,
+        cep: customerForm.cep,
+        street: customerForm.street,
+        number: customerForm.number,
+        neighborhood: customerForm.neighborhood,
+        cpf: isCnpj ? null : customerForm.cpf,
+        cnpj: isCnpj ? customerForm.cnpj : null,
+        company_name: isCnpj ? (customerForm.company_name || null) : null,
+        created_by: user!.id
+      };
+
       const { data, error } = await supabase
         .from('customers')
-        .insert([{
-          ...customerForm,
-          created_by: user!.id
-        }])
+        .insert([payload])
         .select()
         .single();
 
@@ -663,7 +678,10 @@ export default function PDV() {
       setShowCustomerDialog(false);
       setCustomerForm({
         full_name: '',
+        doc_type: 'cpf',
         cpf: '',
+        cnpj: '',
+        company_name: '',
         cep: '',
         street: '',
         number: '',
@@ -1189,8 +1207,17 @@ export default function PDV() {
                       <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold">{selectedCustomer.full_name}</p>
-                            <p className="text-sm text-muted-foreground">CPF: {selectedCustomer.cpf}</p>
+                            <p className="font-semibold">
+                              {selectedCustomer.company_name || selectedCustomer.full_name}
+                            </p>
+                            {selectedCustomer.company_name && (
+                              <p className="text-xs text-muted-foreground">Resp.: {selectedCustomer.full_name}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              {selectedCustomer.cnpj
+                                ? `CNPJ: ${selectedCustomer.cnpj}`
+                                : `CPF: ${selectedCustomer.cpf}`}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.street}, {selectedCustomer.number} - {selectedCustomer.neighborhood}
                             </p>
@@ -1228,8 +1255,10 @@ export default function PDV() {
                                 <div className="flex items-center gap-2">
                                   <User className="w-4 h-4" />
                                   <div>
-                                    <p className="font-medium">{customer.full_name}</p>
-                                    <p className="text-xs text-muted-foreground">CPF: {customer.cpf}</p>
+                                    <p className="font-medium">{customer.company_name || customer.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {customer.cnpj ? `CNPJ: ${customer.cnpj}` : `CPF: ${customer.cpf}`}
+                                    </p>
                                   </div>
                                 </div>
                               </SelectItem>
@@ -1466,26 +1495,76 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Toggle Pessoa Física / Jurídica */}
             <div className="space-y-2">
-              <Label htmlFor="full_name">Nome Completo *</Label>
+              <Label>Tipo de cliente *</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerForm.doc_type === 'cpf' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
+                >
+                  Pessoa Física (CPF)
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerForm.doc_type === 'cnpj' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
+                >
+                  Pessoa Jurídica (CNPJ)
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="full_name">
+                {customerForm.doc_type === 'cnpj' ? 'Nome do responsável *' : 'Nome Completo *'}
+              </Label>
               <Input
                 id="full_name"
-                placeholder="Nome completo do cliente"
+                placeholder={customerForm.doc_type === 'cnpj' ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
                 value={customerForm.full_name}
                 onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF *</Label>
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                value={customerForm.cpf}
-                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
-                maxLength={14}
-              />
-            </div>
+            {customerForm.doc_type === 'cnpj' && (
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Razão social / Nome fantasia</Label>
+                <Input
+                  id="company_name"
+                  placeholder="Nome da empresa"
+                  value={customerForm.company_name}
+                  onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
+                />
+              </div>
+            )}
+
+            {customerForm.doc_type === 'cpf' ? (
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF *</Label>
+                <Input
+                  id="cpf"
+                  placeholder="000.000.000-00"
+                  value={customerForm.cpf}
+                  onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
+                  maxLength={14}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">CNPJ *</Label>
+                <Input
+                  id="cnpj"
+                  placeholder="00.000.000/0000-00"
+                  value={customerForm.cnpj}
+                  onChange={(e) => setCustomerForm({ ...customerForm, cnpj: e.target.value })}
+                  maxLength={18}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="cep">CEP *</Label>
