@@ -407,13 +407,10 @@ export type Database = {
           auto_sync_tga: boolean
           created_at: string
           id: string
-          nfe_api_key: string | null
           nfe_company_id: string | null
           nfe_enabled: boolean
           tga_api_url: string | null
           tga_enabled: boolean
-          tga_password: string | null
-          tga_username: string | null
           updated_at: string
         }
         Insert: {
@@ -421,13 +418,10 @@ export type Database = {
           auto_sync_tga?: boolean
           created_at?: string
           id?: string
-          nfe_api_key?: string | null
           nfe_company_id?: string | null
           nfe_enabled?: boolean
           tga_api_url?: string | null
           tga_enabled?: boolean
-          tga_password?: string | null
-          tga_username?: string | null
           updated_at?: string
         }
         Update: {
@@ -435,13 +429,10 @@ export type Database = {
           auto_sync_tga?: boolean
           created_at?: string
           id?: string
-          nfe_api_key?: string | null
           nfe_company_id?: string | null
           nfe_enabled?: boolean
           tga_api_url?: string | null
           tga_enabled?: boolean
-          tga_password?: string | null
-          tga_username?: string | null
           updated_at?: string
         }
         Relationships: []
