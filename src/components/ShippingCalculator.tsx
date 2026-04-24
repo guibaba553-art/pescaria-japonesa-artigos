@@ -174,6 +174,29 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     return [...delivery].sort((a, b) => a.valor - b.valor)[0];
   };
 
+  // Identifica o mais barato e o mais rápido em uma lista de opções
+  const getHighlights = (opts: ShippingOption[]) => {
+    if (!opts || opts.length === 0) return { cheapestCode: null, fastestCode: null };
+    const cheapest = [...opts].sort((a, b) => a.valor - b.valor)[0];
+    const fastest = [...opts].sort((a, b) => a.prazoEntrega - b.prazoEntrega)[0];
+    return {
+      cheapestCode: cheapest?.codigo ?? null,
+      fastestCode: fastest?.codigo ?? null,
+    };
+  };
+
+  // Ordena: mais barato primeiro, depois mais rápido, depois o resto por preço
+  const sortByCheapestThenFastest = (opts: ShippingOption[]) => {
+    const { cheapestCode, fastestCode } = getHighlights(opts);
+    return [...opts].sort((a, b) => {
+      if (a.codigo === cheapestCode) return -1;
+      if (b.codigo === cheapestCode) return 1;
+      if (a.codigo === fastestCode) return -1;
+      if (b.codigo === fastestCode) return 1;
+      return a.valor - b.valor;
+    });
+  };
+
   const handleSelectOption = (option: ShippingOption) => {
     setSelectedOption(option.codigo);
     onSelectShipping?.(option);
