@@ -21,9 +21,9 @@ const paymentRequestSchema = z.object({
   shippingCost: z.number().nonnegative('Shipping cost must be non-negative').optional().default(0),
   cardData: z.object({
     token: z.string(),
-    paymentMethodId: z.string(),
+    paymentMethodId: z.string().optional().nullable(),
     cardNumber: z.string().min(13).max(19).regex(/^\d+$/, 'Card number must contain only digits'),
-    cardholderName: z.string().min(3).max(100).regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters'),
+    cardholderName: z.string().min(3).max(100).regex(/^[a-zA-Z\s\u00C0-\u017F'.-]+$/, 'Name must contain only letters'),
     expirationDate: z.string().regex(/^\d{2}\/\d{2}$/, 'Expiration must be MM/YY format'),
     securityCode: z.string().min(3).max(4).regex(/^\d+$/, 'CVV must be 3-4 digits'),
   }).nullable().optional(),
