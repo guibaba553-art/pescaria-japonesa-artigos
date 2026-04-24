@@ -497,11 +497,29 @@ serve(async (req) => {
         );
       }
 
+      const txAmount = Number(data.amount.toFixed(2));
+
+      // Mercado Pago exige valor mínimo de R$ 1,00 para cartão
+      if (txAmount < 1) {
+        return new Response(
+          JSON.stringify({ error: 'Valor mínimo para pagamento com cartão é R$ 1,00.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
+      // Ajusta parcelas para que cada uma seja >= R$ 1,00 (mínimo MP)
+      let requestedInstallments = parseInt(String(data.installments)) || 1;
+      const maxInstallments = Math.max(1, Math.floor(txAmount));
+      if (requestedInstallments > maxInstallments) {
+        console.log(`Adjusting installments from ${requestedInstallments} to ${maxInstallments} (min R$1 per installment)`);
+        requestedInstallments = maxInstallments;
+      }
+
       const cardPayment = {
-        transaction_amount: Number(data.amount.toFixed(2)),
+        transaction_amount: txAmount,
         token: data.cardData.token,
         description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
-        installments: parseInt(String(data.installments)) || 1,
+        installments: requestedInstallments,
         payment_method_id: paymentMethodId,
         payer: {
           email: data.userEmail || 'cliente@japapesca.com',
