@@ -411,7 +411,7 @@ serve(async (req) => {
         currentNfceNumber += 1;
       }
 
-      futureOffsetMinutes = isLateEmissionError ? 8 : Math.max(futureOffsetMinutes, 8);
+      futureOffsetMinutes = isLateEmissionError ? 3 : Math.max(futureOffsetMinutes, 1);
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
 
