@@ -54,7 +54,6 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
     setCheckoutOpen(true);
   };
 
-  const pixTotal = (total + (total >= 0 ? 0 : 0)) * 0.95; // PIX 5% on items only
   const installment = total / 10;
 
   const isControlled = open !== undefined;
@@ -214,9 +213,6 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
                   ou <strong className="text-foreground">10x de R$ {((total + shippingCost) / 10).toFixed(2).replace('.', ',')}</strong> sem juros
                 </p>
               )}
-              <p className="text-xs text-success font-semibold text-right">
-                R$ {((total + shippingCost) * 0.95).toFixed(2).replace('.', ',')} no PIX (5% OFF)
-              </p>
             </div>
 
             <Button

@@ -3,7 +3,7 @@ import { Truck, CreditCard, ShieldCheck, RotateCcw } from "lucide-react";
 const items = [
   { icon: Truck, label: "Envio rápido", sub: "para todo o Brasil" },
   { icon: CreditCard, label: "Até 10x sem juros", sub: "no cartão" },
-  { icon: ShieldCheck, label: "PIX com 5% off", sub: "pagamento na hora" },
+  { icon: ShieldCheck, label: "Compra 100% segura", sub: "pagamento via Mercado Pago" },
   { icon: RotateCcw, label: "Troca garantida", sub: "em até 7 dias" },
 ];
 

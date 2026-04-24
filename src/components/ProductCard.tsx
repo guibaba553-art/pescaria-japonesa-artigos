@@ -49,8 +49,6 @@ export function ProductCard({
   // 10x sem juros (para conversão)
   const installment = finalPrice / 10;
   const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
-  // PIX 5% off
-  const pixPrice = finalPrice * 0.95;
 
   const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -143,10 +141,6 @@ export function ProductCard({
               ) : (
                 <div className="text-xs">&nbsp;</div>
               )}
-
-              <div className="text-xs text-success font-semibold">
-                {formatPrice(pixPrice)} no PIX
-              </div>
             </>
           )}
         </div>

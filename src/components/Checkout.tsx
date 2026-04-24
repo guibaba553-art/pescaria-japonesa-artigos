@@ -49,9 +49,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     cvv: '',
   });
 
-  // Calcular desconto de 5% para PIX
-  const pixDiscount = paymentMethod === 'pix' ? (total + shippingCost) * 0.05 : 0;
-  const finalTotal = (total + shippingCost) - pixDiscount;
+  // Sem desconto especial por método — total final = subtotal + frete
+  const finalTotal = total + shippingCost;
 
   useEffect(() => {
     // Só carrega o SDK quando o checkout for aberto
@@ -449,12 +448,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium tabular-nums">R$ {(total + shippingCost).toFixed(2).replace('.', ',')}</span>
             </div>
-            {paymentMethod === 'pix' && pixDiscount > 0 && (
-              <div className="flex justify-between text-sm text-success font-bold">
-                <span>Desconto PIX (5%)</span>
-                <span className="tabular-nums">− R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
+            {/* Sem desconto extra por método de pagamento */}
             <Separator className="my-2" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold text-base">Total a pagar</span>
@@ -482,9 +476,6 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   <div className="flex-1">
                     <p className="font-medium">PIX</p>
                     <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
-                  </div>
-                  <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-                    5% OFF
                   </div>
                 </Label>
               </div>
@@ -601,7 +592,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           {paymentMethod === 'pix' && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
               <p className="text-sm font-medium text-green-800 mb-1">
-                🎉 Ganhe 5% de desconto pagando com PIX!
+                ⚡ Aprovação instantânea com PIX
               </p>
               <p className="text-sm text-green-700">
                 Ao confirmar, você receberá o código PIX para realizar o pagamento.

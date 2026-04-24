@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import Categories from "@/components/Categories";
 import FlashDealsCountdown from "@/components/FlashDealsCountdown";
 import FeaturedProducts from "@/components/FeaturedProducts";
+import PromoBanner from "@/components/PromoBanner";
 import Benefits from "@/components/Benefits";
 import Footer from "@/components/Footer";
 
@@ -21,6 +22,7 @@ const Index = () => {
         <Categories />
         <FlashDealsCountdown />
         <FeaturedProducts />
+        <PromoBanner />
         <Benefits />
       </main>
       <Footer />
