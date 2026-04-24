@@ -4,19 +4,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Package, Tags, FileEdit, Star, PackageX } from 'lucide-react';
+import { Package, Tags, FileEdit, Star } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { ProductsManagement } from '@/components/ProductsManagement';
 import { CategoriesManagement } from '@/components/CategoriesManagement';
 import { DraftProducts } from '@/components/DraftProducts';
 import { FeaturedManagement } from '@/components/FeaturedManagement';
-import { RestockManagement } from '@/components/RestockManagement';
 
 export default function AdminCatalog() {
   const navigate = useNavigate();
   const { user, isEmployee, isAdmin, loading } = useAuth();
   const [draftCount, setDraftCount] = useState(0);
-  const [restockCount, setRestockCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) {
@@ -66,14 +64,6 @@ export default function AdminCatalog() {
             <TabsTrigger value="featured" className="gap-2 shrink-0">
               <Star className="w-4 h-4" /> Destaques
             </TabsTrigger>
-            <TabsTrigger value="restock" className="gap-2 relative shrink-0">
-              <PackageX className="w-4 h-4" /> Reestoque
-              {restockCount > 0 && (
-                <Badge variant="destructive" className="h-5 min-w-5 px-1.5">
-                  {restockCount}
-                </Badge>
-              )}
-            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -81,7 +71,6 @@ export default function AdminCatalog() {
         <TabsContent value="categories"><CategoriesManagement /></TabsContent>
         <TabsContent value="drafts"><DraftProducts onChange={loadDraftCount} /></TabsContent>
         <TabsContent value="featured"><FeaturedManagement /></TabsContent>
-        <TabsContent value="restock"><RestockManagement onChange={() => {}} /></TabsContent>
       </Tabs>
     </AdminPageLayout>
   );
