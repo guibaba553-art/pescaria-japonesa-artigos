@@ -61,7 +61,7 @@ export default function Auth() {
 
   const benefits = [
     { icon: Truck, label: 'Envio rápido para todo o Brasil' },
-    { icon: CreditCard, label: '10x sem juros + PIX 5% off' },
+    { icon: CreditCard, label: '10x sem juros no cartão' },
     { icon: ShieldCheck, label: 'Compra 100% segura' },
   ];
 
