@@ -614,8 +614,18 @@ export default function PDV() {
     return getPdvPrice(item.product, paymentMethod);
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return cart.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0);
+  };
+
+  const getDiscountValue = () => {
+    const v = parseFloat((discountInput || '').replace(',', '.'));
+    if (isNaN(v) || v <= 0) return 0;
+    return Math.min(v, calculateSubtotal()); // não permite desconto maior que o subtotal
+  };
+
+  const calculateTotal = () => {
+    return Math.max(0, calculateSubtotal() - getDiscountValue());
   };
 
   const calculateChange = () => {
