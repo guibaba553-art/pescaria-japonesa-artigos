@@ -28,6 +28,11 @@ const getCategoryImage = (category: { slug?: string; name?: string }) => {
   return CATEGORY_IMAGES[slug] || CATEGORY_IMAGES[name] || acessoriosImg;
 };
 
+// Prefetch da página /produtos para evitar latência do code-split ao clicar
+const prefetchProducts = () => {
+  import('@/pages/Products').catch(() => {});
+};
+
 const Categories = () => {
   const navigate = useNavigate();
   const { primaries, loading } = useCategories();
