@@ -512,7 +512,7 @@ export default function Admin() {
           </div>
         )}
 
-        <Tabs defaultValue="products" className="space-y-6">
+        <Tabs defaultValue="catalog" className="space-y-6">
           {/* Navegação principal — botões no mesmo estilo dos cards de acesso rápido */}
           {(() => {
             const draftCount = products.filter(p => p.category === 'Pendente Revisão').length;
@@ -524,12 +524,8 @@ export default function Admin() {
               badge?: number;
               adminOnly?: boolean;
             }> = [
-              { value: 'products', title: 'Produtos', desc: 'Cadastro e estoque', icon: Package },
-              { value: 'categories', title: 'Categorias', desc: 'Organização', icon: Tags },
-              { value: 'drafts', title: 'Rascunhos', desc: 'Pendentes de revisão', icon: FileEdit, badge: draftCount },
+              { value: 'catalog', title: 'Catálogo', desc: 'Produtos, categorias e destaques', icon: Package, badge: draftCount },
               { value: 'orders', title: 'Pedidos', desc: 'Vendas online', icon: ClipboardList },
-              { value: 'featured', title: 'Destaques', desc: 'Produtos em destaque', icon: Star },
-              { value: 'fiscal', title: 'Sistema Fiscal', desc: 'NF-e e impostos', icon: Receipt },
               { value: 'employees', title: 'Funcionários', desc: 'Permissões da equipe', icon: Users, adminOnly: true },
             ];
 
