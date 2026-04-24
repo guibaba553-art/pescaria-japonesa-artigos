@@ -23,7 +23,8 @@ import {
   User,
   Save,
   FolderOpen,
-  History
+  History,
+  FilePlus
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -293,6 +294,56 @@ export default function PDV() {
     setPaymentMethod('cash');
     setInstallments(1);
     setCurrentSaleId(null);
+  };
+
+  const newOrder = async () => {
+    // Se há itens no carrinho, salva o pedido atual antes de iniciar um novo
+    if (cart.length > 0) {
+      try {
+        const saleData = {
+          user_id: user!.id,
+          cart_data: JSON.parse(JSON.stringify(cart)),
+          customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
+          payment_method: paymentMethod,
+          total_amount: calculateTotal(),
+          notes: ''
+        };
+
+        if (currentSaleId) {
+          const { error } = await supabase
+            .from('saved_sales')
+            .update(saleData)
+            .eq('id', currentSaleId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('saved_sales')
+            .insert([saleData]);
+          if (error) throw error;
+        }
+
+        await loadSavedSales();
+
+        toast({
+          title: 'Pedido salvo!',
+          description: 'O pedido anterior foi salvo. Iniciando novo pedido.'
+        });
+      } catch (error: any) {
+        toast({
+          title: 'Erro ao salvar pedido',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return;
+      }
+    } else {
+      toast({
+        title: 'Novo pedido',
+        description: 'Pronto para iniciar um novo pedido'
+      });
+    }
+
+    clearSale();
   };
 
   const handleProductClick = (product: Product) => {
@@ -1008,6 +1059,15 @@ export default function PDV() {
                       )}
                     </Button>
                   </div>
+
+                  <Button
+                    onClick={newOrder}
+                    variant="default"
+                    className="w-full bg-primary/90 hover:bg-primary"
+                  >
+                    <FilePlus className="w-4 h-4 mr-2" />
+                    Novo Pedido
+                  </Button>
                   
                   {currentSaleId && (
                     <Button
