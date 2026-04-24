@@ -902,64 +902,62 @@ export default function Admin() {
             </Card>
           );
         })()}
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="categories">
-            <CategoriesManagement />
-          </TabsContent>
+              <TabsContent value="categories">
+                <CategoriesManagement />
+              </TabsContent>
 
-          <TabsContent value="drafts">
-            <DraftProducts onChange={loadProducts} />
+              <TabsContent value="drafts">
+                <DraftProducts onChange={loadProducts} />
+              </TabsContent>
+
+              <TabsContent value="featured">
+                <div className="mb-4">
+                  <Input
+                    placeholder="Procurar produto por nome..."
+                    value={featuredSearchQuery}
+                    onChange={(e) => setFeaturedSearchQuery(e.target.value)}
+                    className="max-w-md"
+                  />
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
+                    <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imagem</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead className="text-center">Promoção</TableHead>
+                          <TableHead className="text-center">Em Destaque</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {products
+                          .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
+                          .map((product) => (
+                            <FeaturedProductRow 
+                              key={product.id} 
+                              product={product} 
+                              onUpdate={loadProducts}
+                            />
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="orders">
             <OrdersManagement />
-          </TabsContent>
-
-          <TabsContent value="featured">
-            <div className="mb-4">
-              <Input
-                placeholder="Procurar produto por nome..."
-                value={featuredSearchQuery}
-                onChange={(e) => setFeaturedSearchQuery(e.target.value)}
-                className="max-w-md"
-              />
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
-                <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Imagem</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead className="text-center">Promoção</TableHead>
-                      <TableHead className="text-center">Em Destaque</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products
-                      .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
-                      .map((product) => (
-                        <FeaturedProductRow 
-                          key={product.id} 
-                          product={product} 
-                          onUpdate={loadProducts}
-                        />
-                      ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="fiscal">
-            <FiscalSystem />
           </TabsContent>
 
           {isAdmin && (
