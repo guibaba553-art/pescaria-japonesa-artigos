@@ -455,6 +455,7 @@ export type Database = {
           id: string
           ncm_padrao: string | null
           origem_padrao: string
+          proximo_numero_nfce: number
           serie_nfce: number
           serie_nfe: number
           unidade_padrao: string
@@ -474,6 +475,7 @@ export type Database = {
           id?: string
           ncm_padrao?: string | null
           origem_padrao?: string
+          proximo_numero_nfce?: number
           serie_nfce?: number
           serie_nfe?: number
           unidade_padrao?: string
@@ -493,6 +495,7 @@ export type Database = {
           id?: string
           ncm_padrao?: string | null
           origem_padrao?: string
+          proximo_numero_nfce?: number
           serie_nfce?: number
           serie_nfe?: number
           unidade_padrao?: string
