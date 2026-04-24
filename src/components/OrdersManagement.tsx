@@ -88,6 +88,18 @@ const statusConfig = {
     badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
     accentClass: 'border-l-emerald-500',
   },
+  retirado: {
+    label: 'Retirado',
+    icon: CheckCircle,
+    badgeClass: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/20',
+    accentClass: 'border-l-emerald-600',
+  },
+  cancelado: {
+    label: 'Cancelado',
+    icon: Clock,
+    badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
+    accentClass: 'border-l-red-500',
+  },
 } as const;
 
 // Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
