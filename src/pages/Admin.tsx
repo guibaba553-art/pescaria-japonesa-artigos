@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit, Tags, ClipboardList, Star, Receipt, Users } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { OrdersManagement } from '@/components/OrdersManagement';
@@ -513,23 +513,55 @@ export default function Admin() {
         )}
 
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="products">Produtos</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-            <TabsTrigger value="drafts" className="gap-1.5">
-              <FileEdit className="w-3.5 h-3.5" />
-              Rascunhos
-              {products.filter(p => p.category === 'Pendente Revisão').length > 0 && (
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                  {products.filter(p => p.category === 'Pendente Revisão').length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="orders">Pedidos</TabsTrigger>
-            <TabsTrigger value="featured">Produtos Destaque</TabsTrigger>
-            <TabsTrigger value="fiscal">Sistema Fiscal</TabsTrigger>
-            {isAdmin && <TabsTrigger value="employees">Funcionários</TabsTrigger>}
-          </TabsList>
+          {/* Navegação principal — botões no mesmo estilo dos cards de acesso rápido */}
+          {(() => {
+            const draftCount = products.filter(p => p.category === 'Pendente Revisão').length;
+            const sections: Array<{
+              value: string;
+              title: string;
+              desc: string;
+              icon: typeof Package;
+              badge?: number;
+              adminOnly?: boolean;
+            }> = [
+              { value: 'products', title: 'Produtos', desc: 'Cadastro e estoque', icon: Package },
+              { value: 'categories', title: 'Categorias', desc: 'Organização', icon: Tags },
+              { value: 'drafts', title: 'Rascunhos', desc: 'Pendentes de revisão', icon: FileEdit, badge: draftCount },
+              { value: 'orders', title: 'Pedidos', desc: 'Vendas online', icon: ClipboardList },
+              { value: 'featured', title: 'Destaques', desc: 'Produtos em destaque', icon: Star },
+              { value: 'fiscal', title: 'Sistema Fiscal', desc: 'NF-e e impostos', icon: Receipt },
+              { value: 'employees', title: 'Funcionários', desc: 'Permissões da equipe', icon: Users, adminOnly: true },
+            ];
+
+            return (
+              <TabsList className="h-auto p-0 bg-transparent grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
+                {sections
+                  .filter(s => !s.adminOnly || isAdmin)
+                  .map(({ value, title, desc, icon: Icon, badge }) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="group relative h-auto justify-start text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all data-[state=active]:border-primary data-[state=active]:shadow-md data-[state=active]:bg-card data-[state=active]:text-foreground"
+                    >
+                      <div className="flex flex-col items-start w-full">
+                        <div className="flex items-center justify-between w-full mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground group-data-[state=active]:bg-primary group-data-[state=active]:text-primary-foreground transition-colors">
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          {badge !== undefined && badge > 0 && (
+                            <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                              {badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="font-display font-bold text-base leading-tight">{title}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 font-normal">{desc}</div>
+                      </div>
+                    </TabsTrigger>
+                  ))}
+              </TabsList>
+            );
+          })()}
 
           <TabsContent value="products" className="space-y-6">
             <Card>
