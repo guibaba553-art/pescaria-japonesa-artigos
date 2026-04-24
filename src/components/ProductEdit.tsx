@@ -649,27 +649,34 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
             <div className="space-y-2">
               <Label>Imagens do Produto</Label>
-              
+
               {/* Imagens existentes */}
               {existingImages.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {existingImages.map((imgUrl, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={imgUrl}
-                        alt={`Produto ${index + 1}`}
-                        className="w-full h-24 object-cover rounded"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteImage(imgUrl)}
-                      >
-                        X
-                      </Button>
-                    </div>
+                    <ImageThumbWithBgRemoval
+                      key={imgUrl + index}
+                      source={imgUrl}
+                      alt={`Produto ${index + 1}`}
+                      onRemove={() => handleDeleteImage(imgUrl)}
+                      onBackgroundRemoved={async (result) => {
+                        if (typeof result !== 'string') return;
+                        // Converte o data URL em File e move para newImages para upload
+                        try {
+                          const res = await fetch(result);
+                          const blob = await res.blob();
+                          const file = new File(
+                            [blob],
+                            `imagem-${Date.now()}-sem-fundo.png`,
+                            { type: 'image/png' }
+                          );
+                          setNewImages((prev) => [...prev, file]);
+                          handleDeleteImage(imgUrl);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}
@@ -678,22 +685,19 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
               {newImages.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {newImages.map((file, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Nova ${index + 1}`}
-                        className="w-full h-24 object-cover rounded"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemoveNewImage(index)}
-                      >
-                        X
-                      </Button>
-                    </div>
+                    <ImageThumbWithBgRemoval
+                      key={index}
+                      source={file}
+                      alt={`Nova ${index + 1}`}
+                      onRemove={() => handleRemoveNewImage(index)}
+                      onBackgroundRemoved={(result) => {
+                        if (result instanceof File) {
+                          setNewImages((prev) =>
+                            prev.map((f, i) => (i === index ? result : f))
+                          );
+                        }
+                      }}
+                    />
                   ))}
                 </div>
               )}
@@ -706,7 +710,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 onChange={handleNewImageChange}
               />
               <p className="text-sm text-muted-foreground">
-                Adicione múltiplas imagens para o produto
+                Adicione múltiplas imagens. Passe o mouse sobre uma imagem e clique em <span className="font-semibold">"Sem fundo"</span> para remover o fundo automaticamente com IA.
               </p>
             </div>
 
