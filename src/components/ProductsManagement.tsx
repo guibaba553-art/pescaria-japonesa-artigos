@@ -394,7 +394,9 @@ export function ProductsManagement() {
                         <span>⏱</span>
                         <span className="truncate">{durationLabel}</span>
                       </div>
-                      {product.sku && <code className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono truncate">{product.sku}</code>}
+                      <code className={`text-[9px] px-1.5 py-0.5 rounded font-mono truncate block min-h-[18px] ${product.sku ? 'bg-muted' : 'bg-transparent text-transparent select-none'}`}>
+                        {product.sku || '—'}
+                      </code>
                       <div className="flex gap-1 mt-auto pt-1.5 border-t">
                         <div className="flex-1"><ProductEdit product={product} onUpdate={loadProducts} /></div>
                         <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0 h-8 w-8" onClick={() => handleDelete(product.id, product.image_url)}>
