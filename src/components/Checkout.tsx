@@ -299,16 +299,28 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
-      // Buscar CEP do usuário do perfil
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('cep')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Definir endereço de entrega: usa endereço selecionado, com fallback no perfil
+      let shippingAddressText = shippingInfo?.nome || 'Endereço não informado';
+      let shippingCepValue = '00000-000';
 
-      // Validar CEP para entregas (não validar para retirada na loja)
-      if (shippingInfo?.nome !== 'Retirar na Loja' && (!profileData?.cep || profileData.cep === '00000-000')) {
-        throw new Error('Por favor, cadastre seu CEP no perfil antes de finalizar a compra com entrega.');
+      if (!isPickup) {
+        if (selectedAddress) {
+          shippingAddressText = `${selectedAddress.recipient_name} — ${selectedAddress.street}, ${selectedAddress.number}${
+            selectedAddress.complement ? ` (${selectedAddress.complement})` : ''
+          }, ${selectedAddress.neighborhood}, ${selectedAddress.city}/${selectedAddress.state}`;
+          shippingCepValue = selectedAddress.cep;
+        } else {
+          // Fallback: CEP do perfil
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('cep')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (!profileData?.cep) {
+            throw new Error('Por favor, selecione um endereço de entrega ou cadastre um em "Meus Endereços".');
+          }
+          shippingCepValue = profileData.cep;
+        }
       }
 
       // Validar estoque ANTES de criar o pedido
@@ -335,10 +347,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           user_id: user.id,
           total_amount: finalTotal,
           shipping_cost: shippingCost,
-          shipping_address: shippingInfo?.nome || 'Endereço não informado',
-          shipping_cep: profileData?.cep || '00000-000',
+          shipping_address: shippingAddressText,
+          shipping_cep: shippingCepValue,
           status: 'aguardando_pagamento',
-          delivery_type: shippingInfo?.nome === 'Retirar na Loja' ? 'pickup' : 'delivery'
+          delivery_type: isPickup ? 'pickup' : 'delivery'
         })
         .select()
         .single();
