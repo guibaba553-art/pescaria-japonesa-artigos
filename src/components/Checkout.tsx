@@ -584,6 +584,75 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
           <Separator />
 
+          {/* Seletor de Endereço de Entrega */}
+          {!isPickup && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <MapPin className="w-5 h-5" /> Endereço de entrega
+                </h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setAddressDialogOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {savedAddresses.length === 0 ? 'Cadastrar' : 'Gerenciar'}
+                </Button>
+              </div>
+
+              {savedAddresses.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-border p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Nenhum endereço salvo.</p>
+                  <Button size="sm" onClick={() => setAddressDialogOpen(true)} className="rounded-full">
+                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar endereço
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {savedAddresses.map((a) => {
+                    const sel = selectedAddressId === a.id;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setSelectedAddressId(a.id)}
+                        className={`w-full text-left rounded-2xl border p-3 transition-all ${
+                          sel ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-border hover:border-primary/40'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                          }`}>
+                            {sel && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <span className="font-semibold text-sm">{a.label}</span>
+                              {a.is_default && <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Padrão</span>}
+                            </div>
+                            <p className="text-sm font-medium">{a.recipient_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {a.street}, {a.number}{a.complement ? ` — ${a.complement}` : ''} · {a.neighborhood}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {a.city}/{a.state} · CEP {formatCEP(a.cep)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          <Separator />
+
           {/* Seleção de Método de Pagamento */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Método de Pagamento</h3>
