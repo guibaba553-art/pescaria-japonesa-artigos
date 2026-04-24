@@ -10,7 +10,7 @@ import { Cart } from '@/components/Cart';
 
 /**
  * Bottom navigation fixa para mobile (visível apenas em < md).
- * Estilo app nativo: Home, Categorias, Buscar, Carrinho, Conta.
+ * Estilo app nativo: Início, Categorias, Buscar, Carrinho, Conta.
  */
 export function MobileBottomNav() {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export function MobileBottomNav() {
   const { primaries } = useCategories();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const isActive = (path: string) => location.pathname === path;
@@ -54,13 +55,13 @@ export function MobileBottomNav() {
     <button
       type="button"
       onClick={onClick}
-      className="relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors active:scale-95"
+      className="relative flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors active:bg-muted/50"
       aria-label={label}
     >
       <div className="relative">
         <Icon
-          className={`w-[22px] h-[22px] transition-colors ${
-            active ? 'text-primary' : 'text-muted-foreground'
+          className={`w-[22px] h-[22px] transition-all ${
+            active ? 'text-primary scale-110' : 'text-muted-foreground'
           }`}
           strokeWidth={active ? 2.4 : 2}
         />
@@ -71,7 +72,7 @@ export function MobileBottomNav() {
         )}
       </div>
       <span
-        className={`text-[10px] font-semibold leading-none ${
+        className={`text-[10px] font-semibold leading-none mt-0.5 ${
           active ? 'text-primary' : 'text-muted-foreground'
         }`}
       >
@@ -89,20 +90,29 @@ export function MobileBottomNav() {
         aria-label="Navegação principal"
       >
         <div className="flex h-14 items-stretch">
-          <NavItem icon={Home} label="Início" onClick={() => navigate('/')} active={isActive('/')} />
+          <NavItem
+            icon={Home}
+            label="Início"
+            onClick={() => navigate('/')}
+            active={isActive('/')}
+          />
           <NavItem
             icon={LayoutGrid}
             label="Categorias"
             onClick={() => setCategoriesOpen(true)}
             active={isProductsActive}
           />
-          <NavItem icon={Search} label="Buscar" onClick={() => setSearchOpen(true)} />
-
-          {/* Cart - usa o componente real Cart como trigger via wrapper */}
-          <div className="relative flex-1 h-full">
-            <CartTrigger badge={itemCount} />
-          </div>
-
+          <NavItem
+            icon={Search}
+            label="Buscar"
+            onClick={() => setSearchOpen(true)}
+          />
+          <NavItem
+            icon={ShoppingBag}
+            label="Carrinho"
+            onClick={() => setCartOpen(true)}
+            badge={itemCount}
+          />
           <NavItem
             icon={User}
             label={user ? 'Conta' : 'Entrar'}
@@ -111,6 +121,9 @@ export function MobileBottomNav() {
           />
         </div>
       </nav>
+
+      {/* Carrinho controlado externamente (sem trigger próprio) */}
+      <Cart open={cartOpen} onOpenChange={setCartOpen} hideTrigger />
 
       {/* Drawer de Categorias */}
       <Sheet open={categoriesOpen} onOpenChange={setCategoriesOpen}>
@@ -173,22 +186,5 @@ export function MobileBottomNav() {
         </SheetContent>
       </Sheet>
     </>
-  );
-}
-
-/**
- * Wrapper invisível: reusa o componente Cart (que é um Sheet) com label estilo bottom nav.
- */
-function CartTrigger({ badge }: { badge: number }) {
-  return (
-    <div className="relative h-full w-full flex items-center justify-center">
-      {/* Posiciona o Cart absoluto e estiliza o trigger interno */}
-      <div className="[&_button]:!h-full [&_button]:!w-full [&_button]:!rounded-none [&_button]:flex [&_button]:flex-col [&_button]:items-center [&_button]:justify-center [&_button]:gap-0.5 [&_svg]:w-[22px] [&_svg]:h-[22px] [&_button]:!text-muted-foreground h-full w-full">
-        <Cart />
-      </div>
-      <span className="pointer-events-none absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-muted-foreground">
-        Carrinho
-      </span>
-    </div>
   );
 }
