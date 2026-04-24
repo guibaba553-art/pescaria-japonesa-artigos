@@ -1007,7 +1007,7 @@ export function OrdersManagement() {
     paraEnviar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery'),
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
-    entregues: siteOrders.filter(o => o.status === 'entregado'),
+    entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
   };
 
   const pdv = {
