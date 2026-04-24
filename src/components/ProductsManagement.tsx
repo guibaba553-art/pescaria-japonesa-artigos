@@ -157,10 +157,11 @@ export function ProductsManagement() {
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
           created_by: user?.id,
           price_pdv: pricePdv ? parseFloat(pricePdv) : null,
-          price_cash_percent: priceCashPercent ? parseFloat(priceCashPercent) : 0,
-          price_debit_percent: priceDebitPercent ? parseFloat(priceDebitPercent) : 0,
-          price_credit_percent: priceCreditPercent ? parseFloat(priceCreditPercent) : 0,
-          price_pix_percent: pricePixPercent ? parseFloat(pricePixPercent) : 0,
+          // Fórmula fixa: PIX/Dinheiro = base, Débito = +5%, Crédito = +10,25%
+          price_cash_percent: 0,
+          price_pix_percent: 0,
+          price_debit_percent: 5,
+          price_credit_percent: 10.25,
         }])
         .select()
         .single();
