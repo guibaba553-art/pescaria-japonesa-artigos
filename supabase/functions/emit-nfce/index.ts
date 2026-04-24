@@ -639,6 +639,7 @@ serve(async (req) => {
             : null,
           protocolo: result.protocolo || null,
           emitted_at: result.status === 'autorizado' ? new Date().toISOString() : null,
+          error_message: null,
         })
         .eq('id', emission.id);
     }

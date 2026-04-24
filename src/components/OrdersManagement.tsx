@@ -376,7 +376,7 @@ const OrdersTable = ({
                               📥 Download XML
                             </Button>
                           )}
-                          {nfe.error_message && (
+                          {nfe.status === 'error' && nfe.error_message && (
                             <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">Erro: {nfe.error_message}</div>
                           )}
                         </div>
