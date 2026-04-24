@@ -170,7 +170,7 @@ export function ProductCard({
               Ver opções
             </Button>
           ) : (
-            <div className="flex items-center gap-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-stretch gap-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
               <div className="flex-shrink-0">
                 <ProductQuantitySelector
                   quantity={quantity}
