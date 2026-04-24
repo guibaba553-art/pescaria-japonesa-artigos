@@ -411,7 +411,7 @@ export default function ProductDetails() {
 
               <Button
                 size="lg"
-                className="w-full text-lg py-6"
+                className="w-full text-base py-7 rounded-full font-black btn-press"
                 disabled={
                   (variations.length > 0 && !selectedVariation) ||
                   (variations.length > 0 && selectedVariation && selectedVariation.stock === 0) ||
