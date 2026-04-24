@@ -252,25 +252,40 @@ export default function Account() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-muted/30">
       <Header />
-      <div className="max-w-4xl mx-auto p-6 pt-24 space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Minha Conta</h1>
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <Home className="w-4 h-4 mr-2" />
-            Voltar à Home
-          </Button>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Meus Pedidos</CardTitle>
-            <CardDescription>
-              Acompanhe o status dos seus pedidos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      {/* Commercial dark banner */}
+      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
+                <Package className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Minha conta</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
+                Meus Pedidos
+              </h1>
+              <p className="text-sm text-background/60 mt-1">
+                Acompanhe status, rastreio, notas fiscais e avalie seus produtos.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+              className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground self-start md:self-end"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Voltar à Home
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-6 -mt-4 space-y-6">
+        <Card className="rounded-2xl border-border">
+          <CardContent className="p-6 space-y-6">
             {orders.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 Você ainda não fez nenhum pedido
