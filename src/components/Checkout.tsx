@@ -62,6 +62,35 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     cvv: '',
   });
 
+  // Endereços salvos do usuário
+  const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const isPickup = shippingInfo?.nome === 'Retirar na Loja';
+
+  // Carrega endereços ao abrir o checkout (e ao fechar o diálogo de gerenciar)
+  useEffect(() => {
+    if (!open || isPickup) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        setSavedAddresses(data);
+        setSelectedAddressId((prev) => prev ?? data.find((a) => a.is_default)?.id ?? data[0].id);
+      } else {
+        setSavedAddresses([]);
+      }
+    })();
+  }, [open, isPickup, addressDialogOpen]);
+
+  const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId) || null;
+
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
   const cleanCardNumber = cardData.number.replace(/\D/g, '');
