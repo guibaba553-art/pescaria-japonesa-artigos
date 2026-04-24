@@ -15,10 +15,8 @@ interface NFESettingsProps {
 
 export function NFESettings({ settings, onUpdate }: NFESettingsProps) {
   const [nfeEnabled, setNfeEnabled] = useState(settings?.nfe_enabled || false);
-  const [apiKey, setApiKey] = useState(settings?.nfe_api_key || '');
   const [companyId, setCompanyId] = useState(settings?.nfe_company_id || '');
   const [autoEmit, setAutoEmit] = useState(settings?.auto_emit_nfe || false);
-  const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -29,7 +27,6 @@ export function NFESettings({ settings, onUpdate }: NFESettingsProps) {
         .from('fiscal_settings')
         .update({
           nfe_enabled: nfeEnabled,
-          nfe_api_key: apiKey || null,
           nfe_company_id: companyId || null,
           auto_emit_nfe: autoEmit
         })
