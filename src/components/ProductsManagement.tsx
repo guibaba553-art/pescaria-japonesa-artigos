@@ -63,12 +63,8 @@ export function ProductsManagement() {
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
-  // Preços PDV
+  // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState('');
-  const [priceCashPercent, setPriceCashPercent] = useState('0');
-  const [priceDebitPercent, setPriceDebitPercent] = useState('0');
-  const [priceCreditPercent, setPriceCreditPercent] = useState('0');
-  const [pricePixPercent, setPricePixPercent] = useState('0');
 
   const { variations: newProductVariations, setVariations: setNewProductVariations, saveVariations } =
     useProductVariations();
@@ -108,7 +104,7 @@ export function ProductsManagement() {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
     setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
-    setPricePdv(''); setPriceCashPercent('0'); setPriceDebitPercent('0'); setPriceCreditPercent('0'); setPricePixPercent('0');
+    setPricePdv('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,10 +153,11 @@ export function ProductsManagement() {
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
           created_by: user?.id,
           price_pdv: pricePdv ? parseFloat(pricePdv) : null,
-          price_cash_percent: priceCashPercent ? parseFloat(priceCashPercent) : 0,
-          price_debit_percent: priceDebitPercent ? parseFloat(priceDebitPercent) : 0,
-          price_credit_percent: priceCreditPercent ? parseFloat(priceCreditPercent) : 0,
-          price_pix_percent: pricePixPercent ? parseFloat(pricePixPercent) : 0,
+          // Fórmula fixa: PIX/Dinheiro = base, Débito = +5%, Crédito = +10,25%
+          price_cash_percent: 0,
+          price_pix_percent: 0,
+          price_debit_percent: 5,
+          price_credit_percent: 10.25,
         }])
         .select()
         .single();
@@ -443,48 +440,41 @@ export function ProductsManagement() {
                 </div>
               </div>
 
-              {/* === Preços PDV por método de pagamento === */}
+              {/* === Preço PDV (fórmula fixa por método) === */}
               <div className="space-y-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
                 <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wide">Preços do PDV</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide">Preço do PDV</h3>
                   <p className="text-xs text-muted-foreground">
-                    Preço base do PDV e percentuais por forma de pagamento. + acréscimo, − desconto.
+                    PIX e Dinheiro = preço base. Débito = PIX + 5%. Crédito = Débito + 5%.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price-pdv">Preço base PDV (R$)</Label>
+                  <Label htmlFor="price-pdv">Preço base PDV — PIX/Dinheiro (R$)</Label>
                   <Input id="price-pdv" type="number" step="0.01" placeholder="Se vazio, usa o preço do site" value={pricePdv} onChange={(e) => setPricePdv(e.target.value)} />
                   <p className="text-[11px] text-muted-foreground">Preço do site: R$ {price ? parseFloat(price).toFixed(2) : '0.00'}</p>
                 </div>
 
                 {(() => {
                   const base = pricePdv ? parseFloat(pricePdv) : (price ? parseFloat(price) : 0);
-                  const calc = (pct: string) => {
-                    const p = parseFloat(pct) || 0;
-                    return (base * (1 + p / 100)).toFixed(2);
-                  };
+                  const fmt = (v: number) => v.toFixed(2);
                   return (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="pct-cash" className="text-xs">Dinheiro (%)</Label>
-                        <Input id="pct-cash" type="number" step="0.01" value={priceCashPercent} onChange={(e) => setPriceCashPercent(e.target.value)} />
-                        <p className="text-[10px] text-muted-foreground">= R$ {calc(priceCashPercent)}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                      <div className="rounded-md bg-background p-2 border">
+                        <p className="text-[10px] uppercase text-muted-foreground">PIX</p>
+                        <p className="text-sm font-bold">R$ {fmt(base)}</p>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="pct-debit" className="text-xs">Débito (%)</Label>
-                        <Input id="pct-debit" type="number" step="0.01" value={priceDebitPercent} onChange={(e) => setPriceDebitPercent(e.target.value)} />
-                        <p className="text-[10px] text-muted-foreground">= R$ {calc(priceDebitPercent)}</p>
+                      <div className="rounded-md bg-background p-2 border">
+                        <p className="text-[10px] uppercase text-muted-foreground">Dinheiro</p>
+                        <p className="text-sm font-bold">R$ {fmt(base)}</p>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="pct-credit" className="text-xs">Crédito (%)</Label>
-                        <Input id="pct-credit" type="number" step="0.01" value={priceCreditPercent} onChange={(e) => setPriceCreditPercent(e.target.value)} />
-                        <p className="text-[10px] text-muted-foreground">= R$ {calc(priceCreditPercent)}</p>
+                      <div className="rounded-md bg-background p-2 border">
+                        <p className="text-[10px] uppercase text-muted-foreground">Débito (+5%)</p>
+                        <p className="text-sm font-bold">R$ {fmt(base * 1.05)}</p>
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="pct-pix" className="text-xs">PIX (%)</Label>
-                        <Input id="pct-pix" type="number" step="0.01" value={pricePixPercent} onChange={(e) => setPricePixPercent(e.target.value)} />
-                        <p className="text-[10px] text-muted-foreground">= R$ {calc(pricePixPercent)}</p>
+                      <div className="rounded-md bg-background p-2 border">
+                        <p className="text-[10px] uppercase text-muted-foreground">Crédito (+10,25%)</p>
+                        <p className="text-sm font-bold">R$ {fmt(base * 1.1025)}</p>
                       </div>
                     </div>
                   );
