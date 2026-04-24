@@ -54,12 +54,8 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [poundTest, setPoundTest] = useState(product.pound_test || '');
   const [size, setSize] = useState(product.size || '');
 
-  // Preços PDV por método de pagamento
+  // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
-  const [priceCreditPercent, setPriceCreditPercent] = useState(((product as any).price_credit_percent ?? 0).toString());
-  const [priceDebitPercent, setPriceDebitPercent] = useState(((product as any).price_debit_percent ?? 0).toString());
-  const [pricePixPercent, setPricePixPercent] = useState(((product as any).price_pix_percent ?? 0).toString());
-  const [priceCashPercent, setPriceCashPercent] = useState(((product as any).price_cash_percent ?? 0).toString());
   
   // Usar hook personalizado para gerenciar variações
   const { 
