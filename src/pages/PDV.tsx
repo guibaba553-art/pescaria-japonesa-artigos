@@ -801,11 +801,33 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
       <Header />
 
-      {/* Commercial dark banner */}
-      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+      {/* Compact mobile back bar */}
+      <div className="lg:hidden sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-4 h-12 flex items-center justify-between gap-2">
+          <button
+            onClick={() => navigate('/admin')}
+            className="flex items-center gap-1.5 text-sm font-medium active:opacity-60"
+          >
+            <ArrowLeft className="w-4 h-4" /> Admin
+          </button>
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <ShoppingCart className="w-3.5 h-3.5 text-primary" />
+            <span>PDV</span>
+          </div>
+          <button
+            onClick={() => navigate('/pdv/sales-history')}
+            className="flex items-center gap-1.5 text-sm font-medium active:opacity-60"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Commercial dark banner — desktop only */}
+      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-32 pb-8">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -842,7 +864,7 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="container mx-auto p-6 -mt-4">
+      <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Produtos */}
@@ -889,7 +911,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[700px]">
+                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[700px]">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
@@ -906,9 +928,9 @@ export default function PDV() {
                             {product.variations.length}
                           </Badge>
                         )}
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-60 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
@@ -954,7 +976,7 @@ export default function PDV() {
           </div>
 
           {/* Carrinho e Pagamento */}
-          <div className="space-y-4">
+          <div id="pdv-cart-panel" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1166,24 +1188,26 @@ export default function PDV() {
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
                     <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="cash">
-                          <Banknote className="w-4 h-4 mr-2" />
-                          Dinheiro
-                        </TabsTrigger>
-                        <TabsTrigger value="debit">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Débito
-                        </TabsTrigger>
-                        <TabsTrigger value="credit">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Crédito
-                        </TabsTrigger>
-                        <TabsTrigger value="pix">
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          PIX
-                        </TabsTrigger>
-                      </TabsList>
+                      <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
+                        <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
+                          <TabsTrigger value="cash" className="shrink-0">
+                            <Banknote className="w-4 h-4 mr-2" />
+                            Dinheiro
+                          </TabsTrigger>
+                          <TabsTrigger value="debit" className="shrink-0">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Débito
+                          </TabsTrigger>
+                          <TabsTrigger value="credit" className="shrink-0">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Crédito
+                          </TabsTrigger>
+                          <TabsTrigger value="pix" className="shrink-0">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            PIX
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
                     </Tabs>
                   </div>
 
@@ -1256,10 +1280,41 @@ export default function PDV() {
           </div>
         </div>
       </div>
-      
+
+      {/* Sticky bottom bar — mobile: total + ir para carrinho/finalizar */}
+      {cart.length > 0 && (
+        <div
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="px-3 py-2.5 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
+                {cart.length} {cart.length === 1 ? 'item' : 'itens'} no carrinho
+              </p>
+              <p className="text-xl font-black text-primary leading-tight mt-0.5">
+                R$ {total.toFixed(2)}
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => {
+                document
+                  .getElementById('pdv-cart-panel')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="rounded-full font-bold shadow-md"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Ver carrinho
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Diálogo de seleção de variações */}
       <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Selecione a Variação</DialogTitle>
             <DialogDescription>
