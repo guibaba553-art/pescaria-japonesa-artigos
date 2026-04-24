@@ -315,11 +315,6 @@ export default function Account() {
                 Você ainda não fez nenhum pedido
               </p>
             ) : (
-            {orders.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                Você ainda não fez nenhum pedido
-              </p>
-            ) : (
               orders.map((order) => {
                 const cfg = getStatusConfig(order.status, order.delivery_type);
                 const StatusIcon = cfg.icon;
