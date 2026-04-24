@@ -110,9 +110,11 @@ export function ProductsManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[ProductsManagement] handleSubmit called', { name, category, price, stock, variations: newProductVariations.length });
     const validationErrors = validateProductForm({ name, description, price, category, stock, images, variations: newProductVariations });
     if (validationErrors.length > 0) {
       const f = validationErrors[0];
+      console.warn('[ProductsManagement] validation failed', validationErrors);
       toast({ title: `Erro: ${f.field}`, description: f.message, variant: 'destructive' });
       return;
     }
