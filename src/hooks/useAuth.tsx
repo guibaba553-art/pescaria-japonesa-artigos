@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => {
+  const signUp = async (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => {
     // Validar todos os campos usando zod
     try {
       signUpSchema.parse({
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         fullName,
         cpf,
-        cep,
+        cep: cep || '',
         phone
       });
     } catch (error: any) {
