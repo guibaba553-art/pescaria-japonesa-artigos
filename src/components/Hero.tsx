@@ -94,7 +94,7 @@ const Hero = () => {
         <div className="container mx-auto">
           <div className="flex items-center justify-center gap-2 text-[11px] sm:text-sm font-bold uppercase tracking-wider text-center px-2">
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current animate-pulse shrink-0" />
-            <span className="line-clamp-1">Frete grátis acima de R$ 299 · 10x sem juros · Troca grátis em 7 dias</span>
+            <span className="line-clamp-1">Envio em 24h úteis · 10x sem juros · Troca grátis em 7 dias</span>
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current animate-pulse shrink-0" />
           </div>
         </div>
