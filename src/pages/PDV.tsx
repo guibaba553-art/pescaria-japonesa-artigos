@@ -977,8 +977,8 @@ export default function PDV() {
             </Card>
           </div>
 
-          {/* Carrinho e Pagamento — visível em desktop, em mobile abre via sheet */}
-          <div className="hidden lg:block space-y-4">
+          {/* Carrinho e Pagamento */}
+          <div id="pdv-cart-panel" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1190,24 +1190,26 @@ export default function PDV() {
                   <div className="space-y-2">
                     <Label>Forma de Pagamento</Label>
                     <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="cash">
-                          <Banknote className="w-4 h-4 mr-2" />
-                          Dinheiro
-                        </TabsTrigger>
-                        <TabsTrigger value="debit">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Débito
-                        </TabsTrigger>
-                        <TabsTrigger value="credit">
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Crédito
-                        </TabsTrigger>
-                        <TabsTrigger value="pix">
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          PIX
-                        </TabsTrigger>
-                      </TabsList>
+                      <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
+                        <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
+                          <TabsTrigger value="cash" className="shrink-0">
+                            <Banknote className="w-4 h-4 mr-2" />
+                            Dinheiro
+                          </TabsTrigger>
+                          <TabsTrigger value="debit" className="shrink-0">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Débito
+                          </TabsTrigger>
+                          <TabsTrigger value="credit" className="shrink-0">
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            Crédito
+                          </TabsTrigger>
+                          <TabsTrigger value="pix" className="shrink-0">
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            PIX
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
                     </Tabs>
                   </div>
 
