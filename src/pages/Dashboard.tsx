@@ -365,17 +365,38 @@ export default function Dashboard() {
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-muted/30">
       <Header />
 
-      <div className="container mx-auto p-6 pt-20 lg:pt-32 space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Button variant="outline" onClick={() => navigate('/admin')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Admin
-          </Button>
+      {/* Commercial dark banner */}
+      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Dashboard</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
+                Visão Geral
+              </h1>
+              <p className="text-sm text-background/60 mt-1">
+                Receita, pedidos, clientes e produtos em tempo real.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/admin')}
+              className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground self-start md:self-end"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Admin
+            </Button>
+          </div>
         </div>
+      </div>
+
+      <div className="container mx-auto p-6 -mt-4 space-y-8">
 
         {/* Visão geral */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
