@@ -229,13 +229,15 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
           </div>
         )}
       </SheetContent>
-      {user && (
-        <Checkout
-          open={checkoutOpen}
-          onOpenChange={setCheckoutOpen}
-          shippingCost={shippingCost}
-          shippingInfo={shippingInfo}
-        />
+      {user && checkoutOpen && (
+        <Suspense fallback={null}>
+          <Checkout
+            open={checkoutOpen}
+            onOpenChange={setCheckoutOpen}
+            shippingCost={shippingCost}
+            shippingInfo={shippingInfo}
+          />
+        </Suspense>
       )}
     </Sheet>
   );
