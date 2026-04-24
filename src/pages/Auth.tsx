@@ -25,7 +25,7 @@ export default function Auth() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupCpf, setSignupCpf] = useState('');
-  const [signupCep, setSignupCep] = useState('');
+  
   const [signupPhone, setSignupPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
