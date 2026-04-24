@@ -589,6 +589,13 @@ export function OrdersManagement() {
   useEffect(() => {
     loadOrders();
 
+    // Debounce reloads para evitar tempestade de requisições quando muitos pedidos mudam
+    let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout);
+      reloadTimeout = setTimeout(() => loadOrders(), 800);
+    };
+
     // Configurar realtime para atualizar automaticamente quando pedidos mudarem
     const channel = supabase
       .channel('orders-changes')
@@ -601,12 +608,13 @@ export function OrdersManagement() {
         },
         (payload) => {
           console.log('Order change detected:', payload);
-          loadOrders(); // Recarregar pedidos quando houver mudanças
+          scheduleReload();
         }
       )
       .subscribe();
 
     return () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout);
       supabase.removeChannel(channel);
     };
   }, []);
