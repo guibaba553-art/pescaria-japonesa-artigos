@@ -131,42 +131,12 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tga-username">Usuário TGA</Label>
-              <Input
-                id="tga-username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Usuário do sistema"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tga-password">Senha</Label>
-              <div className="relative">
-                <Input
-                  id="tga-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Senha do usuário"
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                O <strong>usuário e senha do TGA</strong> agora são armazenados de forma segura no cofre de segredos do servidor. Configure as variáveis <code>TGA_USERNAME</code> e <code>TGA_PASSWORD</code> nos segredos do projeto.
+              </AlertDescription>
+            </Alert>
 
             <div className="flex items-center justify-between pt-4">
               <div className="space-y-0.5">
