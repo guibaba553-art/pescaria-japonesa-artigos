@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { lovable } from '@/integrations/lovable/index';
-import { sanitizeNumericInput, formatCPF, formatCEP, formatPhone } from '@/utils/validation';
+import { sanitizeNumericInput, formatCPF, formatPhone } from '@/utils/validation';
 import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
@@ -25,7 +25,7 @@ export default function Auth() {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupCpf, setSignupCpf] = useState('');
-  const [signupCep, setSignupCep] = useState('');
+  
   const [signupPhone, setSignupPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
@@ -72,7 +72,7 @@ export default function Auth() {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupCep, signupPhone);
+    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupPhone);
     setLoading(false);
 
     if (error && error.message === 'EMAIL_ALREADY_EXISTS') {
@@ -274,15 +274,9 @@ export default function Auth() {
                   <Label htmlFor="signup-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome Completo</Label>
                   <Input id="signup-name" type="text" placeholder="Seu nome" value={signupName} onChange={(e) => setSignupName(e.target.value)} required className="h-11 rounded-xl" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
-                    <Input id="signup-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(signupCpf)} onChange={(e) => setSignupCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-cep" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CEP</Label>
-                    <Input id="signup-cep" type="text" placeholder="00000-000" value={formatCEP(signupCep)} onChange={(e) => setSignupCep(sanitizeNumericInput(e.target.value))} required maxLength={9} className="h-11 rounded-xl" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
+                  <Input id="signup-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(signupCpf)} onChange={(e) => setSignupCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>

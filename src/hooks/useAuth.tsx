@@ -8,7 +8,7 @@ import { VALIDATION_RULES } from '@/config/constants';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from('profiles')
-      .select('cpf, cep, phone')
+      .select('cpf, phone')
       .eq('id', userId)
       .maybeSingle();
 
-    if (data && (!data.cpf || !data.cep || !data.phone)) {
+    if (data && (!data.cpf || !data.phone)) {
       const redirect = encodeURIComponent(path + window.location.search);
       window.location.href = `/completar-cadastro?redirect=${redirect}`;
     }
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, cpf: string, cep: string, phone: string) => {
+  const signUp = async (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => {
     // Validar todos os campos usando zod
     try {
       signUpSchema.parse({
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         fullName,
         cpf,
-        cep,
+        cep: cep || '',
         phone
       });
     } catch (error: any) {
@@ -174,15 +174,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error('EMAIL_ALREADY_EXISTS') };
     }
 
-    // Atualizar perfil com CPF, CEP e telefone
+    // Atualizar perfil com CPF, telefone e (opcionalmente) CEP
     if (data.user) {
+      const profileUpdate: { cpf: string; phone: string; cep?: string } = { cpf, phone };
+      if (cep && cep.length === 8) profileUpdate.cep = cep;
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          cpf, 
-          cep, 
-          phone 
-        })
+        .update(profileUpdate)
         .eq('id', data.user.id);
 
       if (profileError) {

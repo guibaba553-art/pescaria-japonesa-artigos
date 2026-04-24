@@ -38,8 +38,8 @@ export default function CompletarCadastro() {
         .maybeSingle();
 
       if (data) {
-        // Se já está completo, redireciona
-        if (data.cpf && data.cep && data.phone) {
+        // CEP é opcional — só CPF e telefone são obrigatórios
+        if (data.cpf && data.phone) {
           navigate(redirectTo);
           return;
         }
@@ -59,14 +59,22 @@ export default function CompletarCadastro() {
     if (!user) return;
 
     if (cpf.length !== 11) return toast.error("CPF inválido (11 dígitos)");
-    if (cep.length !== 8) return toast.error("CEP inválido (8 dígitos)");
     if (phone.length < 10 || phone.length > 11) return toast.error("Telefone inválido");
     if (!fullName.trim()) return toast.error("Informe seu nome completo");
+    // CEP é opcional, mas se preenchido precisa ter 8 dígitos
+    if (cep && cep.length !== 8) return toast.error("CEP inválido (deixe em branco ou informe 8 dígitos)");
 
     setLoading(true);
+    const update: { full_name: string; cpf: string; phone: string; cep?: string } = {
+      full_name: fullName.trim(),
+      cpf,
+      phone,
+    };
+    if (cep && cep.length === 8) update.cep = cep;
+
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName.trim(), cpf, cep, phone })
+      .update(update)
       .eq("id", user.id);
     setLoading(false);
 
@@ -121,13 +129,9 @@ export default function CompletarCadastro() {
               <Input id="cc-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(cpf)} onChange={(e) => setCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="cc-cep" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CEP</Label>
-              <Input id="cc-cep" type="text" placeholder="00000-000" value={formatCEP(cep)} onChange={(e) => setCep(sanitizeNumericInput(e.target.value))} required maxLength={9} className="h-11 rounded-xl" />
+              <Label htmlFor="cc-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
+              <Input id="cc-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(phone)} onChange={(e) => setPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cc-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
-            <Input id="cc-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(phone)} onChange={(e) => setPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
           </div>
           <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
             {loading ? "Salvando..." : "Concluir cadastro"}

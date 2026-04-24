@@ -43,7 +43,8 @@ export const signUpSchema = z.object({
   password: authSchemas.password,
   fullName: authSchemas.fullName,
   cpf: authSchemas.cpf,
-  cep: authSchemas.cep,
+  // CEP é opcional no cadastro — usuário cadastra endereços completos depois
+  cep: authSchemas.cep.optional().or(z.literal('')),
   phone: authSchemas.phone,
 });
 
