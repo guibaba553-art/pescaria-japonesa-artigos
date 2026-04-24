@@ -170,20 +170,43 @@ export function ProductCard({
               Ver opções
             </Button>
           ) : (
-            <div className="flex items-stretch gap-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
-              <div className="flex-shrink-0">
-                <ProductQuantitySelector
-                  quantity={quantity}
-                  maxQuantity={product.stock}
-                  onIncrement={onIncrement}
-                  onDecrement={onDecrement}
-                  onChange={onQuantityChange}
-                  size="sm"
+            <div className="flex items-center gap-1.5 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+              {/* Compact quantity selector — same height as Buy button (h-9) */}
+              <div className="flex items-center h-9 rounded-lg border border-border bg-background overflow-hidden flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDecrement(); }}
+                  disabled={quantity <= 1}
+                  className="h-full w-7 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+                  aria-label="Diminuir"
+                >
+                  <span className="text-base font-bold leading-none">−</span>
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={product.stock}
+                  value={quantity}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    if (isNaN(v) || v < 1) return onQuantityChange(1);
+                    if (v > product.stock) return onQuantityChange(product.stock);
+                    onQuantityChange(v);
+                  }}
+                  className="h-full w-8 text-center text-sm font-semibold bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onIncrement(); }}
+                  disabled={quantity >= product.stock}
+                  className="h-full w-7 flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-40 transition-colors"
+                  aria-label="Aumentar"
+                >
+                  <span className="text-base font-bold leading-none">+</span>
+                </button>
               </div>
               <Button
-                className="flex-1 min-w-0 rounded-lg btn-press font-bold px-2"
-                size="sm"
+                className="flex-1 min-w-0 h-9 rounded-lg btn-press font-bold px-2"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToCart();
