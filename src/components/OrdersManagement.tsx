@@ -589,6 +589,13 @@ export function OrdersManagement() {
   useEffect(() => {
     loadOrders();
 
+    // Debounce reloads para evitar tempestade de requisições quando muitos pedidos mudam
+    let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout);
+      reloadTimeout = setTimeout(() => loadOrders(), 800);
+    };
+
     // Configurar realtime para atualizar automaticamente quando pedidos mudarem
     const channel = supabase
       .channel('orders-changes')
@@ -601,86 +608,104 @@ export function OrdersManagement() {
         },
         (payload) => {
           console.log('Order change detected:', payload);
-          loadOrders(); // Recarregar pedidos quando houver mudanças
+          scheduleReload();
         }
       )
       .subscribe();
 
     return () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout);
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const loadOrders = async () => {
-    const { data: ordersData, error: ordersError } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (
+  const loadOrders = async (retryCount = 0) => {
+    try {
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
           *,
-          products (name)
-        ),
-        nfe_emissions (
-          id,
-          nfe_number,
-          nfe_key,
-          nfe_xml_url,
-          status,
-          emitted_at,
-          error_message
-        )
-      `)
-      .order('created_at', { ascending: false });
+          order_items (
+            *,
+            products (name)
+          ),
+          nfe_emissions (
+            id,
+            nfe_number,
+            nfe_key,
+            nfe_xml_url,
+            status,
+            emitted_at,
+            error_message
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-    if (ordersError) {
+      if (ordersError) throw ordersError;
+
+      // Buscar perfis dos usuários
+      const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
+      let profilesData: Array<{ id: string; full_name: string | null; cpf: string | null }> | null = null;
+
+      if (userIds.length > 0) {
+        const { data, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, cpf')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.warn('Falha ao carregar perfis (mantendo pedidos visíveis):', profilesError);
+        } else {
+          profilesData = data;
+        }
+      }
+
+      // Audit log agregado (1 chamada apenas, em background) — não bloqueia UI nem dispara N requests
+      if (profilesData && profilesData.length > 0) {
+        supabase.rpc('log_admin_access', {
+          p_action: 'VIEW_PROFILES_BULK',
+          p_table_name: 'profiles',
+          p_details: {
+            context: 'orders_management',
+            timestamp: new Date().toISOString(),
+            profile_count: profilesData.length,
+            accessed_user_ids: profilesData.map(p => p.id),
+          },
+        }).then(({ error }) => {
+          if (error) console.warn('Falha ao registrar audit log (não bloqueante):', error);
+        });
+      }
+
+      const profilesMap: Record<string, { name: string; cpf: string }> = {};
+      profilesData?.forEach(p => {
+        profilesMap[p.id] = {
+          name: p.full_name || 'Sem nome',
+          cpf: p.cpf || 'Não informado'
+        };
+      });
+
+      setProfiles(profilesMap);
+      setOrders((ordersData || []) as Order[]);
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Erro ao carregar pedidos:', err);
+
+      // Retry automático com backoff (até 3 tentativas) — falhas de rede transitórias
+      if (retryCount < 3) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+        console.log(`Tentando novamente em ${delay}ms (tentativa ${retryCount + 1}/3)...`);
+        setTimeout(() => loadOrders(retryCount + 1), delay);
+        return;
+      }
+
+      // Após esgotar retries, mostrar toast mas NÃO limpar pedidos já carregados
       toast({
         title: 'Erro ao carregar pedidos',
-        description: ordersError.message,
+        description: err?.message || 'Falha de conexão. Mantendo última lista carregada.',
         variant: 'destructive'
       });
       setLoading(false);
-      return;
     }
-
-    // Buscar perfis dos usuários
-    const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, full_name, cpf')
-      .in('id', userIds);
-
-    // Log audit trail for admin accessing user profiles (PII data)
-    if (profilesData && profilesData.length > 0) {
-      for (const profile of profilesData) {
-        const { error: logError } = await supabase.rpc('log_admin_access', {
-          p_action: 'VIEW_PROFILE',
-          p_table_name: 'profiles',
-          p_record_id: profile.id,
-          p_accessed_user_id: profile.id,
-          p_details: { 
-            context: 'orders_management',
-            timestamp: new Date().toISOString(),
-            accessed_fields: ['full_name', 'cpf']
-          }
-        });
-        
-        if (logError) {
-          console.error('Failed to log profile access:', logError);
-        }
-      }
-    }
-
-    const profilesMap: Record<string, { name: string; cpf: string }> = {};
-    profilesData?.forEach(p => {
-      profilesMap[p.id] = {
-        name: p.full_name || 'Sem nome',
-        cpf: p.cpf || 'Não informado'
-      };
-    });
-
-    setProfiles(profilesMap);
-    setOrders((ordersData || []) as Order[]);
-    setLoading(false);
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => {
