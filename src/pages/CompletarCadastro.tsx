@@ -128,11 +128,6 @@ export default function CompletarCadastro() {
               <Label htmlFor="cc-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
               <Input id="cc-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(cpf)} onChange={(e) => setCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
             </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cc-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
-              <Input id="cc-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(cpf)} onChange={(e) => setCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
-            </div>
             <div className="space-y-1.5">
               <Label htmlFor="cc-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
               <Input id="cc-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(phone)} onChange={(e) => setPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
