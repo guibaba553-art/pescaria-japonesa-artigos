@@ -147,7 +147,7 @@ const OrdersTable = ({
   profiles: Record<string, { name: string; cpf: string }>;
   expandedOrders: Set<string>;
   toggleOrderExpansion: (orderId: string) => void;
-  updateOrderStatus: (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => void;
+  updateOrderStatus: (orderId: string, newStatus: Order['status']) => void;
   deleteOrder: (orderId: string) => void;
   verifyPayment: (orderId: string) => void;
   trackingCodes: Record<string, string>;
