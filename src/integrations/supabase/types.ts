@@ -586,6 +586,69 @@ export type Database = {
           },
         ]
       }
+      nfe_entrada_pendentes: {
+        Row: {
+          chave_nfe: string
+          created_at: string
+          data_emissao: string | null
+          error_message: string | null
+          fornecedor_cnpj: string | null
+          fornecedor_nome: string | null
+          id: string
+          manifestacao_at: string | null
+          manifestacao_status: string | null
+          numero_nfe: string | null
+          parsed_data: Json | null
+          processed_at: string | null
+          processed_by: string | null
+          serie: string | null
+          status: string
+          updated_at: string
+          valor_total: number | null
+          xml_content: string
+        }
+        Insert: {
+          chave_nfe: string
+          created_at?: string
+          data_emissao?: string | null
+          error_message?: string | null
+          fornecedor_cnpj?: string | null
+          fornecedor_nome?: string | null
+          id?: string
+          manifestacao_at?: string | null
+          manifestacao_status?: string | null
+          numero_nfe?: string | null
+          parsed_data?: Json | null
+          processed_at?: string | null
+          processed_by?: string | null
+          serie?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number | null
+          xml_content: string
+        }
+        Update: {
+          chave_nfe?: string
+          created_at?: string
+          data_emissao?: string | null
+          error_message?: string | null
+          fornecedor_cnpj?: string | null
+          fornecedor_nome?: string | null
+          id?: string
+          manifestacao_at?: string | null
+          manifestacao_status?: string | null
+          numero_nfe?: string | null
+          parsed_data?: Json | null
+          processed_at?: string | null
+          processed_by?: string | null
+          serie?: string | null
+          status?: string
+          updated_at?: string
+          valor_total?: number | null
+          xml_content?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string

@@ -7,6 +7,7 @@ import { NFEList } from "@/components/NFEList";
 import { FiscalSystem } from "@/components/FiscalSystem";
 import { TaxProjection } from "@/components/TaxProjection";
 import { XMLImporter } from "@/components/XMLImporter";
+import { NfeEntradaPendentes } from "@/components/NfeEntradaPendentes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine } from "lucide-react";
@@ -229,14 +230,14 @@ export default function FiscalTools() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ArrowDownToLine className="w-5 h-5" />
-                  Lançar Nota de Entrada
+                  Notas Fiscais de Entrada
                 </CardTitle>
                 <CardDescription>
-                  Importe o XML (ou PDF) da NF-e enviada pelo seu fornecedor. O sistema extrai os produtos, atualiza o estoque automaticamente e registra a nota no histórico.
+                  O sistema busca automaticamente as NF-es enviadas contra o seu CNPJ a cada hora via Focus NFe e manifesta ciência à SEFAZ. Revise as notas baixadas abaixo e processe para somar ao estoque.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <XMLImporter />
+                <NfeEntradaPendentes />
               </CardContent>
             </Card>
           </TabsContent>

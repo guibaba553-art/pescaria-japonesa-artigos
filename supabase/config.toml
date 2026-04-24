@@ -41,3 +41,6 @@ verify_jwt = true
 
 [functions.melhor-envio-tracking]
 verify_jwt = true
+
+[functions.fetch-dfe-focus]
+verify_jwt = false
