@@ -157,10 +157,21 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedAddresses, user?.id]);
 
+  // Remove a opção "Retirar na Loja" das listas por endereço (ela já aparece embaixo)
+  const filterDeliveryOnly = (opts: ShippingOption[]) =>
+    opts.filter(
+      (o) =>
+        o.codigo !== 'RETIRADA' &&
+        !/retir/i.test(o.nome) &&
+        !/retir/i.test(o.servico || '')
+    );
+
   const cheapestFor = (addrId: string): ShippingOption | null => {
     const opts = addressOptions[addrId];
     if (!opts || opts.length === 0) return null;
-    return [...opts].sort((a, b) => a.valor - b.valor)[0];
+    const delivery = filterDeliveryOnly(opts);
+    if (delivery.length === 0) return null;
+    return [...delivery].sort((a, b) => a.valor - b.valor)[0];
   };
 
   const handleSelectOption = (option: ShippingOption) => {
@@ -239,19 +250,17 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         ) : cheapest ? (
                           <>
-                            <p
-                              className={`font-bold text-lg ${
-                                cheapest.valor === 0 ? 'text-green-600' : 'text-foreground'
-                              }`}
-                            >
-                              {cheapest.valor === 0
-                                ? 'GRÁTIS'
-                                : `R$ ${cheapest.valor.toFixed(2)}`}
+                            <p className="font-bold text-lg text-foreground">
+                              R$ {cheapest.valor.toFixed(2).replace('.', ',')}
                             </p>
                             <p className="text-[11px] text-muted-foreground">
                               {cheapest.nome} · {cheapest.prazoEntrega}d
                             </p>
                           </>
+                        ) : opts ? (
+                          <span className="text-xs text-muted-foreground">
+                            Sem entrega disponível
+                          </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             Toque para calcular
@@ -262,52 +271,58 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                   </button>
 
                   {/* Lista expandida com as outras opções */}
-                  {isExpanded && opts && opts.length > 0 && (
+                  {isExpanded && opts && (
                     <div className="border-t border-border bg-background/60 p-3 space-y-1.5">
                       <p className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground mb-1">
-                        Outras opções de entrega
+                        Opções de entrega
                       </p>
-                      {[...opts]
-                        .sort((x, y) => x.valor - y.valor)
-                        .map((option) => {
-                          const tag = tagFor(option.codigo);
-                          const sel = selectedOption === tag;
-                          return (
-                            <button
-                              key={tag}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectAddressOption(a, option);
-                              }}
-                              className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
-                                sel
-                                  ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
-                                  : 'border-border hover:bg-accent'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div
-                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                    sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
-                                  }`}
-                                >
-                                  {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      {filterDeliveryOnly(opts).length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2 text-center">
+                          Nenhuma transportadora atende esse CEP no momento.
+                        </p>
+                      ) : (
+                        [...filterDeliveryOnly(opts)]
+                          .sort((x, y) => x.valor - y.valor)
+                          .map((option) => {
+                            const tag = tagFor(option.codigo);
+                            const sel = selectedOption === tag;
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectAddressOption(a, option);
+                                }}
+                                className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
+                                  sel
+                                    ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                                    : 'border-border hover:bg-accent'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div
+                                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                      sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                                    }`}
+                                  >
+                                    {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                                  </div>
+                                  <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate">{option.nome}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Entrega em {option.prazoEntrega} dias úteis
+                                    </p>
+                                  </div>
                                 </div>
-                                <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-medium truncate">{option.nome}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Entrega em {option.prazoEntrega} dias úteis
-                                  </p>
-                                </div>
-                              </div>
-                              <p className="font-bold text-sm shrink-0">
-                                {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
-                              </p>
-                            </button>
-                          );
-                        })}
+                                <p className="font-bold text-sm shrink-0">
+                                  R$ {option.valor.toFixed(2).replace('.', ',')}
+                                </p>
+                              </button>
+                            );
+                          })
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {
