@@ -139,10 +139,9 @@ export default function PDV() {
     }
   }, [user, isAdmin, loading, navigate]);
 
+  // Só carrega produtos no boot — clientes e vendas salvas são lazy (carregam ao abrir o dialog)
   useEffect(() => {
     loadProducts();
-    loadCustomers();
-    loadSavedSales();
   }, []);
 
   const loadProducts = async () => {
