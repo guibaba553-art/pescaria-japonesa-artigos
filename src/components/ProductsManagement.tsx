@@ -469,12 +469,12 @@ export function ProductsManagement() {
                         <p className="text-sm font-bold">R$ {fmt(base)}</p>
                       </div>
                       <div className="rounded-md bg-background p-2 border">
-                        <p className="text-[10px] uppercase text-muted-foreground">Débito (+5%)</p>
-                        <p className="text-sm font-bold">R$ {fmt(base * 1.05)}</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">Débito (+3%)</p>
+                        <p className="text-sm font-bold">R$ {fmt(base * 1.03)}</p>
                       </div>
                       <div className="rounded-md bg-background p-2 border">
-                        <p className="text-[10px] uppercase text-muted-foreground">Crédito (+10,25%)</p>
-                        <p className="text-sm font-bold">R$ {fmt(base * 1.1025)}</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">Crédito (+4%)</p>
+                        <p className="text-sm font-bold">R$ {fmt(base * 1.04)}</p>
                       </div>
                     </div>
                   );
