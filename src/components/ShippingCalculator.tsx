@@ -157,10 +157,21 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedAddresses, user?.id]);
 
+  // Remove a opção "Retirar na Loja" das listas por endereço (ela já aparece embaixo)
+  const filterDeliveryOnly = (opts: ShippingOption[]) =>
+    opts.filter(
+      (o) =>
+        o.codigo !== 'RETIRADA' &&
+        !/retir/i.test(o.nome) &&
+        !/retir/i.test(o.servico || '')
+    );
+
   const cheapestFor = (addrId: string): ShippingOption | null => {
     const opts = addressOptions[addrId];
     if (!opts || opts.length === 0) return null;
-    return [...opts].sort((a, b) => a.valor - b.valor)[0];
+    const delivery = filterDeliveryOnly(opts);
+    if (delivery.length === 0) return null;
+    return [...delivery].sort((a, b) => a.valor - b.valor)[0];
   };
 
   const handleSelectOption = (option: ShippingOption) => {
