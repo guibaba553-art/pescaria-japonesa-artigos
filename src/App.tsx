@@ -25,6 +25,7 @@ import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
 import TermosUso from "./pages/TermosUso";
 import PoliticaTrocas from "./pages/PoliticaTrocas";
 import MeusDados from "./pages/MeusDados";
+import PickupOrder from "./pages/PickupOrder";
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/termos-de-uso" element={<TermosUso />} />
           <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
           <Route path="/meus-dados" element={<MeusDados />} />
+          <Route path="/retirada/:id" element={<PickupOrder />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

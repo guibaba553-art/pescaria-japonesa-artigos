@@ -9,9 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
+import { PickupQRDialog } from '@/components/PickupQRDialog';
 
 interface OrderItem {
   id: string;
@@ -39,7 +40,7 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'cancelado';
   created_at: string;
   tracking_code?: string;
   delivery_type?: 'delivery' | 'pickup';
@@ -57,6 +58,8 @@ const statusConfig: Record<string, { label: string; icon: typeof Package; color:
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
   entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
+  retirado: { label: 'Retirado', icon: CheckCircle, color: 'bg-emerald-600' },
+  cancelado: { label: 'Cancelado', icon: Package, color: 'bg-red-500' },
 };
 
 const getStatusConfig = (status: string, deliveryType?: string) => {
@@ -90,6 +93,7 @@ export default function Account() {
     expiresAt?: string;
     orderId: string;
   } | null>(null);
+  const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -324,6 +328,16 @@ export default function Account() {
                             Ver QR Code PIX
                           </Button>
                         )}
+                        {order.delivery_type === 'pickup' &&
+                          (order.status === 'em_preparo' || order.status === 'aguardando_pagamento') && (
+                            <Button
+                              size="sm"
+                              onClick={() => setPickupQROrderId(order.id)}
+                            >
+                              <Store className="w-4 h-4 mr-2" />
+                              QR de Retirada
+                            </Button>
+                          )}
                       </div>
                     </div>
 
@@ -499,6 +513,14 @@ export default function Account() {
           ticketUrl={selectedPixPayment.ticketUrl}
           expiresAt={selectedPixPayment.expiresAt}
           orderId={selectedPixPayment.orderId}
+        />
+      )}
+
+      {pickupQROrderId && (
+        <PickupQRDialog
+          open={!!pickupQROrderId}
+          onOpenChange={(open) => !open && setPickupQROrderId(null)}
+          orderId={pickupQROrderId}
         />
       )}
     </div>

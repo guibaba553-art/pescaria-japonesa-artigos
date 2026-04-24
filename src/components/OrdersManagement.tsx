@@ -47,7 +47,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -88,6 +88,18 @@ const statusConfig = {
     badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
     accentClass: 'border-l-emerald-500',
   },
+  retirado: {
+    label: 'Retirado',
+    icon: CheckCircle,
+    badgeClass: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/20',
+    accentClass: 'border-l-emerald-600',
+  },
+  cancelado: {
+    label: 'Cancelado',
+    icon: Clock,
+    badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
+    accentClass: 'border-l-red-500',
+  },
 } as const;
 
 // Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
@@ -99,10 +111,10 @@ const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_t
 const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'entregado' : 'enviado';
+    return deliveryType === 'pickup' ? 'retirado' : 'enviado';
   }
   if (currentStatus === 'enviado') return 'entregado';
-  return null; // Já está entregue
+  return null;
 };
 
 const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): string => {
@@ -135,7 +147,7 @@ const OrdersTable = ({
   profiles: Record<string, { name: string; cpf: string }>;
   expandedOrders: Set<string>;
   toggleOrderExpansion: (orderId: string) => void;
-  updateOrderStatus: (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => void;
+  updateOrderStatus: (orderId: string, newStatus: Order['status']) => void;
   deleteOrder: (orderId: string) => void;
   verifyPayment: (orderId: string) => void;
   trackingCodes: Record<string, string>;
@@ -708,10 +720,10 @@ export function OrdersManagement() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => {
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ status: newStatus as any })
       .eq('id', orderId);
 
     if (error) {
@@ -995,13 +1007,13 @@ export function OrdersManagement() {
     paraEnviar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery'),
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
-    entregues: siteOrders.filter(o => o.status === 'entregado'),
+    entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
   };
 
   const pdv = {
     semPagamento: pdvOrders.filter(o => o.status === 'aguardando_pagamento'),
     prontoRetirar: pdvOrders.filter(o => o.status === 'em_preparo'),
-    finalizadas: pdvOrders.filter(o => o.status === 'entregado'),
+    finalizadas: pdvOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
   };
 
   const tableProps = {
