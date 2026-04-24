@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { getCookieConsent } from './CookieBanner';
 
 const SESSION_KEY = 'jp_session_id';
@@ -30,6 +31,7 @@ export function PageViewTracker() {
   const location = useLocation();
   const lastPath = useRef<string>('');
   const [consent, setConsent] = useState(getCookieConsent());
+  const { isAdmin, isEmployee, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -43,6 +45,10 @@ export function PageViewTracker() {
   useEffect(() => {
     // LGPD: only track analytics with explicit consent
     if (consent !== 'accepted') return;
+    // Wait for auth resolution to avoid counting staff before role is known
+    if (authLoading) return;
+    // Skip internal users (admin/employee) from analytics
+    if (isAdmin || isEmployee) return;
 
     const path = location.pathname;
     if (path === lastPath.current) return;
@@ -67,7 +73,7 @@ export function PageViewTracker() {
         // ignore errors silently
       });
     });
-  }, [location.pathname, consent]);
+  }, [location.pathname, consent, isAdmin, isEmployee, authLoading]);
 
   return null;
 }
