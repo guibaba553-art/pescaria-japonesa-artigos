@@ -139,9 +139,22 @@ export default function PDV() {
     }
   }, [user, isAdmin, loading, navigate]);
 
-  // Só carrega produtos no boot — clientes e vendas salvas são lazy (carregam ao abrir o dialog)
+  // Boot: carrega produtos imediatamente. Clientes e vendas salvas vão para o
+  // tempo ocioso do browser — não bloqueiam a UI inicial do PDV.
   useEffect(() => {
     loadProducts();
+
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const runDeferred = () => {
+      loadCustomers();
+      loadSavedSales();
+    };
+    if (w.requestIdleCallback) {
+      w.requestIdleCallback(runDeferred);
+    } else {
+      const t = setTimeout(runDeferred, 800);
+      return () => clearTimeout(t);
+    }
   }, []);
 
   const loadProducts = async () => {
