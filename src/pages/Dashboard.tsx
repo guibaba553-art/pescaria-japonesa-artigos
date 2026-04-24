@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
+  TrendingUp, Download, AlertTriangle, Clock, Receipt, Target,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 
 interface ChannelStats {
@@ -16,6 +24,7 @@ interface ChannelStats {
   totalOrders: number;
   revenueGrowth: number;
   ordersGrowth: number;
+  avgTicket: number;
 }
 
 interface SalesData {
@@ -32,22 +41,43 @@ interface ProductSales {
   revenue: number;
 }
 
+interface LowStockProduct {
+  id: string;
+  name: string;
+  stock: number;
+}
+
 const formatBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const PERIODS = {
+  '7': { label: 'Últimos 7 dias', days: 7 },
+  '30': { label: 'Últimos 30 dias', days: 30 },
+  '90': { label: 'Últimos 90 dias', days: 90 },
+  '365': { label: 'Último ano', days: 365 },
+} as const;
+
+type PeriodKey = keyof typeof PERIODS;
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isAdmin, loading } = useAuth();
   const { toast } = useToast();
 
+  const [period, setPeriod] = useState<PeriodKey>('30');
+
   const [pdvStats, setPdvStats] = useState<ChannelStats>({
-    totalRevenue: 0, totalOrders: 0, revenueGrowth: 0, ordersGrowth: 0,
+    totalRevenue: 0, totalOrders: 0, revenueGrowth: 0, ordersGrowth: 0, avgTicket: 0,
   });
   const [siteStats, setSiteStats] = useState<ChannelStats>({
-    totalRevenue: 0, totalOrders: 0, revenueGrowth: 0, ordersGrowth: 0,
+    totalRevenue: 0, totalOrders: 0, revenueGrowth: 0, ordersGrowth: 0, avgTicket: 0,
   });
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
+  const [outOfStock, setOutOfStock] = useState(0);
+  const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
@@ -60,12 +90,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (isAdmin) loadDashboardData();
-  }, [isAdmin]);
+  }, [isAdmin, period]);
 
-  const calcChannelStats = (orders: any[]): ChannelStats => {
+  const calcChannelStats = (orders: any[], days: number): ChannelStats => {
     const now = new Date();
-    const last30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const last60 = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const prevStart = new Date(now.getTime() - 2 * days * 24 * 60 * 60 * 1000);
 
     const sumOf = (list: any[]) =>
       list.reduce(
@@ -73,20 +103,22 @@ export default function Dashboard() {
         0
       );
 
-    const recent = orders.filter((o) => new Date(o.created_at) >= last30);
+    const recent = orders.filter((o) => new Date(o.created_at) >= start);
     const previous = orders.filter(
-      (o) => new Date(o.created_at) >= last60 && new Date(o.created_at) < last30
+      (o) => new Date(o.created_at) >= prevStart && new Date(o.created_at) < start
     );
 
     const recentRev = sumOf(recent);
     const prevRev = sumOf(previous);
+    const totalRev = sumOf(orders);
 
     return {
-      totalRevenue: sumOf(orders),
+      totalRevenue: totalRev,
       totalOrders: orders.length,
       revenueGrowth: prevRev > 0 ? ((recentRev - prevRev) / prevRev) * 100 : 0,
       ordersGrowth:
         previous.length > 0 ? ((recent.length - previous.length) / previous.length) * 100 : 0,
+      avgTicket: orders.length > 0 ? totalRev / orders.length : 0,
     };
   };
 
@@ -94,31 +126,62 @@ export default function Dashboard() {
     try {
       setLoadingData(true);
 
-      const [{ data: orders }, { data: products }, { data: profiles }, { data: orderItems }] =
-        await Promise.all([
-          supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
-          supabase.from('products').select('id'),
-          supabase.from('profiles').select('id'),
-          supabase
-            .from('order_items')
-            .select('quantity, price_at_purchase, order_id, products(name), orders(source, status)'),
-        ]);
+      const [
+        { data: orders },
+        { data: products },
+        { data: profiles },
+        { data: orderItems },
+      ] = await Promise.all([
+        supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
+        supabase.from('products').select('id, name, stock'),
+        supabase.from('profiles').select('id'),
+        supabase
+          .from('order_items')
+          .select('quantity, price_at_purchase, order_id, products(name), orders(source, status)'),
+      ]);
 
+      const days = PERIODS[period].days;
       const delivered = (orders || []).filter((o) => o.status === 'entregado');
       const pdvOrders = delivered.filter((o) => o.source === 'pdv');
       const siteOrders = delivered.filter((o) => o.source !== 'pdv');
 
-      setPdvStats(calcChannelStats(pdvOrders));
-      setSiteStats(calcChannelStats(siteOrders));
+      setPdvStats(calcChannelStats(pdvOrders, days));
+      setSiteStats(calcChannelStats(siteOrders, days));
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // Vendas diárias últimos 30 dias separadas por canal
-      const last30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      // Pending / status overview
+      const pending = (orders || []).filter(
+        (o) => o.status === 'em_preparo' || o.status === 'aguardando_pagamento'
+      ).length;
+      setPendingOrders(pending);
+
+      const statusMap: Record<string, number> = {};
+      (orders || []).forEach((o) => {
+        statusMap[o.status] = (statusMap[o.status] || 0) + 1;
+      });
+      setStatusBreakdown(
+        Object.entries(statusMap).map(([name, value]) => ({
+          name: name.replace(/_/g, ' '),
+          value,
+        }))
+      );
+
+      // Stock alerts
+      const low = (products || [])
+        .filter((p: any) => p.stock > 0 && p.stock <= 5)
+        .map((p: any) => ({ id: p.id, name: p.name, stock: p.stock }))
+        .sort((a, b) => a.stock - b.stock)
+        .slice(0, 10);
+      setLowStock(low);
+      setOutOfStock((products || []).filter((p: any) => p.stock === 0).length);
+
+      // Vendas diárias dentro do período por canal
+      const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const byDay: Record<string, SalesData> = {};
 
       delivered
-        .filter((o) => new Date(o.created_at) >= last30)
+        .filter((o) => new Date(o.created_at) >= start)
         .forEach((o) => {
           const date = new Date(o.created_at).toLocaleDateString('pt-BR');
           if (!byDay[date]) {
@@ -172,6 +235,24 @@ export default function Dashboard() {
     }
   };
 
+  const exportCSV = () => {
+    const rows = [
+      ['Data', 'Receita PDV', 'Receita Site', 'Pedidos PDV', 'Pedidos Site'],
+      ...salesData.map((d) => [
+        d.date, d.pdv.toFixed(2), d.site.toFixed(2), d.pdvOrders, d.siteOrders,
+      ]),
+    ];
+    const csv = rows.map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-${period}d-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'CSV exportado!' });
+  };
+
   if (loading || loadingData) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
@@ -180,15 +261,9 @@ export default function Dashboard() {
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'];
 
   const StatCard = ({
-    title,
-    value,
-    growth,
-    icon,
+    title, value, growth, icon, hint,
   }: {
-    title: string;
-    value: string;
-    growth?: number;
-    icon: React.ReactNode;
+    title: string; value: string; growth?: number; icon: React.ReactNode; hint?: string;
   }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -200,32 +275,21 @@ export default function Dashboard() {
         {growth !== undefined && (
           <p className="text-xs text-muted-foreground">
             <span className={growth >= 0 ? 'text-green-600' : 'text-red-600'}>
-              {growth >= 0 ? '+' : ''}
-              {growth.toFixed(1)}%
+              {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
             </span>{' '}
-            vs. mês anterior
+            vs. período anterior
           </p>
         )}
+        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
       </CardContent>
     </Card>
   );
 
   const ChannelSection = ({
-    title,
-    icon,
-    stats,
-    color,
-    dataKey,
-    orderKey,
-    top,
+    title, icon, stats, color, dataKey, orderKey, top,
   }: {
-    title: string;
-    icon: React.ReactNode;
-    stats: ChannelStats;
-    color: string;
-    dataKey: 'pdv' | 'site';
-    orderKey: 'pdvOrders' | 'siteOrders';
-    top: ProductSales[];
+    title: string; icon: React.ReactNode; stats: ChannelStats; color: string;
+    dataKey: 'pdv' | 'site'; orderKey: 'pdvOrders' | 'siteOrders'; top: ProductSales[];
   }) => (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -233,7 +297,7 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold">{title}</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title="Receita"
           value={formatBRL(stats.totalRevenue)}
@@ -245,6 +309,11 @@ export default function Dashboard() {
           value={String(stats.totalOrders)}
           growth={stats.ordersGrowth}
           icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Ticket Médio"
+          value={formatBRL(stats.avgTicket)}
+          icon={<Target className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
 
@@ -258,7 +327,7 @@ export default function Dashboard() {
         <TabsContent value="revenue">
           <Card>
             <CardHeader>
-              <CardTitle>Receita Diária — {title} (Últimos 30 dias)</CardTitle>
+              <CardTitle>Receita Diária — {title} ({PERIODS[period].label})</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -268,13 +337,7 @@ export default function Dashboard() {
                   <YAxis />
                   <Tooltip formatter={(v: number) => formatBRL(v)} />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey={dataKey}
-                    stroke={color}
-                    name="Receita"
-                    strokeWidth={2}
-                  />
+                  <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -284,7 +347,7 @@ export default function Dashboard() {
         <TabsContent value="orders">
           <Card>
             <CardHeader>
-              <CardTitle>Pedidos Diários — {title} (Últimos 30 dias)</CardTitle>
+              <CardTitle>Pedidos Diários — {title} ({PERIODS[period].label})</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -336,18 +399,13 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                   <div className="space-y-2">
                     {top.map((p, i) => (
-                      <div
-                        key={i}
-                        className="flex justify-between items-center p-2 border rounded"
-                      >
+                      <div key={i} className="flex justify-between items-center p-2 border rounded">
                         <span className="text-sm font-medium truncate flex-1">
                           {i + 1}. {p.name}
                         </span>
                         <div className="text-right">
                           <div className="text-sm font-bold">{formatBRL(p.revenue)}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {p.quantity} unidades
-                          </div>
+                          <div className="text-xs text-muted-foreground">{p.quantity} unidades</div>
                         </div>
                       </div>
                     ))}
@@ -363,6 +421,7 @@ export default function Dashboard() {
 
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
+  const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -384,32 +443,67 @@ export default function Dashboard() {
                 Receita, pedidos, clientes e produtos em tempo real.
               </p>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/admin')}
-              className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground self-start md:self-end"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Admin
-            </Button>
+            <div className="flex flex-wrap gap-2 items-center">
+              <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+                <SelectTrigger className="w-[180px] rounded-full bg-transparent border-background/20 text-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PERIODS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={exportCSV}
+                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin')}
+                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Voltar ao Admin
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto p-6 -mt-4 space-y-8">
 
-        {/* Visão geral */}
+        {/* Visão geral - linha 1: receita */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Receita Total (Geral)"
+            title="Receita Total"
             value={formatBRL(totalRevenue)}
             icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
           />
           <StatCard
-            title="Pedidos (Geral)"
+            title="Pedidos"
             value={String(totalOrders)}
             icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
           />
+          <StatCard
+            title="Ticket Médio"
+            value={formatBRL(overallAvgTicket)}
+            icon={<Target className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatCard
+            title="Pedidos Pendentes"
+            value={String(pendingOrders)}
+            hint="Aguardando pagamento ou em preparo"
+            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+          />
+        </div>
+
+        {/* Visão geral - linha 2: estoque & clientes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Produtos"
             value={String(totalProducts)}
@@ -420,7 +514,68 @@ export default function Dashboard() {
             value={String(totalCustomers)}
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
           />
+          <StatCard
+            title="Estoque Baixo"
+            value={String(lowStock.length)}
+            hint="Produtos com 5 unidades ou menos"
+            icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+          />
+          <StatCard
+            title="Sem Estoque"
+            value={String(outOfStock)}
+            hint="Indisponíveis no catálogo"
+            icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
+          />
         </div>
+
+        {/* Alertas de estoque */}
+        {lowStock.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+                Atenção: Produtos com estoque baixo
+              </CardTitle>
+              <CardDescription>Repor o quanto antes para evitar rupturas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {lowStock.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex justify-between items-center p-3 border rounded hover:bg-muted/50 cursor-pointer"
+                    onClick={() => navigate('/admin/catalogo')}
+                  >
+                    <span className="text-sm font-medium truncate flex-1">{p.name}</span>
+                    <Badge variant={p.stock <= 2 ? 'destructive' : 'secondary'}>
+                      {p.stock} un.
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Distribuição de status */}
+        {statusBreakdown.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição de Pedidos por Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={statusBreakdown}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#2563eb" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Canais separados */}
         <Tabs defaultValue="pdv" className="space-y-4">
