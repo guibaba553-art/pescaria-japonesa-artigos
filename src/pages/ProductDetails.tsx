@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw, Flame } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -12,6 +12,7 @@ import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector } from '@/components/ProductVariationSelector';
+import { recentSales, viewersNow } from '@/utils/socialProof';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -469,6 +470,54 @@ export default function ProductDetails() {
                   : 'Adicionar ao Carrinho'
                 }
               </Button>
+
+              {/* Prova social + benefícios — empurram a decisão */}
+              {product.stock > 0 && (
+                <div className="space-y-2 pt-2">
+                  {(() => {
+                    const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
+                    const viewers = viewersNow(product.id);
+                    return (
+                      <div className="flex items-center gap-3 text-xs flex-wrap">
+                        {sales !== null && (
+                          <span className="inline-flex items-center gap-1 font-bold text-orange-600">
+                            <Flame className="w-3.5 h-3.5 fill-current" />
+                            {sales} vendidos nas últimas 24h
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <span className="relative flex w-2 h-2">
+                            <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
+                            <span className="relative w-2 h-2 rounded-full bg-green-500" />
+                          </span>
+                          {viewers} pessoas vendo agora
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  {product.stock > 0 && product.stock <= 5 && (
+                    <div className="text-xs font-bold text-orange-600">
+                      ⚠️ Restam apenas {product.stock} em estoque — garanta o seu!
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trust row */}
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <Truck className="w-4 h-4 text-success" />
+                  <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Envio em<br/>24h úteis</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <RotateCcw className="w-4 h-4 text-success" />
+                  <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Troca grátis<br/>em 7 dias</span>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center">
+                  <ShieldCheck className="w-4 h-4 text-success" />
+                  <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Pagamento<br/>100% seguro</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Truck } from 'lucide-react';
+import { ShoppingCart, Truck, Flame, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
+import { recentSales, viewersNow } from '@/utils/socialProof';
 
 interface ProductCardProps {
   product: Product;
@@ -49,6 +50,12 @@ export function ProductCard({
   // 10x sem juros (para conversão)
   const installment = finalPrice / 10;
   const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
+
+  // Prova social (determinística, estável durante o dia)
+  const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
+  const viewers = viewersNow(product.id);
+  // Mostra "X vendidos" se houver, senão "Y pessoas vendo agora" para produtos populares
+  const showSocialProof = product.stock > 0;
 
   const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -145,14 +152,25 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Envio rápido — slot fixo para manter alinhamento */}
-        <div className="min-h-[28px] mb-2">
+        {/* Envio rápido + prova social — slot fixo para manter alinhamento */}
+        <div className="min-h-[28px] mb-2 flex items-center gap-2 flex-wrap">
           {!hasVariations && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide self-start">
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide">
               <Truck className="w-3 h-3" />
               Envio rápido
             </div>
           )}
+          {showSocialProof && sales !== null ? (
+            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600">
+              <Flame className="w-3 h-3 fill-current" />
+              {sales} vendidos hoje
+            </div>
+          ) : showSocialProof && viewers >= 6 ? (
+            <div className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <Eye className="w-3 h-3" />
+              {viewers} vendo agora
+            </div>
+          ) : null}
         </div>
 
         {/* CTA */}

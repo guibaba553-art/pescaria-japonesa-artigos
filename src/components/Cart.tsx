@@ -1,4 +1,4 @@
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ShieldCheck, Lock, RotateCcw } from 'lucide-react';
 import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -220,8 +220,24 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
               onClick={handleCheckout}
               disabled={!shippingInfo}
             >
-              {!shippingInfo ? 'Escolha o frete acima' : 'Finalizar compra'}
+              {!shippingInfo ? 'Escolha o frete acima' : 'Finalizar compra com segurança'}
             </Button>
+
+            {/* Trust badges — reduzem ansiedade no momento de decisão */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="flex flex-col items-center gap-1 text-center">
+                <Lock className="w-3.5 h-3.5 text-success" />
+                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Pagamento<br/>seguro</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <RotateCcw className="w-3.5 h-3.5 text-success" />
+                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Troca grátis<br/>em 7 dias</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <ShieldCheck className="w-3.5 h-3.5 text-success" />
+                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Loja física<br/>em Sinop/MT</span>
+              </div>
+            </div>
           </div>
         )}
       </SheetContent>

@@ -73,8 +73,11 @@ const Hero = () => {
               style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
             >
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
-                <span>Loja oficial Sinop/MT</span>
+                <span className="relative flex w-2 h-2">
+                  <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
+                  <span className="relative w-2 h-2 rounded-full bg-green-400" />
+                </span>
+                <span className="font-semibold">Loja online · respondendo agora</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
@@ -82,7 +85,7 @@ const Hero = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
-                <span>Envio em 24h</span>
+                <span>+10 mil pescadores atendidos</span>
               </div>
             </div>
           </div>
