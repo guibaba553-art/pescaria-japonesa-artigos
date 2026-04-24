@@ -46,6 +46,11 @@ export function ImageThumbWithBgRemoval({
         description: 'Removendo fundo com IA. Isso pode levar alguns segundos.',
       });
 
+      // Carrega o utilitário (e o modelo de IA) sob demanda
+      const { removeBackground, loadImage, loadImageFromUrl } = await import(
+        '@/utils/removeBackground'
+      );
+
       const img =
         typeof source === 'string'
           ? await loadImageFromUrl(source)
