@@ -53,6 +53,13 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [brand, setBrand] = useState(product.brand || '');
   const [poundTest, setPoundTest] = useState(product.pound_test || '');
   const [size, setSize] = useState(product.size || '');
+
+  // Preços PDV por método de pagamento
+  const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
+  const [priceCreditPercent, setPriceCreditPercent] = useState(((product as any).price_credit_percent ?? 0).toString());
+  const [priceDebitPercent, setPriceDebitPercent] = useState(((product as any).price_debit_percent ?? 0).toString());
+  const [pricePixPercent, setPricePixPercent] = useState(((product as any).price_pix_percent ?? 0).toString());
+  const [priceCashPercent, setPriceCashPercent] = useState(((product as any).price_cash_percent ?? 0).toString());
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -90,6 +97,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setBrand(product.brand || '');
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
+      setPricePdv((product as any).price_pdv?.toString() || '');
+      setPriceCreditPercent(((product as any).price_credit_percent ?? 0).toString());
+      setPriceDebitPercent(((product as any).price_debit_percent ?? 0).toString());
+      setPricePixPercent(((product as any).price_pix_percent ?? 0).toString());
+      setPriceCashPercent(((product as any).price_cash_percent ?? 0).toString());
     }
   }, [open, product.id, loadVariations]);
 
@@ -227,6 +239,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         on_sale: onSale,
         sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
         sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
+        price_pdv: pricePdv ? parseFloat(pricePdv) : null,
+        price_credit_percent: priceCreditPercent ? parseFloat(priceCreditPercent) : 0,
+        price_debit_percent: priceDebitPercent ? parseFloat(priceDebitPercent) : 0,
+        price_pix_percent: pricePixPercent ? parseFloat(pricePixPercent) : 0,
+        price_cash_percent: priceCashPercent ? parseFloat(priceCashPercent) : 0,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
@@ -397,6 +414,63 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* === Preços PDV por método de pagamento === */}
+            <div className="space-y-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wide">Preços do PDV</h3>
+                <p className="text-xs text-muted-foreground">
+                  Preço base do PDV e percentuais por forma de pagamento. + acréscimo, − desconto.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-price-pdv">Preço base PDV (R$)</Label>
+                <Input
+                  id="edit-price-pdv"
+                  type="number"
+                  step="0.01"
+                  placeholder="Se vazio, usa o preço do site"
+                  value={pricePdv}
+                  onChange={(e) => setPricePdv(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Preço do site: R$ {price ? parseFloat(price).toFixed(2) : '0.00'}
+                </p>
+              </div>
+
+              {(() => {
+                const base = pricePdv ? parseFloat(pricePdv) : (price ? parseFloat(price) : 0);
+                const calc = (pct: string) => {
+                  const p = parseFloat(pct) || 0;
+                  return (base * (1 + p / 100)).toFixed(2);
+                };
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-pct-cash" className="text-xs">Dinheiro (%)</Label>
+                      <Input id="edit-pct-cash" type="number" step="0.01" value={priceCashPercent} onChange={(e) => setPriceCashPercent(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground">= R$ {calc(priceCashPercent)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-pct-debit" className="text-xs">Débito (%)</Label>
+                      <Input id="edit-pct-debit" type="number" step="0.01" value={priceDebitPercent} onChange={(e) => setPriceDebitPercent(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground">= R$ {calc(priceDebitPercent)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-pct-credit" className="text-xs">Crédito (%)</Label>
+                      <Input id="edit-pct-credit" type="number" step="0.01" value={priceCreditPercent} onChange={(e) => setPriceCreditPercent(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground">= R$ {calc(priceCreditPercent)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="edit-pct-pix" className="text-xs">PIX (%)</Label>
+                      <Input id="edit-pct-pix" type="number" step="0.01" value={pricePixPercent} onChange={(e) => setPricePixPercent(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground">= R$ {calc(pricePixPercent)}</p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -44,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 
 interface ProductVariation {
   id: string;
@@ -67,6 +68,12 @@ interface Product {
   minimum_quantity?: number;
   sold_by_weight?: boolean;
   variations?: ProductVariation[];
+  // Precificação PDV
+  price_pdv?: number | null;
+  price_credit_percent?: number | null;
+  price_debit_percent?: number | null;
+  price_pix_percent?: number | null;
+  price_cash_percent?: number | null;
 }
 
 interface CartItem {
@@ -88,8 +95,8 @@ export default function PDV() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [processing, setProcessing] = useState(false);
   
-  // Pagamento
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit' | 'pix'>('cash');
+  // Pagamento — padrão é crédito (mesmo preço usado nas etiquetas dos cards)
+  const [paymentMethod, setPaymentMethod] = useState<PdvPaymentMethod>('credit');
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
@@ -291,7 +298,7 @@ export default function PDV() {
     setCart([]);
     setCashReceived('');
     setSelectedCustomer(null);
-    setPaymentMethod('cash');
+    setPaymentMethod('credit');
     setInstallments(1);
     setCurrentSaleId(null);
   };
@@ -597,11 +604,16 @@ export default function PDV() {
     }));
   };
 
+  // Helper: preço unitário aplicando o método de pagamento atual
+  const getItemUnitPrice = (item: CartItem) => {
+    if (item.variation) {
+      return getPdvPriceForVariation(item.product, item.variation.price, paymentMethod);
+    }
+    return getPdvPrice(item.product, paymentMethod);
+  };
+
   const calculateTotal = () => {
-    return cart.reduce((sum, item) => {
-      const itemPrice = item.variation ? item.variation.price : item.product.price;
-      return sum + (itemPrice * item.quantity);
-    }, 0);
+    return cart.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0);
   };
 
   const calculateChange = () => {
@@ -721,7 +733,7 @@ export default function PDV() {
         product_id: item.product.id,
         variation_id: item.variation ? item.variation.id : null,
         quantity: item.quantity,
-        price_at_purchase: item.variation ? item.variation.price : item.product.price
+        price_at_purchase: getItemUnitPrice(item)
       }));
 
       const { error: itemsError } = await supabase
@@ -949,9 +961,14 @@ export default function PDV() {
                             </div>
                           </div>
                            <div className="flex items-center justify-between">
-                            <span className="text-lg font-bold text-primary">
-                              R$ {product.price.toFixed(2)}{product.sold_by_weight && '/kg'}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-lg font-bold text-primary leading-none">
+                                R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
+                                {paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'debit' ? 'Débito' : paymentMethod === 'credit' ? 'Crédito' : 'PIX'}
+                              </span>
+                            </div>
                             <Badge variant="secondary" className="text-xs">
                               {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
                             </Badge>
@@ -984,7 +1001,7 @@ export default function PDV() {
                   ) : (
                     <div className="space-y-3">
                       {cart.map(item => {
-                        const itemPrice = item.variation ? item.variation.price : item.product.price;
+                        const itemPrice = getItemUnitPrice(item);
                         const itemName = item.variation 
                           ? `${item.product.name} - ${item.variation.name}` 
                           : item.product.name;
@@ -1355,7 +1372,7 @@ export default function PDV() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-primary">
-                        R$ {variation.price.toFixed(2)}
+                        R$ {selectedProduct ? getPdvPriceForVariation(selectedProduct, variation.price, paymentMethod).toFixed(2) : variation.price.toFixed(2)}
                       </span>
                       <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
                         {variation.stock > 0 ? `${variation.stock} un` : 'Esgotado'}
@@ -1475,7 +1492,7 @@ export default function PDV() {
           <DialogHeader>
             <DialogTitle>Informe o Peso</DialogTitle>
             <DialogDescription>
-              {selectedProduct?.name} - R$ {selectedProduct?.price.toFixed(2)}/kg
+              {selectedProduct?.name} - R$ {selectedProduct ? getPdvPrice(selectedProduct, paymentMethod).toFixed(2) : '0.00'}/kg
             </DialogDescription>
           </DialogHeader>
           
@@ -1593,7 +1610,7 @@ export default function PDV() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="font-bold text-2xl text-primary">
-                      R$ {(getWeightInKg() * (selectedProduct?.price || 0)).toFixed(2)}
+                      R$ {(getWeightInKg() * (selectedProduct ? getPdvPrice(selectedProduct, paymentMethod) : 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>

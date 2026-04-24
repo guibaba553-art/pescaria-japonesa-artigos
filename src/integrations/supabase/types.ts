@@ -868,6 +868,11 @@ export type Database = {
           origem: string | null
           pound_test: string | null
           price: number
+          price_cash_percent: number
+          price_credit_percent: number
+          price_debit_percent: number
+          price_pdv: number | null
+          price_pix_percent: number
           rating: number | null
           sale_ends_at: string | null
           sale_price: number | null
@@ -901,6 +906,11 @@ export type Database = {
           origem?: string | null
           pound_test?: string | null
           price: number
+          price_cash_percent?: number
+          price_credit_percent?: number
+          price_debit_percent?: number
+          price_pdv?: number | null
+          price_pix_percent?: number
           rating?: number | null
           sale_ends_at?: string | null
           sale_price?: number | null
@@ -934,6 +944,11 @@ export type Database = {
           origem?: string | null
           pound_test?: string | null
           price?: number
+          price_cash_percent?: number
+          price_credit_percent?: number
+          price_debit_percent?: number
+          price_pdv?: number | null
+          price_pix_percent?: number
           rating?: number | null
           sale_ends_at?: string | null
           sale_price?: number | null
