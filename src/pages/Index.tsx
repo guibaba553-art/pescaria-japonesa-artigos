@@ -13,8 +13,8 @@ const Index = () => {
       <Header />
       {/* Spacer to compensate fixed Header height
           Mobile: 64px (main bar only)
-          Desktop (lg+): 36px top bar + 64px main + 44px categories = 144px */}
-      <div aria-hidden className="h-16 lg:h-36" />
+          Desktop (lg+): 64px main + 44px categories = 108px */}
+      <div aria-hidden className="h-16 lg:h-[108px]" />
       <TopBenefitsBar />
       <main>
         <Hero />
