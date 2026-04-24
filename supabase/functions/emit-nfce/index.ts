@@ -173,23 +173,75 @@ serve(async (req) => {
       : 'https://homologacao.focusnfe.com.br';
 
     const nfceSeries = String(focusSettings.serie_nfce || 1);
-    const configuredNextNumber = Number(focusSettings.proximo_numero_nfce || 1);
-    let currentNfceNumber = configuredNextNumber > 0 ? configuredNextNumber : 1;
+    const configuredNextNumber = Math.max(Number(focusSettings.proximo_numero_nfce || 1), 1);
+    let nextNumberCursor = configuredNextNumber;
+    let currentNfceNumber = configuredNextNumber;
     const getCurrentNfceNumber = () => String(currentNfceNumber);
-    const persistNextNfceNumber = async (nextNumber: number) => {
-      if (!focusSettings.id || !Number.isFinite(nextNumber) || nextNumber < 1) return;
+
+    const reserveNfceNumber = async (minNumber = 1) => {
+      const desiredNumber = Math.max(minNumber, 1);
+
+      if (!focusSettings.id) {
+        currentNfceNumber = Math.max(nextNumberCursor, desiredNumber);
+        nextNumberCursor = currentNfceNumber + 1;
+        return currentNfceNumber;
+      }
+
+      for (let reserveAttempt = 1; reserveAttempt <= 8; reserveAttempt += 1) {
+        const reservedNumber = Math.max(nextNumberCursor, desiredNumber);
+        const { data, error } = await supabase
+          .from('focus_nfe_settings')
+          .update({
+            proximo_numero_nfce: reservedNumber + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', focusSettings.id)
+          .eq('proximo_numero_nfce', nextNumberCursor)
+          .select('proximo_numero_nfce')
+          .maybeSingle();
+
+        if (!error && data) {
+          currentNfceNumber = reservedNumber;
+          nextNumberCursor = reservedNumber + 1;
+          return reservedNumber;
+        }
+
+        const { data: latestSettings, error: latestSettingsError } = await supabase
+          .from('focus_nfe_settings')
+          .select('proximo_numero_nfce')
+          .eq('id', focusSettings.id)
+          .single();
+
+        if (latestSettingsError || !latestSettings) {
+          console.error('Erro ao recarregar sequência NFC-e:', latestSettingsError);
+          break;
+        }
+
+        nextNumberCursor = Math.max(Number(latestSettings.proximo_numero_nfce || 1), desiredNumber);
+      }
+
+      throw new Error('Não foi possível reservar a próxima numeração da NFC-e. Tente novamente.');
+    };
+
+    const ensureNextNfceNumberAtLeast = async (minNextNumber: number) => {
+      if (!focusSettings.id || !Number.isFinite(minNextNumber) || minNextNumber < 1) return;
+      if (minNextNumber <= nextNumberCursor) return;
 
       const { error } = await supabase
         .from('focus_nfe_settings')
         .update({
-          proximo_numero_nfce: nextNumber,
+          proximo_numero_nfce: minNextNumber,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', focusSettings.id);
+        .eq('id', focusSettings.id)
+        .lt('proximo_numero_nfce', minNextNumber);
 
       if (error) {
-        console.error('Erro ao atualizar próximo número da NFC-e:', error);
+        console.error('Erro ao sincronizar próximo número da NFC-e:', error);
+        return;
       }
+
+      nextNumberCursor = minNextNumber;
     };
 
     // Determinar destinatário
@@ -306,6 +358,8 @@ serve(async (req) => {
       return payload;
     };
 
+    await reserveNfceNumber(configuredNextNumber);
+
     let futureOffsetMinutes = 0;
     let dataEmissao = buildDataEmissao(futureOffsetMinutes);
     let payload = buildPayload(dataEmissao);
@@ -325,13 +379,14 @@ serve(async (req) => {
     // Registrar emissão pendente
     const { data: emission, error: emissionError } = await supabase
       .from('nfe_emissions')
-      .insert({
+        .insert({
         order_id: body.order_id || '00000000-0000-0000-0000-000000000000',
         status: 'pending',
         modelo: '65',
         ambiente: focusSettings.ambiente,
         tipo: 'saida',
         ref_focus: ref,
+          nfe_number: getCurrentNfceNumber(),
         valor_total: body.total_amount,
         products_count: body.items.length,
       })
