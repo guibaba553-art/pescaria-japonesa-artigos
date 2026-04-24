@@ -28,6 +28,17 @@ export function MobileBottomNav() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Aquece o chunk de /produtos em idle — usuário mobile quase sempre acessa o catálogo
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) {
+      w.requestIdleCallback(() => prefetchProducts());
+    } else {
+      const t = setTimeout(prefetchProducts, 1500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   // Oculta em rotas internas/operacionais (PDV, Admin, Dashboard, Auth, etc.)
   const HIDDEN_PREFIXES = [
     '/pdv',
