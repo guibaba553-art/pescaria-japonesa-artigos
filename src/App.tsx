@@ -32,6 +32,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const PoliticaPrivacidade = lazy(() => import("./pages/PoliticaPrivacidade"));
 const TermosUso = lazy(() => import("./pages/TermosUso"));
 const PoliticaTrocas = lazy(() => import("./pages/PoliticaTrocas"));
+const PoliticaFrete = lazy(() => import("./pages/PoliticaFrete"));
+const AdminLGPD = lazy(() => import("./pages/AdminLGPD"));
 const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
@@ -86,6 +88,8 @@ const App = () => (
                 <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
                 <Route path="/termos-de-uso" element={<TermosUso />} />
                 <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
+                <Route path="/politica-de-frete" element={<PoliticaFrete />} />
+                <Route path="/admin/lgpd" element={<AdminLGPD />} />
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />

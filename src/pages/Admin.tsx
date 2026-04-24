@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
-  Package, ClipboardList, Users,
+  Package, ClipboardList, Users, ShieldCheck,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -81,6 +81,13 @@ export default function Admin() {
       desc: 'Permissões e acessos da equipe',
       icon: Users,
       path: '/admin/funcionarios',
+      adminOnly: true,
+    },
+    {
+      title: 'LGPD / ROPA',
+      desc: 'Registro de tratamento de dados',
+      icon: ShieldCheck,
+      path: '/admin/lgpd',
       adminOnly: true,
     },
   ];
