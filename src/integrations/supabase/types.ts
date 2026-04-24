@@ -1099,6 +1099,63 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          movement_type: string
+          order_id: string | null
+          performed_by: string | null
+          product_id: string
+          quantity_delta: number
+          reason: string | null
+          stock_after: number
+          stock_before: number
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          movement_type: string
+          order_id?: string | null
+          performed_by?: string | null
+          product_id: string
+          quantity_delta: number
+          reason?: string | null
+          stock_after: number
+          stock_before: number
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          movement_type?: string
+          order_id?: string | null
+          performed_by?: string | null
+          product_id?: string
+          quantity_delta?: number
+          reason?: string | null
+          stock_after?: number
+          stock_before?: number
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "product_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tga_sync_log: {
         Row: {
           created_at: string
@@ -1166,6 +1223,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_stock_movement: {
+        Args: {
+          p_movement_type: string
+          p_order_id?: string
+          p_product_id: string
+          p_quantity_delta: number
+          p_reason?: string
+          p_variation_id: string
+        }
+        Returns: Json
+      }
       check_fiscal_rate_limit: {
         Args: {
           p_function_name: string
@@ -1192,6 +1260,11 @@ export type Database = {
         }
         Returns: string
       }
+      reconcile_stock: {
+        Args: { p_product_id: string; p_variation_id?: string }
+        Returns: Json
+      }
+      revert_order_stock: { Args: { p_order_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
