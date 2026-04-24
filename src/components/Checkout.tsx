@@ -24,6 +24,10 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { APP_CONFIG } from '@/config/constants';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
+import { MapPin, Plus, Check } from 'lucide-react';
+import type { UserAddress } from '@/components/MyAddresses';
+import { MyAddresses } from '@/components/MyAddresses';
+import { formatCEP } from '@/utils/validation';
 
 interface CheckoutProps {
   open: boolean;
