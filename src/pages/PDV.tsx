@@ -1255,8 +1255,10 @@ export default function PDV() {
                                 <div className="flex items-center gap-2">
                                   <User className="w-4 h-4" />
                                   <div>
-                                    <p className="font-medium">{customer.full_name}</p>
-                                    <p className="text-xs text-muted-foreground">CPF: {customer.cpf}</p>
+                                    <p className="font-medium">{customer.company_name || customer.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {customer.cnpj ? `CNPJ: ${customer.cnpj}` : `CPF: ${customer.cpf}`}
+                                    </p>
                                   </div>
                                 </div>
                               </SelectItem>
