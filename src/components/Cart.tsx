@@ -54,7 +54,6 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
     setCheckoutOpen(true);
   };
 
-  const pixTotal = (total + (total >= 0 ? 0 : 0)) * 0.95; // PIX 5% on items only
   const installment = total / 10;
 
   const isControlled = open !== undefined;
