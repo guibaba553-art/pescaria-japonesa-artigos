@@ -4,7 +4,8 @@ import { AutoModel, AutoProcessor, env, RawImage } from '@huggingface/transforme
 env.allowLocalModels = false;
 env.useBrowserCache = true; // cacheia o modelo após o 1º download
 
-const MAX_IMAGE_DIMENSION = 1024;
+// Reduzido de 1024 -> 512 para evitar Out-of-Memory em PCs/celulares mais simples
+const MAX_IMAGE_DIMENSION = 512;
 
 let modelPromise: Promise<{ model: any; processor: any }> | null = null;
 
