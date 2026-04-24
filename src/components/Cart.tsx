@@ -213,6 +213,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
                   ou <strong className="text-foreground">10x de R$ {((total + shippingCost) / 10).toFixed(2).replace('.', ',')}</strong> sem juros
                 </p>
               )}
+            </div>
 
             <Button
               className="w-full h-12 rounded-full font-black text-base btn-press"
