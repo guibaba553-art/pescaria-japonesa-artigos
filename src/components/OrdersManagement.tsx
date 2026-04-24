@@ -145,6 +145,103 @@ const OrdersTable = ({
   emittingNFCe: Set<string>;
   openLabelDialog: (order: Order) => void;
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<'today' | '7days' | '30days' | 'all'>('all');
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+
+  const toggleDay = (dayKey: string) => {
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) next.delete(dayKey);
+      else next.add(dayKey);
+      return next;
+    });
+  };
+
+  // Aplica filtros (busca + data)
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let cutoff: Date | null = null;
+    if (dateFilter === 'today') cutoff = startOfToday;
+    else if (dateFilter === '7days') cutoff = new Date(startOfToday.getTime() - 6 * 86400000);
+    else if (dateFilter === '30days') cutoff = new Date(startOfToday.getTime() - 29 * 86400000);
+
+    const q = searchQuery.trim().toLowerCase();
+
+    return orders.filter(o => {
+      if (cutoff && new Date(o.created_at) < cutoff) return false;
+      if (!q) return true;
+      const customerName = (profiles[o.user_id]?.name || '').toLowerCase();
+      const cpf = (profiles[o.user_id]?.cpf || '').toLowerCase();
+      const idShort = o.id.slice(0, 8).toLowerCase();
+      return (
+        customerName.includes(q) ||
+        cpf.includes(q) ||
+        idShort.includes(q) ||
+        o.id.toLowerCase().includes(q) ||
+        (o.tracking_code || '').toLowerCase().includes(q)
+      );
+    });
+  }, [orders, searchQuery, dateFilter, profiles]);
+
+  // Agrupa por dia
+  const groupedByDay = useMemo(() => {
+    const groups: Record<string, { label: string; date: Date; orders: Order[]; total: number }> = {};
+    for (const o of filteredOrders) {
+      const d = new Date(o.created_at);
+      const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!groups[dayKey]) {
+        const today = new Date();
+        const yesterday = new Date(today.getTime() - 86400000);
+        const isToday = d.toDateString() === today.toDateString();
+        const isYesterday = d.toDateString() === yesterday.toDateString();
+        const formatted = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        const label = isToday ? `Hoje • ${formatted}` : isYesterday ? `Ontem • ${formatted}` : formatted;
+        groups[dayKey] = { label, date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), orders: [], total: 0 };
+      }
+      groups[dayKey].orders.push(o);
+      groups[dayKey].total += Number(o.total_amount);
+    }
+    return Object.entries(groups)
+      .sort((a, b) => b[1].date.getTime() - a[1].date.getTime())
+      .map(([key, value]) => ({ key, ...value }));
+  }, [filteredOrders]);
+
+  const FiltersBar = (
+    <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome, CPF, ID do pedido ou código de rastreio..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+        <SelectTrigger className="w-full sm:w-[200px]">
+          <CalendarIcon className="w-4 h-4 mr-2" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="today">Hoje</SelectItem>
+          <SelectItem value="7days">Últimos 7 dias</SelectItem>
+          <SelectItem value="30days">Últimos 30 dias</SelectItem>
+          <SelectItem value="all">Todos</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
@@ -155,7 +252,20 @@ const OrdersTable = ({
     );
   }
 
-  return (
+  if (filteredOrders.length === 0) {
+    return (
+      <div>
+        {FiltersBar}
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+          <Search className="w-12 h-12 mb-3 opacity-40" />
+          <p className="text-sm font-medium">Nenhum pedido encontrado</p>
+          <p className="text-xs opacity-70 mt-1">Ajuste os filtros para ver mais resultados</p>
+        </div>
+      </div>
+    );
+  }
+
+  const renderOrderCard = (order: Order) => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {orders.map((order) => {
         const isExpanded = expandedOrders.has(order.id);
