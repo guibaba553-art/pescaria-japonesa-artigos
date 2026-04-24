@@ -240,10 +240,11 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
         sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
         price_pdv: pricePdv ? parseFloat(pricePdv) : null,
-        price_credit_percent: priceCreditPercent ? parseFloat(priceCreditPercent) : 0,
-        price_debit_percent: priceDebitPercent ? parseFloat(priceDebitPercent) : 0,
-        price_pix_percent: pricePixPercent ? parseFloat(pricePixPercent) : 0,
-        price_cash_percent: priceCashPercent ? parseFloat(priceCashPercent) : 0,
+        // Fórmula fixa: PIX/Dinheiro = base, Débito = +5%, Crédito = +10,25%
+        price_pix_percent: 0,
+        price_cash_percent: 0,
+        price_debit_percent: 5,
+        price_credit_percent: 10.25,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
