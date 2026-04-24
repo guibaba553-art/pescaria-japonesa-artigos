@@ -57,6 +57,8 @@ const Categories = () => {
           </div>
           <button
             onClick={() => navigate('/produtos')}
+            onMouseEnter={prefetchProducts}
+            onTouchStart={prefetchProducts}
             className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
           >
             Ver todas
