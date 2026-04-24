@@ -93,6 +93,7 @@ export default function Account() {
     expiresAt?: string;
     orderId: string;
   } | null>(null);
+  const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
