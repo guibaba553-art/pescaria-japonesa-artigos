@@ -54,12 +54,22 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const finalTotal = (total + shippingCost) - pixDiscount;
 
   useEffect(() => {
-    // Carregar SDK do Mercado Pago
+    // Só carrega o SDK quando o checkout for aberto
+    if (!open) return;
+
+    // Reusa o script se já estiver no DOM (entre aberturas)
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://sdk.mercadopago.com/js/v2"]'
+    );
+    if (existing) {
+      setMpLoaded(true);
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://sdk.mercadopago.com/js/v2';
     script.async = true;
     script.onload = () => {
-      console.log('Mercado Pago SDK carregado');
       setMpLoaded(true);
     };
     script.onerror = () => {
@@ -71,13 +81,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       });
     };
     document.body.appendChild(script);
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
+    // Mantemos o script no DOM para reuso — não removemos no cleanup.
+  }, [open]);
 
   const validateCardData = () => {
     const errors: string[] = [];

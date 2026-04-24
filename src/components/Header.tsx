@@ -105,10 +105,10 @@ export function Header() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
         scrolled || !isHome
-          ? 'bg-background/80 backdrop-blur-xl border-b border-border/60'
-          : 'bg-background/40 backdrop-blur-md border-b border-transparent'
+          ? 'bg-background md:bg-background/80 md:backdrop-blur-xl border-b border-border/60'
+          : 'bg-background/95 md:bg-background/40 md:backdrop-blur-md border-b border-transparent'
       }`}
     >
       {/* Main bar */}
