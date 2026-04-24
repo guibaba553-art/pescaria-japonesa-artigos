@@ -49,9 +49,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     cvv: '',
   });
 
-  // Calcular desconto de 5% para PIX
-  const pixDiscount = paymentMethod === 'pix' ? (total + shippingCost) * 0.05 : 0;
-  const finalTotal = (total + shippingCost) - pixDiscount;
+  // Sem desconto especial por método — total final = subtotal + frete
+  const finalTotal = total + shippingCost;
 
   useEffect(() => {
     // Só carrega o SDK quando o checkout for aberto
