@@ -122,6 +122,7 @@ export default function PDV() {
   const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
   const [savedSales, setSavedSales] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
