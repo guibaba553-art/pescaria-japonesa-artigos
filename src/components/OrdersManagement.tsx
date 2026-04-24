@@ -720,7 +720,7 @@ export function OrdersManagement() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado') => {
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     const { error } = await supabase
       .from('orders')
       .update({ status: newStatus })
