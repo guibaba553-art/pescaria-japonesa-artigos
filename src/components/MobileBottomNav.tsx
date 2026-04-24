@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, LayoutGrid, Search, ShoppingBag, User, LayoutDashboard } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
@@ -7,6 +7,11 @@ import { useCategories } from '@/hooks/useCategories';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Cart } from '@/components/Cart';
+
+// Prefetch do chunk /produtos — evita atraso ao tocar em "Categorias" no mobile
+const prefetchProducts = () => {
+  import('@/pages/Products').catch(() => {});
+};
 
 /**
  * Bottom navigation fixa para mobile (visível apenas em < md).
