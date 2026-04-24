@@ -36,7 +36,12 @@ export function ProductCard({
 
   const hasVariations = product.variations && product.variations.length > 0;
   const isOnSale = product.on_sale && product.sale_price;
-  const finalPrice = isOnSale ? product.sale_price! : product.price;
+  const basePrice = isOnSale ? product.sale_price! : product.price;
+  // Para produtos com variações, usa o menor preço entre as variações (ignora 0)
+  const variationMin = hasVariations
+    ? Math.min(...product.variations!.map((v) => v.price).filter((p) => p > 0))
+    : null;
+  const finalPrice = hasVariations && variationMin && isFinite(variationMin) ? variationMin : basePrice;
   const discount = isOnSale
     ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
     : 0;
