@@ -47,7 +47,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado';
   created_at: string;
   user_id: string;
   shipping_cep: string;
