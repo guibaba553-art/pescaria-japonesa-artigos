@@ -446,6 +446,7 @@ serve(async (req) => {
       JSON.stringify(r).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     let attempt = 1;
+    let duplicityCount = 0;
     const maxAttempts = 50;
 
     while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
@@ -463,7 +464,14 @@ serve(async (req) => {
       ref = buildFreshRef();
 
       if (isDuplicityError) {
-        await reserveNfceNumber(nextNumberCursor);
+        duplicityCount += 1;
+        const jumpSize =
+          duplicityCount >= 30 ? 20 :
+          duplicityCount >= 15 ? 10 :
+          duplicityCount >= 8 ? 5 :
+          1;
+
+        await reserveNfceNumber(currentNfceNumber + jumpSize);
       }
 
       futureOffsetMinutes = isLateEmissionError ? 3 : Math.max(futureOffsetMinutes, 1);
@@ -474,6 +482,7 @@ serve(async (req) => {
         attempt,
         ref,
         reason: isDuplicityError ? 'duplicidade-539' : 'data-hora atrasada',
+        duplicityCount,
         futureOffsetMinutes,
         dataEmissao,
         nfceSeries,
