@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { NFEList } from "@/components/NFEList";
 import { FiscalSystem } from "@/components/FiscalSystem";
 import { TaxProjection } from "@/components/TaxProjection";
+import { XMLImporter } from "@/components/XMLImporter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine } from "lucide-react";
 
 interface Product {
   id: string;
@@ -186,7 +187,7 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
@@ -194,6 +195,10 @@ export default function FiscalTools() {
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas Fiscais</span>
+            </TabsTrigger>
+            <TabsTrigger value="entrada">
+              <ArrowDownToLine className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Notas de Entrada</span>
             </TabsTrigger>
             <TabsTrigger value="system">
               <Settings className="w-4 h-4 mr-2" />
@@ -215,6 +220,23 @@ export default function FiscalTools() {
               </CardHeader>
               <CardContent>
                 <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="entrada">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowDownToLine className="w-5 h-5" />
+                  Lançar Nota de Entrada
+                </CardTitle>
+                <CardDescription>
+                  Importe o XML (ou PDF) da NF-e enviada pelo seu fornecedor. O sistema extrai os produtos, atualiza o estoque automaticamente e registra a nota no histórico.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <XMLImporter />
               </CardContent>
             </Card>
           </TabsContent>
