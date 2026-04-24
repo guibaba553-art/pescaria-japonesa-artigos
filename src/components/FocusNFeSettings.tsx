@@ -75,6 +75,7 @@ export function FocusNFeSettings() {
     csc_token: '',
     serie_nfce: 1,
     serie_nfe: 1,
+    proximo_numero_nfce: 1,
     cfop_padrao: '5102',
     cfop_interestadual: '6102',
     csosn_padrao: '102',
@@ -100,22 +101,24 @@ export function FocusNFeSettings() {
       if (error) throw error;
 
       if (data) {
-        setSettingsId(data.id);
+        const settings = data as any;
+        setSettingsId(settings.id);
         setForm({
-          enabled: data.enabled,
-          ambiente: data.ambiente as 'homologacao' | 'producao',
-          csc_id: data.csc_id || '',
-          csc_token: data.csc_token || '',
-          serie_nfce: data.serie_nfce,
-          serie_nfe: data.serie_nfe,
-          cfop_padrao: data.cfop_padrao,
-          cfop_interestadual: data.cfop_interestadual,
-          csosn_padrao: data.csosn_padrao,
-          origem_padrao: data.origem_padrao,
-          unidade_padrao: data.unidade_padrao,
-          ncm_padrao: data.ncm_padrao || '',
-          auto_emit_nfce_pdv: data.auto_emit_nfce_pdv,
-          auto_emit_nfe_pedido_pago: data.auto_emit_nfe_pedido_pago,
+          enabled: settings.enabled,
+          ambiente: settings.ambiente as 'homologacao' | 'producao',
+          csc_id: settings.csc_id || '',
+          csc_token: settings.csc_token || '',
+          serie_nfce: settings.serie_nfce,
+          serie_nfe: settings.serie_nfe,
+          proximo_numero_nfce: settings.proximo_numero_nfce || 1,
+          cfop_padrao: settings.cfop_padrao,
+          cfop_interestadual: settings.cfop_interestadual,
+          csosn_padrao: settings.csosn_padrao,
+          origem_padrao: settings.origem_padrao,
+          unidade_padrao: settings.unidade_padrao,
+          ncm_padrao: settings.ncm_padrao || '',
+          auto_emit_nfce_pdv: settings.auto_emit_nfce_pdv,
+          auto_emit_nfe_pedido_pago: settings.auto_emit_nfe_pedido_pago,
         });
       }
     } catch (e: any) {
