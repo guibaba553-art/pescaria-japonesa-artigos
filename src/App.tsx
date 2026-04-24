@@ -88,6 +88,7 @@ const App = () => (
                 <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
+                <Route path="/completar-cadastro" element={<CompletarCadastro />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
