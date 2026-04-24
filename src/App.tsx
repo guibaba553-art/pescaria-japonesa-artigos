@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,6 +43,17 @@ const RouteFallback = () => (
   </div>
 );
 
+const DeferredShell = ({ children, delay = 150 }: { children: React.ReactNode; delay?: number }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMounted(true), delay);
+    return () => window.clearTimeout(timer);
+  }, [delay]);
+
+  return mounted ? <>{children}</> : null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -80,8 +91,10 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-            <MobileBottomNav />
-            <CookieBanner />
+            <DeferredShell>
+              <MobileBottomNav />
+              <CookieBanner />
+            </DeferredShell>
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
