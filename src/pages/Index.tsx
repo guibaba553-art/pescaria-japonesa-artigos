@@ -1,21 +1,12 @@
-import { lazy, Suspense } from "react";
 import { Header } from "@/components/Header";
 import TopBenefitsBar from "@/components/TopBenefitsBar";
 import Hero from "@/components/Hero";
 import Categories from "@/components/Categories";
+import FlashDealsCountdown from "@/components/FlashDealsCountdown";
+import FeaturedProducts from "@/components/FeaturedProducts";
+import PromoBanner from "@/components/PromoBanner";
+import Benefits from "@/components/Benefits";
 import Footer from "@/components/Footer";
-
-// Seções abaixo do fold — lazy para acelerar o primeiro paint da home
-const FlashDealsCountdown = lazy(() => import("@/components/FlashDealsCountdown"));
-const FeaturedProducts = lazy(() => import("@/components/FeaturedProducts"));
-const PromoBanner = lazy(() => import("@/components/PromoBanner"));
-const Benefits = lazy(() => import("@/components/Benefits"));
-
-const SectionFallback = () => (
-  <div className="py-12 flex justify-center">
-    <div className="w-6 h-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-  </div>
-);
 
 const Index = () => {
   return (
@@ -29,18 +20,10 @@ const Index = () => {
       <main>
         <Hero />
         <Categories />
-        <Suspense fallback={<SectionFallback />}>
-          <FlashDealsCountdown />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <FeaturedProducts />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <PromoBanner />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <Benefits />
-        </Suspense>
+        <FlashDealsCountdown />
+        <FeaturedProducts />
+        <PromoBanner />
+        <Benefits />
       </main>
       <Footer />
     </div>
