@@ -170,17 +170,19 @@ export function ProductCard({
               Ver opções
             </Button>
           ) : (
-            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-              <ProductQuantitySelector
-                quantity={quantity}
-                maxQuantity={product.stock}
-                onIncrement={onIncrement}
-                onDecrement={onDecrement}
-                onChange={onQuantityChange}
-                size="sm"
-              />
+            <div className="flex items-center gap-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex-shrink-0">
+                <ProductQuantitySelector
+                  quantity={quantity}
+                  maxQuantity={product.stock}
+                  onIncrement={onIncrement}
+                  onDecrement={onDecrement}
+                  onChange={onQuantityChange}
+                  size="sm"
+                />
+              </div>
               <Button
-                className="flex-1 rounded-lg btn-press font-bold"
+                className="flex-1 min-w-0 rounded-lg btn-press font-bold px-2"
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -188,8 +190,8 @@ export function ProductCard({
                 }}
                 disabled={product.stock === 0}
               >
-                <ShoppingCart className="w-3.5 h-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">Comprar</span>
+                <ShoppingCart className="w-3.5 h-3.5 shrink-0 sm:mr-1.5" />
+                <span className="hidden sm:inline truncate">Comprar</span>
               </Button>
             </div>
           )}
