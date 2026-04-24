@@ -17,7 +17,7 @@ const Index = () => {
 
   useEffect(() => {
     let idleId: number | null = null;
-    let timeoutId: number | null = null;
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     if ("requestIdleCallback" in window) {
       idleId = (window as Window & { requestIdleCallback: (cb: IdleRequestCallback, options?: IdleRequestOptions) => number }).requestIdleCallback(
