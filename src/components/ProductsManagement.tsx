@@ -18,6 +18,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { ProductVariations } from '@/components/ProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { validateProductForm } from '@/utils/productValidation';
+import { useSalesVelocity } from '@/hooks/useSalesVelocity';
 
 interface Product {
   id: string;
@@ -58,7 +59,8 @@ export function ProductsManagement() {
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured'>('all');
+  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock'>('all');
+  const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
 
@@ -226,11 +228,21 @@ export function ProductsManagement() {
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
   const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
 
+  const restockIds = new Set(
+    visibleProducts
+      .filter((p) => {
+        const v = velocities[p.id];
+        return v && (v.status === 'critical' || v.status === 'out_of_stock');
+      })
+      .map((p) => p.id)
+  );
+
   let filteredProducts = visibleProducts;
   if (filter === 'in-stock') filteredProducts = filteredProducts.filter((p) => p.stock > 0);
   if (filter === 'out-of-stock') filteredProducts = filteredProducts.filter((p) => p.stock === 0);
   if (filter === 'on-sale') filteredProducts = filteredProducts.filter((p) => p.on_sale);
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
+  if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
   filteredProducts = filteredProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -244,6 +256,7 @@ export function ProductsManagement() {
     { key: 'out-of-stock', label: 'Esgotados', count: outOfStock },
     { key: 'on-sale', label: 'Promoção', count: onSaleCount },
     { key: 'featured', label: 'Destaque', count: featuredCount },
+    { key: 'restock', label: 'Reestoque', count: restockIds.size },
   ];
 
   return (
