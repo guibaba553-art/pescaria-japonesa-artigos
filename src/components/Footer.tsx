@@ -102,6 +102,7 @@ const Footer = () => {
               <li><Link to="/politica-privacidade" className="hover:text-foreground transition-colors">Privacidade</Link></li>
               <li><Link to="/termos-de-uso" className="hover:text-foreground transition-colors">Termos de uso</Link></li>
               <li><Link to="/politica-de-trocas" className="hover:text-foreground transition-colors">Trocas e devoluções</Link></li>
+              <li><Link to="/politica-de-frete" className="hover:text-foreground transition-colors">Política de frete</Link></li>
             </ul>
           </div>
 
@@ -141,7 +142,8 @@ const Footer = () => {
         <div className="border-t border-border pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs text-muted-foreground">
           <div className="space-y-1">
             <p className="font-medium text-foreground">JAPA PESCA E CONVENIENCIA LTDA</p>
-            <p>CNPJ 33.169.502/0001-08 · Sinop, MT · CEP 78556-100</p>
+            <p>G. SEITI GARCIA BABA LTDA · CNPJ 33.169.502/0001-08 · IE 13.900.915-9</p>
+            <p>Av. das Itaúbas, 2281 — Jardim Paraíso, Sinop/MT — CEP 78556-100</p>
           </div>
           <p>&copy; {new Date().getFullYear()} JAPAS. Todos os direitos reservados.</p>
         </div>
