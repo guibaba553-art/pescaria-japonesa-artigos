@@ -1033,43 +1033,45 @@ export function OrdersManagement() {
 
   const renderSiteTabs = () => (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-5">
-        <TabsTrigger value="sem-pagamento">
-          <Clock className="w-4 h-4 mr-2" />
-          Sem Pagamento
-          {site.semPagamento.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="para-enviar">
-          <Package className="w-4 h-4 mr-2" />
-          Para Enviar
-          {site.paraEnviar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="pronto-retirar">
-          <Store className="w-4 h-4 mr-2" />
-          Pronto p/ Retirar
-          {site.prontoRetirar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="em-caminho">
-          <Truck className="w-4 h-4 mr-2" />
-          Em Caminho
-          {site.emCaminho.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="entregues">
-          <PackageCheck className="w-4 h-4 mr-2" />
-          Entregues
-          {site.entregues.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-5 gap-1">
+          <TabsTrigger value="sem-pagamento" className="shrink-0">
+            <Clock className="w-4 h-4 mr-2" />
+            Sem Pagamento
+            {site.semPagamento.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="para-enviar" className="shrink-0">
+            <Package className="w-4 h-4 mr-2" />
+            Para Enviar
+            {site.paraEnviar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pronto-retirar" className="shrink-0">
+            <Store className="w-4 h-4 mr-2" />
+            Pronto p/ Retirar
+            {site.prontoRetirar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="em-caminho" className="shrink-0">
+            <Truck className="w-4 h-4 mr-2" />
+            Em Caminho
+            {site.emCaminho.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="entregues" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Entregues
+            {site.entregues.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="para-enviar"><OrdersTable orders={site.paraEnviar} {...tableProps} /></TabsContent>
@@ -1081,29 +1083,31 @@ export function OrdersManagement() {
 
   const renderPdvTabs = () => (
     <Tabs defaultValue="finalizadas" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="sem-pagamento">
-          <Clock className="w-4 h-4 mr-2" />
-          Sem Pagamento
-          {pdv.semPagamento.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.semPagamento.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="pronto-retirar">
-          <Store className="w-4 h-4 mr-2" />
-          Pronto p/ Retirar
-          {pdv.prontoRetirar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.prontoRetirar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="finalizadas">
-          <PackageCheck className="w-4 h-4 mr-2" />
-          Finalizadas
-          {pdv.finalizadas.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.finalizadas.length}</Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-3 gap-1">
+          <TabsTrigger value="sem-pagamento" className="shrink-0">
+            <Clock className="w-4 h-4 mr-2" />
+            Sem Pagamento
+            {pdv.semPagamento.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.semPagamento.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pronto-retirar" className="shrink-0">
+            <Store className="w-4 h-4 mr-2" />
+            Pronto p/ Retirar
+            {pdv.prontoRetirar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="finalizadas" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Finalizadas
+            {pdv.finalizadas.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.finalizadas.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={pdv.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={pdv.prontoRetirar} {...tableProps} /></TabsContent>
@@ -1120,36 +1124,40 @@ export function OrdersManagement() {
     <Card className="overflow-hidden border-0 shadow-sm">
       {/* Header com gradient */}
       <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-b">
-        <div className="p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="p-3 md:p-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary" />
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+                <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight">Gestão de Pedidos</h2>
-                <p className="text-sm text-muted-foreground">Pedidos do site e vendas do PDV organizados por status</p>
+              <div className="min-w-0">
+                <h2 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">Gestão de Pedidos</h2>
+                <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 md:line-clamp-none">
+                  Pedidos do site e vendas do PDV organizados por status
+                </p>
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
-            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total</p>
-              <p className="text-xl font-bold">{orders.length}</p>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pendentes</p>
-              <p className="text-xl font-bold text-orange-500">{pendingCount}</p>
-            </div>
-            <div className="px-4 py-2 rounded-lg bg-background/80 backdrop-blur border">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Receita</p>
-              <p className="text-xl font-bold text-primary">R$ {totalRevenue.toFixed(2)}</p>
+          <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto md:overflow-visible scrollbar-hide">
+            <div className="flex gap-2 md:gap-3 min-w-min">
+              <div className="shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-background/80 backdrop-blur border min-w-[88px] md:min-w-[110px]">
+                <p className="text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Total</p>
+                <p className="text-base md:text-xl font-bold">{orders.length}</p>
+              </div>
+              <div className="shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-background/80 backdrop-blur border min-w-[88px] md:min-w-[110px]">
+                <p className="text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pendentes</p>
+                <p className="text-base md:text-xl font-bold text-orange-500">{pendingCount}</p>
+              </div>
+              <div className="shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-background/80 backdrop-blur border min-w-[88px] md:min-w-[110px]">
+                <p className="text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Receita</p>
+                <p className="text-base md:text-xl font-bold text-primary">R$ {totalRevenue.toFixed(2)}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <CardContent className="p-4 md:p-6">
+      <CardContent className="p-3 md:p-6">
         <Tabs defaultValue="site" className="space-y-4">
           <TabsList className="grid grid-cols-2 max-w-md h-11">
             <TabsTrigger value="site" className="gap-2">

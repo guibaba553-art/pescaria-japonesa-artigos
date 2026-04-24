@@ -44,26 +44,28 @@ export default function AdminCatalog() {
       title="Gestão de Catálogo"
       description="Gerencie produtos, categorias, rascunhos e destaques do seu e-commerce em um só lugar."
     >
-      <Tabs defaultValue="products" className="space-y-6">
-        <TabsList className="bg-muted/50 p-1 h-auto flex flex-wrap gap-1">
-          <TabsTrigger value="products" className="gap-2">
-            <Package className="w-4 h-4" /> Produtos
-          </TabsTrigger>
-          <TabsTrigger value="categories" className="gap-2">
-            <Tags className="w-4 h-4" /> Categorias
-          </TabsTrigger>
-          <TabsTrigger value="drafts" className="gap-2 relative">
-            <FileEdit className="w-4 h-4" /> Rascunhos
-            {draftCount > 0 && (
-              <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                {draftCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="featured" className="gap-2">
-            <Star className="w-4 h-4" /> Destaques
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="products" className="space-y-4 md:space-y-6">
+        <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
+          <TabsList className="bg-muted/50 p-1 h-auto inline-flex md:flex flex-nowrap md:flex-wrap gap-1 w-max md:w-auto">
+            <TabsTrigger value="products" className="gap-2 shrink-0">
+              <Package className="w-4 h-4" /> Produtos
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="gap-2 shrink-0">
+              <Tags className="w-4 h-4" /> Categorias
+            </TabsTrigger>
+            <TabsTrigger value="drafts" className="gap-2 relative shrink-0">
+              <FileEdit className="w-4 h-4" /> Rascunhos
+              {draftCount > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  {draftCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="featured" className="gap-2 shrink-0">
+              <Star className="w-4 h-4" /> Destaques
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="products"><ProductsManagement /></TabsContent>
         <TabsContent value="categories"><CategoriesManagement /></TabsContent>
