@@ -442,7 +442,7 @@ export function ProductsManagement() {
       </Card>
 
       {showForm && (
-        <Card>
+        <Card id="novo-produto-form" className="border-2 border-primary/40 shadow-lg">
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
             <CardDescription>Preencha os dados do produto</CardDescription>
