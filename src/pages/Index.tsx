@@ -25,14 +25,14 @@ const Index = () => {
         { timeout: 800 }
       );
     } else {
-      timeoutId = window.setTimeout(() => setShowDeferredSections(true), 250);
+      timeoutId = globalThis.setTimeout(() => setShowDeferredSections(true), 250);
     }
 
     return () => {
       if (idleId !== null && "cancelIdleCallback" in window) {
         (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
       }
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      if (timeoutId !== null) globalThis.clearTimeout(timeoutId);
     };
   }, []);
 
