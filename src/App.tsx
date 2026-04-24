@@ -9,6 +9,7 @@ import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { AuthProvider } from "./hooks/useAuth";
+import { CartProvider } from "./hooks/useCart";
 
 // Lazy-loaded routes — keep the initial bundle small for mobile
 const Auth = lazy(() => import("./pages/Auth"));
