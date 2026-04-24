@@ -1,36 +1,45 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Admin from "./pages/Admin";
-import AdminCatalog from "./pages/AdminCatalog";
-import AdminOrders from "./pages/AdminOrders";
-import AdminEmployees from "./pages/AdminEmployees";
-import Account from "./pages/Account";
-import Products from "./pages/Products";
-import ProductDetails from "./pages/ProductDetails";
-import RemoveLogoBackground from "./pages/RemoveLogoBackground";
-import PDV from "./pages/PDV";
-import SalesHistory from "./pages/SalesHistory";
-import Dashboard from "./pages/Dashboard";
-import CashRegister from "./pages/CashRegister";
-import FiscalTools from "./pages/FiscalTools";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
-import PoliticaPrivacidade from "./pages/PoliticaPrivacidade";
-import TermosUso from "./pages/TermosUso";
-import PoliticaTrocas from "./pages/PoliticaTrocas";
-import MeusDados from "./pages/MeusDados";
-import PickupOrder from "./pages/PickupOrder";
+import Index from "./pages/Index"; // landing — keep eager for fast first paint
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 
+// Lazy-loaded routes — keep the initial bundle small for mobile
+const Auth = lazy(() => import("./pages/Auth"));
+const Admin = lazy(() => import("./pages/Admin"));
+const AdminCatalog = lazy(() => import("./pages/AdminCatalog"));
+const AdminOrders = lazy(() => import("./pages/AdminOrders"));
+const AdminEmployees = lazy(() => import("./pages/AdminEmployees"));
+const Account = lazy(() => import("./pages/Account"));
+const Products = lazy(() => import("./pages/Products"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+const RemoveLogoBackground = lazy(() => import("./pages/RemoveLogoBackground"));
+const PDV = lazy(() => import("./pages/PDV"));
+const SalesHistory = lazy(() => import("./pages/SalesHistory"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CashRegister = lazy(() => import("./pages/CashRegister"));
+const FiscalTools = lazy(() => import("./pages/FiscalTools"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PoliticaPrivacidade = lazy(() => import("./pages/PoliticaPrivacidade"));
+const TermosUso = lazy(() => import("./pages/TermosUso"));
+const PoliticaTrocas = lazy(() => import("./pages/PoliticaTrocas"));
+const MeusDados = lazy(() => import("./pages/MeusDados"));
+const PickupOrder = lazy(() => import("./pages/PickupOrder"));
+
 const queryClient = new QueryClient();
+
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -39,32 +48,34 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <PageViewTracker />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/catalogo" element={<AdminCatalog />} />
-          <Route path="/admin/pedidos" element={<AdminOrders />} />
-          <Route path="/admin/funcionarios" element={<AdminEmployees />} />
-          <Route path="/pdv" element={<PDV />} />
-          <Route path="/pdv/sales-history" element={<SalesHistory />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/fechamento-caixa" element={<CashRegister />} />
-          <Route path="/ferramentas-fiscais" element={<FiscalTools />} />
-          <Route path="/conta" element={<Account />} />
-          <Route path="/produtos" element={<Products />} />
-          <Route path="/produto/:id" element={<ProductDetails />} />
-          <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
-          <Route path="/termos-de-uso" element={<TermosUso />} />
-          <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
-          <Route path="/meus-dados" element={<MeusDados />} />
-          <Route path="/retirada/:id" element={<PickupOrder />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/catalogo" element={<AdminCatalog />} />
+            <Route path="/admin/pedidos" element={<AdminOrders />} />
+            <Route path="/admin/funcionarios" element={<AdminEmployees />} />
+            <Route path="/pdv" element={<PDV />} />
+            <Route path="/pdv/sales-history" element={<SalesHistory />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/fechamento-caixa" element={<CashRegister />} />
+            <Route path="/ferramentas-fiscais" element={<FiscalTools />} />
+            <Route path="/conta" element={<Account />} />
+            <Route path="/produtos" element={<Products />} />
+            <Route path="/produto/:id" element={<ProductDetails />} />
+            <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+            <Route path="/termos-de-uso" element={<TermosUso />} />
+            <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
+            <Route path="/meus-dados" element={<MeusDados />} />
+            <Route path="/retirada/:id" element={<PickupOrder />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
         <MobileBottomNav />
         <CookieBanner />
       </BrowserRouter>
