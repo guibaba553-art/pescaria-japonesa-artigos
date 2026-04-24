@@ -740,13 +740,22 @@ export default function PDV() {
       // Criar itens do pedido
       // product_id sempre referencia products.id (FK do produto pai).
       // variation_id (opcional) referencia product_variations.id quando o item vendido é uma variação.
-      const orderItems = cart.map(item => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        variation_id: item.variation ? item.variation.id : null,
-        quantity: item.quantity,
-        price_at_purchase: getItemUnitPrice(item)
-      }));
+      // Quando há desconto em R$, distribuímos proporcionalmente entre os itens
+      // para que a soma de (price_at_purchase * quantity) bata com o total.
+      const subtotal = calculateSubtotal();
+      const discount = getDiscountValue();
+      const discountRatio = subtotal > 0 ? discount / subtotal : 0;
+      const orderItems = cart.map(item => {
+        const unit = getItemUnitPrice(item);
+        const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
+        return {
+          order_id: order.id,
+          product_id: item.product.id,
+          variation_id: item.variation ? item.variation.id : null,
+          quantity: item.quantity,
+          price_at_purchase: adjustedUnit,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
