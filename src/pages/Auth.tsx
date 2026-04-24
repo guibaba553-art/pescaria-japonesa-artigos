@@ -199,6 +199,16 @@ export default function Auth() {
                     className="h-12 rounded-xl"
                   />
                 </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Checkbox
+                    id="remember-me"
+                    checked={rememberMe}
+                    onCheckedChange={(c) => setRememberMe(c === true)}
+                  />
+                  <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer text-muted-foreground">
+                    Lembrar de mim neste dispositivo
+                  </Label>
+                </div>
                 <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
