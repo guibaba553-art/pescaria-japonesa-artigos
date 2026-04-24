@@ -477,9 +477,6 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                     <p className="font-medium">PIX</p>
                     <p className="text-sm text-muted-foreground">Aprovação instantânea</p>
                   </div>
-                  <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-                    5% OFF
-                  </div>
                 </Label>
               </div>
 
