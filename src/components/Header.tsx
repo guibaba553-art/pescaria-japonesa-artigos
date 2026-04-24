@@ -217,7 +217,10 @@ export function Header() {
             Produtos
           </button>
 
-          <Cart />
+          {/* Cart visível só no desktop — no mobile fica na bottom nav */}
+          <div className="hidden md:block">
+            <Cart />
+          </div>
 
           {user ? (
             <>
@@ -252,89 +255,21 @@ export function Header() {
                 <LogIn className="w-4 h-4 mr-2" />
                 Entrar
               </Button>
-              <Button size="sm" onClick={() => navigate('/auth')} className="rounded-full">
+              <Button size="sm" onClick={() => navigate('/auth')} className="rounded-full hidden sm:inline-flex">
                 <UserPlus className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Criar conta</span>
               </Button>
             </>
           )}
 
-          {/* Mobile menu */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden rounded-full" aria-label="Menu">
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-[88%] sm:w-96 p-0">
-              <div className="flex flex-col h-full">
-                <div className="p-6 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <img src={japaLogo} alt="JAPAS" className="h-8 w-8 object-contain" />
-                    <span className="font-display font-bold text-lg">JAPAS<span className="text-primary">.</span></span>
-                  </div>
-                </div>
-
-                <form onSubmit={(e) => { handleSearch(e); setMobileOpen(false); }} className="p-4 border-b border-border">
-                  <div className="relative">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      placeholder="Buscar produtos..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 h-11 rounded-full bg-muted/60 border-transparent"
-                    />
-                  </div>
-                </form>
-
-                <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-                  <button
-                    onClick={() => { navigate('/produtos'); setMobileOpen(false); }}
-                    className="w-full text-left px-4 py-3 rounded-xl hover:bg-muted font-medium transition-colors"
-                  >
-                    Todos os produtos
-                  </button>
-                  {primaries.length > 0 && (
-                    <>
-                      <p className="px-4 pt-4 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Categorias</p>
-                      {primaries.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => { navigate(`/produtos?category=${encodeURIComponent(cat.name)}`); setMobileOpen(false); }}
-                          className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                </nav>
-
-                <div className="p-4 border-t border-border space-y-2">
-                  {user ? (
-                    <>
-                      <Button variant="outline" className="w-full rounded-full" onClick={() => { navigate('/conta'); setMobileOpen(false); }}>
-                        <UserCircle className="w-4 h-4 mr-2" /> Minha conta
-                      </Button>
-                      <Button variant="ghost" className="w-full rounded-full" onClick={() => { signOut(); setMobileOpen(false); }}>
-                        <LogOut className="w-4 h-4 mr-2" /> Sair
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button className="w-full rounded-full" onClick={() => { navigate('/auth'); setMobileOpen(false); }}>
-                        <UserPlus className="w-4 h-4 mr-2" /> Criar conta
-                      </Button>
-                      <Button variant="outline" className="w-full rounded-full" onClick={() => { navigate('/auth'); setMobileOpen(false); }}>
-                        <LogIn className="w-4 h-4 mr-2" /> Entrar
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          {/* Botão de busca mobile (substitui menu hamburguer — navegação fica na bottom nav) */}
+          <button
+            onClick={() => navigate('/produtos')}
+            className="md:hidden h-10 w-10 rounded-full flex items-center justify-center text-foreground active:bg-muted transition-colors"
+            aria-label="Buscar produtos"
+          >
+            <Search className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
