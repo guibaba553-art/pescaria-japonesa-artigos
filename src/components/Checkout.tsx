@@ -448,12 +448,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium tabular-nums">R$ {(total + shippingCost).toFixed(2).replace('.', ',')}</span>
             </div>
-            {paymentMethod === 'pix' && pixDiscount > 0 && (
-              <div className="flex justify-between text-sm text-success font-bold">
-                <span>Desconto PIX (5%)</span>
-                <span className="tabular-nums">− R$ {pixDiscount.toFixed(2).replace('.', ',')}</span>
-              </div>
-            )}
+            {/* Sem desconto extra por método de pagamento */}
             <Separator className="my-2" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold text-base">Total a pagar</span>
