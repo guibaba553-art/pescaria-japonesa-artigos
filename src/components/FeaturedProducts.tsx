@@ -40,25 +40,24 @@ const FeaturedProducts = () => {
   };
 
   return (
-    <section className="py-24 sm:py-32 bg-background">
+    <section className="py-12 sm:py-16 bg-background">
       <div className="container mx-auto">
         {/* Section header */}
-        <div className="flex items-end justify-between mb-12 sm:mb-16">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold text-primary uppercase tracking-[0.2em] mb-4">
-              Em destaque
+        <div className="flex items-end justify-between mb-6 sm:mb-8">
+          <div>
+            <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1.5">
+              ⭐ Mais vendidos
             </p>
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-bold text-foreground text-balance leading-[1.05]">
-              Selecionados para<br />
-              <span className="text-muted-foreground">você.</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-black text-foreground leading-tight">
+              Produtos em destaque
             </h2>
           </div>
           <button
             onClick={() => navigate('/produtos')}
-            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors group"
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
           >
-            Ver catálogo completo
-            <ArrowUpRight className="w-4 h-4 transition-transform group-hover:rotate-45" />
+            Ver tudo
+            <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
 
@@ -72,7 +71,7 @@ const FeaturedProducts = () => {
             <p className="text-muted-foreground">Nenhum produto em destaque no momento.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
             {products.map((product, idx) => (
               <div
                 key={product.id}
