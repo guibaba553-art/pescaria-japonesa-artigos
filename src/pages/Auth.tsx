@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+
+const REMEMBER_ME_KEY = 'japas:rememberMe';
 import { sanitizeNumericInput, formatCPF, formatCEP, formatPhone } from '@/utils/validation';
 import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,7 +29,17 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Carrega último email salvo + preferência de "lembrar"
+  useEffect(() => {
+    const remembered = localStorage.getItem(REMEMBER_ME_KEY);
+    if (remembered) {
+      setRememberMe(true);
+      setLoginEmail(remembered);
+    }
+  }, []);
 
   if (user) {
     navigate(redirectTo);
@@ -39,7 +51,17 @@ export default function Auth() {
     setLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
     setLoading(false);
-    if (!error) navigate(redirectTo);
+    if (!error) {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+        sessionStorage.removeItem('japas:sessionOnly');
+      } else {
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        // Marca sessão como temporária — será removida ao fechar o navegador
+        sessionStorage.setItem('japas:sessionOnly', '1');
+      }
+      navigate(redirectTo);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -174,6 +196,16 @@ export default function Auth() {
                     required
                     className="h-12 rounded-xl"
                   />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Checkbox
+                    id="remember-me"
+                    checked={rememberMe}
+                    onCheckedChange={(c) => setRememberMe(c === true)}
+                  />
+                  <Label htmlFor="remember-me" className="text-sm font-normal cursor-pointer text-muted-foreground">
+                    Lembrar de mim neste dispositivo
+                  </Label>
                 </div>
                 <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
