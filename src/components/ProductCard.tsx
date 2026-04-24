@@ -152,14 +152,25 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Envio rápido — slot fixo para manter alinhamento */}
-        <div className="min-h-[28px] mb-2">
+        {/* Envio rápido + prova social — slot fixo para manter alinhamento */}
+        <div className="min-h-[28px] mb-2 flex items-center gap-2 flex-wrap">
           {!hasVariations && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide self-start">
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide">
               <Truck className="w-3 h-3" />
               Envio rápido
             </div>
           )}
+          {showSocialProof && sales !== null ? (
+            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600">
+              <Flame className="w-3 h-3 fill-current" />
+              {sales} vendidos hoje
+            </div>
+          ) : showSocialProof && viewers >= 6 ? (
+            <div className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+              <Eye className="w-3 h-3" />
+              {viewers} vendo agora
+            </div>
+          ) : null}
         </div>
 
         {/* CTA */}
