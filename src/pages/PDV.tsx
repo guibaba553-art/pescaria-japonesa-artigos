@@ -1282,7 +1282,38 @@ export default function PDV() {
           </div>
         </div>
       </div>
-      
+
+      {/* Sticky bottom bar — mobile: total + ir para carrinho/finalizar */}
+      {cart.length > 0 && (
+        <div
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <div className="px-3 py-2.5 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
+                {cart.length} {cart.length === 1 ? 'item' : 'itens'} no carrinho
+              </p>
+              <p className="text-xl font-black text-primary leading-tight mt-0.5">
+                R$ {total.toFixed(2)}
+              </p>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => {
+                document
+                  .getElementById('pdv-cart-panel')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="rounded-full font-bold shadow-md"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Ver carrinho
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Diálogo de seleção de variações */}
       <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
