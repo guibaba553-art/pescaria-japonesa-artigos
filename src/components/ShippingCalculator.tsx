@@ -135,14 +135,32 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     setLoading(false);
   };
 
-  const handleCalculateForAddress = async (addr: UserAddress) => {
+  const handleCalculateForAddress = async (addr: UserAddress, expand = true) => {
     setLoadingAddressId(addr.id);
-    setExpandedAddressId(addr.id);
+    if (expand) setExpandedAddressId(addr.id);
     const opts = await fetchShippingForCep(addr.cep);
     if (opts) {
       setAddressOptions((prev) => ({ ...prev, [addr.id]: opts }));
     }
     setLoadingAddressId(null);
+    return opts;
+  };
+
+  // Carrega automaticamente o frete mais barato de cada endereço (sem expandir)
+  useEffect(() => {
+    if (!user || savedAddresses.length === 0) return;
+    savedAddresses.forEach((a) => {
+      if (!addressOptions[a.id] && loadingAddressId !== a.id) {
+        handleCalculateForAddress(a, false);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedAddresses, user?.id]);
+
+  const cheapestFor = (addrId: string): ShippingOption | null => {
+    const opts = addressOptions[addrId];
+    if (!opts || opts.length === 0) return null;
+    return [...opts].sort((a, b) => a.valor - b.valor)[0];
   };
 
   const handleSelectOption = (option: ShippingOption) => {
@@ -174,81 +192,132 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
               const opts = addressOptions[a.id];
               const isLoadingThis = loadingAddressId === a.id;
               const isExpanded = expandedAddressId === a.id;
+              const cheapest = cheapestFor(a.id);
+              const tagFor = (codigo: string) => `${a.id}::${codigo}`;
+              const cardSelected = !!cheapest && selectedOption === tagFor(cheapest.codigo);
+              const anySelectedHere = !!opts?.some((o) => selectedOption === tagFor(o.codigo));
+
               return (
-                <Card key={a.id} className="p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <span className="font-semibold text-sm">{a.label}</span>
-                        {a.is_default && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                            Padrão
+                <Card
+                  key={a.id}
+                  className={`overflow-hidden transition-all ${
+                    anySelectedHere
+                      ? 'border-primary bg-primary/5 border-2'
+                      : 'hover:bg-accent border'
+                  }`}
+                >
+                  {/* Cabeçalho do endereço — clique = expande + seleciona o mais barato */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedAddressId((prev) => (prev === a.id ? null : a.id));
+                      if (cheapest && !anySelectedHere) {
+                        handleSelectAddressOption(a, cheapest);
+                      }
+                    }}
+                    className="w-full text-left p-3 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium">{a.label}</p>
+                            {a.is_default && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                                Padrão
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {a.street}, {a.number} · {a.city}/{a.state}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {isLoadingThis && !opts ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        ) : cheapest ? (
+                          <>
+                            <p
+                              className={`font-bold text-lg ${
+                                cheapest.valor === 0 ? 'text-green-600' : 'text-foreground'
+                              }`}
+                            >
+                              {cheapest.valor === 0
+                                ? 'GRÁTIS'
+                                : `R$ ${cheapest.valor.toFixed(2)}`}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {cheapest.nome} · {cheapest.prazoEntrega}d
+                            </p>
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Toque para calcular
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {a.street}, {a.number}
-                        {a.complement ? ` — ${a.complement}` : ''} · {a.neighborhood}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {a.city}/{a.state} · CEP {formatCEP(a.cep)}
-                      </p>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isExpanded ? 'secondary' : 'outline'}
-                      onClick={() => handleCalculateForAddress(a)}
-                      disabled={isLoadingThis}
-                    >
-                      {isLoadingThis ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : opts ? (
-                        'Recalcular'
-                      ) : (
-                        'Calcular frete'
-                      )}
-                    </Button>
-                  </div>
+                  </button>
 
+                  {/* Lista expandida com as outras opções */}
                   {isExpanded && opts && opts.length > 0 && (
-                    <div className="mt-3 space-y-1.5">
-                      {opts.map((option) => {
-                        const tag = `${a.id}::${option.codigo}`;
-                        const sel = selectedOption === tag;
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => handleSelectAddressOption(a, option)}
-                            className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
-                              sel
-                                ? 'border-primary bg-primary/5 ring-2 ring-primary/30'
-                                : 'border-border hover:bg-accent'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div
-                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                  sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
-                                }`}
-                              >
-                                {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    <div className="border-t border-border bg-background/60 p-3 space-y-1.5">
+                      <p className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground mb-1">
+                        Outras opções de entrega
+                      </p>
+                      {[...opts]
+                        .sort((x, y) => x.valor - y.valor)
+                        .map((option) => {
+                          const tag = tagFor(option.codigo);
+                          const sel = selectedOption === tag;
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectAddressOption(a, option);
+                              }}
+                              className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
+                                sel
+                                  ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                                  : 'border-border hover:bg-accent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div
+                                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                    sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                                  }`}
+                                >
+                                  {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                                </div>
+                                <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{option.nome}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Entrega em {option.prazoEntrega} dias úteis
+                                  </p>
+                                </div>
                               </div>
-                              <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{option.nome}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Entrega em {option.prazoEntrega} dias úteis
-                                </p>
-                              </div>
-                            </div>
-                            <p className="font-bold text-sm shrink-0">
-                              {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
-                            </p>
-                          </button>
-                        );
-                      })}
+                              <p className="font-bold text-sm shrink-0">
+                                {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCalculateForAddress(a, false);
+                        }}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground pt-1"
+                      >
+                        ↻ Recalcular fretes
+                      </button>
                     </div>
                   )}
                 </Card>
