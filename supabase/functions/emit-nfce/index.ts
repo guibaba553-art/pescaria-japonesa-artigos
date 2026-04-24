@@ -607,7 +607,7 @@ serve(async (req) => {
 
     const emittedNumber = Number(result.numero || getCurrentNfceNumber());
     if (Number.isFinite(emittedNumber) && emittedNumber > 0) {
-      await persistNextNfceNumber(emittedNumber + 1);
+      await ensureNextNfceNumberAtLeast(emittedNumber + 1);
     }
 
     // Atualizar emissão com resultado
