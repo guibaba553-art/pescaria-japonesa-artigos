@@ -459,7 +459,7 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Header />
-      <div className="max-w-7xl mx-auto space-y-8 p-6 pt-24">
+      <div className="max-w-7xl mx-auto space-y-8 p-6 pt-20 lg:pt-32">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Painel Administrativo</h1>
           <Button variant="outline" onClick={() => navigate('/')}>
