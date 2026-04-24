@@ -201,34 +201,61 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         }
       }
 
-      // Atualizar dados do produto
+      // Detectar mudança manual de estoque do produto pai (sem variações).
+      // Se mudou, registra como ajuste manual no livro-caixa em vez de update direto.
+      const newStockValue = stock ? parseInt(stock) : 0;
+      const stockChanged = newStockValue !== product.stock && variations.length === 0;
+      const stockDelta = newStockValue - product.stock;
+
+      // Atualizar dados do produto (SEM o campo stock, ele é gerenciado pelo livro-caixa)
+      const productUpdate: any = {
+        name,
+        description,
+        short_description: shortDescription,
+        price: price ? parseFloat(price) : 0,
+        category,
+        subcategory: subcategory || null,
+        sku: sku || null,
+        minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
+        sold_by_weight: soldByWeight,
+        brand: brand || null,
+        pound_test: poundTest || null,
+        size: size || null,
+        images: allImageUrls,
+        image_url: allImageUrls[0] || null,
+        featured,
+        on_sale: onSale,
+        sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
+        sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
+      };
+
+      // Se NÃO mudou o estoque, atualiza tudo de uma vez
+      if (!stockChanged) {
+        productUpdate.stock = newStockValue;
+      }
+
       const { error: updateError } = await supabase
         .from('products')
-        .update({
-          name,
-          description,
-          short_description: shortDescription,
-          price: price ? parseFloat(price) : 0,
-          category,
-          subcategory: subcategory || null,
-          stock: stock ? parseInt(stock) : 0,
-          sku: sku || null,
-          minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
-          sold_by_weight: soldByWeight,
-          brand: brand || null,
-          pound_test: poundTest || null,
-          size: size || null,
-          images: allImageUrls,
-          image_url: allImageUrls[0] || null,
-          featured,
-          on_sale: onSale,
-          sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
-          sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
-        })
+        .update(productUpdate)
         .eq('id', product.id);
 
       if (updateError) throw updateError;
-      console.log('✅ Produto atualizado');
+
+      // Se mudou o estoque, aplica via RPC atômica (registra no livro-caixa)
+      if (stockChanged && stockDelta !== 0) {
+        const { error: stockError } = await supabase.rpc('apply_stock_movement', {
+          p_product_id: product.id,
+          p_variation_id: null,
+          p_quantity_delta: stockDelta,
+          p_movement_type: 'manual_adjust',
+          p_order_id: null,
+          p_reason: `Ajuste manual no painel (de ${product.stock} para ${newStockValue})`,
+        });
+        if (stockError) {
+          console.error('Erro ao ajustar estoque:', stockError);
+          toast({ title: 'Aviso', description: 'Produto atualizado mas houve erro ao registrar movimentação de estoque', variant: 'destructive' });
+        }
+      }
 
       // Processar imagens das variações (converter base64 para URLs públicas)
       const processedVariations = await Promise.all(
