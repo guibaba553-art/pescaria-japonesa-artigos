@@ -39,7 +39,11 @@ interface NFEData {
   chave_acesso?: string;
 }
 
-export function XMLImporter() {
+interface XMLImporterProps {
+  prefilledXml?: string;
+}
+
+export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   const [file, setFile] = useState<File | null>(null);
   const [nfeData, setNfeData] = useState<NFEData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +53,33 @@ export function XMLImporter() {
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [produtosComMargem, setProdutosComMargem] = useState<NFEProduct[]>([]);
   const { toast } = useToast();
+
+  // Auto-processar XML pré-carregado (vindo de NfeEntradaPendentes)
+  useEffect(() => {
+    if (!prefilledXml) return;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
+          body: { xmlContent: prefilledXml },
+        });
+        if (error) throw error;
+        if (data) {
+          setNfeData(data);
+          setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro })));
+        }
+      } catch (err: any) {
+        toast({
+          title: 'Erro ao processar XML',
+          description: err.message || 'Falha',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefilledXml]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
