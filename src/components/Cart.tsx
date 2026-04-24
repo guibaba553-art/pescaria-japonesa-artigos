@@ -1,5 +1,5 @@
 import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,9 +15,14 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Checkout } from '@/components/Checkout';
 import { ShippingCalculator } from '@/components/ShippingCalculator';
 import { useToast } from '@/hooks/use-toast';
+
+// Checkout só é carregado quando o usuário clica em "Finalizar compra"
+// — evita baixar o SDK do Mercado Pago no carregamento inicial.
+const Checkout = lazy(() =>
+  import('@/components/Checkout').then((m) => ({ default: m.Checkout }))
+);
 
 interface CartProps {
   /** Quando fornecido, o Sheet é controlado externamente e o trigger interno é omitido. */
