@@ -977,8 +977,8 @@ export default function PDV() {
             </Card>
           </div>
 
-          {/* Carrinho e Pagamento */}
-          <div className="space-y-4">
+          {/* Carrinho e Pagamento — visível em desktop, em mobile abre via sheet */}
+          <div className="hidden lg:block space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
