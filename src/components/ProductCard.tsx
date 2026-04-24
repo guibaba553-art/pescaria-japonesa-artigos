@@ -107,18 +107,20 @@ export function ProductCard({
           {product.name}
         </h3>
 
-        {/* Price block */}
-        <div className="space-y-0.5 mb-3">
+        {/* Price block — altura fixa para alinhar todos os cards */}
+        <div className="space-y-0.5 mb-2 min-h-[88px]">
           {hasVariations ? (
             <div className="text-base sm:text-lg font-display font-bold text-foreground">
               A partir de {formatPrice(finalPrice)}
             </div>
           ) : (
             <>
-              {isOnSale && (
+              {isOnSale ? (
                 <div className="text-xs text-muted-foreground line-through leading-none">
                   {formatPrice(product.price)}
                 </div>
+              ) : (
+                <div className="text-xs leading-none">&nbsp;</div>
               )}
               <div className="flex items-baseline gap-1.5 flex-wrap">
                 <span className="text-xl sm:text-2xl font-display font-black text-primary leading-none tracking-tight">
@@ -131,10 +133,12 @@ export function ProductCard({
                 )}
               </div>
 
-              {showInstallment && (
+              {showInstallment ? (
                 <div className="text-xs text-muted-foreground">
                   ou <span className="font-semibold text-foreground">10x de {formatPrice(installment)}</span> sem juros
                 </div>
+              ) : (
+                <div className="text-xs">&nbsp;</div>
               )}
 
               <div className="text-xs text-success font-semibold">
@@ -144,13 +148,15 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Free shipping */}
-        {freeShipping && !hasVariations && (
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide mb-3 self-start">
-            <Truck className="w-3 h-3" />
-            Frete grátis
-          </div>
-        )}
+        {/* Free shipping — slot fixo para manter alinhamento */}
+        <div className="min-h-[28px] mb-2">
+          {freeShipping && !hasVariations && (
+            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide self-start">
+              <Truck className="w-3 h-3" />
+              Frete grátis
+            </div>
+          )}
+        </div>
 
         {/* CTA */}
         <div className="mt-auto pt-1">
