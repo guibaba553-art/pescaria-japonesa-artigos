@@ -23,6 +23,22 @@ export function MobileBottomNav() {
   const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Oculta em rotas internas/operacionais (PDV, Admin, Dashboard, Auth, etc.)
+  const HIDDEN_PREFIXES = [
+    '/pdv',
+    '/admin',
+    '/dashboard',
+    '/fechamento-caixa',
+    '/ferramentas-fiscais',
+    '/auth',
+    '/forgot-password',
+    '/reset-password',
+    '/remover-fundo-logo',
+  ];
+  if (HIDDEN_PREFIXES.some((p) => location.pathname.startsWith(p))) {
+    return null;
+  }
+
   const isActive = (path: string) => location.pathname === path;
   const isProductsActive = location.pathname === '/produtos';
 
