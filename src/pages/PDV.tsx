@@ -44,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 
 interface ProductVariation {
   id: string;
@@ -67,6 +68,12 @@ interface Product {
   minimum_quantity?: number;
   sold_by_weight?: boolean;
   variations?: ProductVariation[];
+  // Precificação PDV
+  price_pdv?: number | null;
+  price_credit_percent?: number | null;
+  price_debit_percent?: number | null;
+  price_pix_percent?: number | null;
+  price_cash_percent?: number | null;
 }
 
 interface CartItem {
