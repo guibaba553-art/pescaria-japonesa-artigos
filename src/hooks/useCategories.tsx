@@ -35,17 +35,20 @@ export function useCategories() {
       return;
     }
 
-    categoriesPromise = supabase
-      .from('categories')
-      .select('*')
-      .order('display_order', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          categoriesCache = data as Category[];
-        }
-        return categoriesCache ?? [];
-      })
-      .finally(() => {
+    categoriesPromise = (async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (!error && data) {
+        categoriesCache = data as Category[];
+      }
+
+      return categoriesCache ?? [];
+    })();
+
+    categoriesPromise.then(() => {
         categoriesPromise = null;
       });
 
