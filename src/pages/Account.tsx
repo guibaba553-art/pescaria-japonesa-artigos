@@ -291,8 +291,30 @@ export default function Account() {
       </div>
 
       <div className="max-w-4xl mx-auto p-6 -mt-4 space-y-6">
+        <Tabs defaultValue="pedidos" className="w-full">
+          <TabsList className="w-full grid grid-cols-3 h-12 rounded-full p-1">
+            <TabsTrigger value="pedidos" className="rounded-full text-sm font-semibold gap-1.5">
+              <Package className="w-4 h-4" />
+              <span className="hidden sm:inline">Pedidos</span>
+            </TabsTrigger>
+            <TabsTrigger value="enderecos" className="rounded-full text-sm font-semibold gap-1.5">
+              <MapPin className="w-4 h-4" />
+              <span className="hidden sm:inline">Endereços</span>
+            </TabsTrigger>
+            <TabsTrigger value="dados" className="rounded-full text-sm font-semibold gap-1.5">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Meus Dados</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pedidos" className="mt-6">
         <Card className="rounded-2xl border-border">
           <CardContent className="p-6 space-y-6">
+            {orders.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                Você ainda não fez nenhum pedido
+              </p>
+            ) : (
             {orders.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 Você ainda não fez nenhum pedido
