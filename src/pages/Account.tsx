@@ -515,6 +515,24 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="enderecos" className="mt-6">
+            <Card className="rounded-2xl border-border">
+              <CardContent className="p-6">
+                <MyAddresses />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="dados" className="mt-6">
+            <Card className="rounded-2xl border-border">
+              <CardContent className="p-6">
+                <MyProfile />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {selectedReview && (
