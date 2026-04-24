@@ -1495,26 +1495,76 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Toggle Pessoa Física / Jurídica */}
             <div className="space-y-2">
-              <Label htmlFor="full_name">Nome Completo *</Label>
+              <Label>Tipo de cliente *</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerForm.doc_type === 'cpf' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
+                >
+                  Pessoa Física (CPF)
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerForm.doc_type === 'cnpj' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
+                >
+                  Pessoa Jurídica (CNPJ)
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="full_name">
+                {customerForm.doc_type === 'cnpj' ? 'Nome do responsável *' : 'Nome Completo *'}
+              </Label>
               <Input
                 id="full_name"
-                placeholder="Nome completo do cliente"
+                placeholder={customerForm.doc_type === 'cnpj' ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
                 value={customerForm.full_name}
                 onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF *</Label>
-              <Input
-                id="cpf"
-                placeholder="000.000.000-00"
-                value={customerForm.cpf}
-                onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
-                maxLength={14}
-              />
-            </div>
+            {customerForm.doc_type === 'cnpj' && (
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Razão social / Nome fantasia</Label>
+                <Input
+                  id="company_name"
+                  placeholder="Nome da empresa"
+                  value={customerForm.company_name}
+                  onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
+                />
+              </div>
+            )}
+
+            {customerForm.doc_type === 'cpf' ? (
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF *</Label>
+                <Input
+                  id="cpf"
+                  placeholder="000.000.000-00"
+                  value={customerForm.cpf}
+                  onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
+                  maxLength={14}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="cnpj">CNPJ *</Label>
+                <Input
+                  id="cnpj"
+                  placeholder="00.000.000/0000-00"
+                  value={customerForm.cnpj}
+                  onChange={(e) => setCustomerForm({ ...customerForm, cnpj: e.target.value })}
+                  maxLength={18}
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="cep">CEP *</Label>
