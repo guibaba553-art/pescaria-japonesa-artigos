@@ -84,6 +84,27 @@ export default function Auth() {
     if (!error) navigate(redirectTo);
   };
 
+  const handleGoogle = async () => {
+    setLoading(true);
+    // Mantém preferência "lembrar de mim" também para login social
+    if (rememberMe) {
+      sessionStorage.removeItem('japas:sessionOnly');
+    } else {
+      sessionStorage.setItem('japas:sessionOnly', '1');
+    }
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirectTo)}`,
+    });
+    if (result.error) {
+      setLoading(false);
+      toast.error('Não foi possível entrar com Google. Tente novamente.');
+      return;
+    }
+    if (result.redirected) return; // browser vai redirecionar
+    // Tokens recebidos — useAuth detecta e redireciona se perfil incompleto
+    navigate(redirectTo);
+  };
+
   const benefits = [
     { icon: Truck, label: 'Envio rápido para todo o Brasil' },
     { icon: CreditCard, label: '10x sem juros no cartão' },
