@@ -189,8 +189,12 @@ export default function FiscalTools() {
           <KpiBox label="Canceladas" value={String(kpis.cancelled)} accent="text-muted-foreground" icon={<Receipt className="w-4 h-4" />} />
         </div>
 
-        <Tabs defaultValue="calculator" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <Tabs defaultValue="taxes" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+            <TabsTrigger value="taxes">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
             <TabsTrigger value="calculator">
               <Calculator className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Calculadora</span>
@@ -212,6 +216,10 @@ export default function FiscalTools() {
               <span className="hidden sm:inline">Sistema Fiscal</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="taxes">
+            <TaxProjection />
+          </TabsContent>
 
           <TabsContent value="calculator">
             <FiscalCalculator products={products} />
