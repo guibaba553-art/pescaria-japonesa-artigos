@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Star, ShoppingCart } from 'lucide-react';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
 
@@ -17,8 +16,8 @@ interface ProductCardProps {
 }
 
 /**
- * Componente reutilizável de card de produto
- * Exibe informações do produto e controles de quantidade/compra
+ * Card de produto minimalista premium estilo Apple.
+ * Foco na imagem, tipografia limpa, hierarquia clara.
  */
 export function ProductCard({
   product,
@@ -28,163 +27,154 @@ export function ProductCard({
   onDecrement,
   onAddToCart,
   showDescription = true,
-  variant = 'default'
 }: ProductCardProps) {
   const navigate = useNavigate();
 
-  const handleImageClick = () => {
+  const handleCardClick = () => {
     navigate(`/produto/${product.id}`);
   };
 
   const hasVariations = product.variations && product.variations.length > 0;
+  const isOnSale = product.on_sale && product.sale_price;
+  const finalPrice = isOnSale ? product.sale_price! : product.price;
+  const discount = isOnSale
+    ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
+    : 0;
+
+  const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   const renderPrice = () => {
-    // Se produto tem variações, não mostrar preço
     if (hasVariations) {
       return (
-        <span className="text-lg font-semibold text-muted-foreground">
-          Selecione uma variação
+        <span className="text-sm font-medium text-muted-foreground">
+          A partir de variações
         </span>
       );
     }
 
-    // Se produto em promoção, mostrar preço promocional
-    if (product.on_sale && product.sale_price) {
+    if (isOnSale) {
       return (
-        <div className="flex flex-col">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-xl sm:text-2xl font-display font-bold text-foreground tracking-tight">
+            {formatPrice(finalPrice)}
+          </span>
           <span className="text-sm line-through text-muted-foreground">
-            R$ {product.price.toFixed(2)}
+            {formatPrice(product.price)}
           </span>
-          <span className="text-2xl font-bold text-red-600">
-            R$ {product.sale_price.toFixed(2)}
-          </span>
-          {product.sale_ends_at && new Date(product.sale_ends_at) > new Date() && (
-            <span className="text-xs text-muted-foreground">
-              Até {new Date(product.sale_ends_at).toLocaleDateString('pt-BR')}
-            </span>
-          )}
         </div>
       );
     }
 
-    // Preço normal do produto
     return (
-      <span className="text-2xl font-bold text-primary">
-        R$ {product.price?.toFixed(2) || '0.00'}
+      <span className="text-xl sm:text-2xl font-display font-bold text-foreground tracking-tight">
+        {formatPrice(finalPrice)}
       </span>
     );
   };
 
-  const renderRating = () => (
-    <div className="flex items-center gap-1">
-      {[...Array(5)].map((_, i) => (
-        <Star
-          key={i}
-          className={`w-4 h-4 ${
-            i < Math.floor(product.rating)
-              ? "fill-primary text-primary"
-              : "text-muted"
-          }`}
-        />
-      ))}
-      <span className="text-sm text-muted-foreground ml-2">
-        ({product.rating.toFixed(1)})
-      </span>
-    </div>
-  );
-
   return (
-    <Card
-      className="group overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-xl cursor-pointer"
-      onClick={handleImageClick}
+    <article
+      className="group relative flex flex-col bg-card rounded-3xl border border-border/60 overflow-hidden hover-lift cursor-pointer"
+      onClick={handleCardClick}
       role="link"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          handleImageClick();
+          handleCardClick();
         }
       }}
     >
-      <CardContent className="p-0">
-        {/* Imagem do Produto */}
-        <div className="relative overflow-hidden aspect-square">
-          <img
-            src={product.image_url || 'https://placehold.co/600x600?text=Sem+Imagem'}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-          />
-          <div className="absolute top-4 left-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
-            {product.category}
+      {/* Image */}
+      <div className="relative overflow-hidden aspect-square bg-muted/40">
+        <img
+          src={product.image_url || 'https://placehold.co/600x600/f5f5f5/cccccc?text=Sem+imagem'}
+          alt={product.name}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+        />
+
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          {isOnSale && discount > 0 && (
+            <span className="px-2.5 py-1 rounded-full bg-foreground text-background text-[11px] font-semibold tracking-wide">
+              −{discount}%
+            </span>
+          )}
+          {product.stock > 0 && product.stock <= 5 && (
+            <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur-sm text-foreground text-[11px] font-medium border border-border">
+              Últimas {product.stock}
+            </span>
+          )}
+        </div>
+
+        {product.stock === 0 && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <span className="px-4 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold uppercase tracking-wider">
+              Esgotado
+            </span>
           </div>
-          {product.on_sale && (
-            <div className="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
-              🏷️ PROMOÇÃO
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col p-5 sm:p-6">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          {product.category}
+        </p>
+
+        <h3 className="font-display font-semibold text-base sm:text-lg text-foreground leading-snug mb-2 line-clamp-2">
+          {product.name}
+        </h3>
+
+        {showDescription && (product.short_description || product.description) && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+            {product.short_description || product.description}
+          </p>
+        )}
+
+        <div className="mt-auto pt-4 space-y-3">
+          {renderPrice()}
+
+          {product.stock === 0 ? (
+            <Button className="w-full rounded-full" disabled>
+              Indisponível
+            </Button>
+          ) : hasVariations ? (
+            <Button
+              className="w-full rounded-full btn-press"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
+            >
+              Ver opções
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <ProductQuantitySelector
+                quantity={quantity}
+                maxQuantity={product.stock}
+                onIncrement={onIncrement}
+                onDecrement={onDecrement}
+                onChange={onQuantityChange}
+                size="sm"
+              />
+              <Button
+                className="flex-1 rounded-full btn-press"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToCart();
+                }}
+                disabled={product.stock === 0}
+              >
+                <ShoppingCart className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Comprar</span>
+              </Button>
             </div>
           )}
         </div>
-        
-        {/* Informações do Produto */}
-        <div className="p-6 space-y-4">
-          {renderRating()}
-          
-          <h3 className="font-bold text-xl">{product.name}</h3>
-          
-          {showDescription && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {product.short_description || product.description}
-            </p>
-          )}
-          
-          {/* Preço e Controles */}
-          <div className="space-y-3">
-            {renderPrice()}
-            
-            {product.stock === 0 ? (
-              <div className="space-y-2">
-                <Button className="w-full" disabled>
-                  Produto Esgotado
-                </Button>
-                <p className="text-sm text-center text-muted-foreground">
-                  Este produto está temporariamente indisponível
-                </p>
-              </div>
-            ) : hasVariations ? (
-              <Button 
-                className="w-full"
-                onClick={(e) => { e.stopPropagation(); handleImageClick(); }}
-              >
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Ver Opções
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <ProductQuantitySelector
-                  quantity={quantity}
-                  maxQuantity={product.stock}
-                  onIncrement={onIncrement}
-                  onDecrement={onDecrement}
-                  onChange={onQuantityChange}
-                  size="sm"
-                />
-                <Button 
-                  className="flex-1"
-                  onClick={(e) => { e.stopPropagation(); onAddToCart(); }}
-                  disabled={product.stock === 0}
-                >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  Comprar
-                </Button>
-              </div>
-            )}
-            {product.stock > 0 && product.stock <= 5 && (
-              <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
-                ⚠️ Apenas {product.stock} {product.stock === 1 ? 'unidade disponível' : 'unidades disponíveis'}
-              </p>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 }
