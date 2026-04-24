@@ -28,6 +28,11 @@ const getCategoryImage = (category: { slug?: string; name?: string }) => {
   return CATEGORY_IMAGES[slug] || CATEGORY_IMAGES[name] || acessoriosImg;
 };
 
+// Prefetch da página /produtos para evitar latência do code-split ao clicar
+const prefetchProducts = () => {
+  import('@/pages/Products').catch(() => {});
+};
+
 const Categories = () => {
   const navigate = useNavigate();
   const { primaries, loading } = useCategories();
@@ -52,6 +57,8 @@ const Categories = () => {
           </div>
           <button
             onClick={() => navigate('/produtos')}
+            onMouseEnter={prefetchProducts}
+            onTouchStart={prefetchProducts}
             className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline group"
           >
             Ver todas
@@ -71,6 +78,8 @@ const Categories = () => {
                 <button
                   key={category.id}
                   onClick={() => navigate(`/produtos?category=${encodeURIComponent(category.name)}`)}
+                  onMouseEnter={prefetchProducts}
+                  onTouchStart={prefetchProducts}
                   className="group relative flex-shrink-0 w-[120px] sm:w-auto aspect-square rounded-2xl overflow-hidden hover:ring-2 hover:ring-primary transition-all text-left animate-fade-in-up isolate snap-start"
                   style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'backwards' }}
                 >
@@ -103,6 +112,7 @@ const Categories = () => {
         <div className="mt-4 sm:hidden text-center">
           <button
             onClick={() => navigate('/produtos')}
+            onTouchStart={prefetchProducts}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
           >
             Ver todas as categorias

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, LayoutGrid, Search, ShoppingBag, User, LayoutDashboard } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
@@ -7,6 +7,11 @@ import { useCategories } from '@/hooks/useCategories';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Cart } from '@/components/Cart';
+
+// Prefetch do chunk /produtos — evita atraso ao tocar em "Categorias" no mobile
+const prefetchProducts = () => {
+  import('@/pages/Products').catch(() => {});
+};
 
 /**
  * Bottom navigation fixa para mobile (visível apenas em < md).
@@ -22,6 +27,17 @@ export function MobileBottomNav() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Aquece o chunk de /produtos em idle — usuário mobile quase sempre acessa o catálogo
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    if (w.requestIdleCallback) {
+      w.requestIdleCallback(() => prefetchProducts());
+    } else {
+      const t = setTimeout(prefetchProducts, 1500);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   // Oculta em rotas internas/operacionais (PDV, Admin, Dashboard, Auth, etc.)
   const HIDDEN_PREFIXES = [
