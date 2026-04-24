@@ -20,12 +20,24 @@ interface Product {
   cost?: number;
 }
 
+interface FiscalKpis {
+  emittedToday: number;
+  emittedMonth: number;
+  pending: number;
+  errors: number;
+  cancelled: number;
+  totalValueMonth: number;
+}
+
 export default function FiscalTools() {
   const navigate = useNavigate();
   const { isAdmin, loading, signOut } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [fiscalSettings, setFiscalSettings] = useState<any>(null);
+  const [kpis, setKpis] = useState<FiscalKpis>({
+    emittedToday: 0, emittedMonth: 0, pending: 0, errors: 0, cancelled: 0, totalValueMonth: 0,
+  });
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -36,7 +48,37 @@ export default function FiscalTools() {
   useEffect(() => {
     loadProducts();
     loadFiscalSettings();
+    loadKpis();
   }, []);
+
+  const loadKpis = async () => {
+    try {
+      const { data } = await supabase
+        .from('nfe_emissions')
+        .select('status, emitted_at, valor_total, created_at');
+      if (!data) return;
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      let emittedToday = 0, emittedMonth = 0, pending = 0, errors = 0, cancelled = 0, totalValueMonth = 0;
+      data.forEach((e: any) => {
+        const status = (e.status || '').toLowerCase();
+        const emittedAt = e.emitted_at ? new Date(e.emitted_at) : null;
+        if (status === 'authorized' || status === 'autorizado' || status === 'emitida') {
+          if (emittedAt && emittedAt >= startToday) emittedToday++;
+          if (emittedAt && emittedAt >= startMonth) {
+            emittedMonth++;
+            totalValueMonth += Number(e.valor_total ?? 0);
+          }
+        } else if (status === 'pending' || status === 'processando') pending++;
+        else if (status === 'error' || status === 'erro' || status === 'rejected') errors++;
+        else if (status === 'cancelled' || status === 'cancelado') cancelled++;
+      });
+      setKpis({ emittedToday, emittedMonth, pending, errors, cancelled, totalValueMonth });
+    } catch (err) {
+      console.error('Erro ao carregar KPIs fiscais:', err);
+    }
+  };
 
   const loadProducts = async () => {
     try {
