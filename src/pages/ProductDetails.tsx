@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw, Flame } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -12,6 +12,7 @@ import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector } from '@/components/ProductVariationSelector';
+import { recentSales, viewersNow } from '@/utils/socialProof';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
