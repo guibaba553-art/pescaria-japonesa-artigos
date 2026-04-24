@@ -1372,7 +1372,7 @@ export default function PDV() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-primary">
-                        R$ {variation.price.toFixed(2)}
+                        R$ {selectedProduct ? getPdvPriceForVariation(selectedProduct, variation.price, paymentMethod).toFixed(2) : variation.price.toFixed(2)}
                       </span>
                       <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
                         {variation.stock > 0 ? `${variation.stock} un` : 'Esgotado'}
