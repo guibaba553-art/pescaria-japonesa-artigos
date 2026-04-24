@@ -328,16 +328,15 @@ export default function Account() {
                             Ver QR Code PIX
                           </Button>
                         )}
-                        {order.delivery_type === 'pickup' &&
-                          (order.status === 'em_preparo' || order.status === 'aguardando_pagamento') && (
-                            <Button
-                              size="sm"
-                              onClick={() => setPickupQROrderId(order.id)}
-                            >
-                              <Store className="w-4 h-4 mr-2" />
-                              QR de Retirada
-                            </Button>
-                          )}
+                        {order.delivery_type === 'pickup' && order.status === 'em_preparo' && (
+                          <Button
+                            size="sm"
+                            onClick={() => setPickupQROrderId(order.id)}
+                          >
+                            <Store className="w-4 h-4 mr-2" />
+                            QR de Retirada
+                          </Button>
+                        )}
                       </div>
                     </div>
 
