@@ -16,19 +16,16 @@ interface TGASettingsProps {
 export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
   const [tgaEnabled, setTgaEnabled] = useState(settings?.tga_enabled || false);
   const [apiUrl, setApiUrl] = useState(settings?.tga_api_url || '');
-  const [username, setUsername] = useState(settings?.tga_username || '');
-  const [password, setPassword] = useState(settings?.tga_password || '');
   const [autoSync, setAutoSync] = useState(settings?.auto_sync_tga || false);
-  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const { toast } = useToast();
 
   const handleTest = async () => {
-    if (!apiUrl || !username || !password) {
+    if (!apiUrl) {
       toast({
-        title: 'Preencha todos os campos',
-        description: 'URL, usuário e senha são obrigatórios para testar a conexão',
+        title: 'URL é obrigatória',
+        description: 'Informe a URL do TGA. As credenciais são lidas do cofre de segredos no servidor.',
         variant: 'destructive'
       });
       return;
@@ -39,7 +36,7 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
       const { data, error } = await supabase.functions.invoke('sync-tga', {
         body: {
           action: 'test',
-          credentials: { apiUrl, username, password }
+          credentials: { apiUrl }
         }
       });
 
@@ -72,8 +69,6 @@ export function TGASettings({ settings, onUpdate }: TGASettingsProps) {
         .update({
           tga_enabled: tgaEnabled,
           tga_api_url: apiUrl || null,
-          tga_username: username || null,
-          tga_password: password || null,
           auto_sync_tga: autoSync
         })
         .eq('id', settings.id);
