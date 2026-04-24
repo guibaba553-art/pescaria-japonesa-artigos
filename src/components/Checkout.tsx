@@ -34,6 +34,13 @@ interface CheckoutProps {
 
 type PaymentMethod = 'pix' | 'credit' | 'debit' | 'google_pay';
 
+interface InstallmentOption {
+  installments: number;
+  installmentAmount: number;
+  totalAmount: number;
+  label: string;
+}
+
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
   const { toast } = useToast();
@@ -42,6 +49,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const [isProcessing, setIsProcessing] = useState(false);
   const [pixData, setPixData] = useState<{qrCode: string; qrCodeBase64: string; orderId: string} | null>(null);
   const [mpLoaded, setMpLoaded] = useState(false);
+  const [availableInstallments, setAvailableInstallments] = useState<InstallmentOption[]>([]);
+  const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
   const [cardData, setCardData] = useState({
     number: '',
     name: '',
@@ -51,6 +60,22 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
+  const cleanCardNumber = cardData.number.replace(/\D/g, '');
+
+  const formatCurrency = (value: number) =>
+    value.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+
+  const buildCashInstallment = (amount: number): InstallmentOption[] => [
+    {
+      installments: 1,
+      installmentAmount: amount,
+      totalAmount: amount,
+      label: `1x de ${formatCurrency(amount)} à vista`,
+    },
+  ];
 
   useEffect(() => {
     // Só carrega o SDK quando o checkout for aberto
@@ -82,6 +107,55 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     document.body.appendChild(script);
     // Mantemos o script no DOM para reuso — não removemos no cleanup.
   }, [open]);
+
+  useEffect(() => {
+    const fallbackOptions = buildCashInstallment(finalTotal);
+
+    if (!open || paymentMethod !== 'credit') {
+      setAvailableInstallments(fallbackOptions);
+      setInstallments('1');
+      setIsLoadingInstallments(false);
+      return;
+    }
+
+    if (cleanCardNumber.length < 6 || finalTotal < 1) {
+      setAvailableInstallments(fallbackOptions);
+      setInstallments('1');
+      setIsLoadingInstallments(false);
+      return;
+    }
+
+    let isActive = true;
+    const timeoutId = window.setTimeout(async () => {
+      setIsLoadingInstallments(true);
+
+      const { data, error } = await supabase.functions.invoke('get-payment-installments', {
+        body: {
+          amount: finalTotal,
+          cardNumber: cleanCardNumber,
+          paymentMethod: 'credit',
+        },
+      });
+
+      if (!isActive) return;
+
+      const nextOptions = !error && data?.success && Array.isArray(data.options) && data.options.length > 0
+        ? (data.options as InstallmentOption[])
+        : fallbackOptions;
+
+      setAvailableInstallments(nextOptions);
+      setInstallments((current) => {
+        const hasCurrent = nextOptions.some((option) => String(option.installments) === current);
+        return hasCurrent ? current : String(nextOptions[0]?.installments ?? 1);
+      });
+      setIsLoadingInstallments(false);
+    }, 300);
+
+    return () => {
+      isActive = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [cleanCardNumber, finalTotal, open, paymentMethod]);
 
   const validateCardData = () => {
     const errors: string[] = [];
@@ -486,7 +560,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   <CreditCard className="w-5 h-5 text-primary" />
                   <div>
                     <p className="font-medium">Cartão de Crédito</p>
-                    <p className="text-sm text-muted-foreground">Parcele em até 12x</p>
+                    <p className="text-sm text-muted-foreground">Parcelamento conforme cartão e valor</p>
                   </div>
                 </Label>
               </div>
@@ -570,19 +644,27 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               {paymentMethod === 'credit' && (
                 <div className="space-y-2">
                   <Label htmlFor="installments">Parcelamento</Label>
-                  <Select value={installments} onValueChange={setInstallments}>
+                  <Select value={installments} onValueChange={setInstallments} disabled={isLoadingInstallments || availableInstallments.length === 0}>
                     <SelectTrigger id="installments">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}x de R$ {((total + shippingCost) / num).toFixed(2)}
-                          {num === 1 ? ' à vista' : ''}
+                      {availableInstallments.map((option) => (
+                        <SelectItem key={option.installments} value={option.installments.toString()}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {cleanCardNumber.length < 6
+                      ? 'Digite os 6 primeiros números do cartão para ver as parcelas liberadas.'
+                      : isLoadingInstallments
+                        ? 'Consultando parcelamento disponível...'
+                        : availableInstallments.length === 1
+                          ? 'Para este cartão e valor, somente pagamento à vista está disponível.'
+                          : 'Mostrando apenas as parcelas aceitas pelo Mercado Pago para este cartão.'}
+                  </p>
                 </div>
               )}
             </div>
