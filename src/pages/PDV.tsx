@@ -37,7 +37,6 @@ import {
   DialogHeader, 
   DialogTitle 
 } from '@/components/ui/dialog';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -122,7 +121,6 @@ export default function PDV() {
   const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
   const [savedSales, setSavedSales] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
-  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
