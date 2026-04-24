@@ -306,7 +306,7 @@ serve(async (req) => {
       return payload;
     };
 
-    let futureOffsetMinutes = 5;
+    let futureOffsetMinutes = 0;
     let dataEmissao = buildDataEmissao(futureOffsetMinutes);
     let payload = buildPayload(dataEmissao);
 
