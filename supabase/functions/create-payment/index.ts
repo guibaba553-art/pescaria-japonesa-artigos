@@ -21,9 +21,9 @@ const paymentRequestSchema = z.object({
   shippingCost: z.number().nonnegative('Shipping cost must be non-negative').optional().default(0),
   cardData: z.object({
     token: z.string(),
-    paymentMethodId: z.string(),
+    paymentMethodId: z.string().optional().nullable(),
     cardNumber: z.string().min(13).max(19).regex(/^\d+$/, 'Card number must contain only digits'),
-    cardholderName: z.string().min(3).max(100).regex(/^[a-zA-Z\s]+$/, 'Name must contain only letters'),
+    cardholderName: z.string().min(3).max(100).regex(/^[a-zA-Z\s\u00C0-\u017F'.-]+$/, 'Name must contain only letters'),
     expirationDate: z.string().regex(/^\d{2}\/\d{2}$/, 'Expiration must be MM/YY format'),
     securityCode: z.string().min(3).max(4).regex(/^\d+$/, 'CVV must be 3-4 digits'),
   }).nullable().optional(),
@@ -417,12 +417,42 @@ serve(async (req) => {
         );
       }
 
+      // Resolver payment_method_id: usar o do frontend ou detectar via BIN do cartão
+      let paymentMethodId = data.cardData.paymentMethodId;
+      if (!paymentMethodId) {
+        try {
+          const bin = data.cardData.cardNumber.substring(0, 8);
+          const binResp = await fetch(
+            `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+          );
+          if (binResp.ok) {
+            const binData = await binResp.json();
+            const results = binData?.results || [];
+            // Filtrar pelo tipo (credit_card / debit_card)
+            const wanted = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
+            const match = results.find((r: any) => r.payment_type_id === wanted) || results[0];
+            paymentMethodId = match?.id;
+            console.log('Payment method detected via BIN:', paymentMethodId);
+          }
+        } catch (e) {
+          console.error('Error detecting payment method via BIN:', e);
+        }
+      }
+
+      if (!paymentMethodId) {
+        return new Response(
+          JSON.stringify({ error: 'Não foi possível identificar a bandeira do cartão. Tente novamente.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
       const cardPayment = {
         transaction_amount: Number(data.amount.toFixed(2)),
         token: data.cardData.token,
         description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
         installments: parseInt(String(data.installments)) || 1,
-        payment_method_id: data.cardData.paymentMethodId,
+        payment_method_id: paymentMethodId,
         payer: {
           email: data.userEmail || 'cliente@japapesca.com',
         },
