@@ -278,7 +278,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
 
   return (
     <div className="space-y-4">
-      <Card>
+      {!prefilledXml && (
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5" />
