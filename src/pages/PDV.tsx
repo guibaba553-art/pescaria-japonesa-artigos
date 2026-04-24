@@ -1070,6 +1070,49 @@ export default function PDV() {
                 <Separator className="my-4" />
 
                 <div className="space-y-3">
+                  {/* Desconto em valor (R$) */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pdv-discount" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                      Desconto (R$)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="pdv-discount"
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={discountInput}
+                        onChange={(e) => setDiscountInput(e.target.value)}
+                        className="flex-1"
+                      />
+                      {discountInput && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDiscountInput('')}
+                          aria-label="Remover desconto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {getDiscountValue() > 0 && (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Subtotal:</span>
+                        <span>R$ {calculateSubtotal().toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-success">
+                        <span>Desconto:</span>
+                        <span>− R$ {getDiscountValue().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
                     <span className="text-2xl text-primary">
