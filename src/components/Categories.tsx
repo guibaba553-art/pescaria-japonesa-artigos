@@ -78,6 +78,8 @@ const Categories = () => {
                 <button
                   key={category.id}
                   onClick={() => navigate(`/produtos?category=${encodeURIComponent(category.name)}`)}
+                  onMouseEnter={prefetchProducts}
+                  onTouchStart={prefetchProducts}
                   className="group relative flex-shrink-0 w-[120px] sm:w-auto aspect-square rounded-2xl overflow-hidden hover:ring-2 hover:ring-primary transition-all text-left animate-fade-in-up isolate snap-start"
                   style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'backwards' }}
                 >
