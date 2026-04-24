@@ -1083,29 +1083,31 @@ export function OrdersManagement() {
 
   const renderPdvTabs = () => (
     <Tabs defaultValue="finalizadas" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="sem-pagamento">
-          <Clock className="w-4 h-4 mr-2" />
-          Sem Pagamento
-          {pdv.semPagamento.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.semPagamento.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="pronto-retirar">
-          <Store className="w-4 h-4 mr-2" />
-          Pronto p/ Retirar
-          {pdv.prontoRetirar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.prontoRetirar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="finalizadas">
-          <PackageCheck className="w-4 h-4 mr-2" />
-          Finalizadas
-          {pdv.finalizadas.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.finalizadas.length}</Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-3 gap-1">
+          <TabsTrigger value="sem-pagamento" className="shrink-0">
+            <Clock className="w-4 h-4 mr-2" />
+            Sem Pagamento
+            {pdv.semPagamento.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.semPagamento.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pronto-retirar" className="shrink-0">
+            <Store className="w-4 h-4 mr-2" />
+            Pronto p/ Retirar
+            {pdv.prontoRetirar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="finalizadas" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Finalizadas
+            {pdv.finalizadas.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{pdv.finalizadas.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={pdv.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={pdv.prontoRetirar} {...tableProps} /></TabsContent>
