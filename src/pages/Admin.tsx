@@ -11,13 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit, Tags, ClipboardList, Star, Receipt, Users } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit, Tags, ClipboardList, Star, Users } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
-import { FiscalSystem } from '@/components/FiscalSystem';
 import { EmployeesManagement } from '@/components/EmployeesManagement';
 import { DraftProducts } from '@/components/DraftProducts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
