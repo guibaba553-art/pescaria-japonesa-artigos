@@ -1316,7 +1316,7 @@ export default function PDV() {
 
       {/* Diálogo de seleção de variações */}
       <Dialog open={showVariationsDialog} onOpenChange={setShowVariationsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Selecione a Variação</DialogTitle>
             <DialogDescription>
