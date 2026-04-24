@@ -108,18 +108,46 @@ export default function PickupOrder() {
     if (!order) return;
     setConfirming(true);
     try {
-      const { error } = await supabase
+      // Garante sessão ativa (em mobile a sessão pode ter expirado entre o login e o clique)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({
+          title: "Sessão expirada",
+          description: "Faça login novamente para confirmar a retirada.",
+          variant: "destructive",
+        });
+        navigate(`/auth?redirect=/retirada/${order.id}`);
+        return;
+      }
+
+      const { data, error } = await supabase
         .from("orders")
         .update({ status: "retirado" as any })
-        .eq("id", order.id);
-      if (error) throw error;
+        .eq("id", order.id)
+        .select("id, status");
+
+      if (error) {
+        console.error("[PickupOrder] update error:", error);
+        throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Sem permissão para atualizar este pedido. Verifique se está logado como funcionário ou administrador."
+        );
+      }
+
       toast({
         title: "✅ Retirada confirmada",
         description: `Pedido #${order.id.slice(0, 8)} marcado como retirado.`,
       });
       await loadOrder();
     } catch (err: any) {
-      toast({ title: "Erro ao confirmar", description: err.message, variant: "destructive" });
+      console.error("[PickupOrder] confirmPickup failed:", err);
+      toast({
+        title: "Erro ao confirmar",
+        description: err?.message || "Não foi possível confirmar a retirada.",
+        variant: "destructive",
+      });
     } finally {
       setConfirming(false);
     }
