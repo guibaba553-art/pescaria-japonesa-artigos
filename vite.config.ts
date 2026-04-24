@@ -16,46 +16,18 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Sobe o limite de aviso para esconder ruído (ainda otimizamos com manualChunks)
+    // Mantém o aviso mais alto porque isolamos apenas o que é realmente pesado.
     chunkSizeWarningLimit: 800,
     rollupOptions: {
       output: {
-        // Separa vendors pesados em chunks próprios — assim a home não precisa
-        // baixar tudo de uma vez e o cache do navegador é melhor aproveitado
-        // entre páginas/visitas.
+        // Evita dividir bibliotecas centrais demais em muitos chunks, porque isso
+        // pode gerar erros de inicialização no build publicado. Mantemos separado
+        // apenas o pacote de IA da remoção de fundo, que é muito pesado.
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
 
           if (id.includes("@huggingface/transformers") || id.includes("onnxruntime")) {
             return "transformers";
-          }
-          if (id.includes("recharts") || id.includes("d3-")) {
-            return "charts";
-          }
-          if (id.includes("@supabase")) {
-            return "supabase";
-          }
-          if (id.includes("react-router")) {
-            return "router";
-          }
-          if (id.includes("@radix-ui")) {
-            return "radix";
-          }
-          if (
-            id.includes("react-dom") ||
-            id.includes("scheduler") ||
-            (id.includes("/react/") && !id.includes("react-router"))
-          ) {
-            return "react";
-          }
-          if (id.includes("@tanstack/react-query")) {
-            return "query";
-          }
-          if (id.includes("lucide-react")) {
-            return "icons";
-          }
-          if (id.includes("date-fns")) {
-            return "date-fns";
           }
         },
       },
