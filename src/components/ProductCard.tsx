@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Truck } from 'lucide-react';
+import { ShoppingCart, Truck, Flame, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
+import { recentSales, viewersNow } from '@/utils/socialProof';
 
 interface ProductCardProps {
   product: Product;
