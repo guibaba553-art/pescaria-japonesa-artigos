@@ -111,10 +111,10 @@ const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_t
 const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'entregado' : 'enviado';
+    return deliveryType === 'pickup' ? 'retirado' : 'enviado';
   }
   if (currentStatus === 'enviado') return 'entregado';
-  return null; // Já está entregue
+  return null;
 };
 
 const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): string => {
