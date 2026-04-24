@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from('profiles')
-      .select('cpf, cep, phone')
+      .select('cpf, phone')
       .eq('id', userId)
       .maybeSingle();
 
-    if (data && (!data.cpf || !data.cep || !data.phone)) {
+    if (data && (!data.cpf || !data.phone)) {
       const redirect = encodeURIComponent(path + window.location.search);
       window.location.href = `/completar-cadastro?redirect=${redirect}`;
     }
