@@ -225,6 +225,15 @@
     transform: scale(0.97);
   }
 
+  /* Esconde scrollbar mantendo o scroll funcional (usado em listas horizontais mobile) */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Compensa altura da bottom nav mobile (56px + safe-area).
      Aplicar no <body> para que todas as páginas tenham espaço.
      Desktop ignora pois a bottom nav é md:hidden. */
