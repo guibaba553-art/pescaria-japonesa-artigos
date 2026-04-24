@@ -913,7 +913,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[700px]">
+                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[700px]">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
@@ -930,9 +930,9 @@ export default function PDV() {
                             {product.variations.length}
                           </Badge>
                         )}
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-60 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
