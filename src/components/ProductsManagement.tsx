@@ -297,7 +297,24 @@ export function ProductsManagement() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={() => setShowForm((v) => !v)} className="gap-2">
+            <Button
+              onClick={() => {
+                setShowForm((v) => {
+                  const next = !v;
+                  if (next) {
+                    // Aguarda o formulário renderizar e rola até ele
+                    setTimeout(() => {
+                      document.getElementById('novo-produto-form')?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start',
+                      });
+                    }, 50);
+                  }
+                  return next;
+                });
+              }}
+              className="gap-2"
+            >
               {showForm ? <><X className="w-4 h-4" /> Fechar</> : <><Plus className="w-4 h-4" /> Novo Produto</>}
             </Button>
           </div>
