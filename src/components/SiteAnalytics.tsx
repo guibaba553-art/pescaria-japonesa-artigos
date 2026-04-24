@@ -46,13 +46,29 @@ export function SiteAnalytics() {
     since.setDate(since.getDate() - 30);
     const sinceIso = since.toISOString();
 
+    // Buscar IDs de admins e funcionários para excluir das estatísticas
+    const { data: staffRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .in('role', ['admin', 'employee']);
+    const staffIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id))).filter(Boolean);
+
+    let visitsQuery = supabase
+      .from('site_visits')
+      .select('path, referrer, session_id, created_at, user_id')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: true })
+      .limit(10000);
+
+    if (staffIds.length > 0) {
+      // Excluir visitas feitas por usuários staff (mantém anônimos com user_id null)
+      visitsQuery = visitsQuery.or(
+        `user_id.is.null,user_id.not.in.(${staffIds.join(',')})`
+      );
+    }
+
     const [{ data: visits }, { count: ordersCount }] = await Promise.all([
-      supabase
-        .from('site_visits')
-        .select('path, referrer, session_id, created_at')
-        .gte('created_at', sinceIso)
-        .order('created_at', { ascending: true })
-        .limit(10000),
+      visitsQuery,
       supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
