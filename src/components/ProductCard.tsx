@@ -137,7 +137,7 @@ export function ProductCard({
                 </div>
               )}
 
-              <div className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">
+              <div className="text-xs text-success font-semibold">
                 {formatPrice(pixPrice)} no PIX
               </div>
             </>
@@ -146,7 +146,7 @@ export function ProductCard({
 
         {/* Free shipping */}
         {freeShipping && !hasVariations && (
-          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wide mb-3 self-start">
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide mb-3 self-start">
             <Truck className="w-3 h-3" />
             Frete grátis
           </div>
