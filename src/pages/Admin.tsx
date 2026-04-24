@@ -559,7 +559,29 @@ export default function Admin() {
             );
           })()}
 
-          <TabsContent value="products" className="space-y-6">
+          <TabsContent value="catalog" className="space-y-6">
+            <Tabs defaultValue="products" className="space-y-6">
+              <TabsList className="bg-muted/50 p-1 h-auto flex flex-wrap gap-1">
+                <TabsTrigger value="products" className="gap-2">
+                  <Package className="w-4 h-4" /> Produtos
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="gap-2">
+                  <Tags className="w-4 h-4" /> Categorias
+                </TabsTrigger>
+                <TabsTrigger value="drafts" className="gap-2 relative">
+                  <FileEdit className="w-4 h-4" /> Rascunhos
+                  {products.filter(p => p.category === 'Pendente Revisão').length > 0 && (
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      {products.filter(p => p.category === 'Pendente Revisão').length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="featured" className="gap-2">
+                  <Star className="w-4 h-4" /> Destaques
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="products" className="space-y-6">
             <Card>
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
