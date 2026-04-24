@@ -1033,43 +1033,45 @@ export function OrdersManagement() {
 
   const renderSiteTabs = () => (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-5">
-        <TabsTrigger value="sem-pagamento">
-          <Clock className="w-4 h-4 mr-2" />
-          Sem Pagamento
-          {site.semPagamento.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="para-enviar">
-          <Package className="w-4 h-4 mr-2" />
-          Para Enviar
-          {site.paraEnviar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="pronto-retirar">
-          <Store className="w-4 h-4 mr-2" />
-          Pronto p/ Retirar
-          {site.prontoRetirar.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="em-caminho">
-          <Truck className="w-4 h-4 mr-2" />
-          Em Caminho
-          {site.emCaminho.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
-          )}
-        </TabsTrigger>
-        <TabsTrigger value="entregues">
-          <PackageCheck className="w-4 h-4 mr-2" />
-          Entregues
-          {site.entregues.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
-          )}
-        </TabsTrigger>
-      </TabsList>
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-5 gap-1">
+          <TabsTrigger value="sem-pagamento" className="shrink-0">
+            <Clock className="w-4 h-4 mr-2" />
+            Sem Pagamento
+            {site.semPagamento.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="para-enviar" className="shrink-0">
+            <Package className="w-4 h-4 mr-2" />
+            Para Enviar
+            {site.paraEnviar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pronto-retirar" className="shrink-0">
+            <Store className="w-4 h-4 mr-2" />
+            Pronto p/ Retirar
+            {site.prontoRetirar.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="em-caminho" className="shrink-0">
+            <Truck className="w-4 h-4 mr-2" />
+            Em Caminho
+            {site.emCaminho.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="entregues" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Entregues
+            {site.entregues.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="para-enviar"><OrdersTable orders={site.paraEnviar} {...tableProps} /></TabsContent>
