@@ -750,29 +750,48 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-muted/30">
       <Header />
-      
-      <div className="container mx-auto p-6 pt-20 lg:pt-32">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ShoppingCart className="w-8 h-8" />
-            Ponto de Venda (PDV)
-          </h1>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/pdv/sales-history')}
-            >
-              <History className="w-4 h-4 mr-2" />
-              Histórico
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/admin')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar ao Admin
-            </Button>
+
+      {/* Commercial dark banner */}
+      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">PDV</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
+                Ponto de Venda
+              </h1>
+              <p className="text-sm text-background/60 mt-1">
+                Vendas presenciais com código de barras e pagamentos integrados.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/pdv/sales-history')}
+                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
+              >
+                <History className="w-4 h-4 mr-2" />
+                Histórico
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/admin')}
+                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="container mx-auto p-6 -mt-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Produtos */}
