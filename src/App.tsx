@@ -34,6 +34,7 @@ const TermosUso = lazy(() => import("./pages/TermosUso"));
 const PoliticaTrocas = lazy(() => import("./pages/PoliticaTrocas"));
 const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
+const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
+                <Route path="/completar-cadastro" element={<CompletarCadastro />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
