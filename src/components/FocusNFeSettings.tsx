@@ -75,6 +75,7 @@ export function FocusNFeSettings() {
     csc_token: '',
     serie_nfce: 1,
     serie_nfe: 1,
+    proximo_numero_nfce: 1,
     cfop_padrao: '5102',
     cfop_interestadual: '6102',
     csosn_padrao: '102',
@@ -100,22 +101,24 @@ export function FocusNFeSettings() {
       if (error) throw error;
 
       if (data) {
-        setSettingsId(data.id);
+        const settings = data as any;
+        setSettingsId(settings.id);
         setForm({
-          enabled: data.enabled,
-          ambiente: data.ambiente as 'homologacao' | 'producao',
-          csc_id: data.csc_id || '',
-          csc_token: data.csc_token || '',
-          serie_nfce: data.serie_nfce,
-          serie_nfe: data.serie_nfe,
-          cfop_padrao: data.cfop_padrao,
-          cfop_interestadual: data.cfop_interestadual,
-          csosn_padrao: data.csosn_padrao,
-          origem_padrao: data.origem_padrao,
-          unidade_padrao: data.unidade_padrao,
-          ncm_padrao: data.ncm_padrao || '',
-          auto_emit_nfce_pdv: data.auto_emit_nfce_pdv,
-          auto_emit_nfe_pedido_pago: data.auto_emit_nfe_pedido_pago,
+          enabled: settings.enabled,
+          ambiente: settings.ambiente as 'homologacao' | 'producao',
+          csc_id: settings.csc_id || '',
+          csc_token: settings.csc_token || '',
+          serie_nfce: settings.serie_nfce,
+          serie_nfe: settings.serie_nfe,
+          proximo_numero_nfce: settings.proximo_numero_nfce || 1,
+          cfop_padrao: settings.cfop_padrao,
+          cfop_interestadual: settings.cfop_interestadual,
+          csosn_padrao: settings.csosn_padrao,
+          origem_padrao: settings.origem_padrao,
+          unidade_padrao: settings.unidade_padrao,
+          ncm_padrao: settings.ncm_padrao || '',
+          auto_emit_nfce_pdv: settings.auto_emit_nfce_pdv,
+          auto_emit_nfe_pedido_pago: settings.auto_emit_nfe_pedido_pago,
         });
       }
     } catch (e: any) {
@@ -298,9 +301,9 @@ export function FocusNFeSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Numeração</CardTitle>
-          <CardDescription>Série dos documentos fiscais</CardDescription>
+          <CardDescription>Série e sequência usadas na emissão fiscal</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="serie_nfce">Série NFC-e (modelo 65)</Label>
             <Input
@@ -310,6 +313,19 @@ export function FocusNFeSettings() {
               value={form.serie_nfce}
               onChange={(e) => setForm({ ...form, serie_nfce: parseInt(e.target.value) || 1 })}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="proximo_numero_nfce">Próximo número NFC-e</Label>
+            <Input
+              id="proximo_numero_nfce"
+              type="number"
+              min="1"
+              value={form.proximo_numero_nfce}
+              onChange={(e) => setForm({ ...form, proximo_numero_nfce: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Ajuste aqui para pular numerações já usadas em outro emissor e evitar rejeição 539.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="serie_nfe">Série NF-e (modelo 55)</Label>
