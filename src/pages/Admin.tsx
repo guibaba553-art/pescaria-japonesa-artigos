@@ -116,66 +116,40 @@ export default function Admin() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-6 p-6 -mt-4">
-        {/* Acesso rápido (apenas admin) */}
-        {isAdmin && (
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-              Acesso rápido
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {quickAccess.map(({ icon: Icon, title, desc, path }) => (
-                <button
-                  key={path}
-                  onClick={() => navigate(path)}
-                  className="group text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="font-display font-bold text-base">{title}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Gestão — páginas dedicadas */}
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-            Gestão
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {sections
+      <div className="max-w-7xl mx-auto p-6 -mt-4">
+        {(() => {
+          const allItems = [
+            ...(isAdmin ? quickAccess.map((q) => ({ ...q, badge: undefined as number | undefined })) : []),
+            ...sections
               .filter((s) => !s.adminOnly || isAdmin)
-              .map(({ title, desc, icon: Icon, path, badge, stats }) => (
+              .map((s) => ({ icon: s.icon, title: s.title, desc: s.desc, path: s.path, badge: s.badge })),
+          ];
+
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {allItems.map(({ icon: Icon, title, desc, path, badge }) => (
                 <button
                   key={path}
                   onClick={() => navigate(path)}
-                  className="group relative text-left bg-card border border-border rounded-2xl p-5 hover:border-primary/40 hover:shadow-md transition-all"
+                  className="group relative text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all flex flex-col h-full"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <Icon className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <Icon className="w-5 h-5" />
                     </div>
                     {badge !== undefined && badge > 0 && (
                       <Badge variant="secondary" className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                        {badge} {badge === 1 ? 'rascunho' : 'rascunhos'}
+                        {badge}
                       </Badge>
                     )}
                   </div>
-                  <div className="font-display font-bold text-lg leading-tight">{title}</div>
-                  <div className="text-sm text-muted-foreground mt-1">{desc}</div>
-                  {stats && (
-                    <div className="text-xs text-muted-foreground mt-3 pt-3 border-t font-medium">
-                      {stats}
-                    </div>
-                  )}
+                  <div className="font-display font-bold text-base leading-tight">{title}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{desc}</div>
                 </button>
               ))}
-          </div>
-        </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
