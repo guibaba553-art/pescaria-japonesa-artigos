@@ -482,8 +482,15 @@ export default function Products() {
           {/* Lista de Produtos */}
           <div className="flex-1">
             {loading ? (
-              <div className="text-center py-20">
-                <p className="text-xl text-muted-foreground">Carregando produtos...</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="flex flex-col gap-2">
+                    <div className="aspect-square w-full rounded-xl bg-muted animate-pulse" />
+                    <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                    <div className="h-8 w-full rounded-lg bg-muted animate-pulse mt-1" />
+                  </div>
+                ))}
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-20">
