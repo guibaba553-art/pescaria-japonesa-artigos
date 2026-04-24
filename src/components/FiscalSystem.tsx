@@ -12,12 +12,9 @@ import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
 interface FiscalSettings {
   id: string;
   nfe_enabled: boolean;
-  nfe_api_key: string | null;
   nfe_company_id: string | null;
   tga_enabled: boolean;
   tga_api_url: string | null;
-  tga_username: string | null;
-  tga_password: string | null;
   auto_emit_nfe: boolean;
   auto_sync_tga: boolean;
 }
