@@ -8,6 +8,7 @@ import Index from "./pages/Index"; // landing — keep eager for fast first pain
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
+import { AuthProvider } from "./hooks/useAuth";
 
 // Lazy-loaded routes — keep the initial bundle small for mobile
 const Auth = lazy(() => import("./pages/Auth"));
