@@ -497,7 +497,7 @@ serve(async (req) => {
         );
       }
 
-      const txAmount = Number(data.amount.toFixed(2));
+      const txAmount = Number(verifiedAmount.toFixed(2));
 
       // Mercado Pago exige valor mínimo de R$ 1,00 para cartão
       if (txAmount < 1) {
@@ -507,12 +507,61 @@ serve(async (req) => {
         );
       }
 
-      // Ajusta parcelas para que cada uma seja >= R$ 1,00 (mínimo MP)
-      let requestedInstallments = parseInt(String(data.installments)) || 1;
-      const maxInstallments = Math.max(1, Math.floor(txAmount));
-      if (requestedInstallments > maxInstallments) {
-        console.log(`Adjusting installments from ${requestedInstallments} to ${maxInstallments} (min R$1 per installment)`);
-        requestedInstallments = maxInstallments;
+      // Débito é sempre à vista; crédito precisa respeitar as parcelas aceitas pelo emissor
+      let requestedInstallments = data.paymentMethod === 'debit'
+        ? 1
+        : (parseInt(String(data.installments)) || 1);
+      const fallbackMaxInstallments = Math.max(1, Math.floor(txAmount));
+      if (requestedInstallments > fallbackMaxInstallments) {
+        console.log(`Adjusting installments from ${requestedInstallments} to ${fallbackMaxInstallments} (min R$1 per installment)`);
+        requestedInstallments = fallbackMaxInstallments;
+      }
+
+      let issuerId: number | string | undefined;
+
+      if (data.paymentMethod === 'credit') {
+        try {
+          const cleanCardNumber = data.cardData.cardNumber.replace(/\D/g, '');
+          const installmentsUrl = new URL('https://api.mercadopago.com/v1/payment_methods/installments');
+          installmentsUrl.searchParams.set('amount', txAmount.toFixed(2));
+          installmentsUrl.searchParams.set('bin', cleanCardNumber.substring(0, 6));
+          installmentsUrl.searchParams.set('payment_method_id', paymentMethodId);
+
+          const installmentsResp = await fetch(installmentsUrl.toString(), {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+
+          if (installmentsResp.ok) {
+            const installmentsData = await installmentsResp.json();
+            const installmentOption = Array.isArray(installmentsData)
+              ? installmentsData.find((option: any) => option.payment_method_id === paymentMethodId) ?? installmentsData[0]
+              : null;
+
+            const payerCosts = Array.isArray(installmentOption?.payer_costs)
+              ? installmentOption.payer_costs
+              : [];
+
+            issuerId = installmentOption?.issuer?.id;
+
+            const allowedInstallments = payerCosts
+              .map((cost: any) => Number(cost.installments))
+              .filter((value: number) => Number.isFinite(value) && value >= 1)
+              .sort((a: number, b: number) => a - b);
+
+            if (allowedInstallments.length > 0 && !allowedInstallments.includes(requestedInstallments)) {
+              const adjustedInstallments = [...allowedInstallments]
+                .filter((value: number) => value <= requestedInstallments)
+                .pop() ?? allowedInstallments[0];
+
+              console.log(`Adjusting installments from ${requestedInstallments} to ${adjustedInstallments} based on issuer options`);
+              requestedInstallments = adjustedInstallments;
+            }
+          } else {
+            console.error('Installments API returned status:', installmentsResp.status);
+          }
+        } catch (installmentsError) {
+          console.error('Error fetching installment options:', installmentsError);
+        }
       }
 
       const cardPayment = {
@@ -521,6 +570,7 @@ serve(async (req) => {
         description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
         installments: requestedInstallments,
         payment_method_id: paymentMethodId,
+        ...(issuerId ? { issuer_id: issuerId } : {}),
         payer: {
           email: data.userEmail || 'cliente@japapesca.com',
         },
@@ -543,7 +593,7 @@ serve(async (req) => {
       console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status);
       
       if (!response.ok) {
-        console.error('Mercado Pago error - Status:', response.status);
+        console.error('Mercado Pago error - Status:', response.status, 'Body:', JSON.stringify(responseData));
         
         let errorMessage = responseData.message || 'Erro ao processar pagamento com cartão';
         let errorDetails = '';
