@@ -172,6 +172,25 @@ serve(async (req) => {
       ? 'https://api.focusnfe.com.br'
       : 'https://homologacao.focusnfe.com.br';
 
+    const nfceSeries = String(focusSettings.serie_nfce || 1);
+    const configuredNextNumber = Number(focusSettings.proximo_numero_nfce || 1);
+    const nfceNumber = String(configuredNextNumber > 0 ? configuredNextNumber : 1);
+    const persistNextNfceNumber = async (nextNumber: number) => {
+      if (!focusSettings.id || !Number.isFinite(nextNumber) || nextNumber < 1) return;
+
+      const { error } = await supabase
+        .from('focus_nfe_settings')
+        .update({
+          proximo_numero_nfce: nextNumber,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', focusSettings.id);
+
+      if (error) {
+        console.error('Erro ao atualizar próximo número da NFC-e:', error);
+      }
+    };
+
     // Determinar destinatário
     // Se CPF/CNPJ vazio => "consumidor não identificado" (omite bloco destinatário)
     const cpf = cleanDoc(body.customer?.cpf);
@@ -242,6 +261,8 @@ serve(async (req) => {
         data_emissao: dataEmissao,
         tipo_documento: 1,
         finalidade_emissao: 1,
+        numero: nfceNumber,
+        serie: nfceSeries,
         cnpj_emitente: cleanDoc(company.cnpj),
         nome_emitente: company.razao_social,
         nome_fantasia_emitente: company.nome_fantasia || company.razao_social,
@@ -296,6 +317,8 @@ serve(async (req) => {
       timezoneOffset,
       futureOffsetMinutes,
       dataEmissao,
+      nfceSeries,
+      nfceNumber,
     });
 
     // Registrar emissão pendente
@@ -372,27 +395,23 @@ serve(async (req) => {
     while (!response.ok && attempt < maxAttempts) {
       const normalizedError = normalize(result);
       const isLateEmissionError = normalizedError.includes('data-hora de emissao atrasada');
-      const isDuplicityError =
-        normalizedError.includes('duplicidade') ||
-        normalizedError.includes('rejeicao: 539') ||
-        normalizedError.includes('rejeicao 539');
 
-      if (!isLateEmissionError && !isDuplicityError) break;
+      if (!isLateEmissionError) break;
 
       attempt += 1;
-      // Sempre uma ref totalmente nova para evitar reuso de cNF na Focus
       ref = buildFreshRef();
-      // Avança a data de emissão para frente em cada retry
-      futureOffsetMinutes = isLateEmissionError ? 8 : futureOffsetMinutes + 2;
+      futureOffsetMinutes = 8;
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
 
       console.log('Retry NFC-e:', {
         attempt,
         ref,
-        reason: isDuplicityError ? 'duplicidade' : 'data-hora atrasada',
+        reason: 'data-hora atrasada',
         futureOffsetMinutes,
         dataEmissao,
+        nfceSeries,
+        nfceNumber,
       });
 
       if (emission) {
@@ -405,11 +424,19 @@ serve(async (req) => {
       ({ response, result, responseText } = await sendToFocus(ref, payload));
     }
 
-    if (!response.ok) {
-      console.error('Focus NFe error:', response.status, responseText);
+    const finalStatus = String(result.status || '').toLowerCase();
+    const isAuthorizationErrorStatus =
+      finalStatus === 'erro_autorizacao' || finalStatus === 'denegado' || finalStatus === 'rejeitado';
+
+    if (!response.ok || isAuthorizationErrorStatus) {
+      if (!response.ok) {
+        console.error('Focus NFe error:', response.status, responseText);
+      } else {
+        console.error('Focus NFe authorization error:', finalStatus, responseText);
+      }
 
       // 401 = token inválido para o ambiente configurado
-      if (response.status === 401) {
+      if (!response.ok && response.status === 401) {
         const envLabel = isProducao ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO';
         const errMsg = `Token Focus NFe de ${envLabel} inválido ou não autorizado. Verifique o token cadastrado em Secrets ou troque o ambiente nas Configurações.`;
         if (emission) {
@@ -427,6 +454,10 @@ serve(async (req) => {
         finalNormalizedError.includes('rejeicao: 539') ||
         finalNormalizedError.includes('rejeicao 539') ||
         finalNormalizedError.includes('chave de acesso');
+
+      if (isDuplicityError) {
+        await persistNextNfceNumber(configuredNextNumber + 1);
+      }
 
       if (isDuplicityError && body.order_id) {
         const { data: previousEmissions } = await supabase
@@ -466,6 +497,11 @@ serve(async (req) => {
 
             await supabase.from('nfe_emissions').update(recoveredData).eq('id', previousEmission.id);
 
+            const recoveredNumber = Number(existing.result.numero || 0);
+            if (Number.isFinite(recoveredNumber) && recoveredNumber > 0) {
+              await persistNextNfceNumber(recoveredNumber + 1);
+            }
+
             return new Response(
               JSON.stringify({
                 success: true,
@@ -481,19 +517,27 @@ serve(async (req) => {
         }
       }
 
+      const errorMessage =
+        result.mensagem_sefaz || result.mensagem || result.erros?.[0]?.mensagem || JSON.stringify(result);
+
       if (emission) {
         await supabase
           .from('nfe_emissions')
           .update({
             status: 'error',
-            error_message: result.mensagem || result.erros?.[0]?.mensagem || JSON.stringify(result),
+            error_message: errorMessage,
           })
           .eq('id', emission.id);
       }
       return new Response(
-        JSON.stringify({ error: result.mensagem || 'Erro ao emitir NFC-e', details: result }),
+        JSON.stringify({ error: errorMessage || 'Erro ao emitir NFC-e', details: result }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    const emittedNumber = Number(result.numero || nfceNumber);
+    if (Number.isFinite(emittedNumber) && emittedNumber > 0) {
+      await persistNextNfceNumber(emittedNumber + 1);
     }
 
     // Atualizar emissão com resultado
@@ -502,8 +546,8 @@ serve(async (req) => {
         .from('nfe_emissions')
         .update({
           status: result.status === 'autorizado' ? 'success' : 'pending',
-          nfe_number: result.numero || null,
-          nfe_key: result.chave_nfe || null,
+          nfe_number: result.numero || nfceNumber || null,
+          nfe_key: result.chave_nfe || result.chave_nfce || null,
           nfe_xml_url: result.caminho_xml_nota_fiscal
             ? `${focusBaseUrl}${result.caminho_xml_nota_fiscal}`
             : null,
