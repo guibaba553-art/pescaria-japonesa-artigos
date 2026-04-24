@@ -104,7 +104,7 @@ export function ProductsManagement() {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
     setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
-    setPricePdv(''); setPriceCashPercent('0'); setPriceDebitPercent('0'); setPriceCreditPercent('0'); setPricePixPercent('0');
+    setPricePdv('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
