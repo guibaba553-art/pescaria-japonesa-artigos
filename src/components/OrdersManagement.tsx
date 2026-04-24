@@ -1013,7 +1013,7 @@ export function OrdersManagement() {
   const pdv = {
     semPagamento: pdvOrders.filter(o => o.status === 'aguardando_pagamento'),
     prontoRetirar: pdvOrders.filter(o => o.status === 'em_preparo'),
-    finalizadas: pdvOrders.filter(o => o.status === 'entregado'),
+    finalizadas: pdvOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
   };
 
   const tableProps = {
