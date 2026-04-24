@@ -51,6 +51,12 @@ export function ProductCard({
   const installment = finalPrice / 10;
   const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
 
+  // Prova social (determinística, estável durante o dia)
+  const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
+  const viewers = viewersNow(product.id);
+  // Mostra "X vendidos" se houver, senão "Y pessoas vendo agora" para produtos populares
+  const showSocialProof = product.stock > 0;
+
   const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   return (
