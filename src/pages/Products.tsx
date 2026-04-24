@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Home, X, SlidersHorizontal } from 'lucide-react';
+import { Home, X, SlidersHorizontal, Filter } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -231,18 +232,18 @@ export default function Products() {
       {/* Spacer to compensate fixed Header height */}
       <div aria-hidden className="h-16 lg:h-[108px]" />
 
-      {/* Commercial header banner */}
+      {/* Commercial header banner — compacto no mobile */}
       <div className="bg-foreground text-background">
-        <div className="container mx-auto py-8 sm:py-10">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="container mx-auto py-4 sm:py-10">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
             <div>
-              <p className="text-xs font-bold text-primary-glow uppercase tracking-wider mb-2">
-                Catálogo · {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
+              <p className="text-[10px] sm:text-xs font-bold text-primary-glow uppercase tracking-wider mb-1 sm:mb-2">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'produto' : 'produtos'}
               </p>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-black leading-tight">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-display font-black leading-tight">
                 {categoryParam || 'Todos os produtos'}
               </h1>
-              <p className="text-sm sm:text-base text-background/70 mt-2">
+              <p className="hidden sm:block text-sm sm:text-base text-background/70 mt-2">
                 Envio rápido · 10x sem juros · PIX 5% off
               </p>
             </div>
@@ -252,39 +253,41 @@ export default function Products() {
                 placeholder="🔍 Buscar produto..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-full bg-background text-foreground border-transparent placeholder:text-muted-foreground"
+                className="h-10 sm:h-11 rounded-full bg-background text-foreground border-transparent placeholder:text-muted-foreground"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto pt-6 pb-16">
-        {/* Filtros de Categoria Primária */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          <button
-            onClick={() => handleCategoryChange('')}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-              categoryParam === ''
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'bg-muted text-foreground hover:bg-muted/70'
-            }`}
-          >
-            Todas
-          </button>
-          {primaries.map((cat) => (
+      <div className="container mx-auto pt-4 sm:pt-6 pb-8 sm:pb-16">
+        {/* Filtros de Categoria Primária — scroll horizontal no mobile */}
+        <div className="-mx-4 sm:mx-0 mb-3">
+          <div className="flex sm:flex-wrap gap-2 px-4 sm:px-0 overflow-x-auto sm:overflow-visible scrollbar-hide pb-1 sm:pb-0">
             <button
-              key={cat.id}
-              onClick={() => handleCategoryChange(cat.name)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                categoryParam === cat.name
+              onClick={() => handleCategoryChange('')}
+              className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                categoryParam === ''
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'bg-muted text-foreground hover:bg-muted/70'
               }`}
             >
-              {cat.name}
+              Todas
             </button>
-          ))}
+            {primaries.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryChange(cat.name)}
+                className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  categoryParam === cat.name
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'bg-muted text-foreground hover:bg-muted/70'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Sub-filtros (subcategorias da primária selecionada) */}
@@ -293,30 +296,32 @@ export default function Products() {
           const subs = activePrimary ? getSubcategoriesOf(activePrimary.id) : [];
           if (subs.length === 0) return null;
           return (
-            <div className="flex flex-wrap gap-2 mb-6">
-              <button
-                onClick={() => handleSubcategoryChange('')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  subcategoryParam === ''
-                    ? 'bg-foreground text-background'
-                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Todas em {activePrimary!.name}
-              </button>
-              {subs.map((sub) => (
+            <div className="-mx-4 sm:mx-0 mb-4 sm:mb-6">
+              <div className="flex sm:flex-wrap gap-2 px-4 sm:px-0 overflow-x-auto sm:overflow-visible scrollbar-hide pb-1 sm:pb-0">
                 <button
-                  key={sub.id}
-                  onClick={() => handleSubcategoryChange(sub.name)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    subcategoryParam === sub.name
+                  onClick={() => handleSubcategoryChange('')}
+                  className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                    subcategoryParam === ''
                       ? 'bg-foreground text-background'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted'
                   }`}
                 >
-                  {sub.name}
+                  Todas em {activePrimary!.name}
                 </button>
-              ))}
+                {subs.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => handleSubcategoryChange(sub.name)}
+                    className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap ${
+                      subcategoryParam === sub.name
+                        ? 'bg-foreground text-background'
+                        : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {sub.name}
+                  </button>
+                ))}
+              </div>
             </div>
           );
         })()}
