@@ -446,7 +446,7 @@ serve(async (req) => {
       JSON.stringify(r).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     let attempt = 1;
-    const maxAttempts = 3;
+    const maxAttempts = 10;
 
     while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
       const normalizedError = normalize(result);
@@ -463,7 +463,7 @@ serve(async (req) => {
       ref = buildFreshRef();
 
       if (isDuplicityError) {
-        currentNfceNumber += 1;
+        await reserveNfceNumber(nextNumberCursor);
       }
 
       futureOffsetMinutes = isLateEmissionError ? 3 : Math.max(futureOffsetMinutes, 1);
@@ -483,7 +483,11 @@ serve(async (req) => {
       if (emission) {
         await supabase
           .from('nfe_emissions')
-          .update({ ref_focus: ref, updated_at: new Date().toISOString() })
+          .update({
+            ref_focus: ref,
+            nfe_number: getCurrentNfceNumber(),
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', emission.id);
       }
 
@@ -522,7 +526,7 @@ serve(async (req) => {
         finalNormalizedError.includes('chave de acesso');
 
       if (isDuplicityError) {
-        await persistNextNfceNumber(currentNfceNumber + 1);
+        await ensureNextNfceNumberAtLeast(currentNfceNumber + 1);
       }
 
       if (isDuplicityError && body.order_id) {
@@ -565,7 +569,7 @@ serve(async (req) => {
 
             const recoveredNumber = Number(existing.result.numero || 0);
             if (Number.isFinite(recoveredNumber) && recoveredNumber > 0) {
-              await persistNextNfceNumber(recoveredNumber + 1);
+              await ensureNextNfceNumberAtLeast(recoveredNumber + 1);
             }
 
             return new Response(
