@@ -153,7 +153,7 @@ export function ProductsManagement() {
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
           created_by: user?.id,
           price_pdv: pricePdv ? parseFloat(pricePdv) : null,
-          // Fórmula fixa: PIX/Dinheiro = base, Débito = +5%, Crédito = +10,25%
+          // Fórmula fixa: PIX/Dinheiro = base, Débito = +3%, Crédito = +4%
           price_cash_percent: 0,
           price_pix_percent: 0,
           price_debit_percent: 5,
