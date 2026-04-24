@@ -174,15 +174,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error('EMAIL_ALREADY_EXISTS') };
     }
 
-    // Atualizar perfil com CPF, CEP e telefone
+    // Atualizar perfil com CPF, telefone e (opcionalmente) CEP
     if (data.user) {
+      const profileUpdate: { cpf: string; phone: string; cep?: string } = { cpf, phone };
+      if (cep && cep.length === 8) profileUpdate.cep = cep;
+
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          cpf, 
-          cep, 
-          phone 
-        })
+        .update(profileUpdate)
         .eq('id', data.user.id);
 
       if (profileError) {
