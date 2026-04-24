@@ -178,6 +178,16 @@ export default function FiscalTools() {
       </div>
 
       <div className="container mx-auto p-6 -mt-4 space-y-6">
+        {/* KPIs fiscais */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <KpiBox label="NFe hoje" value={String(kpis.emittedToday)} accent="text-green-600" icon={<Receipt className="w-4 h-4" />} />
+          <KpiBox label="NFe no mês" value={String(kpis.emittedMonth)} accent="text-green-600" icon={<Receipt className="w-4 h-4" />} />
+          <KpiBox label="Valor do mês" value={kpis.totalValueMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={<Calculator className="w-4 h-4" />} />
+          <KpiBox label="Pendentes" value={String(kpis.pending)} accent="text-yellow-600" icon={<Loader2 className="w-4 h-4" />} />
+          <KpiBox label="Erros" value={String(kpis.errors)} accent="text-red-600" icon={<Receipt className="w-4 h-4" />} />
+          <KpiBox label="Canceladas" value={String(kpis.cancelled)} accent="text-muted-foreground" icon={<Receipt className="w-4 h-4" />} />
+        </div>
+
         <Tabs defaultValue="calculator" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
             <TabsTrigger value="calculator">
