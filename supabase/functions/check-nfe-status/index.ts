@@ -23,8 +23,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const isProducao = focusSettings?.ambiente === 'producao';
+    // Em produção usa o Token Principal (mesmo da emissão); em homologação o token de homologação
     const focusToken = isProducao
-      ? Deno.env.get('FOCUS_NFE_TOKEN_PRODUCAO')
+      ? Deno.env.get('FOCUS_NFE_TOKEN_PRINCIPAL')
       : Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
     const focusBaseUrl = isProducao
       ? 'https://api.focusnfe.com.br'
@@ -81,9 +82,14 @@ Deno.serve(async (req) => {
           updateData.emitted_at = data.data_emissao || new Date().toISOString();
           updateData.danfe_url = data.caminho_danfe ? `${focusBaseUrl}${data.caminho_danfe}` : null;
           updateData.nfe_xml_url = data.caminho_xml_nota_fiscal ? `${focusBaseUrl}${data.caminho_xml_nota_fiscal}` : null;
-        } else if (focusStatus === 'erro_autorizacao' || focusStatus === 'denegado') {
+        } else if (
+          focusStatus === 'erro_autorizacao' ||
+          focusStatus === 'denegado' ||
+          focusStatus === 'rejeitado'
+        ) {
           updateData.status = 'error';
-          updateData.error_message = data.mensagem_sefaz || data.mensagem || 'Erro na autorização';
+          const sefazInfo = data.status_sefaz ? `[SEFAZ ${data.status_sefaz}] ` : '';
+          updateData.error_message = `${sefazInfo}${data.mensagem_sefaz || data.mensagem || 'Erro na autorização'}`;
         } else if (focusStatus === 'cancelado') {
           updateData.status = 'cancelled';
           updateData.cancelled_at = new Date().toISOString();
