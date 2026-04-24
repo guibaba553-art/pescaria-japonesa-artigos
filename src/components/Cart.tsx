@@ -19,7 +19,15 @@ import { Checkout } from '@/components/Checkout';
 import { ShippingCalculator } from '@/components/ShippingCalculator';
 import { useToast } from '@/hooks/use-toast';
 
-export function Cart() {
+interface CartProps {
+  /** Quando fornecido, o Sheet é controlado externamente e o trigger interno é omitido. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Oculta o botão trigger padrão (útil quando o Sheet é aberto a partir de outro lugar). */
+  hideTrigger?: boolean;
+}
+
+export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
   const { items, removeItem, updateQuantity, clearCart, total, itemCount } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -44,20 +52,24 @@ export function Cart() {
   const pixTotal = (total + (total >= 0 ? 0 : 0)) * 0.95; // PIX 5% on items only
   const installment = total / 10;
 
+  const isControlled = open !== undefined;
+
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full">
-          <ShoppingCart className="h-5 w-5" />
-          {itemCount > 0 && (
-            <Badge
-              className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 text-[10px] font-black bg-primary text-primary-foreground border-2 border-background"
-            >
-              {itemCount}
-            </Badge>
-          )}
-        </Button>
-      </SheetTrigger>
+    <Sheet {...(isControlled ? { open, onOpenChange } : {})}>
+      {!hideTrigger && (
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative rounded-full">
+            <ShoppingCart className="h-5 w-5" />
+            {itemCount > 0 && (
+              <Badge
+                className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 text-[10px] font-black bg-primary text-primary-foreground border-2 border-background"
+              >
+                {itemCount}
+              </Badge>
+            )}
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0 flex flex-col">
         {/* Header */}
         <SheetHeader className="px-5 py-4 border-b border-border bg-muted/30">

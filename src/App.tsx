@@ -24,6 +24,7 @@ import PoliticaTrocas from "./pages/PoliticaTrocas";
 import MeusDados from "./pages/MeusDados";
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
+import { MobileBottomNav } from "./components/MobileBottomNav";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <MobileBottomNav />
         <CookieBanner />
       </BrowserRouter>
     </TooltipProvider>

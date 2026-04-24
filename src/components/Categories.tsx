@@ -38,15 +38,15 @@ const Categories = () => {
   }
 
   return (
-    <section className="py-12 sm:py-16 bg-surface-subtle">
+    <section className="py-8 sm:py-16 bg-surface-subtle">
       <div className="container mx-auto">
         {/* Section header */}
-        <div className="flex items-end justify-between mb-6 sm:mb-8">
+        <div className="flex items-end justify-between mb-4 sm:mb-8">
           <div>
-            <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1.5">
+            <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wider mb-1">
               Compre por categoria
             </p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-black text-foreground leading-tight">
+            <h2 className="text-xl sm:text-3xl md:text-4xl font-display font-black text-foreground leading-tight">
               Tudo o que você precisa
             </h2>
           </div>
@@ -59,44 +59,48 @@ const Categories = () => {
           </button>
         </div>
 
-        {/* Grid - more compact, more cards visible */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
-          {categories.map((category, idx) => {
-            const bgImage = getCategoryImage(category);
+        {/* Mobile: scroll horizontal estilo "stories"; Desktop: grid */}
+        <div className="-mx-4 sm:mx-0">
+          <div
+            className="flex sm:grid sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-3 overflow-x-auto sm:overflow-visible px-4 sm:px-0 pb-2 sm:pb-0 snap-x snap-mandatory sm:snap-none scrollbar-hide"
+          >
+            {categories.map((category, idx) => {
+              const bgImage = getCategoryImage(category);
 
-            return (
-              <button
-                key={category.id}
-                onClick={() => navigate(`/produtos?category=${encodeURIComponent(category.name)}`)}
-                className="group relative aspect-square rounded-xl overflow-hidden hover:ring-2 hover:ring-primary transition-all text-left animate-fade-in-up isolate"
-                style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'backwards' }}
-              >
-                {/* Background image */}
-                <img
-                  src={bgImage}
-                  alt=""
-                  loading="lazy"
-                  width={400}
-                  height={400}
-                  className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700 ease-out"
-                />
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => navigate(`/produtos?category=${encodeURIComponent(category.name)}`)}
+                  className="group relative flex-shrink-0 w-[120px] sm:w-auto aspect-square rounded-2xl overflow-hidden hover:ring-2 hover:ring-primary transition-all text-left animate-fade-in-up isolate snap-start"
+                  style={{ animationDelay: `${idx * 40}ms`, animationFillMode: 'backwards' }}
+                >
+                  {/* Background image */}
+                  <img
+                    src={bgImage}
+                    alt=""
+                    loading="lazy"
+                    width={400}
+                    height={400}
+                    className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-110 transition-transform duration-700 ease-out"
+                  />
 
-                {/* Dark gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
+                  {/* Dark gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
 
-                {/* Content */}
-                <div className="relative z-10 h-full p-3 flex items-end">
-                  <h3 className="text-sm sm:text-base font-display font-bold text-white leading-tight tracking-tight">
-                    {category.name}
-                  </h3>
-                </div>
-              </button>
-            );
-          })}
+                  {/* Content */}
+                  <div className="relative z-10 h-full p-2.5 sm:p-3 flex items-end">
+                    <h3 className="text-sm sm:text-base font-display font-bold text-white leading-tight tracking-tight">
+                      {category.name}
+                    </h3>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Mobile: Ver todas */}
-        <div className="mt-6 sm:hidden text-center">
+        <div className="mt-4 sm:hidden text-center">
           <button
             onClick={() => navigate('/produtos')}
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary"
