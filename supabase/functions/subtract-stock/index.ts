@@ -19,76 +19,62 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // Validate input
+
     const body = await req.json();
     const validationResult = requestSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
-      console.error('Validation error:', validationResult.error.errors);
       return new Response(
-        JSON.stringify({ 
-          error: 'Invalid input', 
-          details: validationResult.error.errors 
-        }),
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.errors }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
+
     const { orderId } = validationResult.data;
-    console.log('Subtracting stock for order:', orderId);
-    
-    // Authenticate user
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Missing Authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('[subtract-stock] Processing order:', orderId);
 
-    // Create client for user authentication check
-    const userToken = authHeader.replace('Bearer ', '');
-    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const { data: { user }, error: authError } = await supabaseUser.auth.getUser(userToken);
-    
-    if (authError || !user) {
-      console.error('Invalid token:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Service role faz a operação. Webhook do Mercado Pago não tem JWT do usuário,
+    // então autorizamos pelo service role key (a função só é chamada por edge functions internas).
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const isServiceCall = authHeader.includes(supabaseServiceKey);
 
-    // Check if user is admin or employee (this function should only be called by authorized personnel)
-    const { data: roles } = await supabaseUser
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    const isAuthorized = roles?.some(r => r.role === 'admin' || r.role === 'employee');
-    
-    if (!isAuthorized) {
-      console.error('User not authorized - requires admin or employee role');
-      return new Response(
-        JSON.stringify({ error: 'Forbidden: Only administrators and employees can subtract stock' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar itens do pedido com informações sobre variações
+    // Se NÃO for chamada interna, exige usuário admin/employee
+    if (!isServiceCall) {
+      const userToken = authHeader.replace('Bearer ', '');
+      if (!userToken) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: { user }, error: authError } = await supabase.auth.getUser(userToken);
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const { data: roles } = await supabase
+        .from('user_roles').select('role').eq('user_id', user.id);
+      const isAuthorized = roles?.some(r => r.role === 'admin' || r.role === 'employee');
+      if (!isAuthorized) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Buscar itens do pedido
     const { data: orderItems, error: itemsError } = await supabase
       .from('order_items')
       .select('product_id, variation_id, quantity')
       .eq('order_id', orderId);
 
     if (itemsError) {
-      console.error('Error fetching order items:', itemsError);
+      console.error('[subtract-stock] Error fetching items:', itemsError);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch order items' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -97,110 +83,62 @@ serve(async (req) => {
 
     if (!orderItems || orderItems.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No items found for this order' }),
+        JSON.stringify({ error: 'No items found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Subtrair estoque de cada produto/variação
-    const updates = [];
+    // Aplicar movimentação atômica para cada item
+    const results = [];
+    const errors = [];
+
     for (const item of orderItems) {
-      // Se tiver variation_id, descontar da variação. Caso contrário, descontar do produto.
-      // Fallback (compatibilidade com pedidos antigos): se variation_id for null, tentar
-      // identificar se product_id na verdade aponta para uma variação.
+      // Compatibilidade: se variation_id null mas product_id aponta para uma variação
       let variationId: string | null = item.variation_id ?? null;
+      let productId: string = item.product_id;
 
       if (!variationId) {
         const { data: maybeVariation } = await supabase
           .from('product_variations')
-          .select('id')
+          .select('id, product_id')
           .eq('id', item.product_id)
           .maybeSingle();
         if (maybeVariation) {
           variationId = maybeVariation.id;
+          productId = maybeVariation.product_id;
         }
       }
 
-      if (variationId) {
-        const { data: variation } = await supabase
-          .from('product_variations')
-          .select('stock, product_id')
-          .eq('id', variationId)
-          .maybeSingle();
+      const { data, error } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: productId,
+        p_variation_id: variationId,
+        p_quantity_delta: -Math.abs(item.quantity), // sempre negativo (saída)
+        p_movement_type: 'sale',
+        p_order_id: orderId,
+        p_reason: `Venda online - pedido ${orderId.slice(0, 8)}`,
+      });
 
-        if (!variation) {
-          console.error('Variation not found:', variationId);
-          continue;
-        }
-
-        const newStock = Math.max(0, variation.stock - item.quantity);
-        const { error: updateError } = await supabase
-          .from('product_variations')
-          .update({ stock: newStock })
-          .eq('id', variationId);
-
-        if (updateError) {
-          console.error('Error updating stock for variation:', variationId, updateError);
-        } else {
-          updates.push({
-            type: 'variation',
-            variation_id: variationId,
-            product_id: variation.product_id,
-            old_stock: variation.stock,
-            new_stock: newStock,
-            quantity_removed: item.quantity
-          });
-          console.log(`Stock updated for variation ${variationId}: ${variation.stock} -> ${newStock}`);
-        }
+      if (error) {
+        console.error('[subtract-stock] RPC error:', error);
+        errors.push({ product_id: productId, error: error.message });
       } else {
-        // Produto direto
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.product_id)
-          .single();
-
-        if (productError || !product) {
-          console.error('Error fetching product:', item.product_id, productError);
-          continue;
-        }
-
-        const newStock = Math.max(0, product.stock - item.quantity);
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ stock: newStock })
-          .eq('id', item.product_id);
-
-        if (updateError) {
-          console.error('Error updating stock for product:', item.product_id, updateError);
-        } else {
-          updates.push({
-            type: 'product',
-            product_id: item.product_id,
-            old_stock: product.stock,
-            new_stock: newStock,
-            quantity_removed: item.quantity
-          });
-          console.log(`Stock updated for product ${item.product_id}: ${product.stock} -> ${newStock}`);
-        }
+        results.push(data);
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        updates,
-        message: `Stock updated for ${updates.length} items`
+      JSON.stringify({
+        success: errors.length === 0,
+        processed: results.length,
+        errors,
+        results,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
-    console.error('Error in subtract-stock:', error);
+    console.error('[subtract-stock] Fatal:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
