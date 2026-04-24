@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, LayoutGrid, Search, ShoppingBag, User } from 'lucide-react';
+import { Home, LayoutGrid, Search, ShoppingBag, User, LayoutDashboard } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
