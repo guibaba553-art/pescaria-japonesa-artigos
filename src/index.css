@@ -224,4 +224,13 @@
   .btn-press:active {
     transform: scale(0.97);
   }
+
+  /* Compensa altura da bottom nav mobile (56px + safe-area).
+     Aplicar no <body> para que todas as páginas tenham espaço.
+     Desktop ignora pois a bottom nav é md:hidden. */
+  @media (max-width: 767px) {
+    body {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    }
+  }
 }
