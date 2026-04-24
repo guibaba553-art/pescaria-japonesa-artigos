@@ -314,11 +314,41 @@ export function ProductsManagement() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {filteredProducts.map((product) => {
+                const v = velocities[product.id];
                 const accent =
                   product.stock === 0 ? 'border-l-destructive'
+                  : v?.status === 'critical' ? 'border-l-orange-500'
                   : product.on_sale ? 'border-l-emerald-500'
                   : product.featured ? 'border-l-amber-500'
                   : 'border-l-primary/40';
+
+                // Texto da estimativa
+                let durationLabel = '';
+                let durationClass = 'text-muted-foreground';
+                if (product.stock === 0) {
+                  durationLabel = 'Esgotado';
+                  durationClass = 'text-destructive font-semibold';
+                } else if (!v) {
+                  durationLabel = 'Sem histórico';
+                } else if (v.daysRemaining === null) {
+                  durationLabel = 'Sem vendas (60d)';
+                } else if (v.daysRemaining < 1) {
+                  durationLabel = 'Acaba hoje';
+                  durationClass = 'text-destructive font-semibold';
+                } else if (v.daysRemaining <= 7) {
+                  durationLabel = `~${Math.round(v.daysRemaining)}d restantes`;
+                  durationClass = 'text-destructive font-semibold';
+                } else if (v.daysRemaining <= 14) {
+                  durationLabel = `~${Math.round(v.daysRemaining)}d restantes`;
+                  durationClass = 'text-orange-600 dark:text-orange-400 font-semibold';
+                } else if (v.daysRemaining <= 60) {
+                  durationLabel = `~${Math.round(v.daysRemaining)}d restantes`;
+                  durationClass = 'text-emerald-600 dark:text-emerald-400 font-medium';
+                } else {
+                  durationLabel = `+${Math.round(v.daysRemaining)}d de estoque`;
+                  durationClass = 'text-emerald-600 dark:text-emerald-400 font-medium';
+                }
+
                 return (
                   <Card key={product.id} className={`border-l-4 ${accent} overflow-hidden transition-all hover:shadow-md flex flex-col`}>
                     <div className="aspect-square bg-muted relative overflow-hidden">
@@ -331,6 +361,9 @@ export function ProductsManagement() {
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
                         {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
+                        {product.stock > 0 && v?.status === 'critical' && (
+                          <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
+                        )}
                       </div>
                     </div>
                     <div className="p-2.5 flex-1 flex flex-col gap-1.5">
@@ -353,6 +386,13 @@ export function ProductsManagement() {
                           <p className="text-[9px] text-muted-foreground uppercase font-semibold">Estoque</p>
                           <p className={`text-sm font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>{product.stock}</p>
                         </div>
+                      </div>
+                      <div
+                        className={`text-[10px] flex items-center gap-1 px-1.5 py-1 rounded bg-muted/50 ${durationClass}`}
+                        title={v ? `Velocidade: ${v.unitsPerDay.toFixed(2)} un/dia (${v.totalSold} vendidas em ${v.daysAnalyzed}d)` : 'Sem dados de venda'}
+                      >
+                        <span>⏱</span>
+                        <span className="truncate">{durationLabel}</span>
                       </div>
                       {product.sku && <code className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono truncate">{product.sku}</code>}
                       <div className="flex gap-1 mt-auto pt-1.5 border-t">
