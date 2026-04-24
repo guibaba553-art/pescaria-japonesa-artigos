@@ -8,9 +8,10 @@ import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
 import { NFEHistory } from "@/components/NFEHistory";
+import { FiscalSystem } from "@/components/FiscalSystem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut } from "lucide-react";
+import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings } from "lucide-react";
 
 interface Product {
   id: string;
