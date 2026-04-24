@@ -301,9 +301,9 @@ export function FocusNFeSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Numeração</CardTitle>
-          <CardDescription>Série dos documentos fiscais</CardDescription>
+          <CardDescription>Série e sequência usadas na emissão fiscal</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="serie_nfce">Série NFC-e (modelo 65)</Label>
             <Input
@@ -313,6 +313,19 @@ export function FocusNFeSettings() {
               value={form.serie_nfce}
               onChange={(e) => setForm({ ...form, serie_nfce: parseInt(e.target.value) || 1 })}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="proximo_numero_nfce">Próximo número NFC-e</Label>
+            <Input
+              id="proximo_numero_nfce"
+              type="number"
+              min="1"
+              value={form.proximo_numero_nfce}
+              onChange={(e) => setForm({ ...form, proximo_numero_nfce: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Ajuste aqui para pular numerações já usadas em outro emissor e evitar rejeição 539.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="serie_nfe">Série NF-e (modelo 55)</Label>
