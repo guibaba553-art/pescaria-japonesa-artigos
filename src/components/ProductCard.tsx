@@ -170,8 +170,8 @@ export function ProductCard({
               Ver opções
             </Button>
           ) : (
-            <div className="flex items-center gap-1.5 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
-              {/* Compact quantity selector — same height as Buy button (h-9) */}
+            <div className="flex items-center justify-between gap-2 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+              {/* Compact quantity selector */}
               <div className="flex items-center h-9 rounded-lg border border-border bg-background overflow-hidden flex-shrink-0">
                 <button
                   type="button"
@@ -205,17 +205,21 @@ export function ProductCard({
                   <span className="text-base font-bold leading-none">+</span>
                 </button>
               </div>
-              <Button
-                className="flex-1 min-w-0 h-9 rounded-lg btn-press flex items-center justify-center"
+              {/* Round cart button */}
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToCart();
                 }}
                 disabled={product.stock === 0}
                 aria-label="Adicionar ao carrinho"
+                className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-sm hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-40 flex-shrink-0"
               >
                 <ShoppingCart className="w-4 h-4" />
-              </Button>
+              </button>
+            </div>
+          )}
             </div>
           )}
         </div>
