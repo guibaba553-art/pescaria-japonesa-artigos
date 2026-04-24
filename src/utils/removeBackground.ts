@@ -4,7 +4,8 @@ import { AutoModel, AutoProcessor, env, RawImage } from '@huggingface/transforme
 env.allowLocalModels = false;
 env.useBrowserCache = true; // cacheia o modelo após o 1º download
 
-const MAX_IMAGE_DIMENSION = 1024;
+// Reduzido de 1024 -> 512 para evitar Out-of-Memory em PCs/celulares mais simples
+const MAX_IMAGE_DIMENSION = 512;
 
 let modelPromise: Promise<{ model: any; processor: any }> | null = null;
 
@@ -16,17 +17,17 @@ async function getModel() {
   if (modelPromise) return modelPromise;
 
   modelPromise = (async () => {
-    // Tenta WebGPU; se falhar, cai para WASM (CPU)
     let model: any;
     let processor: any;
+    // Tenta WebGPU em fp16 (metade da memória); se falhar, cai para WASM (CPU)
     try {
       model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
         device: 'webgpu',
-        dtype: 'fp32',
+        dtype: 'fp16',
         config: { model_type: 'custom' } as any,
       });
     } catch (e) {
-      console.warn('[removeBackground] WebGPU indisponível, usando WASM:', e);
+      console.warn('[removeBackground] WebGPU indisponível, usando WASM (CPU):', e);
       model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
         config: { model_type: 'custom' } as any,
       });
@@ -43,7 +44,8 @@ async function getModel() {
         resample: 2,
         rescale_factor: 0.00392156862745098,
         return_tensors: 'pt',
-        size: { width: 1024, height: 1024 },
+        // Tamanho de processamento do modelo (não afeta a saída final)
+        size: { width: 512, height: 512 },
       } as any,
     });
     return { model, processor };
