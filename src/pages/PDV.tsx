@@ -730,29 +730,19 @@ export default function PDV() {
 
       if (itemsError) throw itemsError;
 
-      // Atualizar estoque
+      // Atualizar estoque de forma ATÔMICA via RPC (livro-caixa + lock de linha)
+      // Garante: 1) sem race condition, 2) idempotente por pedido, 3) histórico auditável
       for (const item of cart) {
-        if (item.variation) {
-          // Atualizar estoque da variação
-          const { error: stockError } = await supabase
-            .from('product_variations')
-            .update({ 
-              stock: item.variation.stock - item.quantity 
-            })
-            .eq('id', item.variation.id);
+        const { error: stockError } = await supabase.rpc('apply_stock_movement', {
+          p_product_id: item.product.id,
+          p_variation_id: item.variation ? item.variation.id : null,
+          p_quantity_delta: -Math.abs(item.quantity),
+          p_movement_type: 'pdv_sale',
+          p_order_id: order.id,
+          p_reason: `Venda PDV - pedido ${order.id.slice(0, 8)}`,
+        });
 
-          if (stockError) throw stockError;
-        } else {
-          // Atualizar estoque do produto
-          const { error: stockError } = await supabase
-            .from('products')
-            .update({ 
-              stock: item.product.stock - item.quantity 
-            })
-            .eq('id', item.product.id);
-
-          if (stockError) throw stockError;
-        }
+        if (stockError) throw stockError;
       }
 
       toast({
