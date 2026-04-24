@@ -101,7 +101,7 @@ export function MobileBottomNav() {
     <>
       {/* Bottom nav bar */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         aria-label="Navegação principal"
       >
