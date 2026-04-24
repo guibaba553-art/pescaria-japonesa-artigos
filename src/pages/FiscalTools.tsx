@@ -1,16 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { NFEList } from "@/components/NFEList";
-import { FiscalSystem } from "@/components/FiscalSystem";
-import { TaxProjection } from "@/components/TaxProjection";
-import { XMLImporter } from "@/components/XMLImporter";
-import { NfeEntradaPendentes } from "@/components/NfeEntradaPendentes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine } from "lucide-react";
+
+// Conteúdo das abas é pesado (NFe, impostos, sistema fiscal) — só baixa quando o admin abre a aba.
+// Lógica fiscal NÃO é alterada, apenas o momento do load.
+const NFEList = lazy(() =>
+  import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
+);
+const FiscalSystem = lazy(() =>
+  import("@/components/FiscalSystem").then((m) => ({ default: m.FiscalSystem }))
+);
+const TaxProjection = lazy(() =>
+  import("@/components/TaxProjection").then((m) => ({ default: m.TaxProjection }))
+);
+const NfeEntradaPendentes = lazy(() =>
+  import("@/components/NfeEntradaPendentes").then((m) => ({ default: m.NfeEntradaPendentes }))
+);
+
+const FiscalTabFallback = () => (
+  <div className="flex items-center justify-center py-16 text-muted-foreground">
+    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+    Carregando módulo fiscal...
+  </div>
+);
 
 interface Product {
   id: string;
@@ -208,7 +225,9 @@ export default function FiscalTools() {
           </TabsList>
 
           <TabsContent value="taxes">
-            <TaxProjection />
+            <Suspense fallback={<FiscalTabFallback />}>
+              <TaxProjection />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="nfe">
@@ -220,7 +239,9 @@ export default function FiscalTools() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
@@ -237,13 +258,17 @@ export default function FiscalTools() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <NfeEntradaPendentes />
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <NfeEntradaPendentes />
+                </Suspense>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="system">
-            <FiscalSystem />
+            <Suspense fallback={<FiscalTabFallback />}>
+              <FiscalSystem />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>
