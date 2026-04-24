@@ -274,15 +274,9 @@ export default function Auth() {
                   <Label htmlFor="signup-name" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Nome Completo</Label>
                   <Input id="signup-name" type="text" placeholder="Seu nome" value={signupName} onChange={(e) => setSignupName(e.target.value)} required className="h-11 rounded-xl" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
-                    <Input id="signup-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(signupCpf)} onChange={(e) => setSignupCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-cep" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CEP</Label>
-                    <Input id="signup-cep" type="text" placeholder="00000-000" value={formatCEP(signupCep)} onChange={(e) => setSignupCep(sanitizeNumericInput(e.target.value))} required maxLength={9} className="h-11 rounded-xl" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
+                  <Input id="signup-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(signupCpf)} onChange={(e) => setSignupCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
