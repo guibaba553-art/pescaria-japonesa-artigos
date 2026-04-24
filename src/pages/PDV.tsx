@@ -101,6 +101,7 @@ export default function PDV() {
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
   const [installments, setInstallments] = useState(1);
+  const [discountInput, setDiscountInput] = useState(''); // desconto em R$ (valor direto)
   
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -300,6 +301,7 @@ export default function PDV() {
     setSelectedCustomer(null);
     setPaymentMethod('credit');
     setInstallments(1);
+    setDiscountInput('');
     setCurrentSaleId(null);
   };
 
@@ -612,8 +614,18 @@ export default function PDV() {
     return getPdvPrice(item.product, paymentMethod);
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return cart.reduce((sum, item) => sum + getItemUnitPrice(item) * item.quantity, 0);
+  };
+
+  const getDiscountValue = () => {
+    const v = parseFloat((discountInput || '').replace(',', '.'));
+    if (isNaN(v) || v <= 0) return 0;
+    return Math.min(v, calculateSubtotal()); // não permite desconto maior que o subtotal
+  };
+
+  const calculateTotal = () => {
+    return Math.max(0, calculateSubtotal() - getDiscountValue());
   };
 
   const calculateChange = () => {
@@ -728,13 +740,22 @@ export default function PDV() {
       // Criar itens do pedido
       // product_id sempre referencia products.id (FK do produto pai).
       // variation_id (opcional) referencia product_variations.id quando o item vendido é uma variação.
-      const orderItems = cart.map(item => ({
-        order_id: order.id,
-        product_id: item.product.id,
-        variation_id: item.variation ? item.variation.id : null,
-        quantity: item.quantity,
-        price_at_purchase: getItemUnitPrice(item)
-      }));
+      // Quando há desconto em R$, distribuímos proporcionalmente entre os itens
+      // para que a soma de (price_at_purchase * quantity) bata com o total.
+      const subtotal = calculateSubtotal();
+      const discount = getDiscountValue();
+      const discountRatio = subtotal > 0 ? discount / subtotal : 0;
+      const orderItems = cart.map(item => {
+        const unit = getItemUnitPrice(item);
+        const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
+        return {
+          order_id: order.id,
+          product_id: item.product.id,
+          variation_id: item.variation ? item.variation.id : null,
+          quantity: item.quantity,
+          price_at_purchase: adjustedUnit,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('order_items')
@@ -1058,6 +1079,49 @@ export default function PDV() {
                 <Separator className="my-4" />
 
                 <div className="space-y-3">
+                  {/* Desconto em valor (R$) */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pdv-discount" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                      Desconto (R$)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="pdv-discount"
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        placeholder="0,00"
+                        value={discountInput}
+                        onChange={(e) => setDiscountInput(e.target.value)}
+                        className="flex-1"
+                      />
+                      {discountInput && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDiscountInput('')}
+                          aria-label="Remover desconto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {getDiscountValue() > 0 && (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Subtotal:</span>
+                        <span>R$ {calculateSubtotal().toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-success">
+                        <span>Desconto:</span>
+                        <span>− R$ {getDiscountValue().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
                     <span className="text-2xl text-primary">

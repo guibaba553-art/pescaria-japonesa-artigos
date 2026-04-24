@@ -232,7 +232,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         sale_price: onSale && salePrice ? parseFloat(salePrice) : null,
         sale_ends_at: onSale && saleEndsAt ? new Date(saleEndsAt).toISOString() : null,
         price_pdv: pricePdv ? parseFloat(pricePdv) : null,
-        // Fórmula fixa: PIX/Dinheiro = base, Débito = +5%, Crédito = +10,25%
+        // Fórmula fixa: PIX/Dinheiro = base, Débito = +3%, Crédito = +4%
         price_pix_percent: 0,
         price_cash_percent: 0,
         price_debit_percent: 5,
@@ -447,12 +447,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                       <p className="text-sm font-bold">R$ {fmt(base)}</p>
                     </div>
                     <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">Débito (+5%)</p>
-                      <p className="text-sm font-bold">R$ {fmt(base * 1.05)}</p>
+                      <p className="text-[10px] uppercase text-muted-foreground">Débito (+3%)</p>
+                      <p className="text-sm font-bold">R$ {fmt(base * 1.03)}</p>
                     </div>
                     <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">Crédito (+10,25%)</p>
-                      <p className="text-sm font-bold">R$ {fmt(base * 1.1025)}</p>
+                      <p className="text-[10px] uppercase text-muted-foreground">Crédito (+4%)</p>
+                      <p className="text-sm font-bold">R$ {fmt(base * 1.04)}</p>
                     </div>
                   </div>
                 );
