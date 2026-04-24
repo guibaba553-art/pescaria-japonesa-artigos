@@ -9,6 +9,7 @@ import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { AuthProvider } from "./hooks/useAuth";
+import { CartProvider } from "./hooks/useCart";
 
 // Lazy-loaded routes — keep the initial bundle small for mobile
 const Auth = lazy(() => import("./pages/Auth"));
@@ -49,37 +50,39 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <PageViewTracker />
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin/catalogo" element={<AdminCatalog />} />
-              <Route path="/admin/pedidos" element={<AdminOrders />} />
-              <Route path="/admin/funcionarios" element={<AdminEmployees />} />
-              <Route path="/pdv" element={<PDV />} />
-              <Route path="/pdv/sales-history" element={<SalesHistory />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/fechamento-caixa" element={<CashRegister />} />
-              <Route path="/ferramentas-fiscais" element={<FiscalTools />} />
-              <Route path="/conta" element={<Account />} />
-              <Route path="/produtos" element={<Products />} />
-              <Route path="/produto/:id" element={<ProductDetails />} />
-              <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
-              <Route path="/termos-de-uso" element={<TermosUso />} />
-              <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
-              <Route path="/meus-dados" element={<MeusDados />} />
-              <Route path="/retirada/:id" element={<PickupOrder />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          <MobileBottomNav />
-          <CookieBanner />
+          <CartProvider>
+            <PageViewTracker />
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/catalogo" element={<AdminCatalog />} />
+                <Route path="/admin/pedidos" element={<AdminOrders />} />
+                <Route path="/admin/funcionarios" element={<AdminEmployees />} />
+                <Route path="/pdv" element={<PDV />} />
+                <Route path="/pdv/sales-history" element={<SalesHistory />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/fechamento-caixa" element={<CashRegister />} />
+                <Route path="/ferramentas-fiscais" element={<FiscalTools />} />
+                <Route path="/conta" element={<Account />} />
+                <Route path="/produtos" element={<Products />} />
+                <Route path="/produto/:id" element={<ProductDetails />} />
+                <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+                <Route path="/termos-de-uso" element={<TermosUso />} />
+                <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
+                <Route path="/meus-dados" element={<MeusDados />} />
+                <Route path="/retirada/:id" element={<PickupOrder />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+            <MobileBottomNav />
+            <CookieBanner />
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
