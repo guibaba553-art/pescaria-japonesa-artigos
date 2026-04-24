@@ -8,9 +8,10 @@ import { XMLImporter } from "@/components/XMLImporter";
 import { FiscalCalculator } from "@/components/FiscalCalculator";
 import { NFEList } from "@/components/NFEList";
 import { NFEHistory } from "@/components/NFEHistory";
+import { FiscalSystem } from "@/components/FiscalSystem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut } from "lucide-react";
+import { Home, Calculator, FileSpreadsheet, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings } from "lucide-react";
 
 interface Product {
   id: string;
@@ -136,22 +137,26 @@ export default function FiscalTools() {
 
       <div className="container mx-auto p-6 -mt-4 space-y-6">
         <Tabs defaultValue="calculator" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
             <TabsTrigger value="calculator">
               <Calculator className="w-4 h-4 mr-2" />
-              Calculadora Fiscal
+              <span className="hidden sm:inline">Calculadora</span>
             </TabsTrigger>
             <TabsTrigger value="xml">
               <Receipt className="w-4 h-4 mr-2" />
-              Importar XML NFe
+              <span className="hidden sm:inline">Importar XML</span>
             </TabsTrigger>
             <TabsTrigger value="excel">
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Importar Excel
+              <span className="hidden sm:inline">Importar Excel</span>
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
-              Notas Fiscais
+              <span className="hidden sm:inline">Notas Fiscais</span>
+            </TabsTrigger>
+            <TabsTrigger value="system">
+              <Settings className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Sistema Fiscal</span>
             </TabsTrigger>
           </TabsList>
 
@@ -204,6 +209,10 @@ export default function FiscalTools() {
                 <NFEList settings={fiscalSettings} onRefresh={loadFiscalSettings} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="system">
+            <FiscalSystem />
           </TabsContent>
         </Tabs>
       </div>

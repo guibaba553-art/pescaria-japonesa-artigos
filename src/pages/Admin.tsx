@@ -11,13 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit, Tags, ClipboardList, Star, Receipt, Users } from 'lucide-react';
+import { Trash2, ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator, Package, FileEdit, Tags, ClipboardList, Star, Users } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { OrdersManagement } from '@/components/OrdersManagement';
 import { ProductEdit } from '@/components/ProductEdit';
 import { FeaturedProductRow } from '@/components/FeaturedProductRow';
-import { FiscalSystem } from '@/components/FiscalSystem';
 import { EmployeesManagement } from '@/components/EmployeesManagement';
 import { DraftProducts } from '@/components/DraftProducts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -512,7 +511,7 @@ export default function Admin() {
           </div>
         )}
 
-        <Tabs defaultValue="products" className="space-y-6">
+        <Tabs defaultValue="catalog" className="space-y-6">
           {/* Navegação principal — botões no mesmo estilo dos cards de acesso rápido */}
           {(() => {
             const draftCount = products.filter(p => p.category === 'Pendente Revisão').length;
@@ -524,12 +523,8 @@ export default function Admin() {
               badge?: number;
               adminOnly?: boolean;
             }> = [
-              { value: 'products', title: 'Produtos', desc: 'Cadastro e estoque', icon: Package },
-              { value: 'categories', title: 'Categorias', desc: 'Organização', icon: Tags },
-              { value: 'drafts', title: 'Rascunhos', desc: 'Pendentes de revisão', icon: FileEdit, badge: draftCount },
+              { value: 'catalog', title: 'Catálogo', desc: 'Produtos, categorias e destaques', icon: Package, badge: draftCount },
               { value: 'orders', title: 'Pedidos', desc: 'Vendas online', icon: ClipboardList },
-              { value: 'featured', title: 'Destaques', desc: 'Produtos em destaque', icon: Star },
-              { value: 'fiscal', title: 'Sistema Fiscal', desc: 'NF-e e impostos', icon: Receipt },
               { value: 'employees', title: 'Funcionários', desc: 'Permissões da equipe', icon: Users, adminOnly: true },
             ];
 
@@ -563,7 +558,29 @@ export default function Admin() {
             );
           })()}
 
-          <TabsContent value="products" className="space-y-6">
+          <TabsContent value="catalog" className="space-y-6">
+            <Tabs defaultValue="products" className="space-y-6">
+              <TabsList className="bg-muted/50 p-1 h-auto flex flex-wrap gap-1">
+                <TabsTrigger value="products" className="gap-2">
+                  <Package className="w-4 h-4" /> Produtos
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="gap-2">
+                  <Tags className="w-4 h-4" /> Categorias
+                </TabsTrigger>
+                <TabsTrigger value="drafts" className="gap-2 relative">
+                  <FileEdit className="w-4 h-4" /> Rascunhos
+                  {products.filter(p => p.category === 'Pendente Revisão').length > 0 && (
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      {products.filter(p => p.category === 'Pendente Revisão').length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="featured" className="gap-2">
+                  <Star className="w-4 h-4" /> Destaques
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="products" className="space-y-6">
             <Card>
           <CardHeader>
             <CardTitle>Adicionar Novo Produto</CardTitle>
@@ -884,64 +901,62 @@ export default function Admin() {
             </Card>
           );
         })()}
-          </TabsContent>
+              </TabsContent>
 
-          <TabsContent value="categories">
-            <CategoriesManagement />
-          </TabsContent>
+              <TabsContent value="categories">
+                <CategoriesManagement />
+              </TabsContent>
 
-          <TabsContent value="drafts">
-            <DraftProducts onChange={loadProducts} />
+              <TabsContent value="drafts">
+                <DraftProducts onChange={loadProducts} />
+              </TabsContent>
+
+              <TabsContent value="featured">
+                <div className="mb-4">
+                  <Input
+                    placeholder="Procurar produto por nome..."
+                    value={featuredSearchQuery}
+                    onChange={(e) => setFeaturedSearchQuery(e.target.value)}
+                    className="max-w-md"
+                  />
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
+                    <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imagem</TableHead>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Preço</TableHead>
+                          <TableHead className="text-center">Promoção</TableHead>
+                          <TableHead className="text-center">Em Destaque</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {products
+                          .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
+                          .map((product) => (
+                            <FeaturedProductRow 
+                              key={product.id} 
+                              product={product} 
+                              onUpdate={loadProducts}
+                            />
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="orders">
             <OrdersManagement />
-          </TabsContent>
-
-          <TabsContent value="featured">
-            <div className="mb-4">
-              <Input
-                placeholder="Procurar produto por nome..."
-                value={featuredSearchQuery}
-                onChange={(e) => setFeaturedSearchQuery(e.target.value)}
-                className="max-w-md"
-              />
-            </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Gerenciar Produtos em Destaque</CardTitle>
-                <CardDescription>Selecione quais produtos aparecerão na página inicial e configure promoções</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Imagem</TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Categoria</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead className="text-center">Promoção</TableHead>
-                      <TableHead className="text-center">Em Destaque</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products
-                      .filter(p => p.name.toLowerCase().includes(featuredSearchQuery.toLowerCase()))
-                      .map((product) => (
-                        <FeaturedProductRow 
-                          key={product.id} 
-                          product={product} 
-                          onUpdate={loadProducts}
-                        />
-                      ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="fiscal">
-            <FiscalSystem />
           </TabsContent>
 
           {isAdmin && (
