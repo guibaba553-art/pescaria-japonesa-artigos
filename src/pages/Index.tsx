@@ -1,7 +1,7 @@
 import { Header } from "@/components/Header";
 import TopBenefitsBar from "@/components/TopBenefitsBar";
 import Hero from "@/components/Hero";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import Categories from "@/components/Categories";
 import Footer from "@/components/Footer";
 
@@ -13,6 +13,28 @@ const Benefits = lazy(() => import("@/components/Benefits"));
 const SectionFallback = () => <div className="h-16 sm:h-24" aria-hidden />;
 
 const Index = () => {
+  const [showDeferredSections, setShowDeferredSections] = useState(false);
+
+  useEffect(() => {
+    const schedule =
+      "requestIdleCallback" in window
+        ? (window as Window & { requestIdleCallback: (cb: IdleRequestCallback) => number }).requestIdleCallback(
+            () => setShowDeferredSections(true),
+            { timeout: 800 }
+          )
+        : window.setTimeout(() => setShowDeferredSections(true), 250);
+
+    return () => {
+      if (typeof schedule === "number") {
+        if ("cancelIdleCallback" in window && showDeferredSections === false) {
+          (window as Window & { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(schedule);
+        } else {
+          window.clearTimeout(schedule);
+        }
+      }
+    };
+  }, [showDeferredSections]);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -24,18 +46,22 @@ const Index = () => {
       <main>
         <Hero />
         <Categories />
-        <Suspense fallback={<SectionFallback />}>
-          <FlashDealsCountdown />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <FeaturedProducts />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <PromoBanner />
-        </Suspense>
-        <Suspense fallback={<SectionFallback />}>
-          <Benefits />
-        </Suspense>
+        {showDeferredSections && (
+          <>
+            <Suspense fallback={<SectionFallback />}>
+              <FlashDealsCountdown />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <FeaturedProducts />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <PromoBanner />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <Benefits />
+            </Suspense>
+          </>
+        )}
       </main>
       <Footer />
     </div>
