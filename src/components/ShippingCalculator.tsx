@@ -304,11 +304,14 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                           Nenhuma transportadora atende esse CEP no momento.
                         </p>
                       ) : (
-                        [...filterDeliveryOnly(opts)]
-                          .sort((x, y) => x.valor - y.valor)
-                          .map((option) => {
+                        (() => {
+                          const delivery = filterDeliveryOnly(opts);
+                          const { cheapestCode, fastestCode } = getHighlights(delivery);
+                          return sortByCheapestThenFastest(delivery).map((option) => {
                             const tag = tagFor(option.codigo);
                             const sel = selectedOption === tag;
+                            const isCheapest = option.codigo === cheapestCode;
+                            const isFastest = option.codigo === fastestCode && !isCheapest;
                             return (
                               <button
                                 key={tag}
@@ -333,7 +336,19 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                                   </div>
                                   <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                   <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate">{option.nome}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="text-sm font-medium truncate">{option.nome}</p>
+                                      {isCheapest && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                          Mais barato
+                                        </span>
+                                      )}
+                                      {isFastest && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                                          Mais rápido
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                       Entrega em {option.prazoEntrega} dias úteis
                                     </p>
@@ -344,7 +359,8 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                                 </p>
                               </button>
                             );
-                          })
+                          });
+                        })()
                       )}
                       <button
                         type="button"
