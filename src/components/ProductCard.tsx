@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
@@ -16,8 +16,8 @@ interface ProductCardProps {
 }
 
 /**
- * Card de produto minimalista premium estilo Apple.
- * Foco na imagem, tipografia limpa, hierarquia clara.
+ * Card de produto comercial — preço grande, parcelamento, frete grátis.
+ * Mantém identidade JAPAS (laranja) com gatilhos de conversão.
  */
 export function ProductCard({
   product,
@@ -41,40 +41,19 @@ export function ProductCard({
     ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
     : 0;
 
+  // 10x sem juros (para conversão)
+  const installment = finalPrice / 10;
+  const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
+  // Frete grátis acima de R$199
+  const freeShipping = finalPrice >= 199;
+  // PIX 5% off
+  const pixPrice = finalPrice * 0.95;
+
   const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
-
-  const renderPrice = () => {
-    if (hasVariations) {
-      return (
-        <span className="text-sm font-medium text-muted-foreground">
-          A partir de variações
-        </span>
-      );
-    }
-
-    if (isOnSale) {
-      return (
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xl sm:text-2xl font-display font-bold text-foreground tracking-tight">
-            {formatPrice(finalPrice)}
-          </span>
-          <span className="text-sm line-through text-muted-foreground">
-            {formatPrice(product.price)}
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <span className="text-xl sm:text-2xl font-display font-bold text-foreground tracking-tight">
-        {formatPrice(finalPrice)}
-      </span>
-    );
-  };
 
   return (
     <article
-      className="group relative flex flex-col bg-card rounded-3xl border border-border/60 overflow-hidden hover-lift cursor-pointer"
+      className="group relative flex flex-col bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/40 hover:shadow-md transition-all duration-300 cursor-pointer"
       onClick={handleCardClick}
       role="link"
       tabIndex={0}
@@ -91,26 +70,30 @@ export function ProductCard({
           src={product.image_url || 'https://placehold.co/600x600/f5f5f5/cccccc?text=Sem+imagem'}
           alt={product.name}
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
 
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-          {isOnSale && discount > 0 && (
-            <span className="px-2.5 py-1 rounded-full bg-foreground text-background text-[11px] font-semibold tracking-wide">
+        {/* Discount badge */}
+        {isOnSale && discount > 0 && (
+          <div className="absolute top-2 left-2">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-xs font-black tracking-tight shadow-md">
               −{discount}%
             </span>
-          )}
-          {product.stock > 0 && product.stock <= 5 && (
-            <span className="px-2.5 py-1 rounded-full bg-background/95 backdrop-blur-sm text-foreground text-[11px] font-medium border border-border">
+          </div>
+        )}
+
+        {/* Stock warning */}
+        {product.stock > 0 && product.stock <= 5 && (
+          <div className="absolute top-2 right-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-foreground/90 backdrop-blur-sm text-background text-[10px] font-semibold uppercase tracking-wider">
               Últimas {product.stock}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {product.stock === 0 && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-            <span className="px-4 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold uppercase tracking-wider">
+          <div className="absolute inset-0 bg-background/85 backdrop-blur-sm flex items-center justify-center">
+            <span className="px-4 py-1.5 rounded-md bg-foreground text-background text-xs font-bold uppercase tracking-wider">
               Esgotado
             </span>
           </div>
@@ -118,31 +101,67 @@ export function ProductCard({
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col p-5 sm:p-6">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-          {product.category}
-        </p>
-
-        <h3 className="font-display font-semibold text-base sm:text-lg text-foreground leading-snug mb-2 line-clamp-2">
+      <div className="flex-1 flex flex-col p-3 sm:p-4">
+        {/* Title */}
+        <h3 className="text-sm sm:text-[15px] font-medium text-foreground leading-snug mb-2 line-clamp-2 min-h-[2.6em]">
           {product.name}
         </h3>
 
-        {showDescription && (product.short_description || product.description) && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {product.short_description || product.description}
-          </p>
+        {/* Price block */}
+        <div className="space-y-0.5 mb-3">
+          {hasVariations ? (
+            <div className="text-base sm:text-lg font-display font-bold text-foreground">
+              A partir de {formatPrice(finalPrice)}
+            </div>
+          ) : (
+            <>
+              {isOnSale && (
+                <div className="text-xs text-muted-foreground line-through leading-none">
+                  {formatPrice(product.price)}
+                </div>
+              )}
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-xl sm:text-2xl font-display font-black text-primary leading-none tracking-tight">
+                  {formatPrice(finalPrice)}
+                </span>
+                {isOnSale && discount > 0 && (
+                  <span className="text-[11px] font-bold text-primary">
+                    {discount}% OFF
+                  </span>
+                )}
+              </div>
+
+              {showInstallment && (
+                <div className="text-xs text-muted-foreground">
+                  ou <span className="font-semibold text-foreground">10x de {formatPrice(installment)}</span> sem juros
+                </div>
+              )}
+
+              <div className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">
+                {formatPrice(pixPrice)} no PIX
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Free shipping */}
+        {freeShipping && !hasVariations && (
+          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wide mb-3 self-start">
+            <Truck className="w-3 h-3" />
+            Frete grátis
+          </div>
         )}
 
-        <div className="mt-auto pt-4 space-y-3">
-          {renderPrice()}
-
+        {/* CTA */}
+        <div className="mt-auto pt-1">
           {product.stock === 0 ? (
-            <Button className="w-full rounded-full" disabled>
+            <Button className="w-full rounded-lg" disabled size="sm">
               Indisponível
             </Button>
           ) : hasVariations ? (
             <Button
-              className="w-full rounded-full btn-press"
+              className="w-full rounded-lg btn-press font-bold"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 handleCardClick();
@@ -151,7 +170,7 @@ export function ProductCard({
               Ver opções
             </Button>
           ) : (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               <ProductQuantitySelector
                 quantity={quantity}
                 maxQuantity={product.stock}
@@ -161,14 +180,15 @@ export function ProductCard({
                 size="sm"
               />
               <Button
-                className="flex-1 rounded-full btn-press"
+                className="flex-1 rounded-lg btn-press font-bold"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToCart();
                 }}
                 disabled={product.stock === 0}
               >
-                <ShoppingCart className="w-4 h-4 sm:mr-2" />
+                <ShoppingCart className="w-3.5 h-3.5 sm:mr-1.5" />
                 <span className="hidden sm:inline">Comprar</span>
               </Button>
             </div>

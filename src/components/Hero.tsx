@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Tag, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import fishingHeroBg from "@/assets/fishing-hero-bg.jpg";
 
@@ -7,94 +7,97 @@ const Hero = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-[92vh] flex items-center overflow-hidden pt-28 pb-20">
-      {/* Background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center scale-105"
-        style={{ backgroundImage: `url(${fishingHeroBg})` }}
-      />
+    <section className="relative overflow-hidden">
+      {/* Main banner */}
+      <div className="relative min-h-[480px] sm:min-h-[560px] flex items-center pt-8 pb-12">
+        {/* Background image with strong dark overlay */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${fishingHeroBg})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-foreground/95 via-foreground/85 to-foreground/40" />
 
-      {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-hero" />
-      <div className="absolute inset-0 gradient-mesh opacity-60" />
+        <div className="container mx-auto relative z-10">
+          <div className="max-w-2xl">
+            {/* Eyebrow promo tag */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary text-primary-foreground mb-5 shadow-lg animate-fade-in-down">
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span className="text-xs font-black uppercase tracking-wider">
+                Mega liquidação · Até 60% OFF
+              </span>
+            </div>
 
-      {/* Bottom fade to background */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
+            {/* Heading */}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black text-background leading-[1.05] mb-4 animate-fade-in-up">
+              O melhor da pesca,<br />
+              <span className="text-primary-glow">pelo menor preço.</span>
+            </h1>
 
-      <div className="container mx-auto relative z-10">
-        <div className="max-w-4xl">
-          {/* Eyebrow */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-8 animate-fade-in-down">
-            <Sparkles className="w-3.5 h-3.5 text-primary-glow" />
-            <span className="text-xs font-medium text-white/90 tracking-wide uppercase">
-              Loja oficial · Sinop, MT
-            </span>
-          </div>
-
-          {/* Main heading */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-bold text-white text-balance leading-[1.02] mb-6 animate-fade-in-up">
-            Equipamento de
-            <br />
-            <span className="bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-              pesca premium.
-            </span>
-          </h1>
-
-          {/* Subheading */}
-          <p
-            className="text-lg sm:text-xl text-white/80 max-w-2xl mb-10 text-pretty leading-relaxed animate-fade-in-up"
-            style={{ animationDelay: '120ms', animationFillMode: 'backwards' }}
-          >
-            Varas, carretilhas, iscas e acessórios selecionados para pescadores que
-            não abrem mão de qualidade. Frete para todo o Brasil.
-          </p>
-
-          {/* CTAs */}
-          <div
-            className="flex flex-col sm:flex-row gap-3 animate-fade-in-up"
-            style={{ animationDelay: '240ms', animationFillMode: 'backwards' }}
-          >
-            <Button
-              size="lg"
-              onClick={() => navigate('/produtos')}
-              className="h-14 px-8 rounded-full text-base font-semibold shadow-glow group btn-press"
+            {/* Subheading with key value props */}
+            <p
+              className="text-base sm:text-lg text-background/85 mb-6 leading-relaxed animate-fade-in-up max-w-xl"
+              style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
             >
-              Explorar produtos
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => navigate('/produtos?featured=true')}
-              className="h-14 px-8 rounded-full text-base font-semibold bg-white/10 backdrop-blur-md border-white/30 text-white hover:bg-white/20 hover:text-white btn-press"
-            >
-              Ver destaques
-            </Button>
-          </div>
+              Mais de 500 produtos com preços imbatíveis.
+              <span className="font-bold text-background"> Frete grátis acima de R$ 199</span> e
+              <span className="font-bold text-background"> 10x sem juros</span>.
+            </p>
 
-          {/* Stats */}
-          <div
-            className="grid grid-cols-3 gap-6 sm:gap-12 mt-16 max-w-2xl animate-fade-in-up"
-            style={{ animationDelay: '360ms', animationFillMode: 'backwards' }}
-          >
-            {[
-              { n: '500+', l: 'Produtos' },
-              { n: '4.9★', l: 'Avaliação' },
-              { n: '24h', l: 'Resposta' },
-            ].map((s) => (
-              <div key={s.l} className="border-l-2 border-primary/60 pl-4">
-                <div className="text-2xl sm:text-3xl font-display font-bold text-white">{s.n}</div>
-                <div className="text-xs sm:text-sm text-white/60 mt-1 uppercase tracking-wider">{s.l}</div>
+            {/* CTAs */}
+            <div
+              className="flex flex-col sm:flex-row gap-3 animate-fade-in-up"
+              style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+            >
+              <Button
+                size="lg"
+                onClick={() => navigate("/produtos?on_sale=true")}
+                className="h-13 px-7 rounded-full text-base font-black shadow-glow group btn-press"
+              >
+                <Tag className="mr-2 w-5 h-5" />
+                Ver ofertas
+                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => navigate("/produtos")}
+                className="h-13 px-7 rounded-full text-base font-bold bg-background/10 backdrop-blur-md border-background/30 text-background hover:bg-background/20 hover:text-background btn-press"
+              >
+                Ver catálogo completo
+              </Button>
+            </div>
+
+            {/* Trust signals row */}
+            <div
+              className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-7 text-xs sm:text-sm text-background/80 animate-fade-in-up"
+              style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
+                <span>Loja oficial Sinop/MT</span>
               </div>
-            ))}
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
+                <span>4.9★ no Google</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
+                <span>Envio em 24h</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-2 text-white/50 animate-float">
-        <span className="text-[10px] uppercase tracking-[0.2em]">Role para explorar</span>
-        <div className="w-px h-10 bg-gradient-to-b from-white/50 to-transparent" />
+      {/* Promo strip below hero */}
+      <div className="bg-primary text-primary-foreground py-2.5 overflow-hidden">
+        <div className="container mx-auto">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-center">
+            <Zap className="w-4 h-4 fill-current animate-pulse" />
+            <span>PIX com 5% de desconto extra · Parcele em até 10x sem juros · Troca grátis</span>
+            <Zap className="w-4 h-4 fill-current animate-pulse" />
+          </div>
+        </div>
       </div>
     </section>
   );
