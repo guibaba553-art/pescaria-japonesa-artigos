@@ -306,7 +306,7 @@ serve(async (req) => {
       return payload;
     };
 
-    let futureOffsetMinutes = 5;
+    let futureOffsetMinutes = 0;
     let dataEmissao = buildDataEmissao(futureOffsetMinutes);
     let payload = buildPayload(dataEmissao);
 
@@ -411,7 +411,7 @@ serve(async (req) => {
         currentNfceNumber += 1;
       }
 
-      futureOffsetMinutes = isLateEmissionError ? 8 : Math.max(futureOffsetMinutes, 8);
+      futureOffsetMinutes = isLateEmissionError ? 3 : Math.max(futureOffsetMinutes, 1);
       dataEmissao = buildDataEmissao(futureOffsetMinutes);
       payload = buildPayload(dataEmissao);
 
