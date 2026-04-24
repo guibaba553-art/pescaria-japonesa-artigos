@@ -7,6 +7,7 @@ import { NFEList } from "@/components/NFEList";
 import { FiscalSystem } from "@/components/FiscalSystem";
 import { TaxProjection } from "@/components/TaxProjection";
 import { XMLImporter } from "@/components/XMLImporter";
+import { NfeEntradaPendentes } from "@/components/NfeEntradaPendentes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine } from "lucide-react";
