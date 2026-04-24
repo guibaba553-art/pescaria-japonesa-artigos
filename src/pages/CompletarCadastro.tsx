@@ -128,14 +128,15 @@ export default function CompletarCadastro() {
               <Label htmlFor="cc-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
               <Input id="cc-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(cpf)} onChange={(e) => setCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
             </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="cc-cep" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CEP</Label>
-              <Input id="cc-cep" type="text" placeholder="00000-000" value={formatCEP(cep)} onChange={(e) => setCep(sanitizeNumericInput(e.target.value))} required maxLength={9} className="h-11 rounded-xl" />
+              <Label htmlFor="cc-cpf" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CPF</Label>
+              <Input id="cc-cpf" type="text" placeholder="000.000.000-00" value={formatCPF(cpf)} onChange={(e) => setCpf(sanitizeNumericInput(e.target.value))} required maxLength={14} className="h-11 rounded-xl" />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="cc-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
-            <Input id="cc-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(phone)} onChange={(e) => setPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
+            <div className="space-y-1.5">
+              <Label htmlFor="cc-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
+              <Input id="cc-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(phone)} onChange={(e) => setPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
+            </div>
           </div>
           <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
             {loading ? "Salvando..." : "Concluir cadastro"}
