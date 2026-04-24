@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Scissors, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { removeBackground, loadImage, loadImageFromUrl } from '@/utils/removeBackground';
+// NÃO importar @/utils/removeBackground estaticamente: ele puxa @huggingface/transformers (~40MB)
+// e quebra o code-split de páginas que usam este componente. Carregamos sob demanda.
 
 interface Props {
   /** Pode ser um File (novo upload) ou uma URL (imagem já salva). */
