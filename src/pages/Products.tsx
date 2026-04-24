@@ -51,11 +51,20 @@ export default function Products() {
 
   const loadProducts = async () => {
     setLoading(true);
+    // Selecionar apenas colunas necessárias para o card — reduz drasticamente o payload
+    // (omite description, images[], short_description, sku, etc. que só são usados em ProductDetails)
     let query = supabase
       .from('products')
-      .select(`*, variations:product_variations(*)`)
+      .select(`
+        id, name, price, sale_price, on_sale, sale_ends_at,
+        category, subcategory, brand, pound_test, size,
+        image_url, stock, rating, featured, minimum_quantity,
+        sold_by_weight, created_at,
+        variations:product_variations(id, name, price, stock, image_url)
+      `)
       .gt('stock', 0)
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .limit(1000);
 
     if (categoryParam) query = query.eq('category', categoryParam);
     if (subcategoryParam) query = query.eq('subcategory', subcategoryParam);
@@ -65,7 +74,7 @@ export default function Products() {
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
-      setProducts(data || []);
+      setProducts((data || []) as unknown as Product[]);
     }
     setLoading(false);
   };
