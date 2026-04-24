@@ -457,79 +457,58 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-muted/30">
       <Header />
-      <div className="max-w-7xl mx-auto space-y-8 p-6 pt-20 lg:pt-32">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Painel Administrativo</h1>
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao Site
-          </Button>
-        </div>
 
+      {/* Commercial dark banner */}
+      <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
+                <span className="text-[11px] font-bold uppercase tracking-wider">Painel</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
+                Painel Administrativo
+              </h1>
+              <p className="text-sm text-background/60 mt-1">
+                Gerencie produtos, pedidos, caixa e ferramentas fiscais.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/')}
+              className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground self-start md:self-end"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar ao Site
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto space-y-6 p-6 -mt-4">
         {/* Cards de Acesso Rápido */}
         {isAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/dashboard')}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Dashboard
-                </CardTitle>
-                <CardDescription>
-                  Relatórios e análises de vendas
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/pdv')}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  PDV - Ponto de Venda
-                </CardTitle>
-                <CardDescription>
-                  Vendas presenciais e código de barras
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/fechamento-caixa')}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" />
-                  Fechamento de Caixa
-                </CardTitle>
-                <CardDescription>
-                  Abertura, sangrias e fechamento
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card 
-              className="cursor-pointer hover:shadow-lg transition-all hover:scale-105 bg-primary/5"
-              onClick={() => navigate('/ferramentas-fiscais')}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calculator className="w-5 h-5" />
-                  Ferramentas Fiscais
-                </CardTitle>
-                <CardDescription>
-                  IA, Excel e cálculos de impostos
-                </CardDescription>
-              </CardHeader>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { icon: TrendingUp, title: 'Dashboard', desc: 'Relatórios e análises', path: '/dashboard' },
+              { icon: ShoppingCart, title: 'PDV', desc: 'Vendas presenciais', path: '/pdv' },
+              { icon: DollarSign, title: 'Caixa', desc: 'Abertura e fechamento', path: '/fechamento-caixa' },
+              { icon: Calculator, title: 'Fiscal', desc: 'IA, Excel e impostos', path: '/ferramentas-fiscais' },
+            ].map(({ icon: Icon, title, desc, path }) => (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className="group text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="font-display font-bold text-base">{title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{desc}</div>
+              </button>
+            ))}
           </div>
         )}
 
