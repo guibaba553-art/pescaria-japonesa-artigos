@@ -434,36 +434,60 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </div>
       </div>
 
-      {options.length > 0 && (
-        <div className="space-y-2">
-          {options.map((option) => (
-            <Card
-              key={option.codigo}
-              className={`p-3 cursor-pointer transition-all ${
-                selectedOption === option.codigo
-                  ? 'border-primary bg-primary/5 border-2'
-                  : 'hover:bg-accent'
-              }`}
-              onClick={() => handleSelectOption(option)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">{option.nome}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Entrega em {option.prazoEntrega} dias úteis
+      {options.length > 0 && (() => {
+        const delivery = filterDeliveryOnly(options);
+        const pickup = options.filter((o) => !delivery.includes(o));
+        const { cheapestCode, fastestCode } = getHighlights(delivery);
+        const sorted = [...sortByCheapestThenFastest(delivery), ...pickup];
+        return (
+          <div className="space-y-2">
+            {sorted.map((option) => {
+              const isCheapest = option.codigo === cheapestCode;
+              const isFastest = option.codigo === fastestCode && !isCheapest;
+              return (
+                <Card
+                  key={option.codigo}
+                  className={`p-3 cursor-pointer transition-all ${
+                    selectedOption === option.codigo
+                      ? 'border-primary bg-primary/5 border-2'
+                      : 'hover:bg-accent'
+                  }`}
+                  onClick={() => handleSelectOption(option)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium">{option.nome}</p>
+                          {isCheapest && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                              Mais barato
+                            </span>
+                          )}
+                          {isFastest && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                              Mais rápido
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {option.codigo === 'RETIRADA'
+                            ? 'Disponível em até 24h após pagamento'
+                            : `Entrega em ${option.prazoEntrega} dias úteis`}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="font-bold text-lg">
+                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
                     </p>
                   </div>
-                </div>
-                <p className="font-bold text-lg">
-                  {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
-                </p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <AddressFormDialog
         open={newAddressOpen}
