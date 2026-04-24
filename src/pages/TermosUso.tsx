@@ -53,7 +53,7 @@ export default function TermosUso() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Defeito de fabricação: 90 dias (CDC Art. 26);</li>
               <li>Arrependimento: 7 dias após recebimento;</li>
-              <li>Solicite pelo WhatsApp (66) 99657-9671 ou e-mail.</li>
+              <li>Solicite pelo WhatsApp (66) 99211-1712 ou e-mail.</li>
             </ul>
           </section>
 
