@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2 } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -145,6 +145,103 @@ const OrdersTable = ({
   emittingNFCe: Set<string>;
   openLabelDialog: (order: Order) => void;
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<'today' | '7days' | '30days' | 'all'>('all');
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+
+  const toggleDay = (dayKey: string) => {
+    setCollapsedDays(prev => {
+      const next = new Set(prev);
+      if (next.has(dayKey)) next.delete(dayKey);
+      else next.add(dayKey);
+      return next;
+    });
+  };
+
+  // Aplica filtros (busca + data)
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let cutoff: Date | null = null;
+    if (dateFilter === 'today') cutoff = startOfToday;
+    else if (dateFilter === '7days') cutoff = new Date(startOfToday.getTime() - 6 * 86400000);
+    else if (dateFilter === '30days') cutoff = new Date(startOfToday.getTime() - 29 * 86400000);
+
+    const q = searchQuery.trim().toLowerCase();
+
+    return orders.filter(o => {
+      if (cutoff && new Date(o.created_at) < cutoff) return false;
+      if (!q) return true;
+      const customerName = (profiles[o.user_id]?.name || '').toLowerCase();
+      const cpf = (profiles[o.user_id]?.cpf || '').toLowerCase();
+      const idShort = o.id.slice(0, 8).toLowerCase();
+      return (
+        customerName.includes(q) ||
+        cpf.includes(q) ||
+        idShort.includes(q) ||
+        o.id.toLowerCase().includes(q) ||
+        (o.tracking_code || '').toLowerCase().includes(q)
+      );
+    });
+  }, [orders, searchQuery, dateFilter, profiles]);
+
+  // Agrupa por dia
+  const groupedByDay = useMemo(() => {
+    const groups: Record<string, { label: string; date: Date; orders: Order[]; total: number }> = {};
+    for (const o of filteredOrders) {
+      const d = new Date(o.created_at);
+      const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!groups[dayKey]) {
+        const today = new Date();
+        const yesterday = new Date(today.getTime() - 86400000);
+        const isToday = d.toDateString() === today.toDateString();
+        const isYesterday = d.toDateString() === yesterday.toDateString();
+        const formatted = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        const label = isToday ? `Hoje • ${formatted}` : isYesterday ? `Ontem • ${formatted}` : formatted;
+        groups[dayKey] = { label, date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), orders: [], total: 0 };
+      }
+      groups[dayKey].orders.push(o);
+      groups[dayKey].total += Number(o.total_amount);
+    }
+    return Object.entries(groups)
+      .sort((a, b) => b[1].date.getTime() - a[1].date.getTime())
+      .map(([key, value]) => ({ key, ...value }));
+  }, [filteredOrders]);
+
+  const FiltersBar = (
+    <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nome, CPF, ID do pedido ou código de rastreio..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+        <SelectTrigger className="w-full sm:w-[200px]">
+          <CalendarIcon className="w-4 h-4 mr-2" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="today">Hoje</SelectItem>
+          <SelectItem value="7days">Últimos 7 dias</SelectItem>
+          <SelectItem value="30days">Últimos 30 dias</SelectItem>
+          <SelectItem value="all">Todos</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   if (orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
@@ -155,18 +252,29 @@ const OrdersTable = ({
     );
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {orders.map((order) => {
-        const isExpanded = expandedOrders.has(order.id);
-        const cfg = statusConfig[order.status];
-        const StatusIcon = cfg.icon;
-        const nextStatus = getNextStatus(order.status, order.delivery_type);
-        const customerName = profiles[order.user_id]?.name || 'Carregando...';
-        const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+  if (filteredOrders.length === 0) {
+    return (
+      <div>
+        {FiltersBar}
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+          <Search className="w-12 h-12 mb-3 opacity-40" />
+          <p className="text-sm font-medium">Nenhum pedido encontrado</p>
+          <p className="text-xs opacity-70 mt-1">Ajuste os filtros para ver mais resultados</p>
+        </div>
+      </div>
+    );
+  }
 
-        return (
-          <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)} asChild>
+  const renderOrderCard = (order: Order) => {
+    const isExpanded = expandedOrders.has(order.id);
+    const cfg = statusConfig[order.status];
+    const StatusIcon = cfg.icon;
+    const nextStatus = getNextStatus(order.status, order.delivery_type);
+    const customerName = profiles[order.user_id]?.name || 'Carregando...';
+    const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+
+    return (
+      <Collapsible key={order.id} open={isExpanded} onOpenChange={() => toggleOrderExpansion(order.id)} asChild>
             <Card className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden`}>
               {/* Header do card */}
               <div className="p-4 flex items-start justify-between gap-3">
@@ -414,8 +522,44 @@ const OrdersTable = ({
               </CollapsibleContent>
             </Card>
           </Collapsible>
-        );
-      })}
+    );
+  };
+
+  return (
+    <div>
+      {FiltersBar}
+      <div className="space-y-4">
+        {groupedByDay.map((group) => {
+          const isCollapsed = collapsedDays.has(group.key);
+          return (
+            <div key={group.key} className="space-y-3">
+              <button
+                onClick={() => toggleDay(group.key)}
+                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 bg-muted/50 hover:bg-muted rounded-lg border transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
+                  <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="font-semibold text-sm capitalize truncate">{group.label}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Badge variant="secondary" className="text-xs">
+                    {group.orders.length} {group.orders.length === 1 ? 'pedido' : 'pedidos'}
+                  </Badge>
+                  <span className="text-sm font-bold text-primary">
+                    R$ {group.total.toFixed(2)}
+                  </span>
+                </div>
+              </button>
+              {!isCollapsed && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {group.orders.map(renderOrderCard)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
