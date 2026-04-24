@@ -545,14 +545,24 @@ export function ProductsManagement() {
                 {images.length > 0 && (
                   <div className="grid grid-cols-4 gap-2 mb-2">
                     {images.map((file, index) => (
-                      <div key={index} className="relative group">
-                        <img src={URL.createObjectURL(file)} alt={`Preview ${index + 1}`} className="w-full h-20 object-cover rounded" />
-                        <Button type="button" variant="destructive" size="sm" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0" onClick={() => setImages(images.filter((_, i) => i !== index))}>X</Button>
-                      </div>
+                      <ImageThumbWithBgRemoval
+                        key={index}
+                        source={file}
+                        alt={`Preview ${index + 1}`}
+                        onRemove={() => setImages(images.filter((_, i) => i !== index))}
+                        onBackgroundRemoved={(result) => {
+                          if (result instanceof File) {
+                            setImages(images.map((f, i) => (i === index ? result : f)));
+                          }
+                        }}
+                      />
                     ))}
                   </div>
                 )}
                 <Input id="image" type="file" accept="image/*" multiple onChange={(e) => setImages([...images, ...Array.from(e.target.files || [])])} />
+                <p className="text-xs text-muted-foreground">
+                  Passe o mouse sobre uma imagem e clique em <span className="font-semibold">"Sem fundo"</span> para remover o fundo automaticamente com IA.
+                </p>
               </div>
 
               <Button type="submit" disabled={uploading} className="w-full">
