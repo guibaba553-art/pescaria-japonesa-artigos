@@ -40,7 +40,7 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'cancelado';
   created_at: string;
   tracking_code?: string;
   delivery_type?: 'delivery' | 'pickup';
@@ -58,6 +58,8 @@ const statusConfig: Record<string, { label: string; icon: typeof Package; color:
   enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
   entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
   entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
+  retirado: { label: 'Retirado', icon: CheckCircle, color: 'bg-emerald-600' },
+  cancelado: { label: 'Cancelado', icon: Package, color: 'bg-red-500' },
 };
 
 const getStatusConfig = (status: string, deliveryType?: string) => {
