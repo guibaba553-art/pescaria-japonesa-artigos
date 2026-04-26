@@ -1088,7 +1088,7 @@ export function OrdersManagement() {
     }
   };
 
-
+  const emitNFCe = async (orderId: string) => {
     setEmittingNFCe(prev => new Set(prev).add(orderId));
     toast({
       title: 'Emitindo NFC-e...',
