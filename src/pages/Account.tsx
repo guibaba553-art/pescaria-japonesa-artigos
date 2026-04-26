@@ -296,7 +296,7 @@ export default function Account() {
 
       <div className="max-w-4xl mx-auto p-6 -mt-4 space-y-6">
         <Tabs defaultValue="pedidos" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-12 rounded-full p-1">
+          <TabsList className="w-full grid grid-cols-4 h-12 rounded-full p-1">
             <TabsTrigger value="pedidos" className="rounded-full text-sm font-semibold gap-1.5">
               <Package className="w-4 h-4" />
               <span className="hidden sm:inline">Pedidos</span>
@@ -304,6 +304,10 @@ export default function Account() {
             <TabsTrigger value="enderecos" className="rounded-full text-sm font-semibold gap-1.5">
               <MapPin className="w-4 h-4" />
               <span className="hidden sm:inline">Endereços</span>
+            </TabsTrigger>
+            <TabsTrigger value="pagamento" className="rounded-full text-sm font-semibold gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Pagamento</span>
             </TabsTrigger>
             <TabsTrigger value="dados" className="rounded-full text-sm font-semibold gap-1.5">
               <User className="w-4 h-4" />
