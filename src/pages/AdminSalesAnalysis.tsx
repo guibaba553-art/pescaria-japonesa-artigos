@@ -22,7 +22,7 @@ import {
   ArrowLeft, CalendarIcon, Calculator, Download, Filter,
   ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
 } from 'lucide-react';
-import { format, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
@@ -106,18 +106,28 @@ export default function AdminSalesAnalysis() {
   const [cancelling, setCancelling] = useState(false);
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
-  const [rangeFrom, setRangeFrom] = useState<Date | undefined>(undefined);
-  const [rangeTo, setRangeTo] = useState<Date | undefined>(undefined);
+  const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
+  const [rangeTo, setRangeTo] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [multiDays, setMultiDays] = useState<Date[]>([]);
   const [singleDay, setSingleDay] = useState<Date | undefined>(undefined);
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) navigate('/auth');
   }, [user, isEmployee, isAdmin, loading, navigate]);
+
+  // Carrega automaticamente as vendas do mês atual ao entrar na tela
+  useEffect(() => {
+    if (loading || autoLoaded) return;
+    if (!isEmployee && !isAdmin) return;
+    setAutoLoaded(true);
+    fetchAll(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isEmployee, isAdmin]);
 
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
@@ -133,9 +143,9 @@ export default function AdminSalesAnalysis() {
     return null;
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
-  const fetchAll = async () => {
+  const fetchAll = async (silent = false) => {
     if (!period) {
-      toast.error('Selecione um período no calendário primeiro.');
+      if (!silent) toast.error('Selecione um período no calendário primeiro.');
       return;
     }
     setFetching(true);
@@ -516,7 +526,7 @@ export default function AdminSalesAnalysis() {
               className="md:max-w-xs"
             />
             <div className="flex gap-2 md:ml-auto flex-wrap">
-              <Button onClick={fetchAll} disabled={fetching || !period}>
+              <Button onClick={() => fetchAll(false)} disabled={fetching || !period}>
                 <Calculator className="w-4 h-4 mr-2" />
                 {fetching ? 'Calculando...' : 'Somar'}
               </Button>
