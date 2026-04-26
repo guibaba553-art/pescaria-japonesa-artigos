@@ -662,6 +662,7 @@ export default function AdminSalesAnalysis() {
     }
   };
 
+  const periodLabel = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
       return rangeTo
         ? `${format(rangeFrom, 'dd/MM/yy')} a ${format(rangeTo, 'dd/MM/yy')}`
