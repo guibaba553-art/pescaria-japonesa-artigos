@@ -107,7 +107,7 @@ export function MyPaymentMethods() {
     if (!user) return;
     const parsed = cardSchema.safeParse(form);
     if (!parsed.success) {
-      const first = parsed.error.errors[0];
+      const first = parsed.error.issues[0];
       toast({ title: 'Dados inválidos', description: first.message, variant: 'destructive' });
       return;
     }
