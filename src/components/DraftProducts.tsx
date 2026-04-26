@@ -63,6 +63,11 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     height_cm: '',
   });
   const [saving, setSaving] = useState(false);
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeResults, setMergeResults] = useState<Array<{ id: string; name: string; stock: number; sku: string | null; image_url: string | null; category: string }>>([]);
+  const [mergeTarget, setMergeTarget] = useState<{ id: string; name: string; stock: number } | null>(null);
+  const [merging, setMerging] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
