@@ -318,6 +318,114 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Toggle: mesclar com produto existente */}
+            <div className="rounded-lg border-2 border-emerald-500/30 bg-emerald-500/5 p-3 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <p className="text-sm font-bold flex items-center gap-1.5">
+                    <Link2 className="w-4 h-4" />
+                    Esse produto já existe no catálogo?
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Se sim, selecione o produto correspondente — o estoque deste rascunho ({editing?.stock ?? 0} un.) será <b>somado</b> ao existente e o rascunho será removido.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={mergeMode ? 'secondary' : 'outline'}
+                  onClick={() => {
+                    setMergeMode(!mergeMode);
+                    setMergeTarget(null);
+                    setMergeSearch('');
+                  }}
+                >
+                  {mergeMode ? 'Cancelar' : 'Sim, mesclar'}
+                </Button>
+              </div>
+
+              {mergeMode && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Buscar por nome ou SKU..."
+                      value={mergeSearch}
+                      onChange={(e) => {
+                        setMergeSearch(e.target.value);
+                        setMergeTarget(null);
+                      }}
+                      className="pl-8"
+                    />
+                  </div>
+
+                  {mergeTarget ? (
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-md border bg-background">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{mergeTarget.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Estoque atual: <b>{mergeTarget.stock}</b> → após mesclar: <b className="text-emerald-600">{mergeTarget.stock + parseInt(form.stock || '0')}</b>
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setMergeTarget(null)}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto rounded-md border bg-background divide-y">
+                      {mergeResults.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          {mergeSearch.length < 2 ? 'Digite ao menos 2 caracteres...' : 'Nenhum produto encontrado'}
+                        </p>
+                      ) : (
+                        mergeResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setMergeTarget({ id: p.id, name: p.name, stock: p.stock })}
+                            className="w-full text-left flex items-center gap-2 p-2 hover:bg-muted/50 transition"
+                          >
+                            {p.image_url ? (
+                              <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded bg-muted shrink-0 flex items-center justify-center">
+                                <Package className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {p.category} · Estoque: {p.stock}{p.sku ? ` · SKU: ${p.sku}` : ''}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex-1">
+                      <Label className="text-xs">Quantidade a somar</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={form.stock}
+                        onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                        className="h-8"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleMerge}
+                      disabled={!mergeTarget || merging}
+                      className="gap-1 self-end"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      {merging ? 'Mesclando...' : 'Mesclar estoque'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Nome do produto</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
