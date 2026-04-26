@@ -21,6 +21,7 @@ import {
 import {
   ArrowLeft, CalendarIcon, Calculator, Download, Filter,
   ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
+  ChevronRight, ChevronDown, Loader2, Package,
 } from 'lucide-react';
 import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
