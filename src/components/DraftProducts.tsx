@@ -45,6 +45,8 @@ interface DraftProduct {
 
 export function DraftProducts({ onChange }: { onChange?: () => void }) {
   const { categories } = useCategories();
+export function DraftProducts({ onChange }: { onChange?: () => void }) {
+  const { categories } = useCategories();
   const [drafts, setDrafts] = useState<DraftProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<DraftProduct | null>(null);
@@ -61,22 +63,6 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     length_cm: '',
     width_cm: '',
     height_cm: '',
-  });
-
-export function DraftProducts({ onChange }: { onChange?: () => void }) {
-  const { categories } = useCategories();
-  const [drafts, setDrafts] = useState<DraftProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<DraftProduct | null>(null);
-  const [form, setForm] = useState({
-    name: '',
-    short_description: '',
-    description: '',
-    price: '',
-    stock: '',
-    sku: '',
-    ncm: '',
-    category: '',
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
