@@ -66,6 +66,11 @@ export function ProductsManagement() {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState('');
+  // Peso e dimensões para cálculo de frete (Melhor Envio)
+  const [weightGrams, setWeightGrams] = useState('');
+  const [lengthCm, setLengthCm] = useState('');
+  const [widthCm, setWidthCm] = useState('');
+  const [heightCm, setHeightCm] = useState('');
 
   const { variations: newProductVariations, setVariations: setNewProductVariations, saveVariations } =
     useProductVariations();
@@ -106,6 +111,7 @@ export function ProductsManagement() {
     setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
+    setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,6 +167,10 @@ export function ProductsManagement() {
           price_pix_percent: 0,
           price_debit_percent: 5,
           price_credit_percent: 10.25,
+          weight_grams: weightGrams ? parseInt(weightGrams) : null,
+          length_cm: lengthCm ? parseFloat(lengthCm) : null,
+          width_cm: widthCm ? parseFloat(widthCm) : null,
+          height_cm: heightCm ? parseFloat(heightCm) : null,
         }])
         .select()
         .single();
@@ -555,6 +565,38 @@ export function ProductsManagement() {
                   </Button>
                 </div>
                 <Textarea id="short-description" value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} rows={2} placeholder="Resumo curto" />
+              </div>
+
+              {/* === Peso e Dimensões para Frete === */}
+              <div className="space-y-3 p-4 border-2 border-blue-500/20 rounded-lg bg-blue-500/5">
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wide">📦 Peso e Dimensões (Frete)</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Usado pelo Melhor Envio. Se vazio, usa valores padrão da loja. Mínimos: 11×11×2 cm, peso ≥ 10 g.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-weight" className="text-xs">Peso (g)</Label>
+                    <Input id="new-weight" type="number" min="0" step="1" placeholder="500"
+                      value={weightGrams} onChange={(e) => setWeightGrams(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-length" className="text-xs">Comprimento (cm)</Label>
+                    <Input id="new-length" type="number" min="0" step="0.1" placeholder="30"
+                      value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-width" className="text-xs">Largura (cm)</Label>
+                    <Input id="new-width" type="number" min="0" step="0.1" placeholder="20"
+                      value={widthCm} onChange={(e) => setWidthCm(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new-height" className="text-xs">Altura (cm)</Label>
+                    <Input id="new-height" type="number" min="0" step="0.1" placeholder="20"
+                      value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+                  </div>
+                </div>
               </div>
 
               <ProductVariations variations={newProductVariations} onVariationsChange={setNewProductVariations} />

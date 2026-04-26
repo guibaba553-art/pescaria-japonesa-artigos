@@ -57,6 +57,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
+
+  // Peso e dimensões para cálculo de frete (Melhor Envio)
+  const [weightGrams, setWeightGrams] = useState((product as any).weight_grams?.toString() || '');
+  const [lengthCm, setLengthCm] = useState((product as any).length_cm?.toString() || '');
+  const [widthCm, setWidthCm] = useState((product as any).width_cm?.toString() || '');
+  const [heightCm, setHeightCm] = useState((product as any).height_cm?.toString() || '');
   
   // Usar hook personalizado para gerenciar variações
   const { 
@@ -95,6 +101,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
       setPricePdv((product as any).price_pdv?.toString() || '');
+      setWeightGrams((product as any).weight_grams?.toString() || '');
+      setLengthCm((product as any).length_cm?.toString() || '');
+      setWidthCm((product as any).width_cm?.toString() || '');
+      setHeightCm((product as any).height_cm?.toString() || '');
     }
   }, [open, product.id, loadVariations]);
 
@@ -238,6 +248,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         price_cash_percent: 0,
         price_debit_percent: 5,
         price_credit_percent: 10.25,
+        weight_grams: weightGrams ? parseInt(weightGrams) : null,
+        length_cm: lengthCm ? parseFloat(lengthCm) : null,
+        width_cm: widthCm ? parseFloat(widthCm) : null,
+        height_cm: heightCm ? parseFloat(heightCm) : null,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
@@ -569,6 +583,39 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 rows={2}
                 placeholder="Resumo curto de 2 linhas (gerado automaticamente pela IA ou edite manualmente)"
               />
+            </div>
+
+            {/* === Peso e Dimensões para Frete === */}
+            <div className="space-y-3 p-4 border-2 border-blue-500/20 rounded-lg bg-blue-500/5">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wide">📦 Peso e Dimensões (Frete)</h3>
+                <p className="text-xs text-muted-foreground">
+                  Usado pelo Melhor Envio para calcular o frete real. Se vazio, usa valores padrão da loja.
+                  Mínimos: 11×11×2 cm, peso ≥ 10 g.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-weight" className="text-xs">Peso (g)</Label>
+                  <Input id="edit-weight" type="number" min="0" step="1" placeholder="500"
+                    value={weightGrams} onChange={(e) => setWeightGrams(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-length" className="text-xs">Comprimento (cm)</Label>
+                  <Input id="edit-length" type="number" min="0" step="0.1" placeholder="30"
+                    value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-width" className="text-xs">Largura (cm)</Label>
+                  <Input id="edit-width" type="number" min="0" step="0.1" placeholder="20"
+                    value={widthCm} onChange={(e) => setWidthCm(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-height" className="text-xs">Altura (cm)</Label>
+                  <Input id="edit-height" type="number" min="0" step="0.1" placeholder="20"
+                    value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4 border-t pt-4">

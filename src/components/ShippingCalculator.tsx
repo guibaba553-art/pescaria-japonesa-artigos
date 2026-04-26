@@ -78,17 +78,61 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     if (numeric.length <= 8) setCep(numeric);
   };
 
+  // Cache de dimensões/peso reais carregados do banco
+  const [productDims, setProductDims] = useState<
+    Record<string, { weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>
+  >({});
+
+  // Carrega peso e dimensões dos produtos do carrinho do banco
+  useEffect(() => {
+    const ids = (products || []).map((p) => p.id).filter((x): x is string => !!x);
+    const missing = ids.filter((id) => !(id in productDims));
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, weight_grams, length_cm, width_cm, height_cm')
+        .in('id', missing);
+      if (data) {
+        setProductDims((prev) => {
+          const next = { ...prev };
+          data.forEach((p: any) => {
+            next[p.id] = {
+              weight_grams: p.weight_grams,
+              length_cm: p.length_cm ? Number(p.length_cm) : null,
+              width_cm: p.width_cm ? Number(p.width_cm) : null,
+              height_cm: p.height_cm ? Number(p.height_cm) : null,
+            };
+          });
+          return next;
+        });
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
+
   const buildMeProducts = () =>
     products && products.length > 0
-      ? products.map((p, i) => ({
-          id: p.id || String(i + 1),
-          width: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width,
-          height: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height,
-          length: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
-          weight: SHIPPING_CONFIG.DEFAULT_WEIGHT / 1000,
-          insurance_value: 0,
-          quantity: p.quantity,
-        }))
+      ? products.map((p, i) => {
+          const dims = (p.id && productDims[p.id]) || null;
+          // Mínimos exigidos pelo Melhor Envio: width>=11, height>=2, length>=11, weight>=0.01kg
+          const width = Math.max(11, dims?.width_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width);
+          const height = Math.max(2, dims?.height_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height);
+          const length = Math.max(11, dims?.length_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length);
+          const weightKg = Math.max(
+            0.01,
+            (dims?.weight_grams ?? SHIPPING_CONFIG.DEFAULT_WEIGHT) / 1000
+          );
+          return {
+            id: p.id || String(i + 1),
+            width,
+            height,
+            length,
+            weight: weightKg,
+            insurance_value: 0,
+            quantity: p.quantity,
+          };
+        })
       : undefined;
 
   const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
