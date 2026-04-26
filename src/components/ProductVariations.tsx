@@ -320,14 +320,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
               <Label htmlFor="new-var-sku" className="text-xs">
                 Código de Barra / SKU
               </Label>
-              <Input
+              <BarcodeInput
                 id="new-var-sku"
-                type="text"
                 placeholder="Ex: 7891234567890"
                 value={newVariation.sku}
-                onChange={(e) => setNewVariation({ ...newVariation, sku: e.target.value })}
-                autoComplete="off"
-                maxLength={50}
+                onChange={(v) => setNewVariation({ ...newVariation, sku: v })}
+                size="sm"
               />
             </div>
             <div>
