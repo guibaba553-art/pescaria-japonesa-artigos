@@ -1068,7 +1068,7 @@ export function OrdersManagement() {
   const renderSiteTabs = () => (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-5 gap-1">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-6 gap-1">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
