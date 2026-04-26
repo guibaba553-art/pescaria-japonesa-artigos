@@ -50,6 +50,7 @@ export interface TriagemOrder {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
+  shipping_cep: string;
   status: string;
   delivery_type: string;
   source: string;
