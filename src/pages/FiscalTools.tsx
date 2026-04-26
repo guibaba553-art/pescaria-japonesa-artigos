@@ -19,6 +19,9 @@ const TaxProjection = lazy(() =>
 const NfeEntradaPendentes = lazy(() =>
   import("@/components/NfeEntradaPendentes").then((m) => ({ default: m.NfeEntradaPendentes }))
 );
+const XMLImporter = lazy(() =>
+  import("@/components/XMLImporter").then((m) => ({ default: m.XMLImporter }))
+);
 const AccountantReport = lazy(() =>
   import("@/components/AccountantReport").then((m) => ({ default: m.AccountantReport }))
 );
@@ -259,13 +262,32 @@ export default function FiscalTools() {
                   Notas Fiscais de Entrada
                 </CardTitle>
                 <CardDescription>
-                  O sistema busca automaticamente as NF-es enviadas contra o seu CNPJ a cada hora via Focus NFe e manifesta ciência à SEFAZ. Revise as notas baixadas abaixo e processe para somar ao estoque.
+                  Revise as notas baixadas automaticamente da Focus NFe ou importe manualmente um XML/PDF de uma nota recebida.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Suspense fallback={<FiscalTabFallback />}>
-                  <NfeEntradaPendentes />
-                </Suspense>
+                <Tabs defaultValue="auto" className="space-y-4">
+                  <TabsList>
+                    <TabsTrigger value="auto">Recebidas automaticamente</TabsTrigger>
+                    <TabsTrigger value="manual">Importar manualmente</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="auto">
+                    <Suspense fallback={<FiscalTabFallback />}>
+                      <NfeEntradaPendentes />
+                    </Suspense>
+                  </TabsContent>
+                  <TabsContent value="manual">
+                    <div className="text-xs text-muted-foreground bg-muted/50 rounded-md p-3 mb-4">
+                      📄 Use esta opção quando receber uma NF-e que não foi baixada automaticamente
+                      (ex.: fornecedor enviou o XML por e-mail). Faça upload do XML (.xml) ou do
+                      DANFE em PDF — o sistema extrai os produtos, permite ajustar a margem de lucro
+                      e soma ao estoque, marcando os novos itens como pendentes de etiqueta.
+                    </div>
+                    <Suspense fallback={<FiscalTabFallback />}>
+                      <XMLImporter />
+                    </Suspense>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>
