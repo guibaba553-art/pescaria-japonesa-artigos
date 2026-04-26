@@ -208,13 +208,6 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          <button
-            onClick={() => navigate('/produtos')}
-            className="hidden md:inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
-          >
-            Produtos
-          </button>
-
           {/* Cart visível só no desktop — no mobile fica na bottom nav */}
           <div className="hidden md:block">
             <Cart />
