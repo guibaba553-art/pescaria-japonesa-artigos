@@ -22,7 +22,7 @@ import {
   ArrowLeft, CalendarIcon, Calculator, Download, Filter,
   ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
 } from 'lucide-react';
-import { format, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
