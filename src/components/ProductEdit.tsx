@@ -539,17 +539,14 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-sku">Código de Barras (SKU)</Label>
-                <Input
+                <BarcodeInput
                   id="edit-sku"
-                  type="text"
                   value={sku}
-                  onChange={(e) => setSku(e.target.value)}
+                  onChange={setSku}
                   placeholder="Digite o código de barras"
-                  autoComplete="off"
-                  maxLength={50}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Código para leitura no PDV
+                  Código para leitura no PDV. Use "Gerar" se o produto não tiver código.
                 </p>
               </div>
             </div>
