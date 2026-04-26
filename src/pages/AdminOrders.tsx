@@ -22,7 +22,7 @@ export default function AdminOrders() {
     <AdminPageLayout
       icon={ClipboardList}
       eyebrow="Pedidos"
-      title="Gestão de Pedidos"
+      title="Gestão de Pedidos do Site"
       description="Acompanhe, filtre e gerencie todos os pedidos da sua loja online em tempo real."
     >
       <OrdersManagement />
