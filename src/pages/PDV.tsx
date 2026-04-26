@@ -132,6 +132,8 @@ export default function PDV() {
   const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
   const [savedSales, setSavedSales] = useState<any[]>([]);
   const [currentSaleId, setCurrentSaleId] = useState<string | null>(null);
+  const [savedSalesSearch, setSavedSalesSearch] = useState('');
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!loading && !isAdmin) {
