@@ -1210,6 +1210,8 @@ export function OrdersManagement() {
     updateTrackingCode,
     emitNFCe,
     emittingNFCe,
+    refundPayment,
+    refundingOrders,
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
