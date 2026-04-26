@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 
 // Cada aba é um pacote pesado — só baixa quando o usuário abre
@@ -28,6 +28,9 @@ const CouponsManagement = lazy(() =>
 );
 const StockAlerts = lazy(() =>
   import('@/components/StockAlerts').then((m) => ({ default: m.StockAlerts }))
+);
+const LabelsManagement = lazy(() =>
+  import('@/components/LabelsManagement').then((m) => ({ default: m.LabelsManagement }))
 );
 
 const TabFallback = () => (
@@ -96,6 +99,9 @@ export default function AdminCatalog() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="labels" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <Tag className="w-4 h-4" /> Etiquetas
+            </TabsTrigger>
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques
             </TabsTrigger>
@@ -119,6 +125,9 @@ export default function AdminCatalog() {
         </TabsContent>
         <TabsContent value="drafts">
           <Suspense fallback={<TabFallback />}><DraftProducts onChange={loadDraftCount} /></Suspense>
+        </TabsContent>
+        <TabsContent value="labels">
+          <Suspense fallback={<TabFallback />}><LabelsManagement /></Suspense>
         </TabsContent>
         <TabsContent value="featured">
           <Suspense fallback={<TabFallback />}><FeaturedManagement /></Suspense>
