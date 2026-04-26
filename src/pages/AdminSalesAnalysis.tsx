@@ -931,17 +931,42 @@ export default function AdminSalesAnalysis() {
                           </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
-                            {canCancel && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
-                                onClick={() => setCancelTarget(r)}
-                              >
-                                <Ban className="w-3.5 h-3.5 mr-1" />
-                                {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
-                              </Button>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              {(() => {
+                                const hasInvoice = r.statusGroup === 'nota' || !!r.raw?.nfe;
+                                const isCancelled = r.statusGroup === 'cancelado';
+                                const canEmit = !hasInvoice && !isCancelled && (r.kind === 'order' || r.kind === 'saved');
+                                if (!canEmit) return null;
+                                const isEmitting = emittingInvoice.has(`${r.kind}-${r.id}`);
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                    onClick={() => setInvoiceTarget(r)}
+                                    disabled={isEmitting}
+                                  >
+                                    {isEmitting ? (
+                                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                    ) : (
+                                      <Receipt className="w-3.5 h-3.5 mr-1" />
+                                    )}
+                                    {isEmitting ? 'Emitindo...' : 'Emitir Nota'}
+                                  </Button>
+                                );
+                              })()}
+                              {canCancel && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
+                                  onClick={() => setCancelTarget(r)}
+                                >
+                                  <Ban className="w-3.5 h-3.5 mr-1" />
+                                  {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
 
