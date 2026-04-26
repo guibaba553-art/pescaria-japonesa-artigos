@@ -348,6 +348,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     }
   };
 
+  const validateCardData = () => {
     const errors: string[] = [];
 
     // Validar número do cartão
