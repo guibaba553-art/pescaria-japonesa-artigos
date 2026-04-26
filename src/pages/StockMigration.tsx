@@ -289,7 +289,9 @@ export default function StockMigration() {
         next[i] = { ...r, applied: true, error: undefined };
         ok++;
       } catch (e: any) {
-        const createdDraftId = next[i].matchedProductId ? null : null;
+        if (createdDraftId) {
+          await supabase.from('products').delete().eq('id', createdDraftId);
+        }
         next[i] = { ...r, applied: false, error: e.message };
         err++;
       }
