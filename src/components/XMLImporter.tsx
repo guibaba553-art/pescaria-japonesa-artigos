@@ -561,6 +561,18 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de vincular a produto existente */}
+      {linkingIndex !== null && produtosComMargem[linkingIndex] && (
+        <LinkExistingProductDialog
+          open={linkingIndex !== null}
+          onOpenChange={(open) => !open && setLinkingIndex(null)}
+          nfeProductName={produtosComMargem[linkingIndex].nome}
+          nfeProductCode={produtosComMargem[linkingIndex].ean || produtosComMargem[linkingIndex].sku}
+          currentLinkedId={produtosComMargem[linkingIndex].vincular_produto_id ?? null}
+          onSelect={(p) => setLinkedProduct(linkingIndex, p)}
+        />
+      )}
     </div>
   );
 }
