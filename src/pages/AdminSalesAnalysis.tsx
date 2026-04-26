@@ -485,7 +485,183 @@ export default function AdminSalesAnalysis() {
     }
   };
 
-  const periodLabel = useMemo(() => {
+  // Emite NFC-e (PDV / orçamento) ou NF-e (site) a partir do painel de Vendas.
+  // Para pedidos do site (kind='order' source!='pdv') -> usa edge function 'emit-nfe' que aceita { orderId }.
+  // Para pedidos PDV ou orçamentos salvos -> usa 'emit-nfce' montando o payload completo no client.
+  const emitInvoice = async (row: UnifiedRow) => {
+    const key = `${row.kind}-${row.id}`;
+    setEmittingInvoice(prev => new Set(prev).add(key));
+    const loadingToastId = toast.loading('Emitindo nota fiscal...', {
+      description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
+    });
+
+    try {
+      // Caminho 1: pedido do SITE -> NF-e (modelo 55)
+      if (row.kind === 'order' && row.source !== 'pdv') {
+        const { data, error } = await supabase.functions.invoke('emit-nfe', {
+          body: { orderId: row.id },
+        });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NF-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NF-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      // Caminho 2: pedido PDV -> NFC-e (modelo 65) com payload completo
+      if (row.kind === 'order') {
+        const [{ data: items, error: itemsErr }, { data: order, error: orderErr }] = await Promise.all([
+          supabase
+            .from('order_items')
+            .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
+            .eq('order_id', row.id),
+          supabase
+            .from('orders')
+            .select('total_amount, customer_id, customers(full_name, cpf, cnpj, company_name)')
+            .eq('id', row.id)
+            .single(),
+        ]);
+        if (itemsErr) throw itemsErr;
+        if (orderErr) throw orderErr;
+        if (!items || items.length === 0) throw new Error('Pedido sem itens');
+
+        const cust: any = (order as any).customers;
+        const payload = {
+          order_id: row.id,
+          payment_method: 'dinheiro' as const,
+          total_amount: Number((order as any).total_amount),
+          customer: cust ? {
+            cpf: cust.cpf || undefined,
+            cnpj: cust.cnpj || undefined,
+            nome: cust.company_name || cust.full_name || undefined,
+          } : undefined,
+          items: items.map((it: any) => ({
+            product_id: it.product_id,
+            name: it.products?.name || 'Produto',
+            quantity: Number(it.quantity),
+            unit_price: Number(it.price_at_purchase),
+            ncm: it.products?.ncm || undefined,
+            cfop: it.products?.cfop || undefined,
+            csosn: it.products?.csosn || undefined,
+            origem: it.products?.origem || undefined,
+            unidade: it.products?.unidade_comercial || undefined,
+            cest: it.products?.cest || undefined,
+          })),
+        };
+
+        const { data, error } = await supabase.functions.invoke('emit-nfce', { body: payload });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NFC-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NFC-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      // Caminho 3: orçamento (saved_sales) -> monta NFC-e a partir de cart_data
+      if (row.kind === 'saved') {
+        const cart = Array.isArray(row.raw?.cart_data) ? row.raw.cart_data : [];
+        if (cart.length === 0) throw new Error('Orçamento sem itens');
+
+        // Buscar dados fiscais dos produtos
+        const productIds = Array.from(new Set(cart.map((it: any) => it.id || it.product_id).filter(Boolean)));
+        const { data: prods } = await supabase
+          .from('products')
+          .select('id, name, ncm, cfop, csosn, origem, unidade_comercial, cest')
+          .in('id', productIds as string[]);
+        const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
+
+        const cd: any = row.raw?.customer_data || null;
+        const payload = {
+          order_id: undefined,
+          payment_method: (row.raw?.payment_method || 'dinheiro') as any,
+          total_amount: Number(row.total_amount),
+          customer: cd ? {
+            cpf: cd.cpf || undefined,
+            cnpj: cd.cnpj || undefined,
+            nome: cd.full_name || cd.company_name || cd.name || undefined,
+          } : undefined,
+          items: cart.map((it: any) => {
+            const pid = it.id || it.product_id;
+            const p: any = prodMap.get(pid) || {};
+            return {
+              product_id: pid,
+              name: it.name || p.name || 'Produto',
+              quantity: Number(it.quantity || 1),
+              unit_price: Number(it.price ?? it.unit_price ?? 0),
+              ncm: p.ncm || undefined,
+              cfop: p.cfop || undefined,
+              csosn: p.csosn || undefined,
+              origem: p.origem || undefined,
+              unidade: p.unidade_comercial || undefined,
+              cest: p.cest || undefined,
+            };
+          }),
+        };
+
+        const { data, error } = await supabase.functions.invoke('emit-nfce', { body: payload });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NFC-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NFC-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      throw new Error('Tipo de venda não suporta emissão a partir daqui.');
+    } catch (e: any) {
+      console.error('Erro ao emitir nota:', e);
+      toast.error('Erro ao emitir nota', {
+        id: loadingToastId,
+        description: e?.message || 'Verifique as configurações fiscais.',
+      });
+    } finally {
+      setEmittingInvoice(prev => {
+        const n = new Set(prev);
+        n.delete(key);
+        return n;
+      });
+      setInvoiceTarget(null);
+    }
+  };
+
     if (dateMode === 'range' && rangeFrom) {
       return rangeTo
         ? `${format(rangeFrom, 'dd/MM/yy')} a ${format(rangeTo, 'dd/MM/yy')}`
