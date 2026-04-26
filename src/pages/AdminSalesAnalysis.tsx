@@ -120,6 +120,15 @@ export default function AdminSalesAnalysis() {
     if (!loading && !isEmployee && !isAdmin) navigate('/auth');
   }, [user, isEmployee, isAdmin, loading, navigate]);
 
+  // Carrega automaticamente as vendas do mês atual ao entrar na tela
+  useEffect(() => {
+    if (loading || autoLoaded) return;
+    if (!isEmployee && !isAdmin) return;
+    setAutoLoaded(true);
+    fetchAll(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isEmployee, isAdmin]);
+
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
       return { from: startOfDay(rangeFrom), to: endOfDay(rangeTo || rangeFrom) };
