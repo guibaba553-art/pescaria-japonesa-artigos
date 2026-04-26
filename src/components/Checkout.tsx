@@ -46,6 +46,44 @@ interface InstallmentOption {
   label: string;
 }
 
+interface SavedPaymentMethod {
+  id: string;
+  payment_method: 'pix' | 'credit_card' | 'debit_card' | 'boleto';
+  card_brand: string | null;
+  card_last4: string | null;
+  cardholder_name: string | null;
+  card_exp_month: string | null;
+  card_exp_year: string | null;
+  is_default: boolean;
+  last_used_at: string | null;
+}
+
+// Detecta bandeira a partir dos primeiros dígitos (apenas para exibição)
+const detectBrand = (cardNumber: string): string | null => {
+  const num = cardNumber.replace(/\D/g, '');
+  if (!num) return null;
+  if (num.startsWith('4')) return 'Visa';
+  const n2 = parseInt(num.substring(0, 2));
+  const n4 = parseInt(num.substring(0, 4));
+  if ((n2 >= 51 && n2 <= 55) || (n4 >= 2221 && n4 <= 2720)) return 'Mastercard';
+  if (num.startsWith('34') || num.startsWith('37')) return 'Amex';
+  if (num.startsWith('6011') || num.startsWith('65')) return 'Discover';
+  const eloBins = ['401178','401179','438935','457631','457632','504175','627780','636297','636368'];
+  if (eloBins.some((bin) => num.startsWith(bin))) return 'Elo';
+  if (num.startsWith('606282') || num.startsWith('3841')) return 'Hipercard';
+  if (n2 === 36 || n2 === 38 || (n2 === 30 && parseInt(num.charAt(2)) <= 5)) return 'Diners';
+  return null;
+};
+
+const paymentMethodLabel = (m: SavedPaymentMethod['payment_method']) => {
+  switch (m) {
+    case 'pix': return 'PIX';
+    case 'credit_card': return 'Cartão de Crédito';
+    case 'debit_card': return 'Cartão de Débito';
+    case 'boleto': return 'Boleto';
+  }
+};
+
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
   const { toast } = useToast();
