@@ -100,6 +100,7 @@ const App = () => (
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
+                <Route path="/unsubscribe" element={<Unsubscribe />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
