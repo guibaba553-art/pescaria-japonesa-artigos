@@ -570,6 +570,14 @@ export default function Account() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="pagamento" className="mt-6">
+            <Card className="rounded-2xl border-border">
+              <CardContent className="p-6">
+                <MyPaymentMethods />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="dados" className="mt-6">
             <Card className="rounded-2xl border-border">
               <CardContent className="p-6">
