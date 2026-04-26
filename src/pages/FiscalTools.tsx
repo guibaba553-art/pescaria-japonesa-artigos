@@ -5,10 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet } from "lucide-react";
 
-// Conteúdo das abas é pesado (NFe, impostos, sistema fiscal) — só baixa quando o admin abre a aba.
-// Lógica fiscal NÃO é alterada, apenas o momento do load.
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
 );
@@ -20,6 +18,9 @@ const TaxProjection = lazy(() =>
 );
 const NfeEntradaPendentes = lazy(() =>
   import("@/components/NfeEntradaPendentes").then((m) => ({ default: m.NfeEntradaPendentes }))
+);
+const AccountantReport = lazy(() =>
+  import("@/components/AccountantReport").then((m) => ({ default: m.AccountantReport }))
 );
 
 const FiscalTabFallback = () => (
@@ -205,7 +206,7 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
@@ -217,6 +218,10 @@ export default function FiscalTools() {
             <TabsTrigger value="entrada">
               <ArrowDownToLine className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas de Entrada</span>
+            </TabsTrigger>
+            <TabsTrigger value="contador">
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Contador</span>
             </TabsTrigger>
             <TabsTrigger value="system">
               <Settings className="w-4 h-4 mr-2" />
@@ -263,6 +268,12 @@ export default function FiscalTools() {
                 </Suspense>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="contador">
+            <Suspense fallback={<FiscalTabFallback />}>
+              <AccountantReport />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="system">
