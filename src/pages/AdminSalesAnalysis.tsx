@@ -1097,6 +1097,47 @@ export default function AdminSalesAnalysis() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!invoiceTarget} onOpenChange={(o) => !o && setInvoiceTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Emitir nota fiscal?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv'
+                  ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
+                  : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
+                {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
+                {invoiceTarget && (
+                  <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
+                    <div><strong>Tipo:</strong> {invoiceTarget.kind === 'saved' ? 'Orçamento' : 'Pedido'} {invoiceTarget.source === 'pdv' ? '(PDV)' : invoiceTarget.kind === 'order' ? '(Site)' : ''}</div>
+                    <div><strong>ID:</strong> #{invoiceTarget.id.slice(0, 8)}</div>
+                    <div><strong>Data:</strong> {format(new Date(invoiceTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                    <div><strong>Total:</strong> {formatCurrency(invoiceTarget.total_amount)}</div>
+                    <div><strong>Documento a emitir:</strong> {invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={!!invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`)}
+            >
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => invoiceTarget && emitInvoice(invoiceTarget)}
+              disabled={!!invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`) ? 'Emitindo...' : 'Emitir agora'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
