@@ -585,6 +585,39 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
               />
             </div>
 
+            {/* === Peso e Dimensões para Frete === */}
+            <div className="space-y-3 p-4 border-2 border-blue-500/20 rounded-lg bg-blue-500/5">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wide">📦 Peso e Dimensões (Frete)</h3>
+                <p className="text-xs text-muted-foreground">
+                  Usado pelo Melhor Envio para calcular o frete real. Se vazio, usa valores padrão da loja.
+                  Mínimos: 11×11×2 cm, peso ≥ 10 g.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-weight" className="text-xs">Peso (g)</Label>
+                  <Input id="edit-weight" type="number" min="0" step="1" placeholder="500"
+                    value={weightGrams} onChange={(e) => setWeightGrams(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-length" className="text-xs">Comprimento (cm)</Label>
+                  <Input id="edit-length" type="number" min="0" step="0.1" placeholder="30"
+                    value={lengthCm} onChange={(e) => setLengthCm(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-width" className="text-xs">Largura (cm)</Label>
+                  <Input id="edit-width" type="number" min="0" step="0.1" placeholder="20"
+                    value={widthCm} onChange={(e) => setWidthCm(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-height" className="text-xs">Altura (cm)</Label>
+                  <Input id="edit-height" type="number" min="0" step="0.1" placeholder="20"
+                    value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4 border-t pt-4">
               <h3 className="font-semibold">Configurações Especiais</h3>
               
