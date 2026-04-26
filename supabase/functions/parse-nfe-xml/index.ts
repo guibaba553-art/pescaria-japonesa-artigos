@@ -211,13 +211,19 @@ Exemplo de estrutura XML:
                         icms: { type: 'number', description: 'Valor do ICMS ou 0' },
                         ipi: { type: 'number', description: 'Valor do IPI ou 0' },
                         pis: { type: 'number', description: 'Valor do PIS ou 0' },
-                        cofins: { type: 'number', description: 'Valor do COFINS ou 0' }
+                        cofins: { type: 'number', description: 'Valor do COFINS ou 0' },
+                        peso_unitario_kg: { type: 'number', description: 'Peso unitário em kg, se mencionado em infAdProd, descrição ou tags próprias do produto. 0 se não houver.' },
+                        comprimento_cm: { type: 'number', description: 'Comprimento da embalagem em cm, se mencionado. 0 se não houver.' },
+                        largura_cm: { type: 'number', description: 'Largura da embalagem em cm, se mencionado. 0 se não houver.' },
+                        altura_cm: { type: 'number', description: 'Altura da embalagem em cm, se mencionado. 0 se não houver.' }
                       },
                       required: ['nome', 'quantidade', 'valor_unitario', 'valor_total', 'ean']
                     }
                   },
                   valor_total: { type: 'number', description: 'Valor total da NFe' },
                   valor_frete: { type: 'number', description: 'Valor total do frete ou 0' },
+                  peso_bruto_total_kg: { type: 'number', description: 'Peso bruto total da NFe (tag pesoB dentro de transp/vol). 0 se não houver.' },
+                  peso_liquido_total_kg: { type: 'number', description: 'Peso líquido total da NFe (tag pesoL dentro de transp/vol). 0 se não houver.' },
                   chave_acesso: { type: 'string', description: 'Chave de acesso da NFe (44 dígitos)' }
                 },
                 required: ['numero', 'serie', 'data_emissao', 'fornecedor', 'produtos', 'valor_total'],
