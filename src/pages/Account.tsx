@@ -563,6 +563,15 @@ export default function Account() {
           orderId={pickupQROrderId}
         />
       )}
+
+      {trackingDialog && (
+        <OrderTrackingDialog
+          open={!!trackingDialog}
+          onOpenChange={(open) => !open && setTrackingDialog(null)}
+          orderId={trackingDialog.orderId}
+          trackingCode={trackingDialog.code}
+        />
+      )}
     </div>
   );
 }
