@@ -39,6 +39,7 @@ interface OrderItem {
   product_name: string | null;
   variation_name: string | null;
   sku: string | null;
+  image_url: string | null;
 }
 
 interface UnifiedRow {
@@ -364,6 +365,7 @@ export default function AdminSalesAnalysis() {
         product_name: c.name || c.product_name || 'Produto',
         variation_name: c.variation_name || null,
         sku: c.sku || null,
+        image_url: c.image_url || c.image || (Array.isArray(c.images) ? c.images[0] : null) || null,
       }));
       setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       return;
@@ -376,19 +378,27 @@ export default function AdminSalesAnalysis() {
       try {
         const { data, error } = await supabase
           .from('order_items')
-          .select('id, product_id, variation_id, quantity, price_at_purchase, products(name, sku), product_variations(name)')
+          .select('id, product_id, variation_id, quantity, price_at_purchase, products(name, sku, image_url, images), product_variations(name, image_url)')
           .eq('order_id', row.id);
         if (error) throw error;
-        const items: OrderItem[] = (data || []).map((it: any) => ({
-          id: it.id,
-          product_id: it.product_id,
-          variation_id: it.variation_id,
-          quantity: it.quantity,
-          price_at_purchase: Number(it.price_at_purchase || 0),
-          product_name: it.products?.name || 'Produto removido',
-          variation_name: it.product_variations?.name || null,
-          sku: it.products?.sku || null,
-        }));
+        const items: OrderItem[] = (data || []).map((it: any) => {
+          const variationImg = it.product_variations?.image_url || null;
+          const productImg =
+            it.products?.image_url ||
+            (Array.isArray(it.products?.images) ? it.products.images[0] : null) ||
+            null;
+          return {
+            id: it.id,
+            product_id: it.product_id,
+            variation_id: it.variation_id,
+            quantity: it.quantity,
+            price_at_purchase: Number(it.price_at_purchase || 0),
+            product_name: it.products?.name || 'Produto removido',
+            variation_name: it.product_variations?.name || null,
+            sku: it.products?.sku || null,
+            image_url: variationImg || productImg,
+          };
+        });
         setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       } catch (e: any) {
         toast.error('Erro ao carregar itens: ' + e.message);
@@ -796,12 +806,31 @@ export default function AdminSalesAnalysis() {
                                         {items.map((it) => (
                                           <TableRow key={it.id}>
                                             <TableCell>
-                                              <div className="font-medium text-sm">{it.product_name}</div>
-                                              {it.variation_name && (
-                                                <div className="text-xs text-muted-foreground">
-                                                  Variação: {it.variation_name}
+                                              <div className="flex items-center gap-3">
+                                                {it.image_url ? (
+                                                  <img
+                                                    src={it.image_url}
+                                                    alt={it.product_name || 'Produto'}
+                                                    className="w-12 h-12 rounded-md object-cover border border-border bg-muted flex-shrink-0"
+                                                    loading="lazy"
+                                                    onError={(e) => {
+                                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                  />
+                                                ) : (
+                                                  <div className="w-12 h-12 rounded-md border border-border bg-muted flex items-center justify-center flex-shrink-0">
+                                                    <Package className="w-5 h-5 text-muted-foreground/50" />
+                                                  </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                  <div className="font-medium text-sm">{it.product_name}</div>
+                                                  {it.variation_name && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                      Variação: {it.variation_name}
+                                                    </div>
+                                                  )}
                                                 </div>
-                                              )}
+                                              </div>
                                             </TableCell>
                                             <TableCell className="font-mono text-xs text-muted-foreground">
                                               {it.sku || '—'}
