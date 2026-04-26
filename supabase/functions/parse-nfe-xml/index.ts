@@ -298,8 +298,16 @@ Exemplo de estrutura XML:
         icms: Number(p.icms) || 0,
         ipi: Number(p.ipi) || 0,
         pis: Number(p.pis) || 0,
-        cofins: Number(p.cofins) || 0
+        cofins: Number(p.cofins) || 0,
+        peso_unitario_kg: Number(p.peso_unitario_kg) || 0,
+        comprimento_cm: Number(p.comprimento_cm) || 0,
+        largura_cm: Number(p.largura_cm) || 0,
+        altura_cm: Number(p.altura_cm) || 0,
       }));
+
+    // Normalizar peso total da NFe (usado como fallback no processamento)
+    nfeData.peso_bruto_total_kg = Number(nfeData.peso_bruto_total_kg) || 0;
+    nfeData.peso_liquido_total_kg = Number(nfeData.peso_liquido_total_kg) || 0;
     
     // Verificar se sobrou algum produto após filtragem
     if (nfeData.produtos.length === 0) {
