@@ -1042,6 +1042,51 @@ export type Database = {
           },
         ]
       }
+      saved_payment_methods: {
+        Row: {
+          card_brand: string | null
+          card_exp_month: string | null
+          card_exp_year: string | null
+          card_last4: string | null
+          cardholder_name: string | null
+          created_at: string
+          id: string
+          is_default: boolean
+          last_used_at: string | null
+          payment_method: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_brand?: string | null
+          card_exp_month?: string | null
+          card_exp_year?: string | null
+          card_last4?: string | null
+          cardholder_name?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          last_used_at?: string | null
+          payment_method: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_brand?: string | null
+          card_exp_month?: string | null
+          card_exp_year?: string | null
+          card_last4?: string | null
+          cardholder_name?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          last_used_at?: string | null
+          payment_method?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       saved_sales: {
         Row: {
           cart_data: Json

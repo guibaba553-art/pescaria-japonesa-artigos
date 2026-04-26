@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, DollarSign, Loader2, Wallet } from 'lucide-react';
+import { CreditCard, Smartphone, DollarSign, Loader2, Wallet, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,44 @@ interface InstallmentOption {
   label: string;
 }
 
+interface SavedPaymentMethod {
+  id: string;
+  payment_method: 'pix' | 'credit_card' | 'debit_card' | 'boleto';
+  card_brand: string | null;
+  card_last4: string | null;
+  cardholder_name: string | null;
+  card_exp_month: string | null;
+  card_exp_year: string | null;
+  is_default: boolean;
+  last_used_at: string | null;
+}
+
+// Detecta bandeira a partir dos primeiros dígitos (apenas para exibição)
+const detectBrand = (cardNumber: string): string | null => {
+  const num = cardNumber.replace(/\D/g, '');
+  if (!num) return null;
+  if (num.startsWith('4')) return 'Visa';
+  const n2 = parseInt(num.substring(0, 2));
+  const n4 = parseInt(num.substring(0, 4));
+  if ((n2 >= 51 && n2 <= 55) || (n4 >= 2221 && n4 <= 2720)) return 'Mastercard';
+  if (num.startsWith('34') || num.startsWith('37')) return 'Amex';
+  if (num.startsWith('6011') || num.startsWith('65')) return 'Discover';
+  const eloBins = ['401178','401179','438935','457631','457632','504175','627780','636297','636368'];
+  if (eloBins.some((bin) => num.startsWith(bin))) return 'Elo';
+  if (num.startsWith('606282') || num.startsWith('3841')) return 'Hipercard';
+  if (n2 === 36 || n2 === 38 || (n2 === 30 && parseInt(num.charAt(2)) <= 5)) return 'Diners';
+  return null;
+};
+
+const paymentMethodLabel = (m: SavedPaymentMethod['payment_method']) => {
+  switch (m) {
+    case 'pix': return 'PIX';
+    case 'credit_card': return 'Cartão de Crédito';
+    case 'debit_card': return 'Cartão de Débito';
+    case 'boleto': return 'Boleto';
+  }
+};
+
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
   const { toast } = useToast();
@@ -61,6 +100,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     expiry: '',
     cvv: '',
   });
+  const [saveForNext, setSaveForNext] = useState(true);
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
 
   // Endereços salvos do usuário
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
@@ -89,7 +131,75 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     })();
   }, [open, isPickup, addressDialogOpen]);
 
+  // Carrega formas de pagamento salvas (não-sensíveis) ao abrir o checkout
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSavedMethods([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('saved_payment_methods')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('last_used_at', { ascending: false });
+      const list = (data ?? []) as SavedPaymentMethod[];
+      setSavedMethods(list);
+      // Auto-aplica a forma padrão se houver e o usuário ainda não escolheu
+      const def = list.find((m) => m.is_default) ?? list[0];
+      if (def) {
+        setPaymentMethod((curr) => {
+          // Só sobrescreve se ainda for o default 'pix' e existir uma preferência salva
+          if (curr === 'pix') {
+            if (def.payment_method === 'credit_card') return 'credit';
+            if (def.payment_method === 'debit_card') return 'debit';
+            if (def.payment_method === 'pix') return 'pix';
+          }
+          return curr;
+        });
+      }
+    })();
+  }, [open]);
+
   const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId) || null;
+
+  // Sugestão para o método atualmente escolhido (mesmo cartão da última vez)
+  const suggestedSaved = savedMethods.find((m) => {
+    if (paymentMethod === 'credit') return m.payment_method === 'credit_card';
+    if (paymentMethod === 'debit') return m.payment_method === 'debit_card';
+    return false;
+  }) ?? null;
+
+  const applySavedMethod = (m: SavedPaymentMethod) => {
+    if (m.payment_method !== 'credit_card' && m.payment_method !== 'debit_card') return;
+    setSelectedSavedId(m.id);
+    // Pré-preenche apenas nome e validade. Número e CVV precisam ser redigitados (PCI-DSS).
+    setCardData({
+      number: '',
+      name: m.cardholder_name ?? '',
+      expiry: m.card_exp_month && m.card_exp_year ? `${m.card_exp_month}/${m.card_exp_year}` : '',
+      cvv: '',
+    });
+  };
+
+  const clearSavedSelection = () => {
+    setSelectedSavedId(null);
+    setCardData({ number: '', name: '', expiry: '', cvv: '' });
+  };
+
+  const deleteSavedMethod = async (id: string) => {
+    const { error } = await supabase.from('saved_payment_methods').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setSavedMethods((prev) => prev.filter((m) => m.id !== id));
+    if (selectedSavedId === id) clearSavedSelection();
+    toast({ title: 'Forma de pagamento removida' });
+  };
 
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
@@ -189,6 +299,54 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       window.clearTimeout(timeoutId);
     };
   }, [cleanCardNumber, finalTotal, open, paymentMethod]);
+
+  // Persiste a forma de pagamento (apenas dados não-sensíveis: bandeira, últimos 4, nome, validade)
+  const persistSavedMethod = async (userId: string) => {
+    if (!saveForNext) return;
+    try {
+      let pmSaved: SavedPaymentMethod['payment_method'] | null = null;
+      if (paymentMethod === 'pix') pmSaved = 'pix';
+      else if (paymentMethod === 'credit') pmSaved = 'credit_card';
+      else if (paymentMethod === 'debit') pmSaved = 'debit_card';
+      if (!pmSaved) return; // google_pay não é salvo
+
+      const isCard = pmSaved === 'credit_card' || pmSaved === 'debit_card';
+      const cleanNum = cardData.number.replace(/\D/g, '');
+      const last4 = isCard ? cleanNum.slice(-4) : null;
+      const brand = isCard ? detectBrand(cleanNum) : null;
+      const [m, y] = isCard && cardData.expiry ? cardData.expiry.split('/') : [null, null];
+
+      // Evita duplicidade (mesma forma + mesmos últimos 4 + mesma validade)
+      const dup = savedMethods.find((sm) =>
+        sm.payment_method === pmSaved &&
+        (sm.card_last4 ?? null) === (last4 ?? null) &&
+        (sm.card_exp_month ?? null) === (m ?? null) &&
+        (sm.card_exp_year ?? null) === (y ?? null)
+      );
+
+      if (dup) {
+        await supabase
+          .from('saved_payment_methods')
+          .update({ last_used_at: new Date().toISOString(), is_default: true })
+          .eq('id', dup.id);
+        return;
+      }
+
+      await supabase.from('saved_payment_methods').insert({
+        user_id: userId,
+        payment_method: pmSaved,
+        card_brand: brand,
+        card_last4: last4,
+        cardholder_name: isCard ? (cardData.name || null) : null,
+        card_exp_month: m || null,
+        card_exp_year: y || null,
+        is_default: true,
+        last_used_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('persistSavedMethod error', e);
+    }
+  };
 
   const validateCardData = () => {
     const errors: string[] = [];
@@ -461,6 +619,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             qrCodeBase64: data.qrCodeBase64,
             orderId: orderData.id
           });
+          // Salva preferência (PIX) para próximas compras
+          await persistSavedMethod(user.id);
           toast({
             title: 'PIX gerado com sucesso!',
             description: 'Escaneie o QR Code para pagar. O status será atualizado automaticamente.',
@@ -468,6 +628,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         } else {
           // Para cartão, verificar se foi aprovado instantaneamente
           if (data.status === 'approved') {
+            // Salva forma de pagamento (sem dados sensíveis) para próximas compras
+            await persistSavedMethod(user.id);
             toast({
               title: '✅ Pagamento aprovado!',
               description: 'Redirecionando para seus pedidos...',
@@ -479,6 +641,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               window.location.href = '/conta';
             }, 1000);
           } else {
+            // Salva forma de pagamento mesmo em análise
+            await persistSavedMethod(user.id);
             toast({
               title: 'Pagamento em análise',
               description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} está sendo processado. Redirecionando...`,
@@ -709,9 +873,78 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           {(paymentMethod === 'credit' || paymentMethod === 'debit') && (
             <div className="space-y-4">
               <h3 className="font-semibold">Dados do Cartão</h3>
-              
+
+              {/* Cartões salvos (apenas dados não-sensíveis) */}
+              {savedMethods.filter((m) =>
+                paymentMethod === 'credit' ? m.payment_method === 'credit_card' : m.payment_method === 'debit_card'
+              ).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Usar cartão salvo</p>
+                  <div className="space-y-2">
+                    {savedMethods
+                      .filter((m) =>
+                        paymentMethod === 'credit' ? m.payment_method === 'credit_card' : m.payment_method === 'debit_card'
+                      )
+                      .map((m) => {
+                        const sel = selectedSavedId === m.id;
+                        return (
+                          <div
+                            key={m.id}
+                            className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${
+                              sel ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-border'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => applySavedMethod(m)}
+                              className="flex-1 flex items-center gap-3 text-left"
+                            >
+                              <CreditCard className="w-5 h-5 text-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">
+                                  {m.card_brand ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {m.cardholder_name ?? '—'}
+                                  {m.card_exp_month && m.card_exp_year ? ` · ${m.card_exp_month}/${m.card_exp_year}` : ''}
+                                </p>
+                              </div>
+                              {sel && <Check className="w-4 h-4 text-primary" />}
+                            </button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteSavedMethod(m.id)}
+                              aria-label="Remover cartão salvo"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    {selectedSavedId && (
+                      <Button type="button" variant="ghost" size="sm" onClick={clearSavedSelection} className="text-xs">
+                        Usar outro cartão
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Por segurança (PCI-DSS), o número completo e o CVV nunca são salvos. Você precisa redigitá-los a cada compra.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="cardNumber">Número do Cartão</Label>
+                <Label htmlFor="cardNumber">
+                  Número do Cartão
+                  {selectedSavedId && suggestedSaved?.card_last4 && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      (termina em {suggestedSaved.card_last4})
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="cardNumber"
                   placeholder="0000 0000 0000 0000"
@@ -781,6 +1014,21 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   </p>
                 </div>
               )}
+
+              {/* Salvar para próxima compra */}
+              <label className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 cursor-pointer">
+                <Checkbox
+                  checked={saveForNext}
+                  onCheckedChange={(c) => setSaveForNext(c === true)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Salvar este cartão para próxima compra</p>
+                  <p className="text-xs text-muted-foreground">
+                    Guardamos só bandeira, nome, validade e últimos 4 dígitos. Número completo e CVV nunca são armazenados.
+                  </p>
+                </div>
+              </label>
             </div>
           )}
 
