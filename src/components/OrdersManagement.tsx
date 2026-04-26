@@ -100,6 +100,12 @@ const statusConfig = {
     badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
     accentClass: 'border-l-red-500',
   },
+  devolvido: {
+    label: 'Devolvido',
+    icon: Undo2,
+    badgeClass: 'bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/40 hover:bg-red-600/20',
+    accentClass: 'border-l-red-600',
+  },
 } as const;
 
 // Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
