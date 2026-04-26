@@ -619,6 +619,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             qrCodeBase64: data.qrCodeBase64,
             orderId: orderData.id
           });
+          // Salva preferência (PIX) para próximas compras
+          await persistSavedMethod(user.id);
           toast({
             title: 'PIX gerado com sucesso!',
             description: 'Escaneie o QR Code para pagar. O status será atualizado automaticamente.',
@@ -626,6 +628,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         } else {
           // Para cartão, verificar se foi aprovado instantaneamente
           if (data.status === 'approved') {
+            // Salva forma de pagamento (sem dados sensíveis) para próximas compras
+            await persistSavedMethod(user.id);
             toast({
               title: '✅ Pagamento aprovado!',
               description: 'Redirecionando para seus pedidos...',
@@ -637,6 +641,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
               window.location.href = '/conta';
             }, 1000);
           } else {
+            // Salva forma de pagamento mesmo em análise
+            await persistSavedMethod(user.id);
             toast({
               title: 'Pagamento em análise',
               description: `Pagamento via ${paymentMethod === 'credit' ? 'crédito' : 'débito'} está sendo processado. Redirecionando...`,
