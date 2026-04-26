@@ -305,6 +305,104 @@ export type Database = {
         }
         Relationships: []
       }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          discount_amount: number
+          id: string
+          order_id: string | null
+          redeemed_at: string
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          coupon_id: string
+          discount_amount?: number
+          id?: string
+          order_id?: string | null
+          redeemed_at?: string
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          coupon_id?: string
+          discount_amount?: number
+          id?: string
+          order_id?: string | null
+          redeemed_at?: string
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          max_discount: number | null
+          min_purchase: number
+          scope: Database["public"]["Enums"]["coupon_scope"]
+          starts_at: string | null
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at: string
+          usage_count: number
+          usage_limit: number | null
+          usage_limit_per_user: number | null
+          value: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_purchase?: number
+          scope?: Database["public"]["Enums"]["coupon_scope"]
+          starts_at?: string | null
+          type: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+          usage_limit_per_user?: number | null
+          value?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_discount?: number | null
+          min_purchase?: number
+          scope?: Database["public"]["Enums"]["coupon_scope"]
+          starts_at?: string | null
+          type?: Database["public"]["Enums"]["coupon_type"]
+          updated_at?: string
+          usage_count?: number
+          usage_limit?: number | null
+          usage_limit_per_user?: number | null
+          value?: number
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cep: string
@@ -849,6 +947,7 @@ export type Database = {
           category: string
           cest: string | null
           cfop: string | null
+          cost: number | null
           created_at: string
           created_by: string | null
           csosn: string | null
@@ -858,6 +957,7 @@ export type Database = {
           image_url: string | null
           images: string[] | null
           include_in_nfe: boolean
+          min_stock: number
           minimum_quantity: number
           name: string
           ncm: string | null
@@ -879,6 +979,7 @@ export type Database = {
           sold_by_weight: boolean
           stock: number
           subcategory: string | null
+          supplier_id: string | null
           unidade_comercial: string | null
           updated_at: string
         }
@@ -887,6 +988,7 @@ export type Database = {
           category: string
           cest?: string | null
           cfop?: string | null
+          cost?: number | null
           created_at?: string
           created_by?: string | null
           csosn?: string | null
@@ -896,6 +998,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
+          min_stock?: number
           minimum_quantity?: number
           name: string
           ncm?: string | null
@@ -917,6 +1020,7 @@ export type Database = {
           sold_by_weight?: boolean
           stock?: number
           subcategory?: string | null
+          supplier_id?: string | null
           unidade_comercial?: string | null
           updated_at?: string
         }
@@ -925,6 +1029,7 @@ export type Database = {
           category?: string
           cest?: string | null
           cfop?: string | null
+          cost?: number | null
           created_at?: string
           created_by?: string | null
           csosn?: string | null
@@ -934,6 +1039,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
+          min_stock?: number
           minimum_quantity?: number
           name?: string
           ncm?: string | null
@@ -955,10 +1061,19 @@ export type Database = {
           sold_by_weight?: boolean
           stock?: number
           subcategory?: string | null
+          supplier_id?: string | null
           unidade_comercial?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1213,6 +1328,78 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          complemento: string | null
+          contato_email: string | null
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          inscricao_estadual: string | null
+          is_active: boolean
+          logradouro: string | null
+          nome_fantasia: string | null
+          numero: string | null
+          observacoes: string | null
+          prazo_pagamento_dias: number | null
+          razao_social: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          is_active?: boolean
+          logradouro?: string | null
+          nome_fantasia?: string | null
+          numero?: string | null
+          observacoes?: string | null
+          prazo_pagamento_dias?: number | null
+          razao_social: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          contato_email?: string | null
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          is_active?: boolean
+          logradouro?: string | null
+          nome_fantasia?: string | null
+          numero?: string | null
+          observacoes?: string | null
+          prazo_pagamento_dias?: number | null
+          razao_social?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tga_sync_log: {
         Row: {
           created_at: string
@@ -1378,9 +1565,15 @@ export type Database = {
       revert_order_stock: { Args: { p_order_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      validate_coupon: {
+        Args: { p_code: string; p_source?: string; p_subtotal: number }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "employee" | "user"
+      coupon_scope: "site" | "pdv" | "both"
+      coupon_type: "percent" | "fixed" | "free_shipping"
       order_status:
         | "em_preparo"
         | "enviado"
@@ -1515,6 +1708,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "employee", "user"],
+      coupon_scope: ["site", "pdv", "both"],
+      coupon_type: ["percent", "fixed", "free_shipping"],
       order_status: [
         "em_preparo",
         "enviado",
