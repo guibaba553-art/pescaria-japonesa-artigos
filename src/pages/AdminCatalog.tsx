@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Tags, FileEdit, Star } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 
 // Cada aba é um pacote pesado — só baixa quando o usuário abre
@@ -19,6 +19,15 @@ const DraftProducts = lazy(() =>
 );
 const FeaturedManagement = lazy(() =>
   import('@/components/FeaturedManagement').then((m) => ({ default: m.FeaturedManagement }))
+);
+const SuppliersManagement = lazy(() =>
+  import('@/components/SuppliersManagement').then((m) => ({ default: m.SuppliersManagement }))
+);
+const CouponsManagement = lazy(() =>
+  import('@/components/CouponsManagement').then((m) => ({ default: m.CouponsManagement }))
+);
+const StockAlerts = lazy(() =>
+  import('@/components/StockAlerts').then((m) => ({ default: m.StockAlerts }))
 );
 
 const TabFallback = () => (
@@ -67,8 +76,17 @@ export default function AdminCatalog() {
             <TabsTrigger value="products" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Package className="w-4 h-4" /> Produtos
             </TabsTrigger>
+            <TabsTrigger value="alerts" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <AlertTriangle className="w-4 h-4" /> Alertas
+            </TabsTrigger>
             <TabsTrigger value="categories" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Tags className="w-4 h-4" /> Categorias
+            </TabsTrigger>
+            <TabsTrigger value="suppliers" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <Building2 className="w-4 h-4" /> Fornecedores
+            </TabsTrigger>
+            <TabsTrigger value="coupons" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <Ticket className="w-4 h-4" /> Cupons
             </TabsTrigger>
             <TabsTrigger value="drafts" className="gap-2 relative shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <FileEdit className="w-4 h-4" /> Rascunhos
@@ -87,8 +105,17 @@ export default function AdminCatalog() {
         <TabsContent value="products">
           <Suspense fallback={<TabFallback />}><ProductsManagement /></Suspense>
         </TabsContent>
+        <TabsContent value="alerts">
+          <Suspense fallback={<TabFallback />}><StockAlerts /></Suspense>
+        </TabsContent>
         <TabsContent value="categories">
           <Suspense fallback={<TabFallback />}><CategoriesManagement /></Suspense>
+        </TabsContent>
+        <TabsContent value="suppliers">
+          <Suspense fallback={<TabFallback />}><SuppliersManagement /></Suspense>
+        </TabsContent>
+        <TabsContent value="coupons">
+          <Suspense fallback={<TabFallback />}><CouponsManagement /></Suspense>
         </TabsContent>
         <TabsContent value="drafts">
           <Suspense fallback={<TabFallback />}><DraftProducts onChange={loadDraftCount} /></Suspense>
