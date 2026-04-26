@@ -136,13 +136,17 @@ INSTRUÇÕES IMPORTANTES:
 4. Se o código de barras não existir ou for vazio, retorne "SEM GTIN"
 5. NUNCA deixe o campo ean como null, undefined ou vazio
 6. Preste atenção especial aos impostos (ICMS, IPI, PIS, COFINS) dentro de det > imposto
+7. PESO E DIMENSÕES (importante para frete):
+   - Peso total da nota: tag <pesoB> (peso bruto kg) e <pesoL> (peso líquido kg) dentro de <transp><vol>
+   - Por produto: procure peso/dimensões em <infAdProd> (informações adicionais), na descrição do produto <xProd>, ou em campos não-padrão. Procure padrões como "100g", "0.5kg", "30x20x10cm", "30 cm", etc.
+   - Se NÃO houver informação clara, retorne 0 (NÃO invente)
 
 Exemplo de estrutura XML:
 <det nItem="1">
   <prod>
     <cProd>123</cProd>
-    <cEAN>7891234567890</cEAN> <!-- CÓDIGO DE BARRAS AQUI -->
-    <xProd>Nome do Produto</xProd>
+    <cEAN>7891234567890</cEAN>
+    <xProd>Vara de Pesca 1.80m - 100g</xProd>
     <NCM>12345678</NCM>
     <qCom>10.00</qCom>
     <vUnCom>15.50</vUnCom>
@@ -150,11 +154,15 @@ Exemplo de estrutura XML:
   </prod>
   <imposto>
     <ICMS><ICMS00><vICMS>12.40</vICMS></ICMS00></ICMS>
-    <IPI><IPITrib><vIPI>5.00</vIPI></IPITrib></IPI>
-    <PIS><PISAliq><vPIS>2.50</vPIS></PISAliq></PIS>
-    <COFINS><COFINSAliq><vCOFINS>11.63</vCOFINS></COFINSAliq></COFINS>
   </imposto>
-</det>`;
+  <infAdProd>Peso: 100g | Dim: 180x5x5cm</infAdProd>
+</det>
+<transp>
+  <vol>
+    <pesoB>5.000</pesoB>
+    <pesoL>4.500</pesoL>
+  </vol>
+</transp>`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
