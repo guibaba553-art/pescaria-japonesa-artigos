@@ -99,6 +99,7 @@ export default function Account() {
     orderId: string;
   } | null>(null);
   const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
+  const [trackingDialog, setTrackingDialog] = useState<{ orderId: string; code: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
