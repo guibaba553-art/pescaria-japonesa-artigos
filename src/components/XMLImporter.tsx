@@ -253,6 +253,26 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
     });
   };
 
+  const setLinkedProduct = (index: number, linked: ExistingProductMatch | null) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        vincular_produto_id: linked?.id ?? null,
+        vincular_produto_nome: linked?.name ?? null,
+      };
+      return updated;
+    });
+    if (linked) {
+      toast({
+        title: 'Produto vinculado',
+        description: `Estoque será somado em "${linked.name}".`,
+      });
+    } else {
+      toast({ title: 'Vínculo removido' });
+    }
+  };
+
   const aplicarMargemTodos = () => {
     setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro })));
     toast({
