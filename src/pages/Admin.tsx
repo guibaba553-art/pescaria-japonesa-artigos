@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
-  Package, ClipboardList, Users, ShieldCheck, CalendarRange,
+  Package, ClipboardList, Users, ShieldCheck, CalendarRange, ScanBarcode,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -81,6 +81,12 @@ export default function Admin() {
       desc: 'Vendas online com filtros por dia',
       icon: ClipboardList,
       path: '/admin/pedidos',
+    },
+    {
+      title: 'Triagem',
+      desc: 'Conferir retiradas e embalar envios por código de barras',
+      icon: ScanBarcode,
+      path: '/admin/triagem',
     },
     {
       title: 'Funcionários',
