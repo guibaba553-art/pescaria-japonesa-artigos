@@ -8,6 +8,7 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { isValidImageUrl } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
+import { BarcodeInput } from "@/components/BarcodeInput";
 
 interface ProductVariationsProps {
   variations: ProductVariation[];
