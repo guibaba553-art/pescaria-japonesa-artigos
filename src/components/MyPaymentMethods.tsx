@@ -357,42 +357,44 @@ export function MyPaymentMethods() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Bandeira</Label>
-              <Select
-                value={form.card_brand}
-                onValueChange={(v) => setForm((f) => ({ ...f, card_brand: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRANDS.map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Número do cartão</Label>
+              <div className="relative">
+                <Input
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  value={formatCardNumber(form.card_number)}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, card_number: e.target.value.replace(/\D/g, '').slice(0, 19) }))
+                  }
+                  placeholder="0000 0000 0000 0000"
+                  className="pr-24 font-mono tracking-wider"
+                />
+                {(() => {
+                  const brand = detectCardBrand(form.card_number);
+                  if (!brand) return null;
+                  return (
+                    <Badge
+                      variant="secondary"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary/10 text-primary border-primary/20"
+                    >
+                      {brand}
+                    </Badge>
+                  );
+                })()}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Detectamos a bandeira automaticamente. Armazenamos apenas os 4 últimos dígitos.
+              </p>
             </div>
 
             <div className="space-y-1.5">
               <Label>Nome impresso no cartão</Label>
               <Input
+                autoComplete="cc-name"
                 value={form.cardholder_name}
                 onChange={(e) => setForm((f) => ({ ...f, cardholder_name: e.target.value.toUpperCase() }))}
                 placeholder="JOÃO DA SILVA"
                 maxLength={100}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>4 últimos dígitos</Label>
-              <Input
-                inputMode="numeric"
-                value={form.card_last4}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, card_last4: e.target.value.replace(/\D/g, '').slice(0, 4) }))
-                }
-                placeholder="0000"
-                maxLength={4}
               />
             </div>
 
