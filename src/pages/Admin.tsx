@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
-  Package, ClipboardList, Users, ShieldCheck,
+  Package, ClipboardList, Users, ShieldCheck, CalendarRange,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -69,6 +69,12 @@ export default function Admin() {
       path: '/admin/catalogo',
       badge: draftCount,
       stats: `${visible.length} produtos · ${outOfStock} esgotados`,
+    },
+    {
+      title: 'ADM · Análise',
+      desc: 'Vendas por período (calendário) com somatória',
+      icon: CalendarRange,
+      path: '/admin/analise',
     },
     {
       title: 'Pedidos',
