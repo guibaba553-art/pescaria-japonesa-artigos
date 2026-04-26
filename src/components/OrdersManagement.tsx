@@ -163,6 +163,8 @@ const OrdersTable = ({
   updateTrackingCode,
   emitNFCe,
   emittingNFCe,
+  refundPayment,
+  refundingOrders,
   openLabelDialog,
 }: {
   orders: Order[];
@@ -177,6 +179,8 @@ const OrdersTable = ({
   updateTrackingCode: (orderId: string) => void;
   emitNFCe: (orderId: string) => void;
   emittingNFCe: Set<string>;
+  refundPayment: (orderId: string) => void;
+  refundingOrders: Set<string>;
   openLabelDialog: (order: Order) => void;
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
