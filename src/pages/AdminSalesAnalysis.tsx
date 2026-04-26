@@ -106,14 +106,15 @@ export default function AdminSalesAnalysis() {
   const [cancelling, setCancelling] = useState(false);
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
-  const [rangeFrom, setRangeFrom] = useState<Date | undefined>(undefined);
-  const [rangeTo, setRangeTo] = useState<Date | undefined>(undefined);
+  const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
+  const [rangeTo, setRangeTo] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [multiDays, setMultiDays] = useState<Date[]>([]);
   const [singleDay, setSingleDay] = useState<Date | undefined>(undefined);
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) navigate('/auth');
