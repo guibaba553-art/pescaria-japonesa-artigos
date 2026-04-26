@@ -24,7 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCategories } from '@/hooks/useCategories';
 import { PanelHeader } from '@/components/admin/PanelHeader';
-import { FileEdit, CheckCircle2, Trash2, Package, Hash } from 'lucide-react';
+import { FileEdit, CheckCircle2, Trash2, Package, Hash, Search, Link2 } from 'lucide-react';
 
 interface DraftProduct {
   id: string;
