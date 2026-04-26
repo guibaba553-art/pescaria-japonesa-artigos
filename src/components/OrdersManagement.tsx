@@ -1119,21 +1119,7 @@ export function OrdersManagement() {
       </div>
 
       <CardContent className="p-3 md:p-6">
-        <Tabs defaultValue="site" className="space-y-4">
-          <TabsList className="grid grid-cols-2 max-w-md h-11">
-            <TabsTrigger value="site" className="gap-2">
-              🌐 Site
-              <Badge className="h-5 min-w-5 px-1.5" variant="secondary">{siteOrders.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="pdv" className="gap-2">
-              🏪 PDV
-              <Badge className="h-5 min-w-5 px-1.5" variant="secondary">{pdvOrders.length}</Badge>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="site">{renderSiteTabs()}</TabsContent>
-          <TabsContent value="pdv">{renderPdvTabs()}</TabsContent>
-        </Tabs>
+        {renderSiteTabs()}
       </CardContent>
 
       <MelhorEnvioLabelDialog
