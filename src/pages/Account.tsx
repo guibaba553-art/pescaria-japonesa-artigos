@@ -363,6 +363,12 @@ export default function Account() {
                       </div>
                     </div>
 
+                    {/* Timeline visual de rastreamento */}
+                    <OrderTrackingTimeline
+                      status={order.status}
+                      deliveryType={order.delivery_type}
+                    />
+
                     <Separator />
 
                     <div className="space-y-2">
