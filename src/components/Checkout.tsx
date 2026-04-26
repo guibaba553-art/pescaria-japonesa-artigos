@@ -131,7 +131,74 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     })();
   }, [open, isPickup, addressDialogOpen]);
 
+  // Carrega formas de pagamento salvas (não-sensíveis) ao abrir o checkout
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setSavedMethods([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('saved_payment_methods')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false })
+        .order('last_used_at', { ascending: false });
+      const list = (data ?? []) as SavedPaymentMethod[];
+      setSavedMethods(list);
+      // Auto-aplica a forma padrão se houver e o usuário ainda não escolheu
+      const def = list.find((m) => m.is_default) ?? list[0];
+      if (def) {
+        setPaymentMethod((curr) => {
+          // Só sobrescreve se ainda for o default 'pix' e existir uma preferência salva
+          if (curr === 'pix') {
+            if (def.payment_method === 'credit_card') return 'credit';
+            if (def.payment_method === 'debit_card') return 'debit';
+            if (def.payment_method === 'pix') return 'pix';
+          }
+          return curr;
+        });
+      }
+    })();
+  }, [open]);
+
   const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId) || null;
+
+  // Sugestão para o método atualmente escolhido (mesmo cartão da última vez)
+  const suggestedSaved = savedMethods.find((m) => {
+    if (paymentMethod === 'credit') return m.payment_method === 'credit_card';
+    if (paymentMethod === 'debit') return m.payment_method === 'debit_card';
+    return false;
+  }) ?? null;
+
+  const applySavedMethod = (m: SavedPaymentMethod) => {
+    if (m.payment_method !== 'credit_card' && m.payment_method !== 'debit_card') return;
+    setSelectedSavedId(m.id);
+    setCardData({
+      number: m.card_last4 ? `•••• •••• •••• ${m.card_last4}` : '',
+      name: m.cardholder_name ?? '',
+      expiry: m.card_exp_month && m.card_exp_year ? `${m.card_exp_month}/${m.card_exp_year}` : '',
+      cvv: '',
+    });
+  };
+
+  const clearSavedSelection = () => {
+    setSelectedSavedId(null);
+    setCardData({ number: '', name: '', expiry: '', cvv: '' });
+  };
+
+  const deleteSavedMethod = async (id: string) => {
+    const { error } = await supabase.from('saved_payment_methods').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setSavedMethods((prev) => prev.filter((m) => m.id !== id));
+    if (selectedSavedId === id) clearSavedSelection();
+    toast({ title: 'Forma de pagamento removida' });
+  };
 
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
