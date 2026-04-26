@@ -700,6 +700,7 @@ export function OrdersManagement() {
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
+  const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
