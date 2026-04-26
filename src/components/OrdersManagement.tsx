@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -47,7 +47,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolvido';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -99,6 +99,12 @@ const statusConfig = {
     icon: Clock,
     badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
     accentClass: 'border-l-red-500',
+  },
+  devolvido: {
+    label: 'Devolvido',
+    icon: Undo2,
+    badgeClass: 'bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/40 hover:bg-red-600/20',
+    accentClass: 'border-l-red-600',
   },
 } as const;
 
@@ -383,6 +389,38 @@ const OrdersTable = ({
                     )}
                     {emittingNFCe.has(order.id) ? 'Emitindo...' : 'Emitir NFC-e'}
                   </Button>
+                )}
+
+                {(order.status === 'entregado' || order.status === 'retirado') && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                      >
+                        <Undo2 className="h-3.5 w-3.5" />
+                        Marcar como Devolvido
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar devolução</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja marcar este pedido como devolvido? O pedido sairá de "Entregues" e aparecerá na aba "Devoluções".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => updateOrderStatus(order.id, 'devolvido')}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Confirmar devolução
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
 
                 <div className="ml-auto">
@@ -1009,6 +1047,7 @@ export function OrdersManagement() {
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
+    devolucoes: siteOrders.filter(o => o.status === 'devolvido'),
   };
 
   const tableProps = {
@@ -1029,7 +1068,7 @@ export function OrdersManagement() {
   const renderSiteTabs = () => (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-5 gap-1">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-6 gap-1">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
@@ -1065,6 +1104,18 @@ export function OrdersManagement() {
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger
+            value="devolucoes"
+            className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+          >
+            <Undo2 className="w-4 h-4 mr-2" />
+            Devoluções
+            {site.devolucoes.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+                {site.devolucoes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
       </div>
 
@@ -1073,6 +1124,7 @@ export function OrdersManagement() {
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
+      <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
     </Tabs>
   );
 
