@@ -136,13 +136,17 @@ INSTRUÇÕES IMPORTANTES:
 4. Se o código de barras não existir ou for vazio, retorne "SEM GTIN"
 5. NUNCA deixe o campo ean como null, undefined ou vazio
 6. Preste atenção especial aos impostos (ICMS, IPI, PIS, COFINS) dentro de det > imposto
+7. PESO E DIMENSÕES (importante para frete):
+   - Peso total da nota: tag <pesoB> (peso bruto kg) e <pesoL> (peso líquido kg) dentro de <transp><vol>
+   - Por produto: procure peso/dimensões em <infAdProd> (informações adicionais), na descrição do produto <xProd>, ou em campos não-padrão. Procure padrões como "100g", "0.5kg", "30x20x10cm", "30 cm", etc.
+   - Se NÃO houver informação clara, retorne 0 (NÃO invente)
 
 Exemplo de estrutura XML:
 <det nItem="1">
   <prod>
     <cProd>123</cProd>
-    <cEAN>7891234567890</cEAN> <!-- CÓDIGO DE BARRAS AQUI -->
-    <xProd>Nome do Produto</xProd>
+    <cEAN>7891234567890</cEAN>
+    <xProd>Vara de Pesca 1.80m - 100g</xProd>
     <NCM>12345678</NCM>
     <qCom>10.00</qCom>
     <vUnCom>15.50</vUnCom>
@@ -150,11 +154,15 @@ Exemplo de estrutura XML:
   </prod>
   <imposto>
     <ICMS><ICMS00><vICMS>12.40</vICMS></ICMS00></ICMS>
-    <IPI><IPITrib><vIPI>5.00</vIPI></IPITrib></IPI>
-    <PIS><PISAliq><vPIS>2.50</vPIS></PISAliq></PIS>
-    <COFINS><COFINSAliq><vCOFINS>11.63</vCOFINS></COFINSAliq></COFINS>
   </imposto>
-</det>`;
+  <infAdProd>Peso: 100g | Dim: 180x5x5cm</infAdProd>
+</det>
+<transp>
+  <vol>
+    <pesoB>5.000</pesoB>
+    <pesoL>4.500</pesoL>
+  </vol>
+</transp>`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -211,13 +219,19 @@ Exemplo de estrutura XML:
                         icms: { type: 'number', description: 'Valor do ICMS ou 0' },
                         ipi: { type: 'number', description: 'Valor do IPI ou 0' },
                         pis: { type: 'number', description: 'Valor do PIS ou 0' },
-                        cofins: { type: 'number', description: 'Valor do COFINS ou 0' }
+                        cofins: { type: 'number', description: 'Valor do COFINS ou 0' },
+                        peso_unitario_kg: { type: 'number', description: 'Peso unitário em kg, se mencionado em infAdProd, descrição ou tags próprias do produto. 0 se não houver.' },
+                        comprimento_cm: { type: 'number', description: 'Comprimento da embalagem em cm, se mencionado. 0 se não houver.' },
+                        largura_cm: { type: 'number', description: 'Largura da embalagem em cm, se mencionado. 0 se não houver.' },
+                        altura_cm: { type: 'number', description: 'Altura da embalagem em cm, se mencionado. 0 se não houver.' }
                       },
                       required: ['nome', 'quantidade', 'valor_unitario', 'valor_total', 'ean']
                     }
                   },
                   valor_total: { type: 'number', description: 'Valor total da NFe' },
                   valor_frete: { type: 'number', description: 'Valor total do frete ou 0' },
+                  peso_bruto_total_kg: { type: 'number', description: 'Peso bruto total da NFe (tag pesoB dentro de transp/vol). 0 se não houver.' },
+                  peso_liquido_total_kg: { type: 'number', description: 'Peso líquido total da NFe (tag pesoL dentro de transp/vol). 0 se não houver.' },
                   chave_acesso: { type: 'string', description: 'Chave de acesso da NFe (44 dígitos)' }
                 },
                 required: ['numero', 'serie', 'data_emissao', 'fornecedor', 'produtos', 'valor_total'],
@@ -284,8 +298,16 @@ Exemplo de estrutura XML:
         icms: Number(p.icms) || 0,
         ipi: Number(p.ipi) || 0,
         pis: Number(p.pis) || 0,
-        cofins: Number(p.cofins) || 0
+        cofins: Number(p.cofins) || 0,
+        peso_unitario_kg: Number(p.peso_unitario_kg) || 0,
+        comprimento_cm: Number(p.comprimento_cm) || 0,
+        largura_cm: Number(p.largura_cm) || 0,
+        altura_cm: Number(p.altura_cm) || 0,
       }));
+
+    // Normalizar peso total da NFe (usado como fallback no processamento)
+    nfeData.peso_bruto_total_kg = Number(nfeData.peso_bruto_total_kg) || 0;
+    nfeData.peso_liquido_total_kg = Number(nfeData.peso_liquido_total_kg) || 0;
     
     // Verificar se sobrou algum produto após filtragem
     if (nfeData.produtos.length === 0) {

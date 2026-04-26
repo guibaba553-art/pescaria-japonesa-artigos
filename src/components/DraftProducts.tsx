@@ -37,6 +37,10 @@ interface DraftProduct {
   ncm: string | null;
   category: string;
   image_url: string | null;
+  weight_grams: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
 }
 
 export function DraftProducts({ onChange }: { onChange?: () => void }) {
@@ -53,6 +57,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     sku: '',
     ncm: '',
     category: '',
+    weight_grams: '',
+    length_cm: '',
+    width_cm: '',
+    height_cm: '',
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -65,7 +73,7 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('id, name, description, short_description, price, stock, sku, ncm, category, image_url')
+      .select('id, name, description, short_description, price, stock, sku, ncm, category, image_url, weight_grams, length_cm, width_cm, height_cm')
       .eq('category', 'Pendente Revisão')
       .order('created_at', { ascending: false });
 
@@ -88,6 +96,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
       sku: d.sku || '',
       ncm: d.ncm || '',
       category: '',
+      weight_grams: d.weight_grams ? String(d.weight_grams) : '',
+      length_cm: d.length_cm ? String(d.length_cm) : '',
+      width_cm: d.width_cm ? String(d.width_cm) : '',
+      height_cm: d.height_cm ? String(d.height_cm) : '',
     });
   };
 
@@ -115,6 +127,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
         ncm: form.ncm || null,
         category: form.category,
         include_in_nfe: true,
+        weight_grams: form.weight_grams ? parseInt(form.weight_grams) : null,
+        length_cm: form.length_cm ? parseFloat(form.length_cm) : null,
+        width_cm: form.width_cm ? parseFloat(form.width_cm) : null,
+        height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
       })
       .eq('id', editing.id);
 
@@ -288,6 +304,44 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
                 value={form.sku}
                 onChange={(e) => setForm({ ...form, sku: e.target.value })}
               />
+            </div>
+
+            {/* Peso e dimensões para frete (preenchido automaticamente se vier na NF-e) */}
+            <div className="space-y-3 p-3 border-2 border-blue-500/20 rounded-lg bg-blue-500/5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide">📦 Peso e Dimensões (Frete)</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {(editing?.weight_grams || editing?.length_cm)
+                    ? 'Detectado automaticamente na NF-e — confira e ajuste se precisar.'
+                    : 'NF-e não trouxe esses dados. Preencha para o cálculo de frete ficar correto.'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Peso (g)</Label>
+                  <Input type="number" min="0" step="1" placeholder="500"
+                    value={form.weight_grams}
+                    onChange={(e) => setForm({ ...form, weight_grams: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Compr. (cm)</Label>
+                  <Input type="number" min="0" step="0.1" placeholder="30"
+                    value={form.length_cm}
+                    onChange={(e) => setForm({ ...form, length_cm: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Largura (cm)</Label>
+                  <Input type="number" min="0" step="0.1" placeholder="20"
+                    value={form.width_cm}
+                    onChange={(e) => setForm({ ...form, width_cm: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Altura (cm)</Label>
+                  <Input type="number" min="0" step="0.1" placeholder="20"
+                    value={form.height_cm}
+                    onChange={(e) => setForm({ ...form, height_cm: e.target.value })} />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">

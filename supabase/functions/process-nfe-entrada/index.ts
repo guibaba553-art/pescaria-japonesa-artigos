@@ -80,6 +80,14 @@ serve(async (req) => {
     const valorTotalProdutos = nfeData.produtos.reduce((sum: number, p: any) => sum + p.valor_total, 0);
     const freteTotal = nfeData.valor_frete || 0;
 
+    // Peso total declarado no transporte (kg) — usado como fallback rateado
+    const pesoBrutoTotalKg = Number(nfeData.peso_bruto_total_kg) || Number(nfeData.peso_liquido_total_kg) || 0;
+    const quantidadeTotalItens = nfeData.produtos.reduce((sum: number, p: any) => sum + (Number(p.quantidade) || 0), 0);
+    // Rateio simples: peso total / quantidade total (em gramas, por unidade)
+    const pesoMedioPorUnidadeG = quantidadeTotalItens > 0 && pesoBrutoTotalKg > 0
+      ? Math.round((pesoBrutoTotalKg * 1000) / quantidadeTotalItens)
+      : 0;
+
     const produtosProcessados = [];
 
     for (const produto of nfeData.produtos) {
@@ -204,6 +212,11 @@ serve(async (req) => {
         
         const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
         
+        // Peso unitário: prioriza o que veio do produto (g), senão usa rateio do peso bruto da NF
+        const pesoUnitarioG = (Number(produto.peso_unitario_kg) || 0) > 0
+          ? Math.round(Number(produto.peso_unitario_kg) * 1000)
+          : pesoMedioPorUnidadeG;
+
         const { data: novoProduto, error: insertError } = await supabase
           .from('products')
           .insert({
@@ -217,7 +230,12 @@ serve(async (req) => {
             ncm: produto.ncm || null,
             featured: false,
             on_sale: false,
-            include_in_nfe: false
+            include_in_nfe: false,
+            // Peso e dimensões para cálculo de frete (preenche se vier na NF, admin pode revisar)
+            weight_grams: pesoUnitarioG > 0 ? pesoUnitarioG : null,
+            length_cm: Number(produto.comprimento_cm) > 0 ? Number(produto.comprimento_cm) : null,
+            width_cm: Number(produto.largura_cm) > 0 ? Number(produto.largura_cm) : null,
+            height_cm: Number(produto.altura_cm) > 0 ? Number(produto.altura_cm) : null,
           })
           .select()
           .single();
