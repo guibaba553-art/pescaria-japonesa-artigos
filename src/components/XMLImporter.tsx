@@ -467,12 +467,13 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                   <TableRow>
                     <TableHead>SKU</TableHead>
                     <TableHead>EAN</TableHead>
-                    <TableHead>Nome</TableHead>
+                    <TableHead>Nome / Vínculo</TableHead>
                     <TableHead>NCM</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead className="text-right">Valor Unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Margem %</TableHead>
+                    <TableHead className="text-right w-[140px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -480,7 +481,15 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                     <TableRow key={index}>
                       <TableCell className="font-mono text-xs">{produto.sku || '-'}</TableCell>
                       <TableCell className="font-mono text-xs">{produto.ean || '-'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{produto.nome}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate">{produto.nome}</div>
+                        {produto.vincular_produto_id && (
+                          <Badge variant="secondary" className="text-[10px] mt-1 max-w-full">
+                            <Link2 className="w-3 h-3 mr-1 shrink-0" />
+                            <span className="truncate">→ {produto.vincular_produto_nome}</span>
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{produto.ncm || '-'}</TableCell>
                       <TableCell className="text-right">{produto.quantidade}</TableCell>
                       <TableCell className="text-right">R$ {produto.valor_unitario.toFixed(2)}</TableCell>
@@ -495,6 +504,27 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                           onChange={(e) => updateMargemProduto(index, parseFloat(e.target.value) || 0)}
                           className="w-20 text-right"
                         />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {produto.vincular_produto_id ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLinkedProduct(index, null)}
+                          >
+                            <Unlink className="w-3.5 h-3.5 mr-1" />
+                            Desvincular
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLinkingIndex(index)}
+                          >
+                            <Link2 className="w-3.5 h-3.5 mr-1" />
+                            Já existe?
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
