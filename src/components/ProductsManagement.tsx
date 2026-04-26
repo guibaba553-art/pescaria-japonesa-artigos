@@ -20,6 +20,7 @@ import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { validateProductForm } from '@/utils/productValidation';
 import { useSalesVelocity } from '@/hooks/useSalesVelocity';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
+import { BarcodeInput } from '@/components/BarcodeInput';
 
 interface Product {
   id: string;
