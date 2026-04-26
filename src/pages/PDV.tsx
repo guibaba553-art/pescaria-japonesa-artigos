@@ -1189,10 +1189,12 @@ export default function PDV() {
                     <Button
                       onClick={saveSale}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 min-w-0 px-2"
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      {currentSaleId ? 'Atualizar' : 'Salvar Venda'}
+                      <Save className="w-4 h-4 mr-2 shrink-0" />
+                      <span className="truncate">
+                        {currentSaleId ? 'Atualizar' : 'Salvar Venda'}
+                      </span>
                     </Button>
                     <Button
                       onClick={() => {
@@ -1200,12 +1202,12 @@ export default function PDV() {
                         setShowSavedSalesDialog(true);
                       }}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 min-w-0 px-2"
                     >
-                      <FolderOpen className="w-4 h-4 mr-2" />
-                      Vendas Salvas
+                      <FolderOpen className="w-4 h-4 mr-2 shrink-0" />
+                      <span className="truncate">Vendas Salvas</span>
                       {savedSales.length > 0 && (
-                        <Badge variant="secondary" className="ml-2">
+                        <Badge variant="secondary" className="ml-2 shrink-0">
                           {savedSales.length}
                         </Badge>
                       )}
