@@ -20,6 +20,7 @@ import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { validateProductForm } from '@/utils/productValidation';
 import { useSalesVelocity } from '@/hooks/useSalesVelocity';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
+import { BarcodeInput } from '@/components/BarcodeInput';
 
 interface Product {
   id: string;
@@ -530,7 +531,7 @@ export function ProductsManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="sku">Código de Barras / SKU (opcional)</Label>
-                  <Input id="sku" type="text" autoComplete="off" maxLength={50} value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Ex: 7891234567890" />
+                  <BarcodeInput id="sku" value={sku} onChange={setSku} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stock">Estoque {newProductVariations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}</Label>
