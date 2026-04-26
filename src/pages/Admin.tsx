@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
   Package, ClipboardList, Users, ShieldCheck, CalendarRange, ScanBarcode,
+  FileUp,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -100,6 +101,13 @@ export default function Admin() {
       desc: 'Registro de tratamento de dados',
       icon: ShieldCheck,
       path: '/admin/lgpd',
+      adminOnly: true,
+    },
+    {
+      title: 'Migração de Estoque',
+      desc: 'Importar estoque antigo a partir de PDF',
+      icon: FileUp,
+      path: '/admin/migracao-estoque',
       adminOnly: true,
     },
   ];
