@@ -21,6 +21,7 @@ import { ProductVariations } from '@/components/ProductVariations';
 import { useProductVariations } from '@/hooks/useProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
+import { BarcodeInput } from '@/components/BarcodeInput';
 
 interface ProductEditProps {
   product: Product;
