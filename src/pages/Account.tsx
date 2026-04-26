@@ -445,15 +445,9 @@ export default function Account() {
                             </Button>
                             <Button
                               size="sm"
-                              asChild
+                              onClick={() => setTrackingDialog({ orderId: order.id, code: order.tracking_code! })}
                             >
-                              <a
-                                href={`https://www.melhorrastreio.com.br/rastreio/${order.tracking_code}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="w-3 h-3 mr-1" /> Rastrear pedido
-                              </a>
+                              <Truck className="w-3 h-3 mr-1" /> Rastrear pedido
                             </Button>
                           </div>
                         </div>
