@@ -24,7 +24,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCategories } from '@/hooks/useCategories';
 import { PanelHeader } from '@/components/admin/PanelHeader';
-import { FileEdit, CheckCircle2, Trash2, Package, Hash } from 'lucide-react';
+import { FileEdit, CheckCircle2, Trash2, Package, Hash, Search, Link2 } from 'lucide-react';
 
 interface DraftProduct {
   id: string;
@@ -63,6 +63,11 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     height_cm: '',
   });
   const [saving, setSaving] = useState(false);
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeResults, setMergeResults] = useState<Array<{ id: string; name: string; stock: number; sku: string | null; image_url: string | null; category: string }>>([]);
+  const [mergeTarget, setMergeTarget] = useState<{ id: string; name: string; stock: number } | null>(null);
+  const [merging, setMerging] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -87,6 +92,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
 
   const openEditor = (d: DraftProduct) => {
     setEditing(d);
+    setMergeMode(false);
+    setMergeSearch('');
+    setMergeResults([]);
+    setMergeTarget(null);
     setForm({
       name: d.name,
       short_description: d.short_description || '',
@@ -101,6 +110,68 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
       width_cm: d.width_cm ? String(d.width_cm) : '',
       height_cm: d.height_cm ? String(d.height_cm) : '',
     });
+  };
+
+  // Busca produtos do catálogo (excluindo rascunhos) para mesclar
+  useEffect(() => {
+    if (!mergeMode || !editing) return;
+    const term = mergeSearch.trim();
+    const handle = setTimeout(async () => {
+      let query = supabase
+        .from('products')
+        .select('id, name, stock, sku, image_url, category')
+        .neq('category', 'Pendente Revisão')
+        .neq('id', editing.id)
+        .order('name', { ascending: true })
+        .limit(20);
+
+      if (term.length >= 2) {
+        query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+      }
+
+      const { data, error } = await query;
+      if (!error) setMergeResults(data || []);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [mergeSearch, mergeMode, editing]);
+
+  const handleMerge = async () => {
+    if (!editing || !mergeTarget) return;
+    const qty = parseInt(form.stock || '0');
+    if (qty <= 0) {
+      toast({ title: 'Quantidade inválida', description: 'Estoque do rascunho deve ser maior que zero.', variant: 'destructive' });
+      return;
+    }
+
+    setMerging(true);
+    try {
+      // Soma estoque ao produto existente via RPC (mantém histórico)
+      const { error: rpcErr } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: mergeTarget.id,
+        p_variation_id: null,
+        p_quantity_delta: qty,
+        p_movement_type: 'manual_adjust',
+        p_order_id: null,
+        p_reason: `Mesclado de rascunho: ${editing.name}`,
+      });
+      if (rpcErr) throw rpcErr;
+
+      // Remove o rascunho
+      const { error: delErr } = await supabase.from('products').delete().eq('id', editing.id);
+      if (delErr) throw delErr;
+
+      toast({
+        title: 'Estoque mesclado!',
+        description: `+${qty} un. somadas a "${mergeTarget.name}". Rascunho removido.`,
+      });
+      setEditing(null);
+      await loadDrafts();
+      onChange?.();
+    } catch (e: any) {
+      toast({ title: 'Erro ao mesclar', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setMerging(false);
+    }
   };
 
   const handleApprove = async () => {
@@ -247,6 +318,114 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Toggle: mesclar com produto existente */}
+            <div className="rounded-lg border-2 border-emerald-500/30 bg-emerald-500/5 p-3 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1">
+                  <p className="text-sm font-bold flex items-center gap-1.5">
+                    <Link2 className="w-4 h-4" />
+                    Esse produto já existe no catálogo?
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Se sim, selecione o produto correspondente — o estoque deste rascunho ({editing?.stock ?? 0} un.) será <b>somado</b> ao existente e o rascunho será removido.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={mergeMode ? 'secondary' : 'outline'}
+                  onClick={() => {
+                    setMergeMode(!mergeMode);
+                    setMergeTarget(null);
+                    setMergeSearch('');
+                  }}
+                >
+                  {mergeMode ? 'Cancelar' : 'Sim, mesclar'}
+                </Button>
+              </div>
+
+              {mergeMode && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Buscar por nome ou SKU..."
+                      value={mergeSearch}
+                      onChange={(e) => {
+                        setMergeSearch(e.target.value);
+                        setMergeTarget(null);
+                      }}
+                      className="pl-8"
+                    />
+                  </div>
+
+                  {mergeTarget ? (
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-md border bg-background">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{mergeTarget.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Estoque atual: <b>{mergeTarget.stock}</b> → após mesclar: <b className="text-emerald-600">{mergeTarget.stock + parseInt(form.stock || '0')}</b>
+                        </p>
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => setMergeTarget(null)}>Trocar</Button>
+                    </div>
+                  ) : (
+                    <div className="max-h-48 overflow-y-auto rounded-md border bg-background divide-y">
+                      {mergeResults.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          {mergeSearch.length < 2 ? 'Digite ao menos 2 caracteres...' : 'Nenhum produto encontrado'}
+                        </p>
+                      ) : (
+                        mergeResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setMergeTarget({ id: p.id, name: p.name, stock: p.stock })}
+                            className="w-full text-left flex items-center gap-2 p-2 hover:bg-muted/50 transition"
+                          >
+                            {p.image_url ? (
+                              <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded bg-muted shrink-0 flex items-center justify-center">
+                                <Package className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {p.category} · Estoque: {p.stock}{p.sku ? ` · SKU: ${p.sku}` : ''}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="flex-1">
+                      <Label className="text-xs">Quantidade a somar</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={form.stock}
+                        onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                        className="h-8"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleMerge}
+                      disabled={!mergeTarget || merging}
+                      className="gap-1 self-end"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      {merging ? 'Mesclando...' : 'Mesclar estoque'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Nome do produto</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
