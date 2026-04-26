@@ -812,8 +812,27 @@ export function OrdersManagement() {
         };
       });
 
+      // Buscar estornos aprovados para mostrar valor já reembolsado
+      const orderIds = (ordersData ?? []).map(o => o.id);
+      const refundedMap: Record<string, number> = {};
+      if (orderIds.length > 0) {
+        const { data: refundsData } = await supabase
+          .from('payment_refunds')
+          .select('order_id, amount, status')
+          .in('order_id', orderIds)
+          .eq('status', 'approved');
+        (refundsData ?? []).forEach((r: any) => {
+          refundedMap[r.order_id] = (refundedMap[r.order_id] ?? 0) + Number(r.amount);
+        });
+      }
+
+      const ordersWithRefunds = (ordersData ?? []).map((o: any) => ({
+        ...o,
+        refunded_amount: refundedMap[o.id] ?? 0,
+      }));
+
       setProfiles(profilesMap);
-      setOrders((ordersData || []) as Order[]);
+      setOrders(ordersWithRefunds as Order[]);
       setLoading(false);
     } catch (err: any) {
       console.error('Erro ao carregar pedidos:', err);
