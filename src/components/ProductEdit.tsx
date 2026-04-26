@@ -57,6 +57,12 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
+
+  // Peso e dimensões para cálculo de frete (Melhor Envio)
+  const [weightGrams, setWeightGrams] = useState((product as any).weight_grams?.toString() || '');
+  const [lengthCm, setLengthCm] = useState((product as any).length_cm?.toString() || '');
+  const [widthCm, setWidthCm] = useState((product as any).width_cm?.toString() || '');
+  const [heightCm, setHeightCm] = useState((product as any).height_cm?.toString() || '');
   
   // Usar hook personalizado para gerenciar variações
   const { 
