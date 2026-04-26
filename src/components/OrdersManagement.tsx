@@ -391,6 +391,38 @@ const OrdersTable = ({
                   </Button>
                 )}
 
+                {(order.status === 'entregado' || order.status === 'retirado') && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                      >
+                        <Undo2 className="h-3.5 w-3.5" />
+                        Marcar como Devolvido
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar devolução</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja marcar este pedido como devolvido? O pedido sairá de "Entregues" e aparecerá na aba "Devoluções".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => updateOrderStatus(order.id, 'devolvido')}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Confirmar devolução
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
                 <div className="ml-auto">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
