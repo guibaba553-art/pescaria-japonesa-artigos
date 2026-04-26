@@ -194,6 +194,18 @@ serve(async (req) => {
 
         if (updateError) throw updateError;
 
+        // Adiciona quantidade entrada à fila de etiquetagem
+        try {
+          await supabase.rpc('add_label_pending', {
+            p_product_id: produtoExistente.id,
+            p_variation_id: null,
+            p_qty: produto.quantidade,
+          });
+          console.log(`  ✓ +${produto.quantidade} etiquetas pendentes`);
+        } catch (e) {
+          console.warn('  ⚠ Falha ao registrar etiqueta pendente:', e);
+        }
+
         console.log(`  ✓ Produto atualizado (estoque: ${novoEstoque})`);
         produtosProcessados.push({
           ...produtoExistente,
