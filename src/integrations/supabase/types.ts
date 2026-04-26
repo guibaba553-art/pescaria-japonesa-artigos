@@ -1594,6 +1594,7 @@ export type Database = {
         | "retirado"
         | "cancelado"
         | "devolvido"
+        | "devolucao_solicitada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1732,6 +1733,7 @@ export const Constants = {
         "retirado",
         "cancelado",
         "devolvido",
+        "devolucao_solicitada",
       ],
     },
   },

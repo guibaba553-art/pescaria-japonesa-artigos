@@ -47,7 +47,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolvido';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -99,6 +99,12 @@ const statusConfig = {
     icon: Clock,
     badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
     accentClass: 'border-l-red-500',
+  },
+  devolucao_solicitada: {
+    label: 'Devolução em Trânsito',
+    icon: Truck,
+    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    accentClass: 'border-l-orange-500',
   },
   devolvido: {
     label: 'Devolvido',
@@ -397,30 +403,92 @@ const OrdersTable = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                        className="gap-1 border-orange-500/40 text-orange-600 hover:bg-orange-500/10 dark:text-orange-400"
                       >
                         <Undo2 className="h-3.5 w-3.5" />
-                        Marcar como Devolvido
+                        Solicitar Devolução
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar devolução</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tem certeza que deseja marcar este pedido como devolvido? O pedido sairá de "Entregues" e aparecerá na aba "Devoluções".
+                        <AlertDialogTitle>Solicitar devolução do pedido</AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                          <div>
+                            O cliente solicitou a devolução? Ao confirmar, o pedido entra em <strong>trânsito de devolução</strong> e aguarda o produto retornar à loja. Quando chegar, basta clicar em "Confirmar Devolução" — o estoque será reposto automaticamente.
+                            <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                              <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                              <div><strong>Cliente:</strong> {customerName}</div>
+                              <div><strong>CPF:</strong> {customerCpf}</div>
+                              <div><strong>Total:</strong> R$ {order.total_amount.toFixed(2)}</div>
+                              <div><strong>Itens:</strong> {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}</div>
+                              <div><strong>Tipo:</strong> {order.delivery_type === 'pickup' ? '🏪 Retirada' : '🚚 Entrega'}</div>
+                            </div>
+                          </div>
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => updateOrderStatus(order.id, 'devolvido')}
-                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => updateOrderStatus(order.id, 'devolucao_solicitada')}
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
                         >
-                          Confirmar devolução
+                          Solicitar devolução
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                )}
+
+                {order.status === 'devolucao_solicitada' && (
+                  <>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="gap-1 bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Confirmar Devolução
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar recebimento da devolução</AlertDialogTitle>
+                          <AlertDialogDescription asChild>
+                            <div>
+                              O produto retornou à loja? Ao confirmar, o pedido será marcado como <strong>devolvido</strong> e o <strong>estoque será reposto automaticamente</strong>. Esta ação não pode ser desfeita.
+                              <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                                <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                                <div><strong>Cliente:</strong> {customerName}</div>
+                                <div><strong>CPF:</strong> {customerCpf}</div>
+                                <div><strong>Total:</strong> R$ {order.total_amount.toFixed(2)}</div>
+                                <div><strong>Itens a repor no estoque:</strong> {order.order_items.length}</div>
+                              </div>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => updateOrderStatus(order.id, 'devolvido')}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            Confirmar devolução
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => updateOrderStatus(order.id, order.delivery_type === 'pickup' ? 'retirado' : 'entregado')}
+                      className="gap-1 text-muted-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Cancelar solicitação
+                    </Button>
+                  </>
                 )}
 
                 <div className="ml-auto">
@@ -1047,7 +1115,7 @@ export function OrdersManagement() {
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
-    devolucoes: siteOrders.filter(o => o.status === 'devolvido'),
+    devolucoes: siteOrders.filter(o => o.status === 'devolvido' || o.status === 'devolucao_solicitada'),
   };
 
   const tableProps = {
