@@ -311,14 +311,11 @@ export default function Account() {
           </TabsList>
 
           <TabsContent value="pedidos" className="mt-6">
-        <Card className="rounded-2xl border-border">
-          <CardContent className="p-6 space-y-6">
-            {orders.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                Você ainda não fez nenhum pedido
-              </p>
-            ) : (
-              orders.map((order) => {
+            {(() => {
+              const deliveryOrders = orders.filter(o => o.delivery_type !== 'pickup');
+              const pickupOrders = orders.filter(o => o.delivery_type === 'pickup');
+
+              const renderOrder = (order: Order) => {
                 const cfg = getStatusConfig(order.status, order.delivery_type);
                 const StatusIcon = cfg.icon;
                 return (
@@ -375,7 +372,7 @@ export default function Account() {
                       {order.order_items.map((item) => {
                         const isReviewed = reviewedProducts.has(`${order.id}_${item.product_id}`);
                         const canReview = (order.status === 'entregue' || order.status === 'entregado') && !isReviewed;
-                        
+
                         return (
                           <div key={item.id} className="flex gap-3 items-start">
                             {item.products.image_url && (
@@ -423,35 +420,33 @@ export default function Account() {
                     <Separator />
 
                     {order.tracking_code && (order.status === 'enviado' || order.status === 'entregue' || order.status === 'entregado') && (
-                      <>
-                        <div className="p-3 bg-primary/5 rounded-md border border-primary/10 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Truck className="w-4 h-4 text-primary" />
-                            <p className="text-sm font-medium">Código de Rastreio</p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <code className="text-base font-mono font-semibold text-primary bg-background px-2 py-1 rounded border">
-                              {order.tracking_code}
-                            </code>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                navigator.clipboard.writeText(order.tracking_code!);
-                                toast({ title: 'Código copiado!', description: 'Cole no site da transportadora.' });
-                              }}
-                            >
-                              <Copy className="w-3 h-3 mr-1" /> Copiar
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => setTrackingDialog({ orderId: order.id, code: order.tracking_code! })}
-                            >
-                              <Truck className="w-3 h-3 mr-1" /> Rastrear pedido
-                            </Button>
-                          </div>
+                      <div className="p-3 bg-primary/5 rounded-md border border-primary/10 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-primary" />
+                          <p className="text-sm font-medium">Código de Rastreio</p>
                         </div>
-                      </>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="text-base font-mono font-semibold text-primary bg-background px-2 py-1 rounded border">
+                            {order.tracking_code}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(order.tracking_code!);
+                              toast({ title: 'Código copiado!', description: 'Cole no site da transportadora.' });
+                            }}
+                          >
+                            <Copy className="w-3 h-3 mr-1" /> Copiar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setTrackingDialog({ orderId: order.id, code: order.tracking_code! })}
+                          >
+                            <Truck className="w-3 h-3 mr-1" /> Rastrear pedido
+                          </Button>
+                        </div>
+                      </div>
                     )}
 
                     {(() => {
@@ -509,10 +504,57 @@ export default function Account() {
                     </div>
                   </div>
                 );
-              })
-            )}
-          </CardContent>
-        </Card>
+              };
+
+              return (
+                <Tabs defaultValue="entrega" className="w-full">
+                  <TabsList className="w-full grid grid-cols-2 h-11 rounded-full p-1 mb-4">
+                    <TabsTrigger value="entrega" className="rounded-full text-sm font-semibold gap-1.5">
+                      <Truck className="w-4 h-4" />
+                      Entrega
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                        {deliveryOrders.length}
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="retirada" className="rounded-full text-sm font-semibold gap-1.5">
+                      <Store className="w-4 h-4" />
+                      Retirada
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                        {pickupOrders.length}
+                      </Badge>
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="entrega">
+                    <Card className="rounded-2xl border-border">
+                      <CardContent className="p-6 space-y-6">
+                        {deliveryOrders.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            Você ainda não fez nenhum pedido para entrega
+                          </p>
+                        ) : (
+                          deliveryOrders.map(renderOrder)
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="retirada">
+                    <Card className="rounded-2xl border-border">
+                      <CardContent className="p-6 space-y-6">
+                        {pickupOrders.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-8">
+                            Você ainda não fez nenhum pedido para retirada
+                          </p>
+                        ) : (
+                          pickupOrders.map(renderOrder)
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="enderecos" className="mt-6">
