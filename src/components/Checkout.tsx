@@ -667,7 +667,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           title: errorMessage,
           description: errorDetails,
         });
-        setLoading(false);
+        setIsProcessing(false);
         return;
       }
     } catch (error) {
