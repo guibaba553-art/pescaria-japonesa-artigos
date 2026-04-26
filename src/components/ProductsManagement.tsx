@@ -66,6 +66,11 @@ export function ProductsManagement() {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState('');
+  // Peso e dimensões para cálculo de frete (Melhor Envio)
+  const [weightGrams, setWeightGrams] = useState('');
+  const [lengthCm, setLengthCm] = useState('');
+  const [widthCm, setWidthCm] = useState('');
+  const [heightCm, setHeightCm] = useState('');
 
   const { variations: newProductVariations, setVariations: setNewProductVariations, saveVariations } =
     useProductVariations();
@@ -106,6 +111,7 @@ export function ProductsManagement() {
     setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
+    setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,6 +167,10 @@ export function ProductsManagement() {
           price_pix_percent: 0,
           price_debit_percent: 5,
           price_credit_percent: 10.25,
+          weight_grams: weightGrams ? parseInt(weightGrams) : null,
+          length_cm: lengthCm ? parseFloat(lengthCm) : null,
+          width_cm: widthCm ? parseFloat(widthCm) : null,
+          height_cm: heightCm ? parseFloat(heightCm) : null,
         }])
         .select()
         .single();
