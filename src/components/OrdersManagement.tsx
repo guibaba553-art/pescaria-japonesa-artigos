@@ -1092,9 +1092,9 @@ export function OrdersManagement() {
                 <Package className="w-4 h-4 md:w-5 md:h-5 text-primary" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">Gestão de Pedidos</h2>
+                <h2 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">Gestão de Pedidos do Site</h2>
                 <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 md:line-clamp-none">
-                  Pedidos do site e vendas do PDV organizados por status
+                  Acompanhe os pedidos da loja online organizados por status
                 </p>
               </div>
             </div>
