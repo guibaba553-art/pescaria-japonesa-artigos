@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 import { PickupQRDialog } from '@/components/PickupQRDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
+import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 
@@ -295,7 +296,7 @@ export default function Account() {
 
       <div className="max-w-4xl mx-auto p-6 -mt-4 space-y-6">
         <Tabs defaultValue="pedidos" className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-12 rounded-full p-1">
+          <TabsList className="w-full grid grid-cols-4 h-12 rounded-full p-1">
             <TabsTrigger value="pedidos" className="rounded-full text-sm font-semibold gap-1.5">
               <Package className="w-4 h-4" />
               <span className="hidden sm:inline">Pedidos</span>
@@ -303,6 +304,10 @@ export default function Account() {
             <TabsTrigger value="enderecos" className="rounded-full text-sm font-semibold gap-1.5">
               <MapPin className="w-4 h-4" />
               <span className="hidden sm:inline">Endereços</span>
+            </TabsTrigger>
+            <TabsTrigger value="pagamento" className="rounded-full text-sm font-semibold gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Pagamento</span>
             </TabsTrigger>
             <TabsTrigger value="dados" className="rounded-full text-sm font-semibold gap-1.5">
               <User className="w-4 h-4" />
@@ -561,6 +566,14 @@ export default function Account() {
             <Card className="rounded-2xl border-border">
               <CardContent className="p-6">
                 <MyAddresses />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pagamento" className="mt-6">
+            <Card className="rounded-2xl border-border">
+              <CardContent className="p-6">
+                <MyPaymentMethods />
               </CardContent>
             </Card>
           </TabsContent>
