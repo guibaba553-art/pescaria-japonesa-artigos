@@ -80,6 +80,14 @@ serve(async (req) => {
     const valorTotalProdutos = nfeData.produtos.reduce((sum: number, p: any) => sum + p.valor_total, 0);
     const freteTotal = nfeData.valor_frete || 0;
 
+    // Peso total declarado no transporte (kg) — usado como fallback rateado
+    const pesoBrutoTotalKg = Number(nfeData.peso_bruto_total_kg) || Number(nfeData.peso_liquido_total_kg) || 0;
+    const quantidadeTotalItens = nfeData.produtos.reduce((sum: number, p: any) => sum + (Number(p.quantidade) || 0), 0);
+    // Rateio simples: peso total / quantidade total (em gramas, por unidade)
+    const pesoMedioPorUnidadeG = quantidadeTotalItens > 0 && pesoBrutoTotalKg > 0
+      ? Math.round((pesoBrutoTotalKg * 1000) / quantidadeTotalItens)
+      : 0;
+
     const produtosProcessados = [];
 
     for (const produto of nfeData.produtos) {
