@@ -37,7 +37,31 @@ interface DraftProduct {
   ncm: string | null;
   category: string;
   image_url: string | null;
+  weight_grams: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
 }
+
+export function DraftProducts({ onChange }: { onChange?: () => void }) {
+  const { categories } = useCategories();
+  const [drafts, setDrafts] = useState<DraftProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<DraftProduct | null>(null);
+  const [form, setForm] = useState({
+    name: '',
+    short_description: '',
+    description: '',
+    price: '',
+    stock: '',
+    sku: '',
+    ncm: '',
+    category: '',
+    weight_grams: '',
+    length_cm: '',
+    width_cm: '',
+    height_cm: '',
+  });
 
 export function DraftProducts({ onChange }: { onChange?: () => void }) {
   const { categories } = useCategories();
