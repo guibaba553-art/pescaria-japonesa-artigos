@@ -671,6 +671,7 @@ export default function AdminSalesAnalysis() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-2"></TableHead>
+                    <TableHead className="w-8"></TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Hora</TableHead>
                     <TableHead>Tipo</TableHead>
@@ -686,50 +687,143 @@ export default function AdminSalesAnalysis() {
                     const canCancel =
                       (r.kind === 'order' && r.statusGroup !== 'cancelado') ||
                       r.kind === 'saved';
+                    const expandKey = `${r.kind}-${r.id}`;
+                    const isExpanded = expandedRows.has(expandKey);
+                    const isLoadingItems = loadingItems.has(expandKey);
+                    const items = itemsByOrder[expandKey];
+                    const expandable = r.kind === 'order' || r.kind === 'saved';
+
                     return (
-                      <TableRow key={`${r.kind}-${r.id}`} className={meta.rowBg}>
-                        <TableCell className="p-0 pl-0">
-                          <div className={`w-1.5 h-10 ${meta.dot} rounded-r`} />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">#{r.id.slice(0, 8)}</TableCell>
-                        <TableCell className="text-sm">{format(new Date(r.created_at), 'HH:mm')}</TableCell>
-                        <TableCell>
-                          <span className="text-xs font-medium">
-                            {r.kind === 'nfe' ? 'NF-e' : r.kind === 'saved' ? 'Orçamento' : 'Pedido'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={
-                            r.source === 'pdv' ? 'border-emerald-500/40 text-emerald-600' :
-                            r.source === 'nfe' ? 'border-blue-500/40 text-blue-600' :
-                            'border-blue-500/40 text-blue-600'
-                          }>
-                            {r.source === 'pdv' ? 'PDV' : r.source === 'nfe' ? 'NF-e' : 'Site'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={meta.color}>
-                            {meta.label}
-                            {r.kind === 'order' && r.status !== 'cancelado' && (
-                              <span className="ml-1 opacity-60">· {STATUS_LABEL[r.status] || r.status}</span>
+                      <>
+                        <TableRow key={expandKey} className={meta.rowBg}>
+                          <TableCell className="p-0 pl-0">
+                            <div className={`w-1.5 h-10 ${meta.dot} rounded-r`} />
+                          </TableCell>
+                          <TableCell className="p-0 pl-1">
+                            {expandable && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => toggleExpand(r)}
+                                aria-label={isExpanded ? 'Recolher' : 'Expandir produtos'}
+                              >
+                                {isExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </Button>
                             )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
-                        <TableCell className="text-right">
-                          {canCancel && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
-                              onClick={() => setCancelTarget(r)}
-                            >
-                              <Ban className="w-3.5 h-3.5 mr-1" />
-                              {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">#{r.id.slice(0, 8)}</TableCell>
+                          <TableCell className="text-sm">{format(new Date(r.created_at), 'HH:mm')}</TableCell>
+                          <TableCell>
+                            <span className="text-xs font-medium">
+                              {r.kind === 'nfe' ? 'NF-e' : r.kind === 'saved' ? 'Orçamento' : 'Pedido'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              r.source === 'pdv' ? 'border-emerald-500/40 text-emerald-600' :
+                              r.source === 'nfe' ? 'border-blue-500/40 text-blue-600' :
+                              'border-blue-500/40 text-blue-600'
+                            }>
+                              {r.source === 'pdv' ? 'PDV' : r.source === 'nfe' ? 'NF-e' : 'Site'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={meta.color}>
+                              {meta.label}
+                              {r.kind === 'order' && r.status !== 'cancelado' && (
+                                <span className="ml-1 opacity-60">· {STATUS_LABEL[r.status] || r.status}</span>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
+                          <TableCell className="text-right">
+                            {canCancel && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
+                                onClick={() => setCancelTarget(r)}
+                              >
+                                <Ban className="w-3.5 h-3.5 mr-1" />
+                                {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+
+                        {isExpanded && (
+                          <TableRow key={`${expandKey}-expand`} className={meta.rowBg}>
+                            <TableCell colSpan={9} className="p-0">
+                              <div className="bg-muted/30 border-t border-border px-6 py-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Package className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Produtos do {r.kind === 'saved' ? 'orçamento' : 'pedido'}
+                                  </span>
+                                </div>
+
+                                {isLoadingItems && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Carregando produtos...
+                                  </div>
+                                )}
+
+                                {!isLoadingItems && items && items.length === 0 && (
+                                  <div className="text-sm text-muted-foreground py-3">
+                                    Nenhum produto encontrado neste registro.
+                                  </div>
+                                )}
+
+                                {!isLoadingItems && items && items.length > 0 && (
+                                  <div className="rounded-lg border border-border bg-background overflow-hidden">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Produto</TableHead>
+                                          <TableHead>SKU</TableHead>
+                                          <TableHead className="text-right">Qtd</TableHead>
+                                          <TableHead className="text-right">Preço Unit.</TableHead>
+                                          <TableHead className="text-right">Subtotal</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {items.map((it) => (
+                                          <TableRow key={it.id}>
+                                            <TableCell>
+                                              <div className="font-medium text-sm">{it.product_name}</div>
+                                              {it.variation_name && (
+                                                <div className="text-xs text-muted-foreground">
+                                                  Variação: {it.variation_name}
+                                                </div>
+                                              )}
+                                            </TableCell>
+                                            <TableCell className="font-mono text-xs text-muted-foreground">
+                                              {it.sku || '—'}
+                                            </TableCell>
+                                            <TableCell className="text-right">{it.quantity}</TableCell>
+                                            <TableCell className="text-right text-sm">
+                                              {formatCurrency(it.price_at_purchase)}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold">
+                                              {formatCurrency(it.price_at_purchase * it.quantity)}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     );
                   })}
                 </TableBody>
