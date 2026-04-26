@@ -134,9 +134,9 @@ export default function AdminSalesAnalysis() {
     return null;
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
-  const fetchAll = async () => {
+  const fetchAll = async (silent = false) => {
     if (!period) {
-      toast.error('Selecione um período no calendário primeiro.');
+      if (!silent) toast.error('Selecione um período no calendário primeiro.');
       return;
     }
     setFetching(true);
