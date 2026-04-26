@@ -21,7 +21,7 @@ import {
 import {
   ArrowLeft, CalendarIcon, Calculator, Download, Filter,
   ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
-  ChevronRight, ChevronDown, Loader2, Package,
+  ChevronRight, ChevronDown, Loader2, Package, Receipt,
 } from 'lucide-react';
 import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -120,6 +120,8 @@ export default function AdminSalesAnalysis() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, OrderItem[]>>({});
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
+  const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
+  const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
@@ -483,6 +485,183 @@ export default function AdminSalesAnalysis() {
     }
   };
 
+  // Emite NFC-e (PDV / orçamento) ou NF-e (site) a partir do painel de Vendas.
+  // Para pedidos do site (kind='order' source!='pdv') -> usa edge function 'emit-nfe' que aceita { orderId }.
+  // Para pedidos PDV ou orçamentos salvos -> usa 'emit-nfce' montando o payload completo no client.
+  const emitInvoice = async (row: UnifiedRow) => {
+    const key = `${row.kind}-${row.id}`;
+    setEmittingInvoice(prev => new Set(prev).add(key));
+    const loadingToastId = toast.loading('Emitindo nota fiscal...', {
+      description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
+    });
+
+    try {
+      // Caminho 1: pedido do SITE -> NF-e (modelo 55)
+      if (row.kind === 'order' && row.source !== 'pdv') {
+        const { data, error } = await supabase.functions.invoke('emit-nfe', {
+          body: { orderId: row.id },
+        });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NF-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NF-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      // Caminho 2: pedido PDV -> NFC-e (modelo 65) com payload completo
+      if (row.kind === 'order') {
+        const [{ data: items, error: itemsErr }, { data: order, error: orderErr }] = await Promise.all([
+          supabase
+            .from('order_items')
+            .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
+            .eq('order_id', row.id),
+          supabase
+            .from('orders')
+            .select('total_amount, customer_id, customers(full_name, cpf, cnpj, company_name)')
+            .eq('id', row.id)
+            .single(),
+        ]);
+        if (itemsErr) throw itemsErr;
+        if (orderErr) throw orderErr;
+        if (!items || items.length === 0) throw new Error('Pedido sem itens');
+
+        const cust: any = (order as any).customers;
+        const payload = {
+          order_id: row.id,
+          payment_method: 'dinheiro' as const,
+          total_amount: Number((order as any).total_amount),
+          customer: cust ? {
+            cpf: cust.cpf || undefined,
+            cnpj: cust.cnpj || undefined,
+            nome: cust.company_name || cust.full_name || undefined,
+          } : undefined,
+          items: items.map((it: any) => ({
+            product_id: it.product_id,
+            name: it.products?.name || 'Produto',
+            quantity: Number(it.quantity),
+            unit_price: Number(it.price_at_purchase),
+            ncm: it.products?.ncm || undefined,
+            cfop: it.products?.cfop || undefined,
+            csosn: it.products?.csosn || undefined,
+            origem: it.products?.origem || undefined,
+            unidade: it.products?.unidade_comercial || undefined,
+            cest: it.products?.cest || undefined,
+          })),
+        };
+
+        const { data, error } = await supabase.functions.invoke('emit-nfce', { body: payload });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NFC-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NFC-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      // Caminho 3: orçamento (saved_sales) -> monta NFC-e a partir de cart_data
+      if (row.kind === 'saved') {
+        const cart = Array.isArray(row.raw?.cart_data) ? row.raw.cart_data : [];
+        if (cart.length === 0) throw new Error('Orçamento sem itens');
+
+        // Buscar dados fiscais dos produtos
+        const productIds = Array.from(new Set(cart.map((it: any) => it.id || it.product_id).filter(Boolean)));
+        const { data: prods } = await supabase
+          .from('products')
+          .select('id, name, ncm, cfop, csosn, origem, unidade_comercial, cest')
+          .in('id', productIds as string[]);
+        const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
+
+        const cd: any = row.raw?.customer_data || null;
+        const payload = {
+          order_id: undefined,
+          payment_method: (row.raw?.payment_method || 'dinheiro') as any,
+          total_amount: Number(row.total_amount),
+          customer: cd ? {
+            cpf: cd.cpf || undefined,
+            cnpj: cd.cnpj || undefined,
+            nome: cd.full_name || cd.company_name || cd.name || undefined,
+          } : undefined,
+          items: cart.map((it: any) => {
+            const pid = it.id || it.product_id;
+            const p: any = prodMap.get(pid) || {};
+            return {
+              product_id: pid,
+              name: it.name || p.name || 'Produto',
+              quantity: Number(it.quantity || 1),
+              unit_price: Number(it.price ?? it.unit_price ?? 0),
+              ncm: p.ncm || undefined,
+              cfop: p.cfop || undefined,
+              csosn: p.csosn || undefined,
+              origem: p.origem || undefined,
+              unidade: p.unidade_comercial || undefined,
+              cest: p.cest || undefined,
+            };
+          }),
+        };
+
+        const { data, error } = await supabase.functions.invoke('emit-nfce', { body: payload });
+        if (error) {
+          let msg: string | null = null;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.clone && ctx?.json) {
+              const parsed = await ctx.clone().json().catch(() => null);
+              msg = parsed?.error || parsed?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(msg || error.message || 'Falha ao emitir NFC-e');
+        }
+        if (data?.error) throw new Error(data.error);
+        toast.success('NFC-e emitida com sucesso! ✅', {
+          id: loadingToastId,
+          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+        });
+        await fetchAll(true);
+        return;
+      }
+
+      throw new Error('Tipo de venda não suporta emissão a partir daqui.');
+    } catch (e: any) {
+      console.error('Erro ao emitir nota:', e);
+      toast.error('Erro ao emitir nota', {
+        id: loadingToastId,
+        description: e?.message || 'Verifique as configurações fiscais.',
+      });
+    } finally {
+      setEmittingInvoice(prev => {
+        const n = new Set(prev);
+        n.delete(key);
+        return n;
+      });
+      setInvoiceTarget(null);
+    }
+  };
+
   const periodLabel = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
       return rangeTo
@@ -752,17 +931,42 @@ export default function AdminSalesAnalysis() {
                           </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
-                            {canCancel && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
-                                onClick={() => setCancelTarget(r)}
-                              >
-                                <Ban className="w-3.5 h-3.5 mr-1" />
-                                {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
-                              </Button>
-                            )}
+                            <div className="flex items-center justify-end gap-1">
+                              {(() => {
+                                const hasInvoice = r.statusGroup === 'nota' || !!r.raw?.nfe;
+                                const isCancelled = r.statusGroup === 'cancelado';
+                                const canEmit = !hasInvoice && !isCancelled && (r.kind === 'order' || r.kind === 'saved');
+                                if (!canEmit) return null;
+                                const isEmitting = emittingInvoice.has(`${r.kind}-${r.id}`);
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                                    onClick={() => setInvoiceTarget(r)}
+                                    disabled={isEmitting}
+                                  >
+                                    {isEmitting ? (
+                                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                    ) : (
+                                      <Receipt className="w-3.5 h-3.5 mr-1" />
+                                    )}
+                                    {isEmitting ? 'Emitindo...' : 'Emitir Nota'}
+                                  </Button>
+                                );
+                              })()}
+                              {canCancel && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
+                                  onClick={() => setCancelTarget(r)}
+                                >
+                                  <Ban className="w-3.5 h-3.5 mr-1" />
+                                  {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
 
@@ -889,6 +1093,47 @@ export default function AdminSalesAnalysis() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {cancelling ? 'Processando...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!invoiceTarget} onOpenChange={(o) => !o && setInvoiceTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Emitir nota fiscal?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv'
+                  ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
+                  : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
+                {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
+                {invoiceTarget && (
+                  <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
+                    <div><strong>Tipo:</strong> {invoiceTarget.kind === 'saved' ? 'Orçamento' : 'Pedido'} {invoiceTarget.source === 'pdv' ? '(PDV)' : invoiceTarget.kind === 'order' ? '(Site)' : ''}</div>
+                    <div><strong>ID:</strong> #{invoiceTarget.id.slice(0, 8)}</div>
+                    <div><strong>Data:</strong> {format(new Date(invoiceTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                    <div><strong>Total:</strong> {formatCurrency(invoiceTarget.total_amount)}</div>
+                    <div><strong>Documento a emitir:</strong> {invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={!!invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`)}
+            >
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => invoiceTarget && emitInvoice(invoiceTarget)}
+              disabled={!!invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {invoiceTarget && emittingInvoice.has(`${invoiceTarget.kind}-${invoiceTarget.id}`) ? 'Emitindo...' : 'Emitir agora'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
