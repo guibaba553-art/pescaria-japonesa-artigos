@@ -806,12 +806,31 @@ export default function AdminSalesAnalysis() {
                                         {items.map((it) => (
                                           <TableRow key={it.id}>
                                             <TableCell>
-                                              <div className="font-medium text-sm">{it.product_name}</div>
-                                              {it.variation_name && (
-                                                <div className="text-xs text-muted-foreground">
-                                                  Variação: {it.variation_name}
+                                              <div className="flex items-center gap-3">
+                                                {it.image_url ? (
+                                                  <img
+                                                    src={it.image_url}
+                                                    alt={it.product_name || 'Produto'}
+                                                    className="w-12 h-12 rounded-md object-cover border border-border bg-muted flex-shrink-0"
+                                                    loading="lazy"
+                                                    onError={(e) => {
+                                                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                  />
+                                                ) : (
+                                                  <div className="w-12 h-12 rounded-md border border-border bg-muted flex items-center justify-center flex-shrink-0">
+                                                    <Package className="w-5 h-5 text-muted-foreground/50" />
+                                                  </div>
+                                                )}
+                                                <div className="min-w-0">
+                                                  <div className="font-medium text-sm">{it.product_name}</div>
+                                                  {it.variation_name && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                      Variação: {it.variation_name}
+                                                    </div>
+                                                  )}
                                                 </div>
-                                              )}
+                                              </div>
                                             </TableCell>
                                             <TableCell className="font-mono text-xs text-muted-foreground">
                                               {it.sku || '—'}
