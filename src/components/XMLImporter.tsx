@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2, Download, CheckCircle, Save, Eye, X } from 'lucide-react';
+import { Upload, FileText, Loader2, Download, CheckCircle, Save, Eye, X, Link2, Unlink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { LinkExistingProductDialog, type ExistingProductMatch } from './LinkExistingProductDialog';
 
 interface NFEProduct {
   sku: string;
@@ -23,6 +25,10 @@ interface NFEProduct {
   pis?: number;
   cofins?: number;
   margem_lucro?: number;
+  /** ID de produto já cadastrado para receber o estoque (vínculo manual) */
+  vincular_produto_id?: string | null;
+  /** Nome do produto vinculado, só para exibição */
+  vincular_produto_nome?: string | null;
 }
 
 interface NFEData {
@@ -52,6 +58,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   const [showPreview, setShowPreview] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [produtosComMargem, setProdutosComMargem] = useState<NFEProduct[]>([]);
+  const [linkingIndex, setLinkingIndex] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Auto-processar XML pré-carregado (vindo de NfeEntradaPendentes)
@@ -244,6 +251,26 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
       updated[index] = { ...updated[index], margem_lucro: margem };
       return updated;
     });
+  };
+
+  const setLinkedProduct = (index: number, linked: ExistingProductMatch | null) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        vincular_produto_id: linked?.id ?? null,
+        vincular_produto_nome: linked?.name ?? null,
+      };
+      return updated;
+    });
+    if (linked) {
+      toast({
+        title: 'Produto vinculado',
+        description: `Estoque será somado em "${linked.name}".`,
+      });
+    } else {
+      toast({ title: 'Vínculo removido' });
+    }
   };
 
   const aplicarMargemTodos = () => {
@@ -440,12 +467,13 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                   <TableRow>
                     <TableHead>SKU</TableHead>
                     <TableHead>EAN</TableHead>
-                    <TableHead>Nome</TableHead>
+                    <TableHead>Nome / Vínculo</TableHead>
                     <TableHead>NCM</TableHead>
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead className="text-right">Valor Unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Margem %</TableHead>
+                    <TableHead className="text-right w-[140px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -453,7 +481,15 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                     <TableRow key={index}>
                       <TableCell className="font-mono text-xs">{produto.sku || '-'}</TableCell>
                       <TableCell className="font-mono text-xs">{produto.ean || '-'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{produto.nome}</TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate">{produto.nome}</div>
+                        {produto.vincular_produto_id && (
+                          <Badge variant="secondary" className="text-[10px] mt-1 max-w-full">
+                            <Link2 className="w-3 h-3 mr-1 shrink-0" />
+                            <span className="truncate">→ {produto.vincular_produto_nome}</span>
+                          </Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{produto.ncm || '-'}</TableCell>
                       <TableCell className="text-right">{produto.quantidade}</TableCell>
                       <TableCell className="text-right">R$ {produto.valor_unitario.toFixed(2)}</TableCell>
@@ -468,6 +504,27 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                           onChange={(e) => updateMargemProduto(index, parseFloat(e.target.value) || 0)}
                           className="w-20 text-right"
                         />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {produto.vincular_produto_id ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLinkedProduct(index, null)}
+                          >
+                            <Unlink className="w-3.5 h-3.5 mr-1" />
+                            Desvincular
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLinkingIndex(index)}
+                          >
+                            <Link2 className="w-3.5 h-3.5 mr-1" />
+                            Já existe?
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -504,6 +561,18 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de vincular a produto existente */}
+      {linkingIndex !== null && produtosComMargem[linkingIndex] && (
+        <LinkExistingProductDialog
+          open={linkingIndex !== null}
+          onOpenChange={(open) => !open && setLinkingIndex(null)}
+          nfeProductName={produtosComMargem[linkingIndex].nome}
+          nfeProductCode={produtosComMargem[linkingIndex].ean || produtosComMargem[linkingIndex].sku}
+          currentLinkedId={produtosComMargem[linkingIndex].vincular_produto_id ?? null}
+          onSelect={(p) => setLinkedProduct(linkingIndex, p)}
+        />
+      )}
     </div>
   );
 }

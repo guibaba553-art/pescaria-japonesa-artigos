@@ -110,11 +110,23 @@ serve(async (req) => {
       console.log(`  Custo nova entrada/unid: R$ ${custoNovaEntrada.toFixed(2)}`);
       console.log(`  Margem: ${margemLucro}%`);
 
-      // Verificar se produto já existe pelo EAN (código de barras), SKU ou nome
+      // Verificar se produto já existe — primeiro respeita vínculo manual,
+      // depois tenta automaticamente por EAN, SKU e nome.
       let produtoExistente = null;
-      
+
+      // Prioridade 0: vínculo manual feito pelo admin na tela de revisão
+      if (produto.vincular_produto_id) {
+        const { data } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', produto.vincular_produto_id)
+          .maybeSingle();
+        produtoExistente = data;
+        console.log(`  Vínculo manual: ${produto.vincular_produto_id}`, produtoExistente ? '✓ encontrado' : '✗ não encontrado');
+      }
+
       // Prioridade 1: Buscar por EAN (código de barras)
-      if (produto.ean && produto.ean !== 'SEM GTIN') {
+      if (!produtoExistente && produto.ean && produto.ean !== 'SEM GTIN') {
         const { data } = await supabase
           .from('products')
           .select('*')
