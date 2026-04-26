@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
-  Package, ClipboardList, Users, ShieldCheck,
+  Package, ClipboardList, Users, ShieldCheck, CalendarRange,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
