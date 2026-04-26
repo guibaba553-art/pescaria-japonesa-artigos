@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 import { PickupQRDialog } from '@/components/PickupQRDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
+import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 
