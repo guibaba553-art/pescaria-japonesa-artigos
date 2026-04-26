@@ -45,7 +45,7 @@ interface MigrationRow {
   error?: string;
 }
 
-const DRAFT_CATEGORY = 'Rascunho - Migração';
+const DRAFT_CATEGORY = 'Pendente Revisão';
 const STOCK_MOVEMENT_TYPE = 'manual_adjust';
 
 // ---------- Fuzzy matching (Jaccard sobre tokens normalizados) ----------
