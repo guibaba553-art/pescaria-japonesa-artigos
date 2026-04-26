@@ -16,6 +16,8 @@ import { PickupQRDialog } from '@/components/PickupQRDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
+import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
+import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 
 interface OrderItem {
   id: string;
