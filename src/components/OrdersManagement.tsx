@@ -1000,9 +1000,8 @@ export function OrdersManagement() {
     return <div>Carregando pedidos...</div>;
   }
 
-  // Separar pedidos por origem (Site vs PDV)
+  // Apenas pedidos vindos do site (PDV é gerido em outra área)
   const siteOrders = orders.filter(o => ((o as any).source ?? 'site') === 'site');
-  const pdvOrders = orders.filter(o => (o as any).source === 'pdv');
 
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
@@ -1010,12 +1009,6 @@ export function OrdersManagement() {
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
-  };
-
-  const pdv = {
-    semPagamento: pdvOrders.filter(o => o.status === 'aguardando_pagamento'),
-    prontoRetirar: pdvOrders.filter(o => o.status === 'em_preparo'),
-    finalizadas: pdvOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
   };
 
   const tableProps = {
