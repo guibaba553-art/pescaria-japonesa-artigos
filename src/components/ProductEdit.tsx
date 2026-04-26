@@ -248,6 +248,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         price_cash_percent: 0,
         price_debit_percent: 5,
         price_credit_percent: 10.25,
+        weight_grams: weightGrams ? parseInt(weightGrams) : null,
+        length_cm: lengthCm ? parseFloat(lengthCm) : null,
+        width_cm: widthCm ? parseFloat(widthCm) : null,
+        height_cm: heightCm ? parseFloat(heightCm) : null,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
