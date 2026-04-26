@@ -953,10 +953,12 @@ export type Database = {
           csosn: string | null
           description: string
           featured: boolean
+          height_cm: number | null
           id: string
           image_url: string | null
           images: string[] | null
           include_in_nfe: boolean
+          length_cm: number | null
           min_stock: number
           minimum_quantity: number
           name: string
@@ -982,6 +984,8 @@ export type Database = {
           supplier_id: string | null
           unidade_comercial: string | null
           updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
         }
         Insert: {
           brand?: string | null
@@ -994,10 +998,12 @@ export type Database = {
           csosn?: string | null
           description: string
           featured?: boolean
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
+          length_cm?: number | null
           min_stock?: number
           minimum_quantity?: number
           name: string
@@ -1023,6 +1029,8 @@ export type Database = {
           supplier_id?: string | null
           unidade_comercial?: string | null
           updated_at?: string
+          weight_grams?: number | null
+          width_cm?: number | null
         }
         Update: {
           brand?: string | null
@@ -1035,10 +1043,12 @@ export type Database = {
           csosn?: string | null
           description?: string
           featured?: boolean
+          height_cm?: number | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
+          length_cm?: number | null
           min_stock?: number
           minimum_quantity?: number
           name?: string
@@ -1064,6 +1074,8 @@ export type Database = {
           supplier_id?: string | null
           unidade_comercial?: string | null
           updated_at?: string
+          weight_grams?: number | null
+          width_cm?: number | null
         }
         Relationships: [
           {
