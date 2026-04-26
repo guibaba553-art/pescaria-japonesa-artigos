@@ -29,6 +29,9 @@ const CouponsManagement = lazy(() =>
 const StockAlerts = lazy(() =>
   import('@/components/StockAlerts').then((m) => ({ default: m.StockAlerts }))
 );
+const LabelsManagement = lazy(() =>
+  import('@/components/LabelsManagement').then((m) => ({ default: m.LabelsManagement }))
+);
 
 const TabFallback = () => (
   <div className="flex items-center justify-center py-16 text-muted-foreground">
