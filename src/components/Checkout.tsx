@@ -176,8 +176,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const applySavedMethod = (m: SavedPaymentMethod) => {
     if (m.payment_method !== 'credit_card' && m.payment_method !== 'debit_card') return;
     setSelectedSavedId(m.id);
+    // Pré-preenche apenas nome e validade. Número e CVV precisam ser redigitados (PCI-DSS).
     setCardData({
-      number: m.card_last4 ? `•••• •••• •••• ${m.card_last4}` : '',
+      number: '',
       name: m.cardholder_name ?? '',
       expiry: m.card_exp_month && m.card_exp_year ? `${m.card_exp_month}/${m.card_exp_year}` : '',
       cvv: '',
