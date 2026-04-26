@@ -100,6 +100,12 @@ const statusConfig = {
     badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
     accentClass: 'border-l-red-500',
   },
+  devolucao_solicitada: {
+    label: 'Devolução em Trânsito',
+    icon: Truck,
+    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    accentClass: 'border-l-orange-500',
+  },
   devolvido: {
     label: 'Devolvido',
     icon: Undo2,
