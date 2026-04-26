@@ -203,7 +203,27 @@ export default function PDV() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSavedSales(data || []);
+
+      // Carregar nomes dos operadores que criaram cada venda
+      const userIds = Array.from(new Set((data || []).map((s: any) => s.user_id).filter(Boolean)));
+      let profilesMap: Record<string, string> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        profilesMap = (profiles || []).reduce((acc: Record<string, string>, p: any) => {
+          acc[p.id] = p.full_name || 'Operador';
+          return acc;
+        }, {});
+      }
+
+      const enriched = (data || []).map((s: any) => ({
+        ...s,
+        operator_name: profilesMap[s.user_id] || 'Operador',
+      }));
+
+      setSavedSales(enriched);
     } catch (error: any) {
       console.error('Erro ao carregar vendas salvas:', error);
     }
