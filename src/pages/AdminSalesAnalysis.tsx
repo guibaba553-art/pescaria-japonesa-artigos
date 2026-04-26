@@ -378,19 +378,27 @@ export default function AdminSalesAnalysis() {
       try {
         const { data, error } = await supabase
           .from('order_items')
-          .select('id, product_id, variation_id, quantity, price_at_purchase, products(name, sku), product_variations(name)')
+          .select('id, product_id, variation_id, quantity, price_at_purchase, products(name, sku, image_url, images), product_variations(name, image_url)')
           .eq('order_id', row.id);
         if (error) throw error;
-        const items: OrderItem[] = (data || []).map((it: any) => ({
-          id: it.id,
-          product_id: it.product_id,
-          variation_id: it.variation_id,
-          quantity: it.quantity,
-          price_at_purchase: Number(it.price_at_purchase || 0),
-          product_name: it.products?.name || 'Produto removido',
-          variation_name: it.product_variations?.name || null,
-          sku: it.products?.sku || null,
-        }));
+        const items: OrderItem[] = (data || []).map((it: any) => {
+          const variationImg = it.product_variations?.image_url || null;
+          const productImg =
+            it.products?.image_url ||
+            (Array.isArray(it.products?.images) ? it.products.images[0] : null) ||
+            null;
+          return {
+            id: it.id,
+            product_id: it.product_id,
+            variation_id: it.variation_id,
+            quantity: it.quantity,
+            price_at_purchase: Number(it.price_at_purchase || 0),
+            product_name: it.products?.name || 'Produto removido',
+            variation_name: it.product_variations?.name || null,
+            sku: it.products?.sku || null,
+            image_url: variationImg || productImg,
+          };
+        });
         setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       } catch (e: any) {
         toast.error('Erro ao carregar itens: ' + e.message);
