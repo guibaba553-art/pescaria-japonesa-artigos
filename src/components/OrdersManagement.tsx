@@ -1115,7 +1115,7 @@ export function OrdersManagement() {
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
-    devolucoes: siteOrders.filter(o => o.status === 'devolvido'),
+    devolucoes: siteOrders.filter(o => o.status === 'devolvido' || o.status === 'devolucao_solicitada'),
   };
 
   const tableProps = {
