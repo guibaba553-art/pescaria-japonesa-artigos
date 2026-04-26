@@ -177,13 +177,17 @@ export function MyPaymentMethods() {
       toast({ title: 'Dados inválidos', description: first.message, variant: 'destructive' });
       return;
     }
+    const fullNumber = parsed.data.card_number;
+    const detectedBrand = detectCardBrand(fullNumber) ?? 'Outro';
+    const last4 = fullNumber.slice(-4);
+
     setSaving(true);
     const { error } = await supabase.from('saved_payment_methods').insert({
       user_id: user.id,
       payment_method: parsed.data.payment_method,
-      card_brand: parsed.data.card_brand,
+      card_brand: detectedBrand, // detectado automaticamente — não armazenamos o número completo
       cardholder_name: parsed.data.cardholder_name,
-      card_last4: parsed.data.card_last4,
+      card_last4: last4,
       card_exp_month: parsed.data.card_exp_month,
       card_exp_year: parsed.data.card_exp_year,
       is_default: parsed.data.is_default,
