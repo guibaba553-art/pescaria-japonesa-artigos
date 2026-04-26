@@ -30,6 +30,17 @@ import { toast } from 'sonner';
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
 
+interface OrderItem {
+  id: string;
+  product_id: string;
+  variation_id: string | null;
+  quantity: number;
+  price_at_purchase: number;
+  product_name: string | null;
+  variation_name: string | null;
+  sku: string | null;
+}
+
 interface UnifiedRow {
   id: string;
   kind: RowKind;
