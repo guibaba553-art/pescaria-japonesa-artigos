@@ -16,6 +16,8 @@ import { PickupQRDialog } from '@/components/PickupQRDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
+import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
+import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 
 interface OrderItem {
   id: string;
@@ -97,6 +99,7 @@ export default function Account() {
     orderId: string;
   } | null>(null);
   const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
+  const [trackingDialog, setTrackingDialog] = useState<{ orderId: string; code: string } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -360,6 +363,12 @@ export default function Account() {
                       </div>
                     </div>
 
+                    {/* Timeline visual de rastreamento */}
+                    <OrderTrackingTimeline
+                      status={order.status}
+                      deliveryType={order.delivery_type}
+                    />
+
                     <Separator />
 
                     <div className="space-y-2">
@@ -436,15 +445,9 @@ export default function Account() {
                             </Button>
                             <Button
                               size="sm"
-                              asChild
+                              onClick={() => setTrackingDialog({ orderId: order.id, code: order.tracking_code! })}
                             >
-                              <a
-                                href={`https://www.melhorrastreio.com.br/rastreio/${order.tracking_code}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="w-3 h-3 mr-1" /> Rastrear pedido
-                              </a>
+                              <Truck className="w-3 h-3 mr-1" /> Rastrear pedido
                             </Button>
                           </div>
                         </div>
@@ -558,6 +561,15 @@ export default function Account() {
           open={!!pickupQROrderId}
           onOpenChange={(open) => !open && setPickupQROrderId(null)}
           orderId={pickupQROrderId}
+        />
+      )}
+
+      {trackingDialog && (
+        <OrderTrackingDialog
+          open={!!trackingDialog}
+          onOpenChange={(open) => !open && setTrackingDialog(null)}
+          orderId={trackingDialog.orderId}
+          trackingCode={trackingDialog.code}
         />
       )}
     </div>
