@@ -99,6 +99,9 @@ export default function AdminCatalog() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="labels" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <Tag className="w-4 h-4" /> Etiquetas
+            </TabsTrigger>
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques
             </TabsTrigger>
