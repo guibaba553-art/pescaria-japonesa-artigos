@@ -46,6 +46,7 @@ interface MigrationRow {
 }
 
 const DRAFT_CATEGORY = 'Rascunho - Migração';
+const STOCK_MOVEMENT_TYPE = 'manual_adjust';
 
 // ---------- Fuzzy matching (Jaccard sobre tokens normalizados) ----------
 function normalize(s: string): string {
@@ -249,6 +250,7 @@ export default function StockMigration() {
     for (let i = 0; i < next.length; i++) {
       const r = next[i];
       if (r.status === 'ignored') continue;
+      let createdDraftId: string | null = null;
 
       try {
         let productId = r.matchedProductId;
@@ -270,6 +272,7 @@ export default function StockMigration() {
             .single();
           if (createErr) throw createErr;
           productId = created.id;
+          createdDraftId = created.id;
         }
 
         // Aplica movimentação de ajuste
@@ -277,7 +280,7 @@ export default function StockMigration() {
           p_product_id: productId!,
           p_variation_id: null,
           p_quantity_delta: r.quantity,
-          p_movement_type: 'adjustment',
+          p_movement_type: STOCK_MOVEMENT_TYPE,
           p_order_id: null,
           p_reason: `Migração de estoque (PDF: ${fileName})`,
         });
@@ -286,6 +289,9 @@ export default function StockMigration() {
         next[i] = { ...r, applied: true, error: undefined };
         ok++;
       } catch (e: any) {
+        if (createdDraftId) {
+          await supabase.from('products').delete().eq('id', createdDraftId);
+        }
         next[i] = { ...r, applied: false, error: e.message };
         err++;
       }
