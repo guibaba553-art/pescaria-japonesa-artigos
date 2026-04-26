@@ -15,52 +15,95 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   ArrowLeft, CalendarIcon, Calculator, Download, Filter,
-  ShoppingBag, Store, Globe, X,
+  ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
 } from 'lucide-react';
 import { format, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-interface SaleRow {
+type RowKind = 'order' | 'saved' | 'nfe';
+type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
+
+interface UnifiedRow {
   id: string;
-  source: string;
+  kind: RowKind;
+  source: string;            // 'site' | 'pdv' | 'nfe'
   total_amount: number;
   shipping_cost: number;
   status: string;
+  statusGroup: StatusGroup;
   created_at: string;
   delivery_type: string;
-  customer_id: string | null;
-  user_id: string;
+  raw: any;
 }
 
 type DateMode = 'range' | 'multi' | 'single';
 type SourceFilter = 'all' | 'site' | 'pdv';
-type StatusFilter = 'all' | 'paid' | 'cancelled';
+type StatusFilter = 'all' | 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
 
 const STATUS_LABEL: Record<string, string> = {
   aguardando_pagamento: 'Aguardando',
   em_preparo: 'Em preparo',
   enviado: 'Enviado',
   entregado: 'Entregue',
+  retirado: 'Retirado',
   cancelado: 'Cancelado',
   pronto_retirada: 'Pronto p/ retirada',
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  aguardando_pagamento: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
-  em_preparo: 'bg-blue-500/15 text-blue-600 border-blue-500/30',
-  enviado: 'bg-indigo-500/15 text-indigo-600 border-indigo-500/30',
-  entregado: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
-  cancelado: 'bg-red-500/15 text-red-600 border-red-500/30',
-  pronto_retirada: 'bg-cyan-500/15 text-cyan-600 border-cyan-500/30',
+// Maps order status -> visual group
+function getOrderStatusGroup(status: string): StatusGroup {
+  if (status === 'cancelado') return 'cancelado';
+  if (status === 'aguardando_pagamento') return 'pendente';
+  if (status === 'entregado' || status === 'retirado' || status === 'enviado') return 'concluido';
+  return 'concluido'; // em_preparo, pronto_retirada => considered confirmed sales
+}
+
+const GROUP_META: Record<StatusGroup, { label: string; color: string; rowBg: string; dot: string }> = {
+  concluido: {
+    label: 'Concluído',
+    color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40',
+    rowBg: 'bg-emerald-500/5 hover:bg-emerald-500/10',
+    dot: 'bg-emerald-500',
+  },
+  orcamento: {
+    label: 'Orçamento',
+    color: 'bg-amber-400/20 text-amber-700 dark:text-amber-400 border-amber-500/40',
+    rowBg: 'bg-amber-400/5 hover:bg-amber-400/10',
+    dot: 'bg-amber-500',
+  },
+  nota: {
+    label: 'NF-e',
+    color: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/40',
+    rowBg: 'bg-blue-500/5 hover:bg-blue-500/10',
+    dot: 'bg-blue-500',
+  },
+  cancelado: {
+    label: 'Cancelado',
+    color: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/40',
+    rowBg: 'bg-red-500/5 hover:bg-red-500/10',
+    dot: 'bg-red-500',
+  },
+  pendente: {
+    label: 'Pendente',
+    color: 'bg-muted text-muted-foreground border-border',
+    rowBg: 'hover:bg-muted/40',
+    dot: 'bg-muted-foreground',
+  },
 };
 
 export default function AdminSalesAnalysis() {
   const navigate = useNavigate();
   const { user, isEmployee, isAdmin, loading } = useAuth();
-  const [sales, setSales] = useState<SaleRow[]>([]);
+  const [rows, setRows] = useState<UnifiedRow[]>([]);
   const [fetching, setFetching] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<UnifiedRow | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(undefined);
@@ -69,14 +112,13 @@ export default function AdminSalesAnalysis() {
   const [singleDay, setSingleDay] = useState<Date | undefined>(undefined);
 
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('paid');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!loading && !isEmployee && !isAdmin) navigate('/auth');
   }, [user, isEmployee, isAdmin, loading, navigate]);
 
-  // ---- Effective period (used for query) ----
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
       return { from: startOfDay(rangeFrom), to: endOfDay(rangeTo || rangeFrom) };
@@ -91,106 +133,183 @@ export default function AdminSalesAnalysis() {
     return null;
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
-  const fetchSales = async () => {
+  const fetchAll = async () => {
     if (!period) {
       toast.error('Selecione um período no calendário primeiro.');
       return;
     }
     setFetching(true);
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id')
-        .gte('created_at', period.from.toISOString())
-        .lte('created_at', period.to.toISOString())
-        .order('created_at', { ascending: false });
+      const fromIso = period.from.toISOString();
+      const toIso = period.to.toISOString();
 
-      if (error) throw error;
-      setSales((data || []) as SaleRow[]);
-      toast.success(`${data?.length || 0} vendas carregadas`);
+      const [ordersRes, savedRes, nfeRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id')
+          .gte('created_at', fromIso).lte('created_at', toIso),
+        supabase
+          .from('saved_sales')
+          .select('id, total_amount, payment_method, created_at, user_id, customer_data, notes')
+          .gte('created_at', fromIso).lte('created_at', toIso),
+        supabase
+          .from('nfe_emissions')
+          .select('id, valor_total, status, tipo, created_at, emitted_at, nfe_number, nfe_key, order_id')
+          .eq('tipo', 'saida')
+          .gte('created_at', fromIso).lte('created_at', toIso),
+      ]);
+
+      if (ordersRes.error) throw ordersRes.error;
+      if (savedRes.error) throw savedRes.error;
+      if (nfeRes.error) throw nfeRes.error;
+
+      const unified: UnifiedRow[] = [];
+
+      (ordersRes.data || []).forEach((o: any) => {
+        unified.push({
+          id: o.id,
+          kind: 'order',
+          source: o.source,
+          total_amount: Number(o.total_amount || 0),
+          shipping_cost: Number(o.shipping_cost || 0),
+          status: o.status,
+          statusGroup: getOrderStatusGroup(o.status),
+          created_at: o.created_at,
+          delivery_type: o.delivery_type,
+          raw: o,
+        });
+      });
+
+      (savedRes.data || []).forEach((s: any) => {
+        unified.push({
+          id: s.id,
+          kind: 'saved',
+          source: 'pdv',
+          total_amount: Number(s.total_amount || 0),
+          shipping_cost: 0,
+          status: 'orcamento',
+          statusGroup: 'orcamento',
+          created_at: s.created_at,
+          delivery_type: 'pdv',
+          raw: s,
+        });
+      });
+
+      (nfeRes.data || []).forEach((n: any) => {
+        // Skip NFe linked to an order (avoid double-counting); show only standalone
+        if (n.order_id) return;
+        unified.push({
+          id: n.id,
+          kind: 'nfe',
+          source: 'nfe',
+          total_amount: Number(n.valor_total || 0),
+          shipping_cost: 0,
+          status: n.status === 'autorizada' ? 'autorizada' : n.status,
+          statusGroup: n.status === 'cancelada' ? 'cancelado' : 'nota',
+          created_at: n.created_at,
+          delivery_type: 'nfe',
+          raw: n,
+        });
+      });
+
+      unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setRows(unified);
+      toast.success(`${unified.length} registro(s) carregado(s)`);
     } catch (e: any) {
-      toast.error('Erro ao carregar vendas: ' + e.message);
+      toast.error('Erro ao carregar: ' + e.message);
     } finally {
       setFetching(false);
     }
   };
 
-  // ---- Apply post-filters (multi-day exact, source, status, search) ----
-  const filteredSales = useMemo(() => {
-    let rows = sales;
+  const filteredRows = useMemo(() => {
+    let out = rows;
 
     if (dateMode === 'multi' && multiDays.length > 0) {
-      rows = rows.filter((s) =>
-        multiDays.some((d) => isSameDay(new Date(s.created_at), d))
-      );
+      out = out.filter((r) => multiDays.some((d) => isSameDay(new Date(r.created_at), d)));
     }
 
     if (sourceFilter !== 'all') {
-      rows = rows.filter((s) => s.source === sourceFilter);
+      out = out.filter((r) => r.source === sourceFilter);
     }
 
-    if (statusFilter === 'paid') {
-      rows = rows.filter((s) => s.status !== 'cancelado' && s.status !== 'aguardando_pagamento');
-    } else if (statusFilter === 'cancelled') {
-      rows = rows.filter((s) => s.status === 'cancelado');
+    if (statusFilter !== 'all') {
+      out = out.filter((r) => r.statusGroup === statusFilter);
     }
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      rows = rows.filter((s) => s.id.toLowerCase().includes(q));
+      out = out.filter((r) => r.id.toLowerCase().includes(q));
     }
 
-    return rows;
-  }, [sales, dateMode, multiDays, sourceFilter, statusFilter, search]);
+    return out;
+  }, [rows, dateMode, multiDays, sourceFilter, statusFilter, search]);
 
-  // ---- Summaries ----
   const summary = useMemo(() => {
-    const total = filteredSales.reduce((acc, s) => acc + Number(s.total_amount || 0), 0);
-    const totalSite = filteredSales
-      .filter((s) => s.source === 'site')
-      .reduce((acc, s) => acc + Number(s.total_amount || 0), 0);
-    const totalPdv = filteredSales
-      .filter((s) => s.source === 'pdv')
-      .reduce((acc, s) => acc + Number(s.total_amount || 0), 0);
-    const countSite = filteredSales.filter((s) => s.source === 'site').length;
-    const countPdv = filteredSales.filter((s) => s.source === 'pdv').length;
-    const ticket = filteredSales.length > 0 ? total / filteredSales.length : 0;
-    return { total, totalSite, totalPdv, countSite, countPdv, ticket };
-  }, [filteredSales]);
+    const sumGroup = (g: StatusGroup) =>
+      filteredRows.filter((r) => r.statusGroup === g)
+        .reduce((acc, r) => acc + r.total_amount, 0);
+    const countGroup = (g: StatusGroup) =>
+      filteredRows.filter((r) => r.statusGroup === g).length;
 
-  // ---- Group by day ----
+    const total = filteredRows
+      .filter((r) => r.statusGroup === 'concluido' || r.statusGroup === 'nota')
+      .reduce((acc, r) => acc + r.total_amount, 0);
+
+    const totalSite = filteredRows
+      .filter((r) => r.source === 'site' && (r.statusGroup === 'concluido' || r.statusGroup === 'nota'))
+      .reduce((acc, r) => acc + r.total_amount, 0);
+    const totalPdv = filteredRows
+      .filter((r) => r.source === 'pdv' && (r.statusGroup === 'concluido' || r.statusGroup === 'nota'))
+      .reduce((acc, r) => acc + r.total_amount, 0);
+
+    return {
+      total,
+      totalSite,
+      totalPdv,
+      countSite: filteredRows.filter((r) => r.source === 'site').length,
+      countPdv: filteredRows.filter((r) => r.source === 'pdv').length,
+      concluido: { value: sumGroup('concluido'), count: countGroup('concluido') },
+      orcamento: { value: sumGroup('orcamento'), count: countGroup('orcamento') },
+      nota: { value: sumGroup('nota'), count: countGroup('nota') },
+      cancelado: { value: sumGroup('cancelado'), count: countGroup('cancelado') },
+    };
+  }, [filteredRows]);
+
   const dailyGroups = useMemo(() => {
-    const map = new Map<string, { date: Date; sales: SaleRow[]; total: number }>();
-    filteredSales.forEach((s) => {
-      const d = new Date(s.created_at);
+    const map = new Map<string, { date: Date; rows: UnifiedRow[]; total: number }>();
+    filteredRows.forEach((r) => {
+      const d = new Date(r.created_at);
       const key = format(d, 'yyyy-MM-dd');
-      if (!map.has(key)) map.set(key, { date: d, sales: [], total: 0 });
+      if (!map.has(key)) map.set(key, { date: d, rows: [], total: 0 });
       const g = map.get(key)!;
-      g.sales.push(s);
-      g.total += Number(s.total_amount || 0);
+      g.rows.push(r);
+      // only count confirmed sales toward day total
+      if (r.statusGroup === 'concluido' || r.statusGroup === 'nota') {
+        g.total += r.total_amount;
+      }
     });
     return Array.from(map.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [filteredSales]);
+  }, [filteredRows]);
 
   const formatCurrency = (n: number) =>
     n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const exportCSV = () => {
-    if (filteredSales.length === 0) {
-      toast.error('Nenhuma venda para exportar');
+    if (filteredRows.length === 0) {
+      toast.error('Nada para exportar');
       return;
     }
-    const header = ['ID', 'Data', 'Origem', 'Status', 'Tipo', 'Total', 'Frete'];
-    const rows = filteredSales.map((s) => [
-      s.id.slice(0, 8),
-      format(new Date(s.created_at), 'dd/MM/yyyy HH:mm'),
-      s.source,
-      STATUS_LABEL[s.status] || s.status,
-      s.delivery_type,
-      Number(s.total_amount).toFixed(2).replace('.', ','),
-      Number(s.shipping_cost).toFixed(2).replace('.', ','),
+    const header = ['ID', 'Data', 'Tipo', 'Origem', 'Status', 'Total'];
+    const csvRows = filteredRows.map((r) => [
+      r.id.slice(0, 8),
+      format(new Date(r.created_at), 'dd/MM/yyyy HH:mm'),
+      r.kind === 'nfe' ? 'NF-e' : r.kind === 'saved' ? 'Orçamento' : 'Pedido',
+      r.source,
+      GROUP_META[r.statusGroup].label,
+      r.total_amount.toFixed(2).replace('.', ','),
     ]);
-    const csv = [header, ...rows].map((r) => r.join(';')).join('\n');
+    const csv = [header, ...csvRows].map((r) => r.join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -201,11 +320,50 @@ export default function AdminSalesAnalysis() {
   };
 
   const clearAll = () => {
-    setRangeFrom(undefined);
-    setRangeTo(undefined);
-    setMultiDays([]);
-    setSingleDay(undefined);
-    setSales([]);
+    setRangeFrom(undefined); setRangeTo(undefined);
+    setMultiDays([]); setSingleDay(undefined);
+    setRows([]);
+  };
+
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    try {
+      if (cancelTarget.kind === 'order') {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: 'cancelado' as any })
+          .eq('id', cancelTarget.id);
+        if (error) throw error;
+      } else if (cancelTarget.kind === 'saved') {
+        const { error } = await supabase
+          .from('saved_sales')
+          .delete()
+          .eq('id', cancelTarget.id);
+        if (error) throw error;
+      } else {
+        toast.error('Cancelamento de NF-e deve ser feito na tela fiscal.');
+        setCancelling(false); setCancelTarget(null);
+        return;
+      }
+
+      setRows((prev) => {
+        if (cancelTarget.kind === 'saved') {
+          return prev.filter((r) => r.id !== cancelTarget.id);
+        }
+        return prev.map((r) =>
+          r.id === cancelTarget.id
+            ? { ...r, status: 'cancelado', statusGroup: 'cancelado' as StatusGroup }
+            : r
+        );
+      });
+      toast.success(cancelTarget.kind === 'saved' ? 'Orçamento removido' : 'Pedido cancelado');
+    } catch (e: any) {
+      toast.error('Erro ao cancelar: ' + e.message);
+    } finally {
+      setCancelling(false);
+      setCancelTarget(null);
+    }
   };
 
   const periodLabel = useMemo(() => {
@@ -226,19 +384,18 @@ export default function AdminSalesAnalysis() {
     <div className="min-h-screen bg-muted/30">
       <Header />
 
-      {/* Banner */}
       <div className="bg-foreground text-background pt-20 lg:pt-32 pb-8">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider">ADM · Análise</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider">Vendas</span>
               </div>
               <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
                 Análise de Vendas por Período
               </h1>
               <p className="text-sm text-background/60 mt-1">
-                Selecione dias específicos ou um intervalo e some todas as vendas (Site + PDV).
+                Pedidos, orçamentos e notas fiscais — filtre, some e cancele.
               </p>
             </div>
             <Button
@@ -254,7 +411,7 @@ export default function AdminSalesAnalysis() {
       </div>
 
       <div className="max-w-7xl mx-auto p-6 -mt-4 space-y-6">
-        {/* Filter bar */}
+        {/* Filters */}
         <div className="bg-card border border-border rounded-2xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="w-4 h-4 text-muted-foreground" />
@@ -262,7 +419,6 @@ export default function AdminSalesAnalysis() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-            {/* Date mode */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Modo de seleção</label>
               <Select value={dateMode} onValueChange={(v) => { clearAll(); setDateMode(v as DateMode); }}>
@@ -275,7 +431,6 @@ export default function AdminSalesAnalysis() {
               </Select>
             </div>
 
-            {/* Date picker */}
             <div className="lg:col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">Período</label>
               <Popover>
@@ -287,36 +442,24 @@ export default function AdminSalesAnalysis() {
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   {dateMode === 'range' && (
-                    <Calendar
-                      mode="range"
-                      locale={ptBR}
+                    <Calendar mode="range" locale={ptBR}
                       selected={{ from: rangeFrom, to: rangeTo }}
                       onSelect={(r: any) => { setRangeFrom(r?.from); setRangeTo(r?.to); }}
-                      numberOfMonths={2}
-                    />
+                      numberOfMonths={2} />
                   )}
                   {dateMode === 'multi' && (
-                    <Calendar
-                      mode="multiple"
-                      locale={ptBR}
+                    <Calendar mode="multiple" locale={ptBR}
                       selected={multiDays}
                       onSelect={(d: any) => setMultiDays(d || [])}
-                      numberOfMonths={2}
-                    />
+                      numberOfMonths={2} />
                   )}
                   {dateMode === 'single' && (
-                    <Calendar
-                      mode="single"
-                      locale={ptBR}
-                      selected={singleDay}
-                      onSelect={setSingleDay}
-                    />
+                    <Calendar mode="single" locale={ptBR} selected={singleDay} onSelect={setSingleDay} />
                   )}
                 </PopoverContent>
               </Popover>
             </div>
 
-            {/* Source */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Origem</label>
               <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
@@ -329,15 +472,17 @@ export default function AdminSalesAnalysis() {
               </Select>
             </div>
 
-            {/* Status */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Status</label>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="paid">Confirmadas</SelectItem>
-                  <SelectItem value="all">Todas (incl. pendentes)</SelectItem>
-                  <SelectItem value="cancelled">Apenas canceladas</SelectItem>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="concluido">🟢 Concluído</SelectItem>
+                  <SelectItem value="nota">🔵 NF-e</SelectItem>
+                  <SelectItem value="orcamento">🟡 Orçamento</SelectItem>
+                  <SelectItem value="cancelado">🔴 Cancelado</SelectItem>
+                  <SelectItem value="pendente">⚪ Pendente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -350,73 +495,55 @@ export default function AdminSalesAnalysis() {
               onChange={(e) => setSearch(e.target.value)}
               className="md:max-w-xs"
             />
-            <div className="flex gap-2 md:ml-auto">
-              <Button onClick={fetchSales} disabled={fetching || !period}>
+            <div className="flex gap-2 md:ml-auto flex-wrap">
+              <Button onClick={fetchAll} disabled={fetching || !period}>
                 <Calculator className="w-4 h-4 mr-2" />
                 {fetching ? 'Calculando...' : 'Somar'}
               </Button>
               <Button variant="outline" onClick={clearAll}>
-                <X className="w-4 h-4 mr-2" />
-                Limpar
+                <X className="w-4 h-4 mr-2" /> Limpar
               </Button>
-              <Button variant="outline" onClick={exportCSV} disabled={filteredSales.length === 0}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar
+              <Button variant="outline" onClick={exportCSV} disabled={filteredRows.length === 0}>
+                <Download className="w-4 h-4 mr-2" /> Exportar
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Summary cards */}
-        {sales.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard
-              icon={ShoppingBag}
-              label="Total Geral"
-              value={formatCurrency(summary.total)}
-              sub={`${filteredSales.length} venda(s)`}
-              accent="bg-primary/10 text-primary"
-            />
-            <SummaryCard
-              icon={Globe}
-              label="Vendas Site"
-              value={formatCurrency(summary.totalSite)}
-              sub={`${summary.countSite} venda(s)`}
-              accent="bg-blue-500/10 text-blue-600"
-            />
-            <SummaryCard
-              icon={Store}
-              label="Vendas PDV"
-              value={formatCurrency(summary.totalPdv)}
-              sub={`${summary.countPdv} venda(s)`}
-              accent="bg-emerald-500/10 text-emerald-600"
-            />
-            <SummaryCard
-              icon={Calculator}
-              label="Ticket Médio"
-              value={formatCurrency(summary.ticket)}
-              sub="por venda"
-              accent="bg-amber-500/10 text-amber-600"
-            />
+        {/* Summary */}
+        {rows.length > 0 && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <SummaryCard icon={CheckCircle2} label="Concluído" value={formatCurrency(summary.concluido.value)} sub={`${summary.concluido.count} venda(s)`} accent="bg-emerald-500/10 text-emerald-600" />
+              <SummaryCard icon={FileText} label="Notas Fiscais" value={formatCurrency(summary.nota.value)} sub={`${summary.nota.count} nota(s)`} accent="bg-blue-500/10 text-blue-600" />
+              <SummaryCard icon={Clock} label="Orçamentos" value={formatCurrency(summary.orcamento.value)} sub={`${summary.orcamento.count} salvo(s)`} accent="bg-amber-500/10 text-amber-600" />
+              <SummaryCard icon={Ban} label="Cancelados" value={formatCurrency(summary.cancelado.value)} sub={`${summary.cancelado.count} canc.`} accent="bg-red-500/10 text-red-600" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <SummaryCard icon={ShoppingBag} label="Total Confirmado" value={formatCurrency(summary.total)} sub="Concluído + NF-e" accent="bg-primary/10 text-primary" />
+              <SummaryCard icon={Globe} label="Site" value={formatCurrency(summary.totalSite)} sub={`${summary.countSite} registro(s)`} accent="bg-blue-500/10 text-blue-600" />
+              <SummaryCard icon={Store} label="PDV" value={formatCurrency(summary.totalPdv)} sub={`${summary.countPdv} registro(s)`} accent="bg-emerald-500/10 text-emerald-600" />
+            </div>
+          </>
+        )}
+
+        {/* Empty states */}
+        {dailyGroups.length === 0 && rows.length === 0 && (
+          <div className="bg-card border border-border rounded-2xl p-12 text-center">
+            <CalendarIcon className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+            <p className="text-muted-foreground">
+              Selecione um período e clique em <strong>Somar</strong>.
+            </p>
+          </div>
+        )}
+        {dailyGroups.length === 0 && rows.length > 0 && (
+          <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
+            Nenhum registro corresponde aos filtros aplicados.
           </div>
         )}
 
         {/* Daily groups */}
-        {dailyGroups.length === 0 && sales.length === 0 && (
-          <div className="bg-card border border-border rounded-2xl p-12 text-center">
-            <CalendarIcon className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-            <p className="text-muted-foreground">
-              Selecione um período no calendário e clique em <strong>Somar</strong> para ver as vendas.
-            </p>
-          </div>
-        )}
-
-        {dailyGroups.length === 0 && sales.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-8 text-center text-muted-foreground">
-            Nenhuma venda corresponde aos filtros aplicados.
-          </div>
-        )}
-
         {dailyGroups.map((group) => (
           <div key={group.date.toISOString()} className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between bg-muted/40 px-4 md:px-6 py-3 border-b border-border">
@@ -424,11 +551,11 @@ export default function AdminSalesAnalysis() {
                 <div className="font-display font-bold capitalize">
                   {format(group.date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </div>
-                <div className="text-xs text-muted-foreground">{group.sales.length} venda(s)</div>
+                <div className="text-xs text-muted-foreground">{group.rows.length} registro(s)</div>
               </div>
               <div className="text-right">
                 <div className="text-lg font-bold text-primary">{formatCurrency(group.total)}</div>
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Total do dia</div>
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Confirmado no dia</div>
               </div>
             </div>
 
@@ -436,41 +563,106 @@ export default function AdminSalesAnalysis() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-2"></TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Hora</TableHead>
+                    <TableHead>Tipo</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Frete</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.sales.map((s) => (
-                    <TableRow key={s.id}>
-                      <TableCell className="font-mono text-xs">#{s.id.slice(0, 8)}</TableCell>
-                      <TableCell className="text-sm">{format(new Date(s.created_at), 'HH:mm')}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={s.source === 'pdv' ? 'border-emerald-500/40 text-emerald-600' : 'border-blue-500/40 text-blue-600'}>
-                          {s.source === 'pdv' ? 'PDV' : 'Site'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={STATUS_COLOR[s.status] || ''}>
-                          {STATUS_LABEL[s.status] || s.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground capitalize">{s.delivery_type}</TableCell>
-                      <TableCell className="text-right text-sm">{formatCurrency(Number(s.shipping_cost || 0))}</TableCell>
-                      <TableCell className="text-right font-bold">{formatCurrency(Number(s.total_amount))}</TableCell>
-                    </TableRow>
-                  ))}
+                  {group.rows.map((r) => {
+                    const meta = GROUP_META[r.statusGroup];
+                    const canCancel =
+                      (r.kind === 'order' && r.statusGroup !== 'cancelado') ||
+                      r.kind === 'saved';
+                    return (
+                      <TableRow key={`${r.kind}-${r.id}`} className={meta.rowBg}>
+                        <TableCell className="p-0 pl-0">
+                          <div className={`w-1.5 h-10 ${meta.dot} rounded-r`} />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">#{r.id.slice(0, 8)}</TableCell>
+                        <TableCell className="text-sm">{format(new Date(r.created_at), 'HH:mm')}</TableCell>
+                        <TableCell>
+                          <span className="text-xs font-medium">
+                            {r.kind === 'nfe' ? 'NF-e' : r.kind === 'saved' ? 'Orçamento' : 'Pedido'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={
+                            r.source === 'pdv' ? 'border-emerald-500/40 text-emerald-600' :
+                            r.source === 'nfe' ? 'border-blue-500/40 text-blue-600' :
+                            'border-blue-500/40 text-blue-600'
+                          }>
+                            {r.source === 'pdv' ? 'PDV' : r.source === 'nfe' ? 'NF-e' : 'Site'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={meta.color}>
+                            {meta.label}
+                            {r.kind === 'order' && r.status !== 'cancelado' && (
+                              <span className="ml-1 opacity-60">· {STATUS_LABEL[r.status] || r.status}</span>
+                            )}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
+                        <TableCell className="text-right">
+                          {canCancel && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-red-600 hover:text-red-700 hover:bg-red-500/10"
+                              onClick={() => setCancelTarget(r)}
+                            >
+                              <Ban className="w-3.5 h-3.5 mr-1" />
+                              {r.kind === 'saved' ? 'Excluir' : 'Cancelar'}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           </div>
         ))}
       </div>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {cancelTarget?.kind === 'saved' ? 'Excluir orçamento?' : 'Cancelar pedido?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTarget?.kind === 'saved'
+                ? 'Esta venda salva (orçamento) será removida permanentemente.'
+                : 'O pedido será marcado como cancelado e deixará de contar nas somatórias de vendas confirmadas.'}
+              {cancelTarget && (
+                <div className="mt-3 p-3 bg-muted rounded-lg text-sm">
+                  <div><strong>ID:</strong> #{cancelTarget.id.slice(0, 8)}</div>
+                  <div><strong>Total:</strong> {formatCurrency(cancelTarget.total_amount)}</div>
+                  <div><strong>Data:</strong> {format(new Date(cancelTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {cancelling ? 'Processando...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
