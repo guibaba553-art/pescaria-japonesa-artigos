@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.fetch-dfe-focus]
 verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
