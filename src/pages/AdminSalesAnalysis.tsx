@@ -39,6 +39,7 @@ interface OrderItem {
   product_name: string | null;
   variation_name: string | null;
   sku: string | null;
+  image_url: string | null;
 }
 
 interface UnifiedRow {
