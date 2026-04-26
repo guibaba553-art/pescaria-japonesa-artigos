@@ -100,6 +100,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     expiry: '',
     cvv: '',
   });
+  const [saveForNext, setSaveForNext] = useState(true);
+  const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
 
   // Endereços salvos do usuário
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
