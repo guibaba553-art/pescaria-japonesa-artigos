@@ -105,6 +105,9 @@ export default function AdminSalesAnalysis() {
   const [fetching, setFetching] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<UnifiedRow | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [itemsByOrder, setItemsByOrder] = useState<Record<string, OrderItem[]>>({});
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
