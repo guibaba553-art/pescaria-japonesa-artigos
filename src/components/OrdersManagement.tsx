@@ -54,8 +54,10 @@ interface Order {
   delivery_type: 'delivery' | 'pickup';
   source?: 'site' | 'pdv';
   tracking_code?: string;
+  payment_id?: string | null;
   order_items: OrderItem[];
   nfe_emissions?: NFEEmission[];
+  refunded_amount?: number;
 }
 
 interface Profile {
