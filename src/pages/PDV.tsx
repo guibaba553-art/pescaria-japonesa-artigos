@@ -1195,7 +1195,10 @@ export default function PDV() {
                       {currentSaleId ? 'Atualizar' : 'Salvar Venda'}
                     </Button>
                     <Button
-                      onClick={() => setShowSavedSalesDialog(true)}
+                      onClick={() => {
+                        loadSavedSales();
+                        setShowSavedSalesDialog(true);
+                      }}
                       variant="outline"
                       className="flex-1"
                     >
