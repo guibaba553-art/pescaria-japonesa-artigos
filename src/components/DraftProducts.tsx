@@ -92,6 +92,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
 
   const openEditor = (d: DraftProduct) => {
     setEditing(d);
+    setMergeMode(false);
+    setMergeSearch('');
+    setMergeResults([]);
+    setMergeTarget(null);
     setForm({
       name: d.name,
       short_description: d.short_description || '',
@@ -108,10 +112,68 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     });
   };
 
-  const handleApprove = async () => {
-    if (!editing) return;
-    if (!form.category) {
-      toast({ title: 'Selecione uma categoria final', variant: 'destructive' });
+  // Busca produtos do catálogo (excluindo rascunhos) para mesclar
+  useEffect(() => {
+    if (!mergeMode || !editing) return;
+    const term = mergeSearch.trim();
+    const handle = setTimeout(async () => {
+      let query = supabase
+        .from('products')
+        .select('id, name, stock, sku, image_url, category')
+        .neq('category', 'Pendente Revisão')
+        .neq('id', editing.id)
+        .order('name', { ascending: true })
+        .limit(20);
+
+      if (term.length >= 2) {
+        query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+      }
+
+      const { data, error } = await query;
+      if (!error) setMergeResults(data || []);
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [mergeSearch, mergeMode, editing]);
+
+  const handleMerge = async () => {
+    if (!editing || !mergeTarget) return;
+    const qty = parseInt(form.stock || '0');
+    if (qty <= 0) {
+      toast({ title: 'Quantidade inválida', description: 'Estoque do rascunho deve ser maior que zero.', variant: 'destructive' });
+      return;
+    }
+
+    setMerging(true);
+    try {
+      // Soma estoque ao produto existente via RPC (mantém histórico)
+      const { error: rpcErr } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: mergeTarget.id,
+        p_variation_id: null,
+        p_quantity_delta: qty,
+        p_movement_type: 'manual_adjust',
+        p_order_id: null,
+        p_reason: `Mesclado de rascunho: ${editing.name}`,
+      });
+      if (rpcErr) throw rpcErr;
+
+      // Remove o rascunho
+      const { error: delErr } = await supabase.from('products').delete().eq('id', editing.id);
+      if (delErr) throw delErr;
+
+      toast({
+        title: 'Estoque mesclado!',
+        description: `+${qty} un. somadas a "${mergeTarget.name}". Rascunho removido.`,
+      });
+      setEditing(null);
+      await loadDrafts();
+      onChange?.();
+    } catch (e: any) {
+      toast({ title: 'Erro ao mesclar', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setMerging(false);
+    }
+  };
+
       return;
     }
     if (!form.name.trim() || !form.price || parseFloat(form.price) <= 0) {
