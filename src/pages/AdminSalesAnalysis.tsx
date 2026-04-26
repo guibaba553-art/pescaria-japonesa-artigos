@@ -165,7 +165,27 @@ export default function AdminSalesAnalysis() {
 
       const unified: UnifiedRow[] = [];
 
+      // Build map of orders that have at least one AUTHORIZED NF-e
+      const ordersWithAuthorizedNfe = new Set<string>();
+      const nfeMetaByOrder = new Map<string, { number: string | null; key: string | null }>();
+      (nfeRes.data || []).forEach((n: any) => {
+        const ok = ['success', 'autorizada', 'authorized', 'autorizado'].includes(
+          String(n.status || '').toLowerCase()
+        );
+        if (ok && n.order_id) {
+          ordersWithAuthorizedNfe.add(n.order_id);
+          if (!nfeMetaByOrder.has(n.order_id)) {
+            nfeMetaByOrder.set(n.order_id, { number: n.nfe_number, key: n.nfe_key });
+          }
+        }
+      });
+
       (ordersRes.data || []).forEach((o: any) => {
+        const hasNfe = ordersWithAuthorizedNfe.has(o.id);
+        const baseGroup = getOrderStatusGroup(o.status);
+        // If order has authorized NF-e and is not cancelled, classify as "nota" (blue)
+        const finalGroup: StatusGroup =
+          baseGroup !== 'cancelado' && hasNfe ? 'nota' : baseGroup;
         unified.push({
           id: o.id,
           kind: 'order',
@@ -173,10 +193,10 @@ export default function AdminSalesAnalysis() {
           total_amount: Number(o.total_amount || 0),
           shipping_cost: Number(o.shipping_cost || 0),
           status: o.status,
-          statusGroup: getOrderStatusGroup(o.status),
+          statusGroup: finalGroup,
           created_at: o.created_at,
           delivery_type: o.delivery_type,
-          raw: o,
+          raw: { ...o, nfe: hasNfe ? nfeMetaByOrder.get(o.id) : null },
         });
       });
 
