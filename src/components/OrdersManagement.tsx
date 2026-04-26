@@ -1104,6 +1104,18 @@ export function OrdersManagement() {
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger
+            value="devolucoes"
+            className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+          >
+            <Undo2 className="w-4 h-4 mr-2" />
+            Devoluções
+            {site.devolucoes.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+                {site.devolucoes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
       </div>
 
@@ -1112,6 +1124,7 @@ export function OrdersManagement() {
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
+      <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
     </Tabs>
   );
 
