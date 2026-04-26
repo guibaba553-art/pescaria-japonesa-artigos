@@ -365,6 +365,7 @@ export default function AdminSalesAnalysis() {
         product_name: c.name || c.product_name || 'Produto',
         variation_name: c.variation_name || null,
         sku: c.sku || null,
+        image_url: c.image_url || c.image || (Array.isArray(c.images) ? c.images[0] : null) || null,
       }));
       setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       return;
