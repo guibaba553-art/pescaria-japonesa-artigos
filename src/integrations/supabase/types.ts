@@ -981,6 +981,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          error_message: string | null
+          id: string
+          mp_refund_id: string | null
+          order_id: string
+          payment_id: string
+          performed_by: string | null
+          reason: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mp_refund_id?: string | null
+          order_id: string
+          payment_id: string
+          performed_by?: string | null
+          reason?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          mp_refund_id?: string | null
+          order_id?: string
+          payment_id?: string
+          performed_by?: string | null
+          reason?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       product_label_pending: {
         Row: {
           created_at: string

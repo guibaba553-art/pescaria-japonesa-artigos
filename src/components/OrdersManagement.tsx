@@ -54,8 +54,10 @@ interface Order {
   delivery_type: 'delivery' | 'pickup';
   source?: 'site' | 'pdv';
   tracking_code?: string;
+  payment_id?: string | null;
   order_items: OrderItem[];
   nfe_emissions?: NFEEmission[];
+  refunded_amount?: number;
 }
 
 interface Profile {
@@ -161,6 +163,8 @@ const OrdersTable = ({
   updateTrackingCode,
   emitNFCe,
   emittingNFCe,
+  refundPayment,
+  refundingOrders,
   openLabelDialog,
 }: {
   orders: Order[];
@@ -175,6 +179,8 @@ const OrdersTable = ({
   updateTrackingCode: (orderId: string) => void;
   emitNFCe: (orderId: string) => void;
   emittingNFCe: Set<string>;
+  refundPayment: (orderId: string) => void;
+  refundingOrders: Set<string>;
   openLabelDialog: (order: Order) => void;
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -499,6 +505,61 @@ const OrdersTable = ({
                   </>
                 )}
 
+                {/* Botão Estornar — disponível em devolução solicitada/devolvida quando há payment_id online */}
+                {(order.status === 'devolucao_solicitada' || order.status === 'devolvido') && order.payment_id && (() => {
+                  const refunded = order.refunded_amount ?? 0;
+                  const remaining = Number(order.total_amount) - refunded;
+                  const fullyRefunded = remaining <= 0.01;
+                  const isLoading = refundingOrders.has(order.id);
+                  return (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          disabled={fullyRefunded || isLoading}
+                          className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
+                        >
+                          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                          {fullyRefunded ? 'Estornado' : isLoading ? 'Estornando...' : 'Estornar dinheiro'}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Estornar pagamento ao cliente</AlertDialogTitle>
+                          <AlertDialogDescription asChild>
+                            <div>
+                              O valor será devolvido ao cliente diretamente pela <strong>Mercado Pago</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
+                              <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                                <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                                <div><strong>Cliente:</strong> {customerName}</div>
+                                <div><strong>Total do pedido:</strong> R$ {Number(order.total_amount).toFixed(2)}</div>
+                                {refunded > 0 && (
+                                  <div><strong>Já estornado:</strong> R$ {refunded.toFixed(2)}</div>
+                                )}
+                                <div className="text-emerald-700 dark:text-emerald-400">
+                                  <strong>A estornar agora:</strong> R$ {remaining.toFixed(2)}
+                                </div>
+                              </div>
+                              <div className="mt-3 text-xs text-muted-foreground">
+                                Esta ação não pode ser desfeita.
+                              </div>
+                            </div>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => refundPayment(order.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            Confirmar estorno
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  );
+                })()}
+
                 <div className="ml-auto">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -698,6 +759,7 @@ export function OrdersManagement() {
   const [trackingCodes, setTrackingCodes] = useState<Record<string, string>>({});
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
+  const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -810,8 +872,27 @@ export function OrdersManagement() {
         };
       });
 
+      // Buscar estornos aprovados para mostrar valor já reembolsado
+      const orderIds = (ordersData ?? []).map(o => o.id);
+      const refundedMap: Record<string, number> = {};
+      if (orderIds.length > 0) {
+        const { data: refundsData } = await supabase
+          .from('payment_refunds')
+          .select('order_id, amount, status')
+          .in('order_id', orderIds)
+          .eq('status', 'approved');
+        (refundsData ?? []).forEach((r: any) => {
+          refundedMap[r.order_id] = (refundedMap[r.order_id] ?? 0) + Number(r.amount);
+        });
+      }
+
+      const ordersWithRefunds = (ordersData ?? []).map((o: any) => ({
+        ...o,
+        refunded_amount: refundedMap[o.id] ?? 0,
+      }));
+
       setProfiles(profilesMap);
-      setOrders((ordersData || []) as Order[]);
+      setOrders(ordersWithRefunds as Order[]);
       setLoading(false);
     } catch (err: any) {
       console.error('Erro ao carregar pedidos:', err);
@@ -1016,6 +1097,56 @@ export function OrdersManagement() {
     }
   };
 
+  const refundPayment = async (orderId: string) => {
+    setRefundingOrders(prev => new Set(prev).add(orderId));
+    toast({
+      title: 'Estornando pagamento...',
+      description: 'Solicitando estorno ao Mercado Pago. Aguarde.',
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { orderId },
+      });
+
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || j?.details || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || error.message);
+      }
+
+      if (data?.success) {
+        toast({
+          title: data.status === 'approved' ? 'Estorno aprovado!' : 'Estorno em processamento',
+          description: data.status === 'approved'
+            ? `R$ ${Number(data.amount).toFixed(2)} foi devolvido ao cliente.`
+            : 'O Mercado Pago confirmará em breve. O cliente receberá o valor automaticamente.',
+        });
+        loadOrders();
+      } else {
+        throw new Error(data?.error || 'Falha desconhecida ao estornar');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao estornar',
+        description: err?.message || 'Não foi possível processar o estorno.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRefundingOrders(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
   const emitNFCe = async (orderId: string) => {
     setEmittingNFCe(prev => new Set(prev).add(orderId));
     toast({
@@ -1138,6 +1269,8 @@ export function OrdersManagement() {
     updateTrackingCode,
     emitNFCe,
     emittingNFCe,
+    refundPayment,
+    refundingOrders,
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
