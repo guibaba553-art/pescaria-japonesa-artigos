@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Smartphone, DollarSign, Loader2, Wallet } from 'lucide-react';
+import { CreditCard, Smartphone, DollarSign, Loader2, Wallet, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
