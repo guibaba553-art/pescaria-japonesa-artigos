@@ -300,7 +300,54 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     };
   }, [cleanCardNumber, finalTotal, open, paymentMethod]);
 
-  const validateCardData = () => {
+  // Persiste a forma de pagamento (apenas dados não-sensíveis: bandeira, últimos 4, nome, validade)
+  const persistSavedMethod = async (userId: string) => {
+    if (!saveForNext) return;
+    try {
+      let pmSaved: SavedPaymentMethod['payment_method'] | null = null;
+      if (paymentMethod === 'pix') pmSaved = 'pix';
+      else if (paymentMethod === 'credit') pmSaved = 'credit_card';
+      else if (paymentMethod === 'debit') pmSaved = 'debit_card';
+      if (!pmSaved) return; // google_pay não é salvo
+
+      const isCard = pmSaved === 'credit_card' || pmSaved === 'debit_card';
+      const cleanNum = cardData.number.replace(/\D/g, '');
+      const last4 = isCard ? cleanNum.slice(-4) : null;
+      const brand = isCard ? detectBrand(cleanNum) : null;
+      const [m, y] = isCard && cardData.expiry ? cardData.expiry.split('/') : [null, null];
+
+      // Evita duplicidade (mesma forma + mesmos últimos 4 + mesma validade)
+      const dup = savedMethods.find((sm) =>
+        sm.payment_method === pmSaved &&
+        (sm.card_last4 ?? null) === (last4 ?? null) &&
+        (sm.card_exp_month ?? null) === (m ?? null) &&
+        (sm.card_exp_year ?? null) === (y ?? null)
+      );
+
+      if (dup) {
+        await supabase
+          .from('saved_payment_methods')
+          .update({ last_used_at: new Date().toISOString(), is_default: true })
+          .eq('id', dup.id);
+        return;
+      }
+
+      await supabase.from('saved_payment_methods').insert({
+        user_id: userId,
+        payment_method: pmSaved,
+        card_brand: brand,
+        card_last4: last4,
+        cardholder_name: isCard ? (cardData.name || null) : null,
+        card_exp_month: m || null,
+        card_exp_year: y || null,
+        is_default: true,
+        last_used_at: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('persistSavedMethod error', e);
+    }
+  };
+
     const errors: string[] = [];
 
     // Validar número do cartão
