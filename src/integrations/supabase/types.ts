@@ -894,6 +894,48 @@ export type Database = {
         }
         Relationships: []
       }
+      product_label_pending: {
+        Row: {
+          created_at: string
+          id: string
+          pending_qty: number
+          product_id: string
+          updated_at: string
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pending_qty?: number
+          product_id: string
+          updated_at?: string
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pending_qty?: number
+          product_id?: string
+          updated_at?: string
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_label_pending_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_label_pending_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "product_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_variations: {
         Row: {
           created_at: string
@@ -1533,6 +1575,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_label_pending: {
+        Args: { p_product_id: string; p_qty: number; p_variation_id: string }
+        Returns: string
+      }
       apply_stock_movement: {
         Args: {
           p_movement_type: string
@@ -1570,6 +1616,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_labels_printed: {
+        Args: { p_product_id: string; p_qty: number; p_variation_id: string }
+        Returns: Json
+      }
       reconcile_stock: {
         Args: { p_product_id: string; p_variation_id?: string }
         Returns: Json
@@ -1577,6 +1627,7 @@ export type Database = {
       revert_order_stock: { Args: { p_order_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sku_needs_label: { Args: { _sku: string }; Returns: boolean }
       validate_coupon: {
         Args: { p_code: string; p_source?: string; p_subtotal: number }
         Returns: Json
