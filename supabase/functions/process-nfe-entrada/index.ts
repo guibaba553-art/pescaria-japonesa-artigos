@@ -254,6 +254,18 @@ serve(async (req) => {
 
         if (insertError) throw insertError;
 
+        // Adiciona o estoque inicial do rascunho à fila de etiquetagem
+        try {
+          await supabase.rpc('add_label_pending', {
+            p_product_id: novoProduto.id,
+            p_variation_id: null,
+            p_qty: produto.quantidade,
+          });
+          console.log(`  ✓ +${produto.quantidade} etiquetas pendentes (rascunho)`);
+        } catch (e) {
+          console.warn('  ⚠ Falha ao registrar etiqueta pendente:', e);
+        }
+
         console.log(`  ✓ Produto criado como rascunho`);
         produtosProcessados.push({
           ...novoProduto,
