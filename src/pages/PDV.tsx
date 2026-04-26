@@ -1828,88 +1828,206 @@ export default function PDV() {
 
       {/* Diálogo de vendas salvas */}
       <Dialog open={showSavedSalesDialog} onOpenChange={setShowSavedSalesDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Vendas Salvas</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5" />
+              Vendas Salvas
+              <Badge variant="secondary" className="ml-2">{savedSales.length}</Badge>
+            </DialogTitle>
             <DialogDescription>
-              Selecione uma venda salva para retomar
+              Vendas compartilhadas com toda a equipe — qualquer operador pode abrir e finalizar
             </DialogDescription>
           </DialogHeader>
-          
-          {savedSales.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FolderOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Nenhuma venda salva</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {savedSales.map((sale) => (
-                <Card 
-                  key={sale.id} 
-                  className={`cursor-pointer hover:shadow-lg transition-shadow ${currentSaleId === sale.id ? 'border-primary border-2' : ''}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">
-                            Venda #{sale.id.slice(0, 8)}
-                          </h3>
-                          {currentSaleId === sale.id && (
-                            <Badge variant="default">Atual</Badge>
-                          )}
-                        </div>
-                        
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          <p>
-                            <strong>Total:</strong> R$ {sale.total_amount.toFixed(2)}
-                          </p>
-                          <p>
-                            <strong>Itens:</strong> {(sale.cart_data as any[]).length} produto(s)
-                          </p>
-                          {sale.customer_data && (
-                            <p>
-                              <strong>Cliente:</strong> {(sale.customer_data as any).full_name}
-                            </p>
-                          )}
-                          <p>
-                            <strong>Método:</strong> {
-                              sale.payment_method === 'cash' ? 'Dinheiro' :
-                              sale.payment_method === 'credit' ? 'Crédito' :
-                              sale.payment_method === 'debit' ? 'Débito' :
-                              sale.payment_method === 'pix' ? 'PIX' : 'N/A'
-                            }
-                          </p>
-                          <p className="text-xs">
-                            <strong>Salva em:</strong> {new Date(sale.created_at).toLocaleString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          onClick={() => loadSale(sale)}
-                          disabled={currentSaleId === sale.id}
+
+          {/* Busca */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por cliente, operador, ID ou observações..."
+              value={savedSalesSearch}
+              onChange={(e) => setSavedSalesSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            {savedSales.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FolderOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Nenhuma venda salva</p>
+              </div>
+            ) : (() => {
+              // Filtrar por busca
+              const q = savedSalesSearch.trim().toLowerCase();
+              const filtered = savedSales.filter((s: any) => {
+                if (!q) return true;
+                const hay = [
+                  s.id?.slice(0, 8),
+                  s.operator_name,
+                  s.customer_data?.full_name,
+                  s.notes,
+                  s.payment_method,
+                ].filter(Boolean).join(' ').toLowerCase();
+                return hay.includes(q);
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Nenhuma venda encontrada para "{savedSalesSearch}"</p>
+                  </div>
+                );
+              }
+
+              // Agrupar por dia
+              const groups: Record<string, { label: string; sales: any[]; total: number }> = {};
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+
+              filtered.forEach((sale: any) => {
+                const d = new Date(sale.created_at);
+                const dayKey = d.toISOString().slice(0, 10);
+                if (!groups[dayKey]) {
+                  const dayDate = new Date(d);
+                  dayDate.setHours(0, 0, 0, 0);
+                  let label = dayDate.toLocaleDateString('pt-BR', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  });
+                  if (dayDate.getTime() === today.getTime()) label = `Hoje · ${label}`;
+                  else if (dayDate.getTime() === yesterday.getTime()) label = `Ontem · ${label}`;
+                  groups[dayKey] = { label, sales: [], total: 0 };
+                }
+                groups[dayKey].sales.push(sale);
+                groups[dayKey].total += Number(sale.total_amount || 0);
+              });
+
+              const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+              return (
+                <div className="space-y-4 pb-2">
+                  {sortedKeys.map((dayKey) => {
+                    const group = groups[dayKey];
+                    const isCollapsed = collapsedDays[dayKey] === true;
+                    return (
+                      <div key={dayKey} className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedDays((prev) => ({ ...prev, [dayKey]: !prev[dayKey] }))
+                          }
+                          className="w-full flex items-center justify-between bg-muted/50 hover:bg-muted px-3 py-2 rounded-md sticky top-0 z-10"
                         >
-                          <FolderOpen className="w-4 h-4 mr-2" />
-                          {currentSaleId === sale.id ? 'Carregada' : 'Carregar'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteSavedSale(sale.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Excluir
-                        </Button>
+                          <div className="flex items-center gap-2">
+                            {isCollapsed ? (
+                              <ChevronRight className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
+                            <Calendar className="w-4 h-4 text-primary" />
+                            <span className="font-semibold capitalize">{group.label}</span>
+                            <Badge variant="secondary">{group.sales.length}</Badge>
+                          </div>
+                          <span className="text-sm font-semibold text-primary">
+                            R$ {group.total.toFixed(2)}
+                          </span>
+                        </button>
+
+                        {!isCollapsed && (
+                          <div className="space-y-2 pl-2">
+                            {group.sales.map((sale: any) => (
+                              <Card
+                                key={sale.id}
+                                className={`hover:shadow-md transition-shadow ${
+                                  currentSaleId === sale.id ? 'border-primary border-2' : ''
+                                }`}
+                              >
+                                <CardContent className="p-3">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">
+                                          #{sale.id.slice(0, 8)}
+                                        </span>
+                                        <span className="text-base font-bold text-primary">
+                                          R$ {Number(sale.total_amount).toFixed(2)}
+                                        </span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {(sale.cart_data as any[])?.length || 0} item(ns)
+                                        </Badge>
+                                        {currentSaleId === sale.id && (
+                                          <Badge variant="default">Atual</Badge>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-1.5">
+                                          <Users className="w-3 h-3" />
+                                          <span>
+                                            <strong className="text-foreground">{sale.operator_name}</strong>
+                                            {sale.user_id === user?.id && (
+                                              <span className="ml-1 text-primary">(você)</span>
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          {new Date(sale.created_at).toLocaleTimeString('pt-BR', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })}
+                                        </div>
+                                        {sale.customer_data?.full_name && (
+                                          <div className="flex items-center gap-1.5 col-span-2">
+                                            <User className="w-3 h-3" />
+                                            <span>{sale.customer_data.full_name}</span>
+                                          </div>
+                                        )}
+                                        <div>
+                                          {sale.payment_method === 'cash' ? '💵 Dinheiro' :
+                                           sale.payment_method === 'credit' ? '💳 Crédito' :
+                                           sale.payment_method === 'debit' ? '💳 Débito' :
+                                           sale.payment_method === 'pix' ? '📱 PIX' : '—'}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5 shrink-0">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => loadSale(sale)}
+                                        disabled={currentSaleId === sale.id}
+                                      >
+                                        <FolderOpen className="w-3.5 h-3.5 mr-1" />
+                                        {currentSaleId === sale.id ? 'Carregada' : 'Abrir'}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => deleteSavedSale(sale.id)}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
