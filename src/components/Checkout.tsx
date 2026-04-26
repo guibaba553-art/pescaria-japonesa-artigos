@@ -658,11 +658,17 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         // Se falhar, deletar o pedido criado
         await supabase.from('order_items').delete().eq('order_id', orderData.id);
         await supabase.from('orders').delete().eq('id', orderData.id);
-        
-        // Mostrar erro específico retornado pela API
-        const errorMessage = data.error || 'Erro ao processar pagamento';
-        const errorDetails = data.details || '';
-        throw new Error(errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage);
+
+        // Mostrar erro detalhado em toast destrutivo (com motivo do MP)
+        const errorMessage = data.error || 'Pagamento não autorizado';
+        const errorDetails = data.details || 'Tente outro cartão ou outra forma de pagamento.';
+        toast({
+          variant: 'destructive',
+          title: errorMessage,
+          description: errorDetails,
+        });
+        setIsProcessing(false);
+        return;
       }
     } catch (error) {
       console.error('Payment error:', error);

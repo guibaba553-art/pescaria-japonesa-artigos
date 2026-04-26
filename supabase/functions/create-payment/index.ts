@@ -657,34 +657,57 @@ serve(async (req) => {
         }
       }
 
-      // Verificar se o pagamento foi rejeitado
-      if (responseData.status === 'rejected') {
-        let rejectionReason = 'Pagamento rejeitado';
-        let rejectionDetails = '';
-        
-        const statusDetail = responseData.status_detail;
-        const rejectionMessages: Record<string, [string, string]> = {
-          'cc_rejected_bad_filled_card_number': ['Número do cartão incorreto', 'Verifique o número do cartão'],
-          'cc_rejected_bad_filled_date': ['Data de validade inválida', 'Verifique a data de validade'],
-          'cc_rejected_bad_filled_security_code': ['CVV incorreto', 'Verifique o código de segurança'],
-          'cc_rejected_insufficient_amount': ['Saldo insuficiente', 'O cartão não possui saldo suficiente'],
-          'cc_rejected_invalid_installments': ['Parcelamento não disponível', 'O cartão não aceita este parcelamento'],
-          'cc_rejected_max_attempts': ['Limite de tentativas excedido', 'Aguarde antes de tentar novamente'],
-        };
+      // Mensagens amigáveis por status_detail (cobre rejected e in_process)
+      const statusDetail: string = responseData.status_detail || '';
+      const detailMessages: Record<string, [string, string]> = {
+        'cc_rejected_bad_filled_card_number': ['Número do cartão incorreto', 'Verifique o número do cartão e tente novamente.'],
+        'cc_rejected_bad_filled_date': ['Data de validade inválida', 'Verifique a data de validade do cartão.'],
+        'cc_rejected_bad_filled_security_code': ['CVV incorreto', 'Verifique o código de segurança (CVV) do cartão.'],
+        'cc_rejected_bad_filled_other': ['Dados do cartão inválidos', 'Verifique todos os dados do cartão.'],
+        'cc_rejected_insufficient_amount': ['Saldo insuficiente', 'O cartão não possui saldo/limite suficiente.'],
+        'cc_rejected_invalid_installments': ['Parcelamento não disponível', 'O cartão não aceita este número de parcelas.'],
+        'cc_rejected_max_attempts': ['Limite de tentativas excedido', 'Aguarde alguns minutos antes de tentar novamente.'],
+        'cc_rejected_call_for_authorize': ['Pagamento precisa ser autorizado', 'Ligue para o banco emissor do cartão e autorize a compra, depois tente novamente.'],
+        'cc_rejected_card_disabled': ['Cartão desabilitado', 'Ligue para o banco para ativar o cartão.'],
+        'cc_rejected_duplicated_payment': ['Pagamento duplicado', 'Já existe um pagamento idêntico recente. Aguarde alguns minutos.'],
+        'cc_rejected_high_risk': ['Pagamento recusado por segurança', 'O sistema antifraude do Mercado Pago recusou esta compra. Tente outra forma de pagamento ou outro cartão.'],
+        'cc_rejected_other_reason': ['Pagamento recusado pelo emissor', 'O banco emissor recusou a compra. Tente outro cartão ou contate seu banco.'],
+        'cc_rejected_blacklist': ['Cartão não autorizado', 'Não foi possível processar este cartão. Tente outro.'],
+        'cc_rejected_card_error': ['Erro no cartão', 'Não foi possível processar o cartão. Tente novamente ou use outro.'],
+        'pending_contingency': ['Pagamento em análise', 'Estamos processando seu pagamento. Você receberá uma confirmação em até alguns minutos.'],
+        'pending_review_manual': ['Pagamento em revisão manual', 'O Mercado Pago está revisando seu pagamento. Você receberá uma confirmação em breve.'],
+      };
 
-        if (statusDetail && rejectionMessages[statusDetail]) {
-          [rejectionReason, rejectionDetails] = rejectionMessages[statusDetail];
-        } else if (statusDetail?.includes('cc_rejected')) {
-          rejectionDetails = statusDetail.replace('cc_rejected_', '').replace(/_/g, ' ');
+      // Considera como falha: rejected sempre; in_process/pending apenas se NÃO for de revisão legítima
+      const legitPendingDetails = ['pending_contingency', 'pending_review_manual'];
+      const isRejected = responseData.status === 'rejected';
+      const isPendingLegit =
+        (responseData.status === 'in_process' || responseData.status === 'pending') &&
+        legitPendingDetails.includes(statusDetail);
+      const isPendingButReallyFailed =
+        (responseData.status === 'in_process' || responseData.status === 'pending') &&
+        !isPendingLegit;
+
+      if (isRejected || isPendingButReallyFailed) {
+        let reason = isRejected ? 'Pagamento recusado' : 'Pagamento não autorizado';
+        let details = '';
+
+        if (statusDetail && detailMessages[statusDetail]) {
+          [reason, details] = detailMessages[statusDetail];
+        } else if (statusDetail) {
+          details = `Motivo: ${statusDetail.replace(/_/g, ' ')}. Tente outro cartão ou forma de pagamento.`;
+        } else {
+          details = 'Tente novamente, use outro cartão ou outra forma de pagamento.';
         }
-        
+
         return new Response(
           JSON.stringify({
             success: false,
-            error: rejectionReason,
-            details: rejectionDetails,
+            error: reason,
+            details,
             paymentId: responseData.id,
             status: responseData.status,
+            statusDetail,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -695,7 +718,7 @@ serve(async (req) => {
           success: true,
           paymentId: responseData.id,
           status: responseData.status,
-          statusDetail: responseData.status_detail,
+          statusDetail,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
