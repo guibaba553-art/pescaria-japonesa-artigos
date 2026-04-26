@@ -126,6 +126,9 @@ export default function AdminCatalog() {
         <TabsContent value="drafts">
           <Suspense fallback={<TabFallback />}><DraftProducts onChange={loadDraftCount} /></Suspense>
         </TabsContent>
+        <TabsContent value="labels">
+          <Suspense fallback={<TabFallback />}><LabelsManagement /></Suspense>
+        </TabsContent>
         <TabsContent value="featured">
           <Suspense fallback={<TabFallback />}><FeaturedManagement /></Suspense>
         </TabsContent>
