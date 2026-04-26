@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 
 // Cada aba é um pacote pesado — só baixa quando o usuário abre
