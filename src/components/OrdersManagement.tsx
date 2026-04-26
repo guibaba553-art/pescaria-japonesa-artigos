@@ -47,7 +47,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -75,6 +75,12 @@ const statusConfig = {
     icon: Package,
     badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20',
     accentClass: 'border-l-amber-500',
+  },
+  aguardando_envio: {
+    label: 'Aguardando Envio',
+    icon: PackageCheck,
+    badgeClass: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20',
+    accentClass: 'border-l-indigo-500',
   },
   enviado: {
     label: 'Enviado',
@@ -123,8 +129,9 @@ const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_t
 const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'retirado' : 'enviado';
+    return deliveryType === 'pickup' ? 'retirado' : 'aguardando_envio';
   }
+  if (currentStatus === 'aguardando_envio') return 'enviado';
   if (currentStatus === 'enviado') return 'entregado';
   return null;
 };
@@ -134,8 +141,9 @@ const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order[
     return deliveryType === 'pickup' ? 'Marcar como Pronto para Retirar' : 'Marcar como Em Preparo';
   }
   if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'Marcar como Retirado' : 'Marcar como Enviado';
+    return deliveryType === 'pickup' ? 'Marcar como Retirado' : 'Marcar como Embalado (Aguardando Envio)';
   }
+  if (currentStatus === 'aguardando_envio') return 'Marcar como Enviado';
   if (currentStatus === 'enviado') return 'Marcar como Entregue';
   return 'Finalizado';
 };
