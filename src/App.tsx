@@ -40,6 +40,7 @@ const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const StockMigration = lazy(() => import("./pages/StockMigration"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,7 @@ const App = () => (
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
+                <Route path="/unsubscribe" element={<Unsubscribe />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
