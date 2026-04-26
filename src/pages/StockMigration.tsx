@@ -250,10 +250,10 @@ export default function StockMigration() {
     for (let i = 0; i < next.length; i++) {
       const r = next[i];
       if (r.status === 'ignored') continue;
+      let createdDraftId: string | null = null;
 
       try {
         let productId = r.matchedProductId;
-        let createdDraftId: string | null = null;
 
         // Cria rascunho se necessário
         if (r.status === 'draft' || !productId) {
