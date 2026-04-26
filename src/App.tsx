@@ -39,6 +39,7 @@ const AdminLGPD = lazy(() => import("./pages/AdminLGPD"));
 const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
+const StockMigration = lazy(() => import("./pages/StockMigration"));
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="/politica-de-trocas" element={<PoliticaTrocas />} />
                 <Route path="/politica-de-frete" element={<PoliticaFrete />} />
                 <Route path="/admin/lgpd" element={<AdminLGPD />} />
+                <Route path="/admin/migracao-estoque" element={<StockMigration />} />
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
