@@ -46,29 +46,95 @@ interface SavedMethod {
   last_used_at: string | null;
 }
 
-const BRANDS = ['Visa', 'Mastercard', 'Elo', 'Amex', 'Hipercard', 'Diners', 'Outro'] as const;
+/**
+ * Detecta a bandeira do cartão a partir dos primeiros dígitos (BIN).
+ * Baseado nos ranges oficiais de cada bandeira aceitos no Brasil.
+ */
+function detectCardBrand(number: string): string | null {
+  const n = number.replace(/\D/g, '');
+  if (n.length < 4) return null;
+
+  // Elo (precisa vir antes de Visa/Master por causa de prefixos sobrepostos)
+  if (
+    /^(4011(78|79)|43(1274|8935)|45(1416|7393|763(1|2))|50(4175|6699|67[0-7][0-9]|9000)|627780|63(6297|6368)|65(0(0(3([1-3]|[5-9])|4([0-9])|5[0-1])|4(0[5-9]|[1-3][0-9])|5([0-2][0-9]|3[0-8])|9(2[1-9]|[3-6][0-9]|7[0-8])|7([0-2][0-9]|3[0-8]|4[0-3])|8(1[6-9]|[2-4][0-9]|5[0-9]|6[0-9]|7[0-2]))|16(5[2-9]|[6-7][0-9])|50(0[0-9]|1[0-9]|2[1-9]|[3-4][0-9]|5[0-8])))/.test(n)
+  )
+    return 'Elo';
+  // Hipercard
+  if (/^(606282|3841)/.test(n)) return 'Hipercard';
+  // Amex
+  if (/^3[47]/.test(n)) return 'Amex';
+  // Diners
+  if (/^3(0[0-5]|[68])/.test(n)) return 'Diners';
+  // Discover
+  if (/^(6011|65|64[4-9])/.test(n)) return 'Discover';
+  // JCB
+  if (/^35(2[89]|[3-8][0-9])/.test(n)) return 'JCB';
+  // Mastercard (51-55 ou 2221-2720)
+  if (/^(5[1-5]|2(2(2[1-9]|[3-9][0-9])|[3-6][0-9]{2}|7([01][0-9]|20)))/.test(n)) return 'Mastercard';
+  // Visa
+  if (/^4/.test(n)) return 'Visa';
+
+  return null;
+}
+
+/**
+ * Validação Luhn (checksum de cartão de crédito).
+ */
+function isValidLuhn(number: string): boolean {
+  const n = number.replace(/\D/g, '');
+  if (n.length < 13) return false;
+  let sum = 0;
+  let alt = false;
+  for (let i = n.length - 1; i >= 0; i--) {
+    let d = parseInt(n[i], 10);
+    if (alt) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
 
 const cardSchema = z.object({
   payment_method: z.enum(['credit_card', 'debit_card']),
-  card_brand: z.string().min(1, 'Selecione a bandeira'),
+  card_number: z
+    .string()
+    .transform((v) => v.replace(/\D/g, ''))
+    .refine((v) => v.length >= 13 && v.length <= 19, 'Número de cartão inválido')
+    .refine(isValidLuhn, 'Número de cartão inválido (verifique os dígitos)'),
   cardholder_name: z.string().trim().min(2, 'Informe o nome no cartão').max(100),
-  card_last4: z.string().regex(/^\d{4}$/, 'Informe os 4 últimos dígitos'),
   card_exp_month: z.string().regex(/^(0[1-9]|1[0-2])$/, 'Mês inválido (01-12)'),
   card_exp_year: z.string().regex(/^\d{2}$/, 'Ano com 2 dígitos (ex: 28)'),
   is_default: z.boolean().default(false),
 });
 
-type CardForm = z.infer<typeof cardSchema>;
+type CardForm = {
+  payment_method: 'credit_card' | 'debit_card';
+  card_number: string;
+  cardholder_name: string;
+  card_exp_month: string;
+  card_exp_year: string;
+  is_default: boolean;
+};
 
 const DEFAULT_FORM: CardForm = {
   payment_method: 'credit_card',
-  card_brand: '',
+  card_number: '',
   cardholder_name: '',
-  card_last4: '',
   card_exp_month: '',
   card_exp_year: '',
   is_default: false,
 };
+
+/**
+ * Formata número do cartão em grupos de 4 dígitos.
+ */
+function formatCardNumber(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 19);
+  return digits.replace(/(.{4})/g, '$1 ').trim();
+}
 
 export function MyPaymentMethods() {
   const { user } = useAuth();
@@ -111,13 +177,17 @@ export function MyPaymentMethods() {
       toast({ title: 'Dados inválidos', description: first.message, variant: 'destructive' });
       return;
     }
+    const fullNumber = parsed.data.card_number;
+    const detectedBrand = detectCardBrand(fullNumber) ?? 'Outro';
+    const last4 = fullNumber.slice(-4);
+
     setSaving(true);
     const { error } = await supabase.from('saved_payment_methods').insert({
       user_id: user.id,
       payment_method: parsed.data.payment_method,
-      card_brand: parsed.data.card_brand,
+      card_brand: detectedBrand, // detectado automaticamente — não armazenamos o número completo
       cardholder_name: parsed.data.cardholder_name,
-      card_last4: parsed.data.card_last4,
+      card_last4: last4,
       card_exp_month: parsed.data.card_exp_month,
       card_exp_year: parsed.data.card_exp_year,
       is_default: parsed.data.is_default,
@@ -287,42 +357,44 @@ export function MyPaymentMethods() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Bandeira</Label>
-              <Select
-                value={form.card_brand}
-                onValueChange={(v) => setForm((f) => ({ ...f, card_brand: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRANDS.map((b) => (
-                    <SelectItem key={b} value={b}>{b}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Número do cartão</Label>
+              <div className="relative">
+                <Input
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  value={formatCardNumber(form.card_number)}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, card_number: e.target.value.replace(/\D/g, '').slice(0, 19) }))
+                  }
+                  placeholder="0000 0000 0000 0000"
+                  className="pr-24 font-mono tracking-wider"
+                />
+                {(() => {
+                  const brand = detectCardBrand(form.card_number);
+                  if (!brand) return null;
+                  return (
+                    <Badge
+                      variant="secondary"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary/10 text-primary border-primary/20"
+                    >
+                      {brand}
+                    </Badge>
+                  );
+                })()}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Detectamos a bandeira automaticamente. Armazenamos apenas os 4 últimos dígitos.
+              </p>
             </div>
 
             <div className="space-y-1.5">
               <Label>Nome impresso no cartão</Label>
               <Input
+                autoComplete="cc-name"
                 value={form.cardholder_name}
                 onChange={(e) => setForm((f) => ({ ...f, cardholder_name: e.target.value.toUpperCase() }))}
                 placeholder="JOÃO DA SILVA"
                 maxLength={100}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>4 últimos dígitos</Label>
-              <Input
-                inputMode="numeric"
-                value={form.card_last4}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, card_last4: e.target.value.replace(/\D/g, '').slice(0, 4) }))
-                }
-                placeholder="0000"
-                maxLength={4}
               />
             </div>
 
