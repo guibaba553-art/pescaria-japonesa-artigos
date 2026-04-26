@@ -340,6 +340,68 @@ export default function AdminSalesAnalysis() {
   const formatCurrency = (n: number) =>
     n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const toggleExpand = async (row: UnifiedRow) => {
+    const key = `${row.kind}-${row.id}`;
+    const next = new Set(expandedRows);
+    if (next.has(key)) {
+      next.delete(key);
+      setExpandedRows(next);
+      return;
+    }
+    next.add(key);
+    setExpandedRows(next);
+
+    // Saved sales têm os itens dentro de cart_data
+    if (row.kind === 'saved') {
+      if (itemsByOrder[key]) return;
+      const cart = (row.raw?.cart_data as any[]) || [];
+      const items: OrderItem[] = cart.map((c: any, i: number) => ({
+        id: `${key}-${i}`,
+        product_id: c.id || c.product_id || '',
+        variation_id: c.variation_id || null,
+        quantity: Number(c.quantity || c.qty || 1),
+        price_at_purchase: Number(c.price || c.unit_price || 0),
+        product_name: c.name || c.product_name || 'Produto',
+        variation_name: c.variation_name || null,
+        sku: c.sku || null,
+      }));
+      setItemsByOrder((prev) => ({ ...prev, [key]: items }));
+      return;
+    }
+
+    // Pedido normal: busca order_items
+    if (row.kind === 'order') {
+      if (itemsByOrder[key]) return;
+      setLoadingItems((s) => new Set(s).add(key));
+      try {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('id, product_id, variation_id, quantity, price_at_purchase, products(name, sku), product_variations(name)')
+          .eq('order_id', row.id);
+        if (error) throw error;
+        const items: OrderItem[] = (data || []).map((it: any) => ({
+          id: it.id,
+          product_id: it.product_id,
+          variation_id: it.variation_id,
+          quantity: it.quantity,
+          price_at_purchase: Number(it.price_at_purchase || 0),
+          product_name: it.products?.name || 'Produto removido',
+          variation_name: it.product_variations?.name || null,
+          sku: it.products?.sku || null,
+        }));
+        setItemsByOrder((prev) => ({ ...prev, [key]: items }));
+      } catch (e: any) {
+        toast.error('Erro ao carregar itens: ' + e.message);
+      } finally {
+        setLoadingItems((s) => {
+          const n = new Set(s);
+          n.delete(key);
+          return n;
+        });
+      }
+    }
+  };
+
   const exportCSV = () => {
     if (filteredRows.length === 0) {
       toast.error('Nada para exportar');
