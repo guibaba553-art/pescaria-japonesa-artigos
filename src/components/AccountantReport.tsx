@@ -83,8 +83,8 @@ export function AccountantReport() {
         .gte('created_at', start)
         .lt('created_at', end);
 
-      const onlineOrders = (orders || []).filter((o) => o.source !== 'pdv' && o.status !== 'cancelado');
-      const pdvOrders = (orders || []).filter((o) => o.source === 'pdv' && o.status !== 'cancelado');
+      const onlineOrders = (orders || []).filter((o) => o.source !== 'pdv' && (o.status as string) !== 'cancelado');
+      const pdvOrders = (orders || []).filter((o) => o.source === 'pdv' && (o.status as string) !== 'cancelado');
 
       const onlineRevenue = onlineOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
       const pdvRevenue = pdvOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
@@ -110,7 +110,7 @@ export function AccountantReport() {
         .select('total_amount, status, source, created_at')
         .gte('created_at', last12Start)
         .lt('created_at', start)
-        .neq('status', 'cancelado');
+        .neq('status', 'cancelado' as any);
 
       const rbt12 = (orders12 || []).reduce((s, o) => s + Number(o.total_amount || 0), 0);
       const rbt12WithCurrent = rbt12 + onlineRevenue + pdvRevenue;
