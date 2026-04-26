@@ -71,7 +71,7 @@ export default function Admin() {
       stats: `${visible.length} produtos · ${outOfStock} esgotados`,
     },
     {
-      title: 'ADM · Análise',
+      title: 'Vendas',
       desc: 'Vendas por período (calendário) com somatória',
       icon: CalendarRange,
       path: '/admin/analise',
