@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2, Download, CheckCircle, Save, Eye, X } from 'lucide-react';
+import { Upload, FileText, Loader2, Download, CheckCircle, Save, Eye, X, Link2, Unlink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { LinkExistingProductDialog, type ExistingProductMatch } from './LinkExistingProductDialog';
 
 interface NFEProduct {
   sku: string;
@@ -23,6 +25,10 @@ interface NFEProduct {
   pis?: number;
   cofins?: number;
   margem_lucro?: number;
+  /** ID de produto já cadastrado para receber o estoque (vínculo manual) */
+  vincular_produto_id?: string | null;
+  /** Nome do produto vinculado, só para exibição */
+  vincular_produto_nome?: string | null;
 }
 
 interface NFEData {
