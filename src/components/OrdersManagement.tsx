@@ -1038,7 +1038,57 @@ export function OrdersManagement() {
     }
   };
 
-  const emitNFCe = async (orderId: string) => {
+  const refundPayment = async (orderId: string) => {
+    setRefundingOrders(prev => new Set(prev).add(orderId));
+    toast({
+      title: 'Estornando pagamento...',
+      description: 'Solicitando estorno ao Mercado Pago. Aguarde.',
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('refund-payment', {
+        body: { orderId },
+      });
+
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || j?.details || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || error.message);
+      }
+
+      if (data?.success) {
+        toast({
+          title: data.status === 'approved' ? 'Estorno aprovado!' : 'Estorno em processamento',
+          description: data.status === 'approved'
+            ? `R$ ${Number(data.amount).toFixed(2)} foi devolvido ao cliente.`
+            : 'O Mercado Pago confirmará em breve. O cliente receberá o valor automaticamente.',
+        });
+        loadOrders();
+      } else {
+        throw new Error(data?.error || 'Falha desconhecida ao estornar');
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao estornar',
+        description: err?.message || 'Não foi possível processar o estorno.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRefundingOrders(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
+
     setEmittingNFCe(prev => new Set(prev).add(orderId));
     toast({
       title: 'Emitindo NFC-e...',
