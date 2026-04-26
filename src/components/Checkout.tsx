@@ -873,9 +873,78 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           {(paymentMethod === 'credit' || paymentMethod === 'debit') && (
             <div className="space-y-4">
               <h3 className="font-semibold">Dados do Cartão</h3>
-              
+
+              {/* Cartões salvos (apenas dados não-sensíveis) */}
+              {savedMethods.filter((m) =>
+                paymentMethod === 'credit' ? m.payment_method === 'credit_card' : m.payment_method === 'debit_card'
+              ).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Usar cartão salvo</p>
+                  <div className="space-y-2">
+                    {savedMethods
+                      .filter((m) =>
+                        paymentMethod === 'credit' ? m.payment_method === 'credit_card' : m.payment_method === 'debit_card'
+                      )
+                      .map((m) => {
+                        const sel = selectedSavedId === m.id;
+                        return (
+                          <div
+                            key={m.id}
+                            className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${
+                              sel ? 'border-primary bg-primary/5 ring-2 ring-primary/30' : 'border-border'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => applySavedMethod(m)}
+                              className="flex-1 flex items-center gap-3 text-left"
+                            >
+                              <CreditCard className="w-5 h-5 text-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">
+                                  {m.card_brand ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {m.cardholder_name ?? '—'}
+                                  {m.card_exp_month && m.card_exp_year ? ` · ${m.card_exp_month}/${m.card_exp_year}` : ''}
+                                </p>
+                              </div>
+                              {sel && <Check className="w-4 h-4 text-primary" />}
+                            </button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteSavedMethod(m.id)}
+                              aria-label="Remover cartão salvo"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    {selectedSavedId && (
+                      <Button type="button" variant="ghost" size="sm" onClick={clearSavedSelection} className="text-xs">
+                        Usar outro cartão
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Por segurança (PCI-DSS), o número completo e o CVV nunca são salvos. Você precisa redigitá-los a cada compra.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="cardNumber">Número do Cartão</Label>
+                <Label htmlFor="cardNumber">
+                  Número do Cartão
+                  {selectedSavedId && suggestedSaved?.card_last4 && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      (termina em {suggestedSaved.card_last4})
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="cardNumber"
                   placeholder="0000 0000 0000 0000"
@@ -945,6 +1014,21 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   </p>
                 </div>
               )}
+
+              {/* Salvar para próxima compra */}
+              <label className="flex items-start gap-2 rounded-xl bg-muted/40 p-3 cursor-pointer">
+                <Checkbox
+                  checked={saveForNext}
+                  onCheckedChange={(c) => setSaveForNext(c === true)}
+                  className="mt-0.5"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Salvar este cartão para próxima compra</p>
+                  <p className="text-xs text-muted-foreground">
+                    Guardamos só bandeira, nome, validade e últimos 4 dígitos. Número completo e CVV nunca são armazenados.
+                  </p>
+                </div>
+              </label>
             </div>
           )}
 
