@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Loader2,
   Package,
@@ -77,6 +78,7 @@ interface ScanRow {
 
 export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted }: Props) {
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const [scans, setScans] = useState<Record<string, number>>({});
   const [barcode, setBarcode] = useState('');
   const [confirming, setConfirming] = useState(false);
