@@ -275,7 +275,7 @@ export default function Account() {
                 <span className="text-[11px] font-bold uppercase tracking-wider">Minha conta</span>
               </div>
               <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
-                Meus Pedidos
+                Minha Conta
               </h1>
               <p className="text-sm text-background/60 mt-1">
                 Acompanhe status, rastreio, notas fiscais e avalie seus produtos.
