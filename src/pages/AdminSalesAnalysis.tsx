@@ -517,7 +517,7 @@ export default function AdminSalesAnalysis() {
               className="md:max-w-xs"
             />
             <div className="flex gap-2 md:ml-auto flex-wrap">
-              <Button onClick={fetchAll} disabled={fetching || !period}>
+              <Button onClick={() => fetchAll(false)} disabled={fetching || !period}>
                 <Calculator className="w-4 h-4 mr-2" />
                 {fetching ? 'Calculando...' : 'Somar'}
               </Button>
