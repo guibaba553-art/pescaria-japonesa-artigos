@@ -366,24 +366,30 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                       </div>
                     </div>
                     {isDone ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => resetItem(item.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                        title="Resetar"
-                      >
+                      isAdmin ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => resetItem(item.id)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Resetar (admin)"
+                        >
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        </Button>
+                      ) : (
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      </Button>
-                    ) : (
+                      )
+                    ) : isAdmin ? (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => markItemFull(item.id, item.quantity)}
-                        title="Marcar manualmente como completo"
+                        title="Marcar manualmente como completo (admin)"
                       >
                         <Circle className="w-4 h-4" />
                       </Button>
+                    ) : (
+                      <Circle className="w-5 h-5 text-muted-foreground/40" />
                     )}
                   </div>
                 </div>
