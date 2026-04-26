@@ -58,6 +58,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   const [showPreview, setShowPreview] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
   const [produtosComMargem, setProdutosComMargem] = useState<NFEProduct[]>([]);
+  const [linkingIndex, setLinkingIndex] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Auto-processar XML pré-carregado (vindo de NfeEntradaPendentes)
