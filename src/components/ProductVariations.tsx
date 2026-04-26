@@ -182,14 +182,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         <Label htmlFor={`sku-${variation.id}`} className="text-xs">
                           Código de Barra / SKU
                         </Label>
-                        <Input
+                        <BarcodeInput
                           id={`sku-${variation.id}`}
-                          type="text"
                           value={variation.sku || ''}
-                          onChange={(e) => updateVariation(variation.id, 'sku', e.target.value)}
+                          onChange={(v) => updateVariation(variation.id, 'sku', v)}
                           placeholder="Ex: 7891234567890"
-                          autoComplete="off"
-                          maxLength={50}
+                          size="sm"
                         />
                       </div>
                       <div>
