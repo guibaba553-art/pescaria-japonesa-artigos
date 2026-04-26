@@ -101,6 +101,10 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
       setPricePdv((product as any).price_pdv?.toString() || '');
+      setWeightGrams((product as any).weight_grams?.toString() || '');
+      setLengthCm((product as any).length_cm?.toString() || '');
+      setWidthCm((product as any).width_cm?.toString() || '');
+      setHeightCm((product as any).height_cm?.toString() || '');
     }
   }, [open, product.id, loadVariations]);
 
