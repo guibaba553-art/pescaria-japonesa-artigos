@@ -24,7 +24,11 @@ import {
   Save,
   FolderOpen,
   History,
-  FilePlus
+  FilePlus,
+  ChevronDown,
+  ChevronRight,
+  Calendar,
+  Users
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
