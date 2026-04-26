@@ -174,6 +174,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
     }
   };
 
+  const handleApprove = async () => {
+    if (!editing) return;
+    if (!form.category) {
+      toast({ title: 'Selecione uma categoria final', variant: 'destructive' });
       return;
     }
     if (!form.name.trim() || !form.price || parseFloat(form.price) <= 0) {
