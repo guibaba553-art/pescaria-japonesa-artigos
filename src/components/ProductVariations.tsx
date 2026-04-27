@@ -27,7 +27,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     stock: "",
     description: "",
     image_url: "",
-    sku: ""
+    sku: "",
+    weight_grams: "",
+    length_cm: "",
+    width_cm: "",
+    height_cm: ""
   });
 
   /**
