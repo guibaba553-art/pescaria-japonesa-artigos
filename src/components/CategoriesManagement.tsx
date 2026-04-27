@@ -359,6 +359,15 @@ export function CategoriesManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {pickerSub && (
+        <SubcategoryProductPicker
+          open={!!pickerSub}
+          onOpenChange={(o) => !o && setPickerSub(null)}
+          subcategoryName={pickerSub.name}
+          primaryName={pickerSub.primaryName}
+        />
+      )}
     </Card>
   );
 }
