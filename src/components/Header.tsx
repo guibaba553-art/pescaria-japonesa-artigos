@@ -20,7 +20,7 @@ interface Suggestion {
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut, isEmployee, isAdmin, canAccessPdv } = useAuth();
+  const { user, signOut, isEmployee, isAdmin, canAccessPdv, loading } = useAuth();
   const { primaries } = useCategories();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -224,7 +224,7 @@ export function Header() {
                 <UserCircle className="w-4 h-4 mr-2" />
                 Conta
               </Button>
-              {(isEmployee || isAdmin) && (
+              {!loading && (isEmployee || isAdmin) && (
                 <>
                   {(isAdmin || (isEmployee && canAccessPdv)) && (
                     <>
