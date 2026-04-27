@@ -7,15 +7,52 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, UserPlus, Loader2, Users, ShieldCheck, ShieldOff } from 'lucide-react';
+import {
+  Trash2, UserPlus, Loader2, Users, ShieldCheck,
+  Package, ShoppingCart, DollarSign, TrendingUp,
+  ClipboardList, CalendarRange, ScanBarcode, Calculator,
+} from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
+
+type PermKey =
+  | 'can_access_pdv'
+  | 'can_access_catalog'
+  | 'can_access_cash_register'
+  | 'can_access_dashboard'
+  | 'can_access_orders'
+  | 'can_access_sales_analysis'
+  | 'can_access_triagem'
+  | 'can_access_fiscal';
 
 interface EmployeeRow {
   user_id: string;
   full_name: string | null;
-  email: string | null;
   can_access_pdv: boolean;
+  can_access_catalog: boolean;
+  can_access_cash_register: boolean;
+  can_access_dashboard: boolean;
+  can_access_orders: boolean;
+  can_access_sales_analysis: boolean;
+  can_access_triagem: boolean;
+  can_access_fiscal: boolean;
 }
+
+const PERMISSIONS: Array<{ key: PermKey; label: string; icon: any; defaultValue: boolean }> = [
+  { key: 'can_access_pdv', label: 'PDV', icon: ShoppingCart, defaultValue: true },
+  { key: 'can_access_catalog', label: 'Catálogo', icon: Package, defaultValue: true },
+  { key: 'can_access_orders', label: 'Pedidos', icon: ClipboardList, defaultValue: true },
+  { key: 'can_access_triagem', label: 'Triagem', icon: ScanBarcode, defaultValue: true },
+  { key: 'can_access_cash_register', label: 'Caixa', icon: DollarSign, defaultValue: false },
+  { key: 'can_access_dashboard', label: 'Dashboard', icon: TrendingUp, defaultValue: false },
+  { key: 'can_access_sales_analysis', label: 'Análise de Vendas', icon: CalendarRange, defaultValue: false },
+  { key: 'can_access_fiscal', label: 'Fiscal', icon: Calculator, defaultValue: false },
+];
+
+const defaultPerms = (): Pick<EmployeeRow, PermKey> => {
+  const out: any = {};
+  PERMISSIONS.forEach((p) => { out[p.key] = p.defaultValue; });
+  return out;
+};
 
 export function EmployeesManagement() {
   const { toast } = useToast();
@@ -46,17 +83,24 @@ export function EmployeesManagement() {
 
     const [{ data: profiles }, { data: perms }] = await Promise.all([
       supabase.from('profiles').select('id, full_name').in('id', ids),
-      supabase.from('employee_permissions').select('user_id, can_access_pdv').in('user_id', ids),
+      supabase.from('employee_permissions').select('*').in('user_id', ids),
     ]);
 
     const rows: EmployeeRow[] = ids.map((id) => {
       const profile = profiles?.find((p) => p.id === id);
-      const perm = perms?.find((p) => p.user_id === id);
+      const perm = perms?.find((p: any) => p.user_id === id);
+      const defaults = defaultPerms();
       return {
         user_id: id,
         full_name: profile?.full_name ?? null,
-        email: null,
-        can_access_pdv: perm?.can_access_pdv ?? true,
+        can_access_pdv: perm?.can_access_pdv ?? defaults.can_access_pdv,
+        can_access_catalog: perm?.can_access_catalog ?? defaults.can_access_catalog,
+        can_access_cash_register: perm?.can_access_cash_register ?? defaults.can_access_cash_register,
+        can_access_dashboard: perm?.can_access_dashboard ?? defaults.can_access_dashboard,
+        can_access_orders: perm?.can_access_orders ?? defaults.can_access_orders,
+        can_access_sales_analysis: perm?.can_access_sales_analysis ?? defaults.can_access_sales_analysis,
+        can_access_triagem: perm?.can_access_triagem ?? defaults.can_access_triagem,
+        can_access_fiscal: perm?.can_access_fiscal ?? defaults.can_access_fiscal,
       };
     });
     setEmployees(rows);
@@ -67,16 +111,37 @@ export function EmployeesManagement() {
     load();
   }, []);
 
-  const togglePdv = async (userId: string, value: boolean) => {
-    setEmployees((prev) => prev.map((e) => (e.user_id === userId ? { ...e, can_access_pdv: value } : e)));
+  const togglePermission = async (userId: string, key: PermKey, value: boolean) => {
+    setEmployees((prev) =>
+      prev.map((e) => (e.user_id === userId ? { ...e, [key]: value } : e))
+    );
+
+    const current = employees.find((e) => e.user_id === userId);
+    if (!current) return;
+
+    const payload: any = {
+      user_id: userId,
+      can_access_pdv: current.can_access_pdv,
+      can_access_catalog: current.can_access_catalog,
+      can_access_cash_register: current.can_access_cash_register,
+      can_access_dashboard: current.can_access_dashboard,
+      can_access_orders: current.can_access_orders,
+      can_access_sales_analysis: current.can_access_sales_analysis,
+      can_access_triagem: current.can_access_triagem,
+      can_access_fiscal: current.can_access_fiscal,
+      [key]: value,
+    };
+
     const { error } = await supabase
       .from('employee_permissions')
-      .upsert({ user_id: userId, can_access_pdv: value }, { onConflict: 'user_id' });
+      .upsert(payload, { onConflict: 'user_id' });
+
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
       load();
     } else {
-      toast({ title: 'Permissão atualizada', description: value ? 'PDV liberado' : 'PDV bloqueado' });
+      const label = PERMISSIONS.find((p) => p.key === key)?.label ?? key;
+      toast({ title: 'Permissão atualizada', description: `${label}: ${value ? 'liberado' : 'bloqueado'}` });
     }
   };
 
@@ -103,6 +168,7 @@ export function EmployeesManagement() {
       setAdding(false);
       return;
     }
+
     const { error: roleErr } = await supabase
       .from('user_roles')
       .insert({ user_id: userId, role: 'employee' });
@@ -115,7 +181,7 @@ export function EmployeesManagement() {
 
     await supabase
       .from('employee_permissions')
-      .upsert({ user_id: userId, can_access_pdv: true }, { onConflict: 'user_id' });
+      .upsert({ user_id: userId, ...defaultPerms() }, { onConflict: 'user_id' });
 
     toast({ title: 'Funcionário adicionado!' });
     setNewEmail('');
@@ -139,9 +205,6 @@ export function EmployeesManagement() {
     load();
   };
 
-  const withPdv = employees.filter((e) => e.can_access_pdv).length;
-  const withoutPdv = employees.length - withPdv;
-
   const initials = (name: string | null) =>
     (name || '?')
       .split(' ')
@@ -151,16 +214,18 @@ export function EmployeesManagement() {
       .join('')
       .toUpperCase();
 
+  const countActive = (emp: EmployeeRow) =>
+    PERMISSIONS.filter((p) => emp[p.key]).length;
+
   return (
     <Card className="overflow-hidden border-0 shadow-sm">
       <PanelHeader
         icon={Users}
         title="Gestão de Funcionários"
-        description="Adicione funcionários por email e controle individualmente os acessos"
+        description="Adicione funcionários por email e controle individualmente cada área do painel"
         kpis={[
           { label: 'Total', value: employees.length },
-          { label: 'Com PDV', value: withPdv, tone: 'success' },
-          { label: 'Sem PDV', value: withoutPdv, tone: 'warning' },
+          { label: 'Áreas disponíveis', value: PERMISSIONS.length },
         ]}
       />
 
@@ -198,43 +263,26 @@ export function EmployeesManagement() {
             <p className="text-xs opacity-70 mt-1">Adicione o primeiro funcionário pelo email acima</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {employees.map((emp) => (
-              <Card
-                key={emp.user_id}
-                className={`border-l-4 transition-all hover:shadow-md ${
-                  emp.can_access_pdv ? 'border-l-emerald-500' : 'border-l-orange-500'
-                }`}
-              >
-                <div className="p-4 flex items-center gap-3">
-                  <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary font-bold">
-                    {initials(emp.full_name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{emp.full_name || 'Sem nome'}</p>
-                    <p className="text-xs text-muted-foreground font-mono truncate">
-                      {emp.user_id.slice(0, 8)}...
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={`mt-1.5 text-[10px] uppercase font-semibold ${
-                        emp.can_access_pdv
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                          : 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30'
-                      }`}
-                    >
-                      {emp.can_access_pdv ? (
-                        <><ShieldCheck className="w-3 h-3 mr-1" /> PDV liberado</>
-                      ) : (
-                        <><ShieldOff className="w-3 h-3 mr-1" /> PDV bloqueado</>
-                      )}
+          <div className="space-y-4">
+            {employees.map((emp) => {
+              const active = countActive(emp);
+              return (
+                <Card key={emp.user_id} className="border-l-4 border-l-primary/40">
+                  {/* Header */}
+                  <div className="p-4 flex items-center gap-3 border-b">
+                    <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary font-bold">
+                      {initials(emp.full_name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{emp.full_name || 'Sem nome'}</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        {emp.user_id.slice(0, 8)}...
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                      <ShieldCheck className="w-3 h-3 mr-1" />
+                      {active}/{PERMISSIONS.length} áreas
                     </Badge>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <Switch
-                      checked={emp.can_access_pdv}
-                      onCheckedChange={(v) => togglePdv(emp.user_id, v)}
-                    />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -244,9 +292,40 @@ export function EmployeesManagement() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-              </Card>
-            ))}
+
+                  {/* Permissões */}
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {PERMISSIONS.map(({ key, label, icon: Icon }) => {
+                      const enabled = emp[key];
+                      return (
+                        <div
+                          key={key}
+                          className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
+                            enabled ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-muted/30'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 shrink-0 rounded-md flex items-center justify-center ${
+                            enabled ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{label}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {enabled ? 'Liberado' : 'Bloqueado'}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={enabled}
+                            onCheckedChange={(v) => togglePermission(emp.user_id, key, v)}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </CardContent>

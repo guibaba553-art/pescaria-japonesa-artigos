@@ -5,6 +5,22 @@ import { useToast } from '@/hooks/use-toast';
 import { signUpSchema } from '@/utils/validation';
 import { VALIDATION_RULES } from '@/config/constants';
 
+export interface EmployeePermissions {
+  pdv: boolean;
+  catalog: boolean;
+  cash_register: boolean;
+  dashboard: boolean;
+  orders: boolean;
+  sales_analysis: boolean;
+  triagem: boolean;
+  fiscal: boolean;
+}
+
+const ADMIN_PERMS: EmployeePermissions = {
+  pdv: true, catalog: true, cash_register: true, dashboard: true,
+  orders: true, sales_analysis: true, triagem: true, fiscal: true,
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -16,6 +32,7 @@ interface AuthContextType {
   isEmployee: boolean;
   isAdmin: boolean;
   canAccessPdv: boolean;
+  permissions: EmployeePermissions;
   loading: boolean;
 }
 
@@ -27,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canAccessPdv, setCanAccessPdv] = useState(true);
+  const [permissions, setPermissions] = useState<EmployeePermissions>(ADMIN_PERMS);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -45,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsEmployee(false);
           setIsAdmin(false);
           setCanAccessPdv(true);
+          setPermissions(ADMIN_PERMS);
         }
       }
     );
@@ -98,15 +117,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Admins always have full access. For employees, check granular permissions.
       if (admin) {
         setCanAccessPdv(true);
+        setPermissions(ADMIN_PERMS);
       } else if (employee) {
         const { data: perm } = await supabase
           .from('employee_permissions')
-          .select('can_access_pdv')
+          .select('can_access_pdv, can_access_catalog, can_access_cash_register, can_access_dashboard, can_access_orders, can_access_sales_analysis, can_access_triagem, can_access_fiscal')
           .eq('user_id', userId)
           .maybeSingle();
-        setCanAccessPdv(perm?.can_access_pdv ?? true);
+        const p: EmployeePermissions = {
+          pdv: perm?.can_access_pdv ?? true,
+          catalog: perm?.can_access_catalog ?? true,
+          cash_register: perm?.can_access_cash_register ?? false,
+          dashboard: perm?.can_access_dashboard ?? false,
+          orders: perm?.can_access_orders ?? true,
+          sales_analysis: perm?.can_access_sales_analysis ?? false,
+          triagem: perm?.can_access_triagem ?? true,
+          fiscal: perm?.can_access_fiscal ?? false,
+        };
+        setCanAccessPdv(p.pdv);
+        setPermissions(p);
       } else {
         setCanAccessPdv(true);
+        setPermissions(ADMIN_PERMS);
       }
     }
   };
@@ -279,6 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isEmployee,
       isAdmin,
       canAccessPdv,
+      permissions,
       loading 
     }}>
       {children}

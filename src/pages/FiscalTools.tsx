@@ -51,7 +51,8 @@ interface FiscalKpis {
 
 export default function FiscalTools() {
   const navigate = useNavigate();
-  const { isAdmin, loading, signOut } = useAuth();
+  const { isAdmin, permissions, loading, signOut } = useAuth();
+  const canView = isAdmin || permissions.fiscal;
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [fiscalSettings, setFiscalSettings] = useState<any>(null);
@@ -60,10 +61,10 @@ export default function FiscalTools() {
   });
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [isAdmin, loading, navigate]);
+  }, [canView, loading, navigate]);
 
   useEffect(() => {
     loadProducts();
@@ -143,7 +144,7 @@ export default function FiscalTools() {
     );
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return null;
   }
 

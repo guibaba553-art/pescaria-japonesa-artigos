@@ -89,7 +89,8 @@ interface CartItem {
 
 export default function PDV() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || permissions.pdv;
   const { toast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -140,10 +141,10 @@ export default function PDV() {
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, canView, loading, navigate]);
 
   // Boot: carrega produtos imediatamente. Clientes e vendas salvas vão para o
   // tempo ocioso do browser — não bloqueiam a UI inicial do PDV.
@@ -872,7 +873,7 @@ export default function PDV() {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return null;
   }
 

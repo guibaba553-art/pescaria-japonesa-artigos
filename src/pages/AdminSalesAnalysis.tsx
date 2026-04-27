@@ -112,7 +112,8 @@ const GROUP_META: Record<StatusGroup, { label: string; color: string; rowBg: str
 
 export default function AdminSalesAnalysis() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || (isEmployee && permissions.sales_analysis);
   const [rows, setRows] = useState<UnifiedRow[]>([]);
   const [fetching, setFetching] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<UnifiedRow | null>(null);
@@ -135,17 +136,17 @@ export default function AdminSalesAnalysis() {
   const [autoLoaded, setAutoLoaded] = useState(false);
 
   useEffect(() => {
-    if (!loading && !isEmployee && !isAdmin) navigate('/auth');
-  }, [user, isEmployee, isAdmin, loading, navigate]);
+    if (!loading && !canView) navigate('/admin');
+  }, [user, canView, loading, navigate]);
 
   // Carrega automaticamente as vendas do mês atual ao entrar na tela
   useEffect(() => {
     if (loading || autoLoaded) return;
-    if (!isEmployee && !isAdmin) return;
+    if (!canView) return;
     setAutoLoaded(true);
     fetchAll(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, isEmployee, isAdmin]);
+  }, [loading, canView]);
 
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
@@ -674,7 +675,7 @@ export default function AdminSalesAnalysis() {
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="min-h-screen bg-muted/30">

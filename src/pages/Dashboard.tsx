@@ -61,8 +61,10 @@ type PeriodKey = keyof typeof PERIODS;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, permissions, loading } = useAuth();
   const { toast } = useToast();
+
+  const canView = isAdmin || permissions.dashboard;
 
   const [period, setPeriod] = useState<PeriodKey>('30');
 
@@ -85,12 +87,12 @@ export default function Dashboard() {
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!loading && !isAdmin) navigate('/auth');
-  }, [isAdmin, loading, navigate]);
+    if (!loading && !canView) navigate('/admin');
+  }, [canView, loading, navigate]);
 
   useEffect(() => {
-    if (isAdmin) loadDashboardData();
-  }, [isAdmin, period]);
+    if (canView) loadDashboardData();
+  }, [canView, period]);
 
   const calcChannelStats = (orders: any[], days: number): ChannelStats => {
     const now = new Date();
@@ -256,7 +258,7 @@ export default function Dashboard() {
   if (loading || loadingData) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'];
 

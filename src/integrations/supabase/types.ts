@@ -537,21 +537,42 @@ export type Database = {
       }
       employee_permissions: {
         Row: {
+          can_access_cash_register: boolean
+          can_access_catalog: boolean
+          can_access_dashboard: boolean
+          can_access_fiscal: boolean
+          can_access_orders: boolean
           can_access_pdv: boolean
+          can_access_sales_analysis: boolean
+          can_access_triagem: boolean
           created_at: string
           id: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          can_access_cash_register?: boolean
+          can_access_catalog?: boolean
+          can_access_dashboard?: boolean
+          can_access_fiscal?: boolean
+          can_access_orders?: boolean
           can_access_pdv?: boolean
+          can_access_sales_analysis?: boolean
+          can_access_triagem?: boolean
           created_at?: string
           id?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          can_access_cash_register?: boolean
+          can_access_catalog?: boolean
+          can_access_dashboard?: boolean
+          can_access_fiscal?: boolean
+          can_access_orders?: boolean
           can_access_pdv?: boolean
+          can_access_sales_analysis?: boolean
+          can_access_triagem?: boolean
           created_at?: string
           id?: string
           updated_at?: string

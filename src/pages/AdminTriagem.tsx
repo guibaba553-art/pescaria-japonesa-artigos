@@ -24,8 +24,9 @@ import { TriagemScanDialog, TriagemOrder } from '@/components/TriagemScanDialog'
 
 export default function AdminTriagem() {
   const navigate = useNavigate();
-  const { isEmployee, isAdmin, loading: authLoading } = useAuth();
+  const { isEmployee, isAdmin, permissions, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const canView = isAdmin || (isEmployee && permissions.triagem);
 
   const [orders, setOrders] = useState<TriagemOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +36,8 @@ export default function AdminTriagem() {
   const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isEmployee && !isAdmin) navigate('/auth');
-  }, [authLoading, isEmployee, isAdmin, navigate]);
+    if (!authLoading && !canView) navigate('/admin');
+  }, [authLoading, canView, navigate]);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -96,8 +97,8 @@ export default function AdminTriagem() {
   }, [toast]);
 
   useEffect(() => {
-    if (isEmployee || isAdmin) loadOrders();
-  }, [isEmployee, isAdmin, loadOrders]);
+    if (canView) loadOrders();
+  }, [canView, loadOrders]);
 
   const filterByQuery = (list: TriagemOrder[]) => {
     const q = search.trim().toLowerCase();
@@ -126,7 +127,7 @@ export default function AdminTriagem() {
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <AdminPageLayout

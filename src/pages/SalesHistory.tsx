@@ -23,8 +23,9 @@ import { Header } from '@/components/Header';
 
 export default function SalesHistory() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, permissions, loading } = useAuth();
   const { toast } = useToast();
+  const canView = isAdmin || permissions.sales_analysis;
   
   const [orders, setOrders] = useState<any[]>([]);
   const [savedSales, setSavedSales] = useState<any[]>([]);
@@ -32,10 +33,10 @@ export default function SalesHistory() {
   const [loadingSaved, setLoadingSaved] = useState(true);
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, canView, loading, navigate]);
 
   useEffect(() => {
     loadOrders();
@@ -106,7 +107,7 @@ export default function SalesHistory() {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return null;
   }
 

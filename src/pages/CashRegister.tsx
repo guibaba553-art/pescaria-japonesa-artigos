@@ -55,8 +55,10 @@ const formatDuration = (start: string) => {
 
 export default function CashRegister() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, permissions, loading } = useAuth();
   const { toast } = useToast();
+
+  const canView = isAdmin || permissions.cash_register;
 
   const [currentRegister, setCurrentRegister] = useState<CashRegister | null>(null);
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -75,15 +77,15 @@ export default function CashRegister() {
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
 
   useEffect(() => {
-    if (!loading && !isAdmin) navigate('/auth');
-  }, [user, isAdmin, loading, navigate]);
+    if (!loading && !canView) navigate('/admin');
+  }, [user, canView, loading, navigate]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canView) {
       loadCurrentRegister();
       loadHistory();
     }
-  }, [isAdmin]);
+  }, [canView]);
 
   const loadCurrentRegister = async () => {
     try {
@@ -290,7 +292,7 @@ export default function CashRegister() {
   const avgTicket = salesCount > 0 ? totalSales / salesCount : 0;
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="min-h-screen bg-muted/30">
