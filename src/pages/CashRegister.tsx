@@ -292,7 +292,7 @@ export default function CashRegister() {
   const avgTicket = salesCount > 0 ? totalSales / salesCount : 0;
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="min-h-screen bg-muted/30">
