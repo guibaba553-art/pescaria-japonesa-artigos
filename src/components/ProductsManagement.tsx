@@ -21,6 +21,8 @@ import { validateProductForm } from '@/utils/productValidation';
 import { useSalesVelocity } from '@/hooks/useSalesVelocity';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 
 interface Product {
   id: string;
