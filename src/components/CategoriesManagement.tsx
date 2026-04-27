@@ -44,6 +44,7 @@ export function CategoriesManagement() {
   const [displayOrder, setDisplayOrder] = useState('0');
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string } | null>(null);
 
   const openNew = (presetParentId?: string) => {
     setEditing(null);
