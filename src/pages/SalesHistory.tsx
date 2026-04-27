@@ -107,7 +107,7 @@ export default function SalesHistory() {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return null;
   }
 
