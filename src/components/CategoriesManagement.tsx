@@ -82,8 +82,16 @@ export function CategoriesManagement() {
 
     setSaving(true);
     try {
+      // Para subcategorias, prefixa o slug com o da primária pai pra evitar
+      // conflitos de unique entre subs de primárias diferentes (ex: "Lanterna"
+      // em "Acessórios" e em "Iluminação").
+      const parent = parentId ? categories.find((c) => c.id === parentId) : null;
+      const baseSlug = slugify(name);
+      const finalSlug =
+        editing?.is_primary || !parent ? baseSlug : `${parent.slug}-${baseSlug}`;
+
       const payload: any = {
-        slug: slugify(name),
+        slug: finalSlug,
         description: description.trim() || null,
         icon: icon.trim() || null,
         display_order: parseInt(displayOrder) || 0,
