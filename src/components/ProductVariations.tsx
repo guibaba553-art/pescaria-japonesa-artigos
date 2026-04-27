@@ -61,13 +61,17 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       stock,
       description: newVariation.description.trim() || null,
       image_url: newVariation.image_url.trim() || null,
-      sku: newVariation.sku.trim() || null
+      sku: newVariation.sku.trim() || null,
+      weight_grams: newVariation.weight_grams ? parseInt(newVariation.weight_grams) : null,
+      length_cm: newVariation.length_cm ? parseFloat(newVariation.length_cm) : null,
+      width_cm: newVariation.width_cm ? parseFloat(newVariation.width_cm) : null,
+      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null
     };
 
     onVariationsChange([...variations, variation]);
     
     // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "" });
+    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
