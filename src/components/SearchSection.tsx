@@ -11,6 +11,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import { PUBLIC_PRODUCT_COLUMNS } from "@/utils/productColumns";
 
 export function SearchSection() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export function SearchSection() {
 
     let query = supabase
       .from('products')
-      .select('*')
+      .select(PUBLIC_PRODUCT_COLUMNS)
       .gt('stock', 0);
 
     if (searchQuery.trim()) {

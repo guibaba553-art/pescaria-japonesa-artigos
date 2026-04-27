@@ -13,6 +13,7 @@ import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
+import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -64,9 +65,9 @@ export default function ProductDetails() {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PUBLIC_PRODUCT_COLUMNS)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       toast({
