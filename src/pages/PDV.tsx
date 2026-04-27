@@ -89,7 +89,8 @@ interface CartItem {
 
 export default function PDV() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || permissions.pdv;
   const { toast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
