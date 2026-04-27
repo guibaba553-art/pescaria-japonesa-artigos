@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isEmployee, setIsEmployee] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canAccessPdv, setCanAccessPdv] = useState(true);
+  const [permissions, setPermissions] = useState<EmployeePermissions>(ADMIN_PERMS);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
