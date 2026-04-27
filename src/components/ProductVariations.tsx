@@ -274,6 +274,72 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         )}
                       </div>
                     </div>
+                    {/* Peso e Dimensões da variação (para frete) */}
+                    <div className="border-t border-border/50 pt-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        📦 Peso e Dimensões (usado no cálculo de frete)
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <Label htmlFor={`weight-${variation.id}`} className="text-xs">
+                            Peso (g)
+                          </Label>
+                          <Input
+                            id={`weight-${variation.id}`}
+                            type="number"
+                            min="0"
+                            value={variation.weight_grams ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'weight_grams', e.target.value)}
+                            placeholder="500"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`length-${variation.id}`} className="text-xs">
+                            Comprimento (cm)
+                          </Label>
+                          <Input
+                            id={`length-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.length_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'length_cm', e.target.value)}
+                            placeholder="30"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`width-${variation.id}`} className="text-xs">
+                            Largura (cm)
+                          </Label>
+                          <Input
+                            id={`width-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.width_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'width_cm', e.target.value)}
+                            placeholder="20"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`height-${variation.id}`} className="text-xs">
+                            Altura (cm)
+                          </Label>
+                          <Input
+                            id={`height-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.height_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'height_cm', e.target.value)}
+                            placeholder="20"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        💡 Se vazio, usa o peso/dimensões do produto principal
+                      </p>
+                    </div>
                   </div>
                   <Button
                     type="button"
