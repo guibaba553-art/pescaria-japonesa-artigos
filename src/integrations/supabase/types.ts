@@ -1801,17 +1801,23 @@ export type Database = {
         Row: {
           brand: string | null
           category: string | null
+          cest: string | null
+          cfop: string | null
           created_at: string | null
+          csosn: string | null
           description: string | null
           featured: boolean | null
           height_cm: number | null
           id: string | null
           image_url: string | null
           images: string[] | null
+          include_in_nfe: boolean | null
           length_cm: number | null
           minimum_quantity: number | null
           name: string | null
+          ncm: string | null
           on_sale: boolean | null
+          origem: string | null
           pound_test: string | null
           price: number | null
           rating: number | null
@@ -1823,6 +1829,7 @@ export type Database = {
           sold_by_weight: boolean | null
           stock: number | null
           subcategory: string | null
+          unidade_comercial: string | null
           updated_at: string | null
           weight_grams: number | null
           width_cm: number | null
@@ -1830,17 +1837,23 @@ export type Database = {
         Insert: {
           brand?: string | null
           category?: string | null
+          cest?: string | null
+          cfop?: string | null
           created_at?: string | null
+          csosn?: string | null
           description?: string | null
           featured?: boolean | null
           height_cm?: number | null
           id?: string | null
           image_url?: string | null
           images?: string[] | null
+          include_in_nfe?: boolean | null
           length_cm?: number | null
           minimum_quantity?: number | null
           name?: string | null
+          ncm?: string | null
           on_sale?: boolean | null
+          origem?: string | null
           pound_test?: string | null
           price?: number | null
           rating?: number | null
@@ -1852,6 +1865,7 @@ export type Database = {
           sold_by_weight?: boolean | null
           stock?: number | null
           subcategory?: string | null
+          unidade_comercial?: string | null
           updated_at?: string | null
           weight_grams?: number | null
           width_cm?: number | null
@@ -1859,17 +1873,23 @@ export type Database = {
         Update: {
           brand?: string | null
           category?: string | null
+          cest?: string | null
+          cfop?: string | null
           created_at?: string | null
+          csosn?: string | null
           description?: string | null
           featured?: boolean | null
           height_cm?: number | null
           id?: string | null
           image_url?: string | null
           images?: string[] | null
+          include_in_nfe?: boolean | null
           length_cm?: number | null
           minimum_quantity?: number | null
           name?: string | null
+          ncm?: string | null
           on_sale?: boolean | null
+          origem?: string | null
           pound_test?: string | null
           price?: number | null
           rating?: number | null
@@ -1881,6 +1901,7 @@ export type Database = {
           sold_by_weight?: boolean | null
           stock?: number | null
           subcategory?: string | null
+          unidade_comercial?: string | null
           updated_at?: string | null
           weight_grams?: number | null
           width_cm?: number | null
