@@ -85,11 +85,20 @@ export function ProductCard({
       {/* Image */}
       <div className="relative overflow-hidden aspect-square bg-muted/40">
         <img
-          src={product.image_url || 'https://placehold.co/600x600/f5f5f5/cccccc?text=Sem+imagem'}
-          alt={product.name}
+          src={duckRevealed ? duckEasterEgg : (product.image_url || 'https://placehold.co/600x600/f5f5f5/cccccc?text=Sem+imagem')}
+          alt={duckRevealed ? '🦆 Você encontrou o pato!' : product.name}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
+
+        {/* 🦆 Easter egg badge — chance de 1 em 10^17 */}
+        {duckSpotted && !duckRevealed && (
+          <div className="absolute bottom-2 left-2 right-2 z-10 pointer-events-none">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-foreground/85 backdrop-blur-sm text-background text-[10px] font-semibold italic shadow-md">
+              🦆 um pato está lhe observando
+            </span>
+          </div>
+        )}
 
         {/* Discount badge */}
         {isOnSale && discount > 0 && (
