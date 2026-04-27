@@ -33,7 +33,15 @@ export function ProductCard({
 }: ProductCardProps) {
   const navigate = useNavigate();
 
+  // 🦆 Easter egg ultra raro (1 em 10^17). Estabilizado por render do componente.
+  const duckSpotted = useMemo(() => Math.random() < 1e-17, []);
+  const [duckRevealed, setDuckRevealed] = useState(false);
+
   const handleCardClick = () => {
+    if (duckSpotted && !duckRevealed) {
+      setDuckRevealed(true);
+      return;
+    }
     navigate(`/produto/${product.id}`);
   };
 
