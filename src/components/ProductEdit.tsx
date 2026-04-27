@@ -75,6 +75,49 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     saveVariations 
   } = useProductVariations();
 
+  // Auto-save de rascunho durante a edição. Imagens não são persistidas.
+  const draftData = {
+    name, description, shortDescription, price, category, subcategory,
+    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    pricePdv, weightGrams, lengthCm, widthCm, heightCm,
+    featured, onSale, salePrice, saleEndsAt,
+    variations,
+  };
+  const { hasDraft, draftSavedAt, getDraft, clearDraft } = useFormDraft(
+    `edit-product:${product.id}`,
+    draftData,
+    { enabled: open }
+  );
+
+  const restoreDraft = () => {
+    const d = getDraft();
+    if (!d) return;
+    setName(d.name ?? product.name);
+    setDescription(d.description ?? product.description);
+    setShortDescription(d.shortDescription ?? '');
+    setPrice(d.price ?? '');
+    setCategory(d.category ?? product.category);
+    setSubcategory(d.subcategory ?? '');
+    setStock(d.stock ?? '');
+    setSku(d.sku ?? '');
+    setMinimumQuantity(d.minimumQuantity ?? '1');
+    setSoldByWeight(!!d.soldByWeight);
+    setBrand(d.brand ?? '');
+    setPoundTest(d.poundTest ?? '');
+    setSize(d.size ?? '');
+    setPricePdv(d.pricePdv ?? '');
+    setWeightGrams(d.weightGrams ?? '');
+    setLengthCm(d.lengthCm ?? '');
+    setWidthCm(d.widthCm ?? '');
+    setHeightCm(d.heightCm ?? '');
+    setFeatured(!!d.featured);
+    setOnSale(!!d.onSale);
+    setSalePrice(d.salePrice ?? '');
+    setSaleEndsAt(d.saleEndsAt ?? '');
+    if (Array.isArray(d.variations)) setVariations(d.variations);
+    toast({ title: 'Rascunho restaurado' });
+  };
+
   // Carregar variações quando o dialog abre
   useEffect(() => {
     if (open && product.id) {
