@@ -243,6 +243,7 @@ export function ProductsManagement() {
 
       toast({ title: 'Produto adicionado!' });
       resetForm();
+      clearDraft();
       setShowForm(false);
       loadProducts();
     } catch (error: any) {
