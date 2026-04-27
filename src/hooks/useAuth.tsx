@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [canAccessPdv, setCanAccessPdv] = useState(true);
   const [permissions, setPermissions] = useState<EmployeePermissions>(ADMIN_PERMS);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const loading = authLoading || roleLoading;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          setRoleLoading(true);
           setTimeout(() => {
             checkUserRole(session.user.id);
             checkProfileCompleteness(session.user.id);
@@ -64,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(false);
           setCanAccessPdv(true);
           setPermissions(ADMIN_PERMS);
+          setRoleLoading(false);
         }
       }
     );
@@ -73,10 +77,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        setRoleLoading(true);
         checkUserRole(session.user.id);
         checkProfileCompleteness(session.user.id);
+      } else {
+        setRoleLoading(false);
       }
-      setLoading(false);
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
