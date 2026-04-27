@@ -405,6 +405,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       });
 
       console.log('=== ATUALIZAÇÃO CONCLUÍDA ===');
+      clearDraft();
       setOpen(false);
       onUpdate();
       
