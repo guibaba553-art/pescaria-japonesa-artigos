@@ -441,6 +441,13 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 pb-4">
+            {hasDraft && (
+              <DraftRestoreBanner
+                savedAt={draftSavedAt}
+                onRestore={restoreDraft}
+                onDiscard={() => { clearDraft(); }}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Nome do Produto</Label>
