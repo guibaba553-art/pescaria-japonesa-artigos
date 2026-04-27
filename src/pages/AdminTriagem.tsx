@@ -127,7 +127,7 @@ export default function AdminTriagem() {
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <AdminPageLayout
