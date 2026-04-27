@@ -78,6 +78,8 @@ export function useFormDraft<T extends Record<string, any>>(
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       delete parsed.__savedAt;
+      // Usuário decidiu restaurar — liberar auto-save
+      pendingDecisionRef.current = false;
       return parsed as T;
     } catch {
       return null;
@@ -91,6 +93,8 @@ export function useFormDraft<T extends Record<string, any>>(
     setHasDraft(false);
     setDraftSavedAt(null);
     dirtyRef.current = false;
+    // Decisão tomada — auto-save volta a operar
+    pendingDecisionRef.current = false;
   }, [storageKey]);
 
   return { hasDraft, draftSavedAt, getDraft, clearDraft };
