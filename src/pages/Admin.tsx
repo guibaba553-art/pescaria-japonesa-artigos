@@ -19,7 +19,7 @@ interface ProductLite {
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
   const [products, setProducts] = useState<ProductLite[]>([]);
 
   useEffect(() => {
