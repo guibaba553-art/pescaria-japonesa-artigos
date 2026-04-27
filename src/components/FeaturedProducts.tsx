@@ -8,6 +8,7 @@ import { useProductQuantity } from "@/hooks/useProductQuantity";
 import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { ArrowUpRight, Loader2 } from "lucide-react";
+import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
 
 const FeaturedProducts = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const FeaturedProducts = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select(`*, variations:product_variations(*)`)
+      .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
       .gt('stock', 0)
       .eq('featured', true)
       .order('created_at', { ascending: false })
@@ -34,7 +35,7 @@ const FeaturedProducts = () => {
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
-      setProducts(data || []);
+      setProducts(((data as any) || []) as Product[]);
     }
     setLoading(false);
   };

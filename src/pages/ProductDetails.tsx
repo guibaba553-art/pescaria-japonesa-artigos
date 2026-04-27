@@ -13,6 +13,7 @@ import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
+import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -64,9 +65,9 @@ export default function ProductDetails() {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PUBLIC_PRODUCT_COLUMNS)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       toast({
@@ -76,11 +77,12 @@ export default function ProductDetails() {
       });
       navigate('/produtos');
     } else {
-      setProduct(data);
-      const productImages = (data.images && data.images.length > 0) 
-        ? data.images 
-        : (data.image_url ? [data.image_url] : []);
-      
+      const prod = data as unknown as Product;
+      setProduct(prod);
+      const productImages = (prod.images && prod.images.length > 0)
+        ? prod.images
+        : (prod.image_url ? [prod.image_url] : []);
+
       setDisplayImages(productImages);
       setSelectedImage(productImages[0] || '');
 
