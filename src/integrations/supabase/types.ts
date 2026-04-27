@@ -234,13 +234,6 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "chat_messages_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       company_fiscal_data: {
@@ -903,13 +896,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "order_items_variation_id_fkey"
             columns: ["variation_id"]
             isOneToOne: false
@@ -1089,13 +1075,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "product_label_pending_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "product_label_pending_variation_id_fkey"
             columns: ["variation_id"]
             isOneToOne: false
@@ -1159,13 +1138,6 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_variations_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1390,13 +1362,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reviews_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1565,13 +1530,6 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_movements_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
           {
@@ -1797,117 +1755,7 @@ export type Database = {
       }
     }
     Views: {
-      products_public: {
-        Row: {
-          brand: string | null
-          category: string | null
-          cest: string | null
-          cfop: string | null
-          created_at: string | null
-          csosn: string | null
-          description: string | null
-          featured: boolean | null
-          height_cm: number | null
-          id: string | null
-          image_url: string | null
-          images: string[] | null
-          include_in_nfe: boolean | null
-          length_cm: number | null
-          minimum_quantity: number | null
-          name: string | null
-          ncm: string | null
-          on_sale: boolean | null
-          origem: string | null
-          pound_test: string | null
-          price: number | null
-          rating: number | null
-          sale_ends_at: string | null
-          sale_price: number | null
-          short_description: string | null
-          size: string | null
-          sku: string | null
-          sold_by_weight: boolean | null
-          stock: number | null
-          subcategory: string | null
-          unidade_comercial: string | null
-          updated_at: string | null
-          weight_grams: number | null
-          width_cm: number | null
-        }
-        Insert: {
-          brand?: string | null
-          category?: string | null
-          cest?: string | null
-          cfop?: string | null
-          created_at?: string | null
-          csosn?: string | null
-          description?: string | null
-          featured?: boolean | null
-          height_cm?: number | null
-          id?: string | null
-          image_url?: string | null
-          images?: string[] | null
-          include_in_nfe?: boolean | null
-          length_cm?: number | null
-          minimum_quantity?: number | null
-          name?: string | null
-          ncm?: string | null
-          on_sale?: boolean | null
-          origem?: string | null
-          pound_test?: string | null
-          price?: number | null
-          rating?: number | null
-          sale_ends_at?: string | null
-          sale_price?: number | null
-          short_description?: string | null
-          size?: string | null
-          sku?: string | null
-          sold_by_weight?: boolean | null
-          stock?: number | null
-          subcategory?: string | null
-          unidade_comercial?: string | null
-          updated_at?: string | null
-          weight_grams?: number | null
-          width_cm?: number | null
-        }
-        Update: {
-          brand?: string | null
-          category?: string | null
-          cest?: string | null
-          cfop?: string | null
-          created_at?: string | null
-          csosn?: string | null
-          description?: string | null
-          featured?: boolean | null
-          height_cm?: number | null
-          id?: string | null
-          image_url?: string | null
-          images?: string[] | null
-          include_in_nfe?: boolean | null
-          length_cm?: number | null
-          minimum_quantity?: number | null
-          name?: string | null
-          ncm?: string | null
-          on_sale?: boolean | null
-          origem?: string | null
-          pound_test?: string | null
-          price?: number | null
-          rating?: number | null
-          sale_ends_at?: string | null
-          sale_price?: number | null
-          short_description?: string | null
-          size?: string | null
-          sku?: string | null
-          sold_by_weight?: boolean | null
-          stock?: number | null
-          subcategory?: string | null
-          unidade_comercial?: string | null
-          updated_at?: string | null
-          weight_grams?: number | null
-          width_cm?: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       add_label_pending: {
@@ -1941,6 +1789,114 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_product_admin: {
+        Args: { p_id: string }
+        Returns: {
+          brand: string | null
+          category: string
+          cest: string | null
+          cfop: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          csosn: string | null
+          description: string
+          featured: boolean
+          height_cm: number | null
+          id: string
+          image_url: string | null
+          images: string[] | null
+          include_in_nfe: boolean
+          length_cm: number | null
+          min_stock: number
+          minimum_quantity: number
+          name: string
+          ncm: string | null
+          on_sale: boolean
+          origem: string | null
+          pound_test: string | null
+          price: number
+          price_cash_percent: number
+          price_credit_percent: number
+          price_debit_percent: number
+          price_pdv: number | null
+          price_pix_percent: number
+          rating: number | null
+          sale_ends_at: string | null
+          sale_price: number | null
+          short_description: string | null
+          size: string | null
+          sku: string | null
+          sold_by_weight: boolean
+          stock: number
+          subcategory: string | null
+          supplier_id: string | null
+          unidade_comercial: string | null
+          updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_products_admin: {
+        Args: never
+        Returns: {
+          brand: string | null
+          category: string
+          cest: string | null
+          cfop: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          csosn: string | null
+          description: string
+          featured: boolean
+          height_cm: number | null
+          id: string
+          image_url: string | null
+          images: string[] | null
+          include_in_nfe: boolean
+          length_cm: number | null
+          min_stock: number
+          minimum_quantity: number
+          name: string
+          ncm: string | null
+          on_sale: boolean
+          origem: string | null
+          pound_test: string | null
+          price: number
+          price_cash_percent: number
+          price_credit_percent: number
+          price_debit_percent: number
+          price_pdv: number | null
+          price_pix_percent: number
+          rating: number | null
+          sale_ends_at: string | null
+          sale_price: number | null
+          short_description: string | null
+          size: string | null
+          sku: string | null
+          sold_by_weight: boolean
+          stock: number
+          subcategory: string | null
+          supplier_id: string | null
+          unidade_comercial: string | null
+          updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       has_role: {
