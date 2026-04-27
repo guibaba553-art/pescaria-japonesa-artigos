@@ -92,7 +92,11 @@ export function useProductVariations(productId?: string) {
             stock: Number(v.stock),
             description: v.description?.trim() || null,
             sku: v.sku?.trim() || null,
-            image_url: v.image_url || null  // ⚠️ IMPORTANTE: incluir image_url
+            image_url: v.image_url || null,
+            weight_grams: v.weight_grams != null ? Number(v.weight_grams) : null,
+            length_cm: v.length_cm != null ? Number(v.length_cm) : null,
+            width_cm: v.width_cm != null ? Number(v.width_cm) : null,
+            height_cm: v.height_cm != null ? Number(v.height_cm) : null
           };
         });
 
