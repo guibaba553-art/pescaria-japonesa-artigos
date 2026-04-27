@@ -35,7 +35,7 @@ const FeaturedProducts = () => {
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
-      setProducts(data || []);
+      setProducts(((data as any) || []) as Product[]);
     }
     setLoading(false);
   };
