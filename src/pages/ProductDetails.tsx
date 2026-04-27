@@ -478,7 +478,6 @@ export default function ProductDetails() {
                 <div className="space-y-2 pt-2">
                   {(() => {
                     const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
-                    const viewers = viewersNow(product.id);
                     return (
                       <div className="flex items-center gap-3 text-xs flex-wrap">
                         {sales !== null && (
@@ -492,7 +491,7 @@ export default function ProductDetails() {
                             <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
                             <span className="relative w-2 h-2 rounded-full bg-green-500" />
                           </span>
-                          {viewers} pessoas vendo agora
+                          Pronta entrega
                         </span>
                       </div>
                     );
