@@ -77,23 +77,31 @@ serve(async (req) => {
     // via Focus NFe (token configurado em segredo). O switch NFe.io é apenas
     // para o provedor antigo e não bloqueia a emissão.
 
-    // Buscar dados do pedido
+    // Buscar dados do pedido (sem join em profiles — não há FK declarada)
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
-        order_items (*, products (name, description, include_in_nfe)),
-        profiles!inner (full_name, cpf)
+        order_items (*, products (name, description, include_in_nfe))
       `)
       .eq('id', orderId)
-      .single();
+      .maybeSingle();
 
     if (orderError || !order) {
+      console.error('Pedido não encontrado:', { orderId, orderError });
       return new Response(JSON.stringify({ error: 'Pedido não encontrado' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Buscar profile separadamente
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, cpf')
+      .eq('id', order.user_id)
+      .maybeSingle();
+    (order as any).profiles = profile;
 
     // ----- VALIDAÇÃO FISCAL: bloquear emissão se faltarem campos obrigatórios -----
     const { data: missingFiscal, error: validError } = await supabase
