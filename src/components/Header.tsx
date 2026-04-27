@@ -6,7 +6,7 @@ import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 interface Suggestion {
@@ -227,11 +227,30 @@ export function Header() {
               {(isEmployee || isAdmin) && (
                 <>
                   {(isAdmin || (isEmployee && canAccessPdv)) && (
-                    <Button size="sm" onClick={() => navigate('/pdv')} className="rounded-full hidden sm:inline-flex">
-                      PDV
-                    </Button>
+                    <>
+                      <Button
+                        size="icon"
+                        onClick={() => navigate('/pdv')}
+                        className="rounded-full sm:hidden"
+                        aria-label="Abrir PDV"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" onClick={() => navigate('/pdv')} className="rounded-full hidden sm:inline-flex">
+                        PDV
+                      </Button>
+                    </>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="rounded-full hidden lg:inline-flex">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate('/admin')}
+                    className="rounded-full sm:hidden"
+                    aria-label="Abrir painel administrativo"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="rounded-full hidden sm:inline-flex">
                     Admin
                   </Button>
                 </>
