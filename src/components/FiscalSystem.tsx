@@ -7,7 +7,8 @@ import { NFESettings } from './NFESettings';
 import { TGASettings } from './TGASettings';
 import { FocusNFeSettings } from './FocusNFeSettings';
 import { XMLExporter } from './XMLExporter';
-import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
+import { CategoryFiscalDefaultsManager } from './CategoryFiscalDefaultsManager';
+import { FileText, Settings, Download, TrendingUp, Tag } from 'lucide-react';
 
 interface FiscalSettings {
   id: string;
@@ -89,10 +90,14 @@ export function FiscalSystem() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="focus" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="focus" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Focus NFe
+              </TabsTrigger>
+              <TabsTrigger value="ncm" className="flex items-center gap-2">
+                <Tag className="w-4 h-4" />
+                NCM/CFOP
               </TabsTrigger>
               <TabsTrigger value="settings-nfe" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -110,6 +115,10 @@ export function FiscalSystem() {
 
             <TabsContent value="focus" className="space-y-4">
               <FocusNFeSettings />
+            </TabsContent>
+
+            <TabsContent value="ncm" className="space-y-4">
+              <CategoryFiscalDefaultsManager />
             </TabsContent>
 
             <TabsContent value="settings-nfe" className="space-y-4">
