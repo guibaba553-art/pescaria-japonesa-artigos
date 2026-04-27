@@ -95,6 +95,35 @@ serve(async (req) => {
       });
     }
 
+    // ----- VALIDAÇÃO FISCAL: bloquear emissão se faltarem campos obrigatórios -----
+    const { data: missingFiscal, error: validError } = await supabase
+      .rpc('validate_order_fiscal', { p_order_id: orderId });
+
+    if (validError) {
+      console.error('Erro ao validar campos fiscais:', validError);
+      throw validError;
+    }
+
+    if (missingFiscal && missingFiscal.length > 0) {
+      const lista = missingFiscal
+        .map((p: any) => `• ${p.product_name}: faltam ${p.missing_fields.join(', ')}`)
+        .join('\n');
+      return new Response(
+        JSON.stringify({
+          error: 'Produtos com campos fiscais incompletos. Complete antes de emitir a NF-e:\n' + lista,
+          missing: missingFiscal,
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ----- CFOP AUTOMÁTICO por UF de destino -----
+    const { data: ufDestino } = await supabase
+      .rpc('extract_uf_from_address', { p_address: order.shipping_address });
+    const { data: cfopAuto } = await supabase
+      .rpc('get_cfop_by_uf', { p_uf_destino: ufDestino, p_has_st: false });
+    console.log(`UF destino: ${ufDestino} → CFOP automático: ${cfopAuto}`);
+
     // Registrar emissão como pendente
     const { data: emission, error: emissionError } = await supabase
       .from('nfe_emissions')
