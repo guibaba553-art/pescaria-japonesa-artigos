@@ -42,14 +42,15 @@ const TabFallback = () => (
 
 export default function AdminCatalog() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || (isEmployee && permissions.catalog);
   const [draftCount, setDraftCount] = useState(0);
 
   useEffect(() => {
-    if (!loading && !isEmployee && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [user, isEmployee, isAdmin, loading, navigate]);
+  }, [user, canView, loading, navigate]);
 
   const loadDraftCount = async () => {
     const { count } = await supabase
@@ -64,7 +65,7 @@ export default function AdminCatalog() {
   }, []);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <AdminPageLayout
