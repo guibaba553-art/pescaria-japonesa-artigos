@@ -51,38 +51,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setRoleLoading(true);
-          setTimeout(() => {
-            checkUserRole(session.user.id);
-            checkProfileCompleteness(session.user.id);
-          }, 0);
-        } else {
-          setIsEmployee(false);
-          setIsAdmin(false);
-          setCanAccessPdv(true);
-          setPermissions(ADMIN_PERMS);
-          setRoleLoading(false);
-        }
+    // Guarda o último user.id processado para evitar re-checar role/profile
+    // toda vez que a aba volta a ficar visível (TOKEN_REFRESHED, USER_UPDATED, etc.)
+    let lastUserId: string | null = null;
+
+    const handleSession = (session: Session | null, isInitial = false) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      const newUserId = session?.user?.id ?? null;
+
+      // Se o usuário não mudou, não re-executa checagens (evita "reload" ao
+      // minimizar/voltar para a aba, que dispara TOKEN_REFRESHED).
+      if (!isInitial && newUserId === lastUserId) {
+        return;
       }
+      lastUserId = newUserId;
+
+      if (session?.user) {
+        setRoleLoading(true);
+        setTimeout(() => {
+          checkUserRole(session.user.id);
+          checkProfileCompleteness(session.user.id);
+        }, 0);
+      } else {
+        setIsEmployee(false);
+        setIsAdmin(false);
+        setCanAccessPdv(true);
+        setPermissions(ADMIN_PERMS);
+        setRoleLoading(false);
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => handleSession(session)
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setRoleLoading(true);
-        checkUserRole(session.user.id);
-        checkProfileCompleteness(session.user.id);
-      } else {
-        setRoleLoading(false);
-      }
+      handleSession(session, true);
       setAuthLoading(false);
     });
 
