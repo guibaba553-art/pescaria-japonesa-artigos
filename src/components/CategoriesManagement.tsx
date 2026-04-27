@@ -111,9 +111,16 @@ export function CategoriesManagement() {
       setOpen(false);
       reload();
     } catch (error: any) {
+      const isDuplicate =
+        error?.code === '23505' ||
+        /duplicate key|already exists|categories_name_key|categories_slug_key/i.test(
+          error?.message || ''
+        );
       toast({
-        title: 'Erro ao salvar',
-        description: error.message,
+        title: isDuplicate ? 'Nome já existe' : 'Erro ao salvar',
+        description: isDuplicate
+          ? `Já existe uma categoria chamada "${name.trim()}". Escolha outro nome.`
+          : error.message,
         variant: 'destructive',
       });
     } finally {
