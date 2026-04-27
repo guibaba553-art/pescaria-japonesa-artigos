@@ -167,7 +167,7 @@ serve(async (req) => {
     console.log('Frete:', totalShipping);
     console.log('Total do pedido:', order.total_amount);
     console.log('Total na NF-e:', nfeItemsTotal + totalShipping);
-    console.log('Dados do pedido:', order);
+    console.log(`CFOP aplicado em todos os itens: ${cfopAuto} (UF destino ${ufDestino || 'desconhecida'})`);
 
     // Simular sucesso (remover em produção)
     const mockNFE = {
