@@ -22,9 +22,15 @@ export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryParam = searchParams.get('category') || '';
   const subcategoryParam = searchParams.get('subcategory') || '';
+  const searchParam = searchParams.get('search') || '';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParam);
+
+  // Sincroniza o input com o parâmetro de URL quando muda (ex: nova busca pelo header)
+  useEffect(() => {
+    setSearchQuery(searchParam);
+  }, [searchParam]);
   const { primaries, getSubcategoriesOf } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
