@@ -70,12 +70,12 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    if (settingsError || !settings?.nfe_enabled) {
-      return new Response(
-        JSON.stringify({ error: 'Sistema de NF-e não está habilitado' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (settingsError) {
+      console.error('Erro ao carregar fiscal_settings:', settingsError);
     }
+    // Observação: não exigimos mais `nfe_enabled` aqui — a emissão real é feita
+    // via Focus NFe (token configurado em segredo). O switch NFe.io é apenas
+    // para o provedor antigo e não bloqueia a emissão.
 
     // Buscar dados do pedido
     const { data: order, error: orderError } = await supabase
