@@ -141,10 +141,10 @@ export default function PDV() {
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, canView, loading, navigate]);
 
   // Boot: carrega produtos imediatamente. Clientes e vendas salvas vão para o
   // tempo ocioso do browser — não bloqueiam a UI inicial do PDV.
