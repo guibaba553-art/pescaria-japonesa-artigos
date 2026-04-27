@@ -48,10 +48,10 @@ export default function Admin() {
   const outOfStock = visible.filter((p) => p.stock === 0).length;
 
   const quickAccess = [
-    { icon: TrendingUp, title: 'Dashboard', desc: 'Relatórios e análises', path: '/dashboard' },
-    { icon: ShoppingCart, title: 'PDV', desc: 'Vendas presenciais', path: '/pdv' },
-    { icon: DollarSign, title: 'Caixa', desc: 'Abertura e fechamento', path: '/fechamento-caixa' },
-    { icon: Calculator, title: 'Fiscal', desc: 'IA, Excel e impostos', path: '/ferramentas-fiscais' },
+    { icon: TrendingUp, title: 'Dashboard', desc: 'Relatórios e análises', path: '/dashboard', perm: 'dashboard' as const },
+    { icon: ShoppingCart, title: 'PDV', desc: 'Vendas presenciais', path: '/pdv', perm: 'pdv' as const },
+    { icon: DollarSign, title: 'Caixa', desc: 'Abertura e fechamento', path: '/fechamento-caixa', perm: 'cash_register' as const },
+    { icon: Calculator, title: 'Fiscal', desc: 'IA, Excel e impostos', path: '/ferramentas-fiscais', perm: 'fiscal' as const },
   ];
 
   const sections: Array<{
@@ -62,6 +62,7 @@ export default function Admin() {
     badge?: number;
     stats?: string;
     adminOnly?: boolean;
+    perm?: keyof typeof permissions;
   }> = [
     {
       title: 'Catálogo',
@@ -70,24 +71,28 @@ export default function Admin() {
       path: '/admin/catalogo',
       badge: draftCount,
       stats: `${visible.length} produtos · ${outOfStock} esgotados`,
+      perm: 'catalog',
     },
     {
       title: 'Vendas',
       desc: 'Vendas por período (calendário) com somatória',
       icon: CalendarRange,
       path: '/admin/analise',
+      perm: 'sales_analysis',
     },
     {
       title: 'Pedidos',
       desc: 'Vendas online com filtros por dia',
       icon: ClipboardList,
       path: '/admin/pedidos',
+      perm: 'orders',
     },
     {
       title: 'Triagem',
       desc: 'Conferir retiradas e embalar envios por código de barras',
       icon: ScanBarcode,
       path: '/admin/triagem',
+      perm: 'triagem',
     },
     {
       title: 'Funcionários',
