@@ -57,7 +57,7 @@ export function SearchSection() {
     const { data, error } = await query.order('name', { ascending: true }).limit(6);
 
     if (!error && data) {
-      setSearchResults(data);
+      setSearchResults(data as unknown as Product[]);
     }
 
     setIsSearching(false);

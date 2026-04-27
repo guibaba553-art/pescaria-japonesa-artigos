@@ -77,11 +77,12 @@ export default function ProductDetails() {
       });
       navigate('/produtos');
     } else {
-      setProduct(data);
-      const productImages = (data.images && data.images.length > 0) 
-        ? data.images 
-        : (data.image_url ? [data.image_url] : []);
-      
+      const prod = data as unknown as Product;
+      setProduct(prod);
+      const productImages = (prod.images && prod.images.length > 0)
+        ? prod.images
+        : (prod.image_url ? [prod.image_url] : []);
+
       setDisplayImages(productImages);
       setSelectedImage(productImages[0] || '');
 
