@@ -8,6 +8,10 @@ export interface ProductVariation {
   description?: string | null;
   sku?: string | null;
   image_url?: string | null;
+  weight_grams?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
   created_at?: string;
   updated_at?: string;
 }

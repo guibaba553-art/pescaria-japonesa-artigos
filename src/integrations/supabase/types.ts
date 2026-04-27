@@ -1087,38 +1087,50 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          height_cm: number | null
           id: string
           image_url: string | null
+          length_cm: number | null
           name: string
           price: number
           product_id: string
           sku: string | null
           stock: number
           updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
         }
         Insert: {
           created_at?: string
           description?: string | null
+          height_cm?: number | null
           id?: string
           image_url?: string | null
+          length_cm?: number | null
           name: string
           price?: number
           product_id: string
           sku?: string | null
           stock?: number
           updated_at?: string
+          weight_grams?: number | null
+          width_cm?: number | null
         }
         Update: {
           created_at?: string
           description?: string | null
+          height_cm?: number | null
           id?: string
           image_url?: string | null
+          length_cm?: number | null
           name?: string
           price?: number
           product_id?: string
           sku?: string | null
           stock?: number
           updated_at?: string
+          weight_grams?: number | null
+          width_cm?: number | null
         }
         Relationships: [
           {

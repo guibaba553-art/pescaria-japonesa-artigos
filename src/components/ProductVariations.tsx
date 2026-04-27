@@ -27,7 +27,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     stock: "",
     description: "",
     image_url: "",
-    sku: ""
+    sku: "",
+    weight_grams: "",
+    length_cm: "",
+    width_cm: "",
+    height_cm: ""
   });
 
   /**
@@ -57,13 +61,17 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       stock,
       description: newVariation.description.trim() || null,
       image_url: newVariation.image_url.trim() || null,
-      sku: newVariation.sku.trim() || null
+      sku: newVariation.sku.trim() || null,
+      weight_grams: newVariation.weight_grams ? parseInt(newVariation.weight_grams) : null,
+      length_cm: newVariation.length_cm ? parseFloat(newVariation.length_cm) : null,
+      width_cm: newVariation.width_cm ? parseFloat(newVariation.width_cm) : null,
+      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null
     };
 
     onVariationsChange([...variations, variation]);
     
     // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "" });
+    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
@@ -82,6 +90,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       
       if (field === 'stock') {
         const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 0) return v;
+        return { ...v, [field]: numValue };
+      }
+      
+      if (field === 'weight_grams') {
+        if (value === '' || value === null) return { ...v, [field]: null };
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 0) return v;
+        return { ...v, [field]: numValue };
+      }
+      
+      if (field === 'length_cm' || field === 'width_cm' || field === 'height_cm') {
+        if (value === '' || value === null) return { ...v, [field]: null };
+        const numValue = parseFloat(value);
         if (isNaN(numValue) || numValue < 0) return v;
         return { ...v, [field]: numValue };
       }
@@ -252,6 +274,72 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         )}
                       </div>
                     </div>
+                    {/* Peso e Dimensões da variação (para frete) */}
+                    <div className="border-t border-border/50 pt-3">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        📦 Peso e Dimensões (usado no cálculo de frete)
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <Label htmlFor={`weight-${variation.id}`} className="text-xs">
+                            Peso (g)
+                          </Label>
+                          <Input
+                            id={`weight-${variation.id}`}
+                            type="number"
+                            min="0"
+                            value={variation.weight_grams ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'weight_grams', e.target.value)}
+                            placeholder="500"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`length-${variation.id}`} className="text-xs">
+                            Comprimento (cm)
+                          </Label>
+                          <Input
+                            id={`length-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.length_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'length_cm', e.target.value)}
+                            placeholder="30"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`width-${variation.id}`} className="text-xs">
+                            Largura (cm)
+                          </Label>
+                          <Input
+                            id={`width-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.width_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'width_cm', e.target.value)}
+                            placeholder="20"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`height-${variation.id}`} className="text-xs">
+                            Altura (cm)
+                          </Label>
+                          <Input
+                            id={`height-${variation.id}`}
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variation.height_cm ?? ''}
+                            onChange={(e) => updateVariation(variation.id, 'height_cm', e.target.value)}
+                            placeholder="20"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        💡 Se vazio, usa o peso/dimensões do produto principal
+                      </p>
+                    </div>
                   </div>
                   <Button
                     type="button"
@@ -389,6 +477,65 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 </div>
               )}
             </div>
+          </div>
+          
+          {/* Peso e dimensões para nova variação */}
+          <div className="border-t border-primary/20 pt-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              📦 Peso e Dimensões (opcional - usado no cálculo de frete)
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <Label htmlFor="new-var-weight" className="text-xs">Peso (g)</Label>
+                <Input
+                  id="new-var-weight"
+                  type="number"
+                  min="0"
+                  placeholder="500"
+                  value={newVariation.weight_grams}
+                  onChange={(e) => setNewVariation({ ...newVariation, weight_grams: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-length" className="text-xs">Comprimento (cm)</Label>
+                <Input
+                  id="new-var-length"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="30"
+                  value={newVariation.length_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, length_cm: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-width" className="text-xs">Largura (cm)</Label>
+                <Input
+                  id="new-var-width"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="20"
+                  value={newVariation.width_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, width_cm: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-height" className="text-xs">Altura (cm)</Label>
+                <Input
+                  id="new-var-height"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="20"
+                  value={newVariation.height_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, height_cm: e.target.value })}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              💡 Se vazio, usa o peso/dimensões do produto principal
+            </p>
           </div>
           
           <p className="text-xs text-muted-foreground">
