@@ -479,6 +479,65 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
           </div>
           
+          {/* Peso e dimensões para nova variação */}
+          <div className="border-t border-primary/20 pt-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              📦 Peso e Dimensões (opcional - usado no cálculo de frete)
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <Label htmlFor="new-var-weight" className="text-xs">Peso (g)</Label>
+                <Input
+                  id="new-var-weight"
+                  type="number"
+                  min="0"
+                  placeholder="500"
+                  value={newVariation.weight_grams}
+                  onChange={(e) => setNewVariation({ ...newVariation, weight_grams: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-length" className="text-xs">Comprimento (cm)</Label>
+                <Input
+                  id="new-var-length"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="30"
+                  value={newVariation.length_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, length_cm: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-width" className="text-xs">Largura (cm)</Label>
+                <Input
+                  id="new-var-width"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="20"
+                  value={newVariation.width_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, width_cm: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-var-height" className="text-xs">Altura (cm)</Label>
+                <Input
+                  id="new-var-height"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="20"
+                  value={newVariation.height_cm}
+                  onChange={(e) => setNewVariation({ ...newVariation, height_cm: e.target.value })}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              💡 Se vazio, usa o peso/dimensões do produto principal
+            </p>
+          </div>
+          
           <p className="text-xs text-muted-foreground">
             💡 O código de barra pode ser usado para leitura no PDV e pesquisa rápida
           </p>
