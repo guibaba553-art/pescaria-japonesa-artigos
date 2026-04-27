@@ -79,34 +79,63 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     if (numeric.length <= 8) setCep(numeric);
   };
 
-  // Cache de dimensões/peso reais carregados do banco
+  // Cache de dimensões/peso reais carregados do banco (produtos e variações)
   const [productDims, setProductDims] = useState<
     Record<string, { weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>
   >({});
+  const [variationDims, setVariationDims] = useState<
+    Record<string, { weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>
+  >({});
 
-  // Carrega peso e dimensões dos produtos do carrinho do banco
+  // Carrega peso e dimensões dos produtos e variações do carrinho
   useEffect(() => {
-    const ids = (products || []).map((p) => p.id).filter((x): x is string => !!x);
-    const missing = ids.filter((id) => !(id in productDims));
-    if (missing.length === 0) return;
+    const productIds = (products || []).map((p) => p.id).filter((x): x is string => !!x);
+    const variationIds = (products || []).map((p) => p.variationId).filter((x): x is string => !!x);
+    const missingProducts = productIds.filter((id) => !(id in productDims));
+    const missingVariations = variationIds.filter((id) => !(id in variationDims));
+
+    if (missingProducts.length === 0 && missingVariations.length === 0) return;
+
     (async () => {
-      const { data } = await supabase
-        .from('products')
-        .select('id, weight_grams, length_cm, width_cm, height_cm')
-        .in('id', missing);
-      if (data) {
-        setProductDims((prev) => {
-          const next = { ...prev };
-          data.forEach((p: any) => {
-            next[p.id] = {
-              weight_grams: p.weight_grams,
-              length_cm: p.length_cm ? Number(p.length_cm) : null,
-              width_cm: p.width_cm ? Number(p.width_cm) : null,
-              height_cm: p.height_cm ? Number(p.height_cm) : null,
-            };
+      if (missingProducts.length > 0) {
+        const { data } = await supabase
+          .from('products')
+          .select('id, weight_grams, length_cm, width_cm, height_cm')
+          .in('id', missingProducts);
+        if (data) {
+          setProductDims((prev) => {
+            const next = { ...prev };
+            data.forEach((p: any) => {
+              next[p.id] = {
+                weight_grams: p.weight_grams,
+                length_cm: p.length_cm ? Number(p.length_cm) : null,
+                width_cm: p.width_cm ? Number(p.width_cm) : null,
+                height_cm: p.height_cm ? Number(p.height_cm) : null,
+              };
+            });
+            return next;
           });
-          return next;
-        });
+        }
+      }
+      if (missingVariations.length > 0) {
+        const { data } = await supabase
+          .from('product_variations')
+          .select('id, weight_grams, length_cm, width_cm, height_cm')
+          .in('id', missingVariations);
+        if (data) {
+          setVariationDims((prev) => {
+            const next = { ...prev };
+            data.forEach((v: any) => {
+              next[v.id] = {
+                weight_grams: v.weight_grams,
+                length_cm: v.length_cm ? Number(v.length_cm) : null,
+                width_cm: v.width_cm ? Number(v.width_cm) : null,
+                height_cm: v.height_cm ? Number(v.height_cm) : null,
+              };
+            });
+            return next;
+          });
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,17 +144,20 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   const buildMeProducts = () =>
     products && products.length > 0
       ? products.map((p, i) => {
-          const dims = (p.id && productDims[p.id]) || null;
-          // Mínimos exigidos pelo Melhor Envio: width>=11, height>=2, length>=11, weight>=0.01kg
-          const width = Math.max(11, dims?.width_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width);
-          const height = Math.max(2, dims?.height_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height);
-          const length = Math.max(11, dims?.length_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length);
-          const weightKg = Math.max(
-            0.01,
-            (dims?.weight_grams ?? SHIPPING_CONFIG.DEFAULT_WEIGHT) / 1000
-          );
+          const productD = (p.id && productDims[p.id]) || null;
+          const variationD = (p.variationId && variationDims[p.variationId]) || null;
+          // Variação tem prioridade quando tem valor; senão cai pro produto; senão default
+          const pickWidth = variationD?.width_cm ?? productD?.width_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width;
+          const pickHeight = variationD?.height_cm ?? productD?.height_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height;
+          const pickLength = variationD?.length_cm ?? productD?.length_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length;
+          const pickWeight = variationD?.weight_grams ?? productD?.weight_grams ?? SHIPPING_CONFIG.DEFAULT_WEIGHT;
+          // Mínimos exigidos pelo Melhor Envio
+          const width = Math.max(11, pickWidth);
+          const height = Math.max(2, pickHeight);
+          const length = Math.max(11, pickLength);
+          const weightKg = Math.max(0.01, pickWeight / 1000);
           return {
-            id: p.id || String(i + 1),
+            id: p.variationId || p.id || String(i + 1),
             width,
             height,
             length,
