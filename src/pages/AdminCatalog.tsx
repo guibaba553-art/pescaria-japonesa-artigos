@@ -55,7 +55,7 @@ export default function AdminCatalog() {
   const loadDraftCount = async () => {
     const { count } = await supabase
       .from('products')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('category', 'Pendente Revisão');
     setDraftCount(count ?? 0);
   };
