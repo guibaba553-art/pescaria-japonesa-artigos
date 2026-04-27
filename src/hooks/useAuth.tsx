@@ -109,44 +109,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const checkUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
 
-    if (!error && data) {
-      const roles = data.map(r => r.role);
-      const employee = roles.includes('employee');
-      const admin = roles.includes('admin');
-      setIsEmployee(employee);
-      setIsAdmin(admin);
+      if (!error && data) {
+        const roles = data.map(r => r.role);
+        const employee = roles.includes('employee');
+        const admin = roles.includes('admin');
+        setIsEmployee(employee);
+        setIsAdmin(admin);
 
-      // Admins always have full access. For employees, check granular permissions.
-      if (admin) {
-        setCanAccessPdv(true);
-        setPermissions(ADMIN_PERMS);
-      } else if (employee) {
-        const { data: perm } = await supabase
-          .from('employee_permissions')
-          .select('can_access_pdv, can_access_catalog, can_access_cash_register, can_access_dashboard, can_access_orders, can_access_sales_analysis, can_access_triagem, can_access_fiscal')
-          .eq('user_id', userId)
-          .maybeSingle();
-        const p: EmployeePermissions = {
-          pdv: perm?.can_access_pdv ?? true,
-          catalog: perm?.can_access_catalog ?? true,
-          cash_register: perm?.can_access_cash_register ?? false,
-          dashboard: perm?.can_access_dashboard ?? false,
-          orders: perm?.can_access_orders ?? true,
-          sales_analysis: perm?.can_access_sales_analysis ?? false,
-          triagem: perm?.can_access_triagem ?? true,
-          fiscal: perm?.can_access_fiscal ?? false,
-        };
-        setCanAccessPdv(p.pdv);
-        setPermissions(p);
-      } else {
-        setCanAccessPdv(true);
-        setPermissions(ADMIN_PERMS);
+        // Admins always have full access. For employees, check granular permissions.
+        if (admin) {
+          setCanAccessPdv(true);
+          setPermissions(ADMIN_PERMS);
+        } else if (employee) {
+          const { data: perm } = await supabase
+            .from('employee_permissions')
+            .select('can_access_pdv, can_access_catalog, can_access_cash_register, can_access_dashboard, can_access_orders, can_access_sales_analysis, can_access_triagem, can_access_fiscal')
+            .eq('user_id', userId)
+            .maybeSingle();
+          const p: EmployeePermissions = {
+            pdv: perm?.can_access_pdv ?? true,
+            catalog: perm?.can_access_catalog ?? true,
+            cash_register: perm?.can_access_cash_register ?? false,
+            dashboard: perm?.can_access_dashboard ?? false,
+            orders: perm?.can_access_orders ?? true,
+            sales_analysis: perm?.can_access_sales_analysis ?? false,
+            triagem: perm?.can_access_triagem ?? true,
+            fiscal: perm?.can_access_fiscal ?? false,
+          };
+          setCanAccessPdv(p.pdv);
+          setPermissions(p);
+        } else {
+          setCanAccessPdv(true);
+          setPermissions(ADMIN_PERMS);
+        }
       }
+    } finally {
+      setRoleLoading(false);
     }
   };
 
