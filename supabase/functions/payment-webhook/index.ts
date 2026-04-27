@@ -146,7 +146,7 @@ serve(async (req) => {
         // Buscar o pedido pelo payment_id
         const { data: order, error: orderError } = await supabase
           .from('orders')
-          .select('id, status')
+          .select('id, status, total_amount, shipping_cost, shipping_address, delivery_type, user_id')
           .eq('payment_id', paymentId.toString())
           .maybeSingle();
 
@@ -165,6 +165,9 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
+
+        // Idempotência: só processa se o pedido ainda NÃO está em_preparo (ou estado posterior)
+        const alreadyProcessed = order.status !== 'aguardando_pagamento';
 
         // Atualizar status do pedido para em_preparo
         // Funciona para PIX, cartão de crédito e débito
@@ -202,6 +205,75 @@ serve(async (req) => {
           }
         } catch (stockError) {
           console.error('Error calling subtract-stock function:', stockError);
+        }
+
+        // ----- E-mail de confirmação de compra (1x por pedido) -----
+        if (!alreadyProcessed) {
+          try {
+            // Tenta buscar a NF-e (se já foi emitida)
+            const { data: nfe } = await supabase
+              .from('nfe_emissions')
+              .select('nfe_number, nfe_xml_url, danfe_url, status')
+              .eq('order_id', order.id)
+              .eq('status', 'success')
+              .order('emitted_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            // Buscar nome do cliente e e-mail
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', order.user_id)
+              .maybeSingle();
+
+            const { data: { user: userInfo } } = await supabase.auth.admin.getUserById(order.user_id);
+            const recipientEmail = userInfo?.email;
+
+            if (recipientEmail) {
+              const formatBRL = (n: number) =>
+                new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                  .format(Number(n) || 0);
+              const methodLabel: Record<string, string> = {
+                pix: 'PIX',
+                credit_card: 'Cartão de crédito',
+                debit_card: 'Cartão de débito',
+                ticket: 'Boleto',
+              };
+              const pmId = paymentData.payment_method_id || '';
+              const paymentMethodLabel =
+                methodLabel[paymentData.payment_type_id] ||
+                methodLabel[pmId] ||
+                (pmId ? pmId.toUpperCase() : 'Online');
+
+              await supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  templateName: 'order-confirmation',
+                  recipientEmail,
+                  idempotencyKey: `order-confirmation-${order.id}`,
+                  templateData: {
+                    customerName: profile?.full_name?.split(' ')[0] ?? null,
+                    orderNumber: String(order.id).slice(0, 8).toUpperCase(),
+                    totalAmount: formatBRL(Number(order.total_amount)),
+                    paymentMethod: paymentMethodLabel,
+                    deliveryType: order.delivery_type === 'pickup' ? 'Retirada na loja' : 'Entrega',
+                    shippingAddress: order.shipping_address,
+                    trackingUrl: 'https://japaspesca.com.br/conta',
+                    nfeUrl: nfe?.danfe_url || nfe?.nfe_xml_url || null,
+                    nfeNumber: nfe?.nfe_number || null,
+                  },
+                },
+              });
+              console.log(`Confirmation email enqueued for order ${order.id} → ${recipientEmail}`);
+            } else {
+              console.warn(`No email found for user ${order.user_id}, skipping confirmation email`);
+            }
+          } catch (emailErr) {
+            // Nunca falhar o webhook por causa de email
+            console.error('Erro ao enviar e-mail de confirmação:', emailErr);
+          }
+        } else {
+          console.log(`Order ${order.id} já estava processado, e-mail não reenviado`);
         }
       } else {
         console.log('Payment not approved, status:', paymentData.status);
