@@ -189,6 +189,45 @@ export type Database = {
           },
         ]
       }
+      category_fiscal_defaults: {
+        Row: {
+          category: string
+          cest: string | null
+          cfop: string | null
+          created_at: string
+          csosn: string | null
+          id: string
+          ncm: string | null
+          origem: string | null
+          unidade_comercial: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          cest?: string | null
+          cfop?: string | null
+          created_at?: string
+          csosn?: string | null
+          id?: string
+          ncm?: string | null
+          origem?: string | null
+          unidade_comercial?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cest?: string | null
+          cfop?: string | null
+          created_at?: string
+          csosn?: string | null
+          id?: string
+          ncm?: string | null
+          origem?: string | null
+          unidade_comercial?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string
@@ -1790,6 +1829,11 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      extract_uf_from_address: { Args: { p_address: string }; Returns: string }
+      get_cfop_by_uf: {
+        Args: { p_has_st?: boolean; p_uf_destino: string }
+        Returns: string
+      }
       get_product_admin: {
         Args: { p_id: string }
         Returns: {
@@ -1948,6 +1992,14 @@ export type Database = {
       validate_coupon: {
         Args: { p_code: string; p_source?: string; p_subtotal: number }
         Returns: Json
+      }
+      validate_order_fiscal: {
+        Args: { p_order_id: string }
+        Returns: {
+          missing_fields: string[]
+          product_id: string
+          product_name: string
+        }[]
       }
     }
     Enums: {
