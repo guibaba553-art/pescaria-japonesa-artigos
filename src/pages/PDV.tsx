@@ -564,18 +564,18 @@ export default function PDV() {
         return;
       }
 
-      // Se não encontrou variação, buscar produto principal por SKU
-      const { data: product, error: prodError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          variations:product_variations(*)
-        `)
-        .eq('sku', barcode.trim())
-        .gt('stock', 0)
-        .maybeSingle();
-
+      // Se não encontrou variação, buscar produto principal por SKU usando RPC (acessa campos sensíveis de PDV)
+      const { data: prods, error: prodError } = await supabase.rpc('get_products_admin');
       if (prodError) throw prodError;
+      const matched = (prods || []).find((p: any) => p.sku === barcode.trim() && p.stock > 0);
+      let product: any = null;
+      if (matched) {
+        const { data: vars } = await supabase
+          .from('product_variations')
+          .select('*')
+          .eq('product_id', matched.id);
+        product = { ...matched, variations: vars || [] };
+      }
 
       if (product) {
         console.log('✅ Produto encontrado:', product.name);
