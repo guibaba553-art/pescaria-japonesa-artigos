@@ -144,7 +144,7 @@ export default function FiscalTools() {
     );
   }
 
-  if (!isAdmin) {
+  if (!canView) {
     return null;
   }
 
