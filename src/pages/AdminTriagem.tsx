@@ -24,8 +24,9 @@ import { TriagemScanDialog, TriagemOrder } from '@/components/TriagemScanDialog'
 
 export default function AdminTriagem() {
   const navigate = useNavigate();
-  const { isEmployee, isAdmin, loading: authLoading } = useAuth();
+  const { isEmployee, isAdmin, permissions, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const canView = isAdmin || (isEmployee && permissions.triagem);
 
   const [orders, setOrders] = useState<TriagemOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +36,8 @@ export default function AdminTriagem() {
   const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isEmployee && !isAdmin) navigate('/auth');
-  }, [authLoading, isEmployee, isAdmin, navigate]);
+    if (!authLoading && !canView) navigate('/admin');
+  }, [authLoading, canView, navigate]);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
