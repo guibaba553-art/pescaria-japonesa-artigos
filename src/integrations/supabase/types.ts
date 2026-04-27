@@ -234,6 +234,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_messages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       company_fiscal_data: {
@@ -896,6 +903,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "order_items_variation_id_fkey"
             columns: ["variation_id"]
             isOneToOne: false
@@ -1075,6 +1089,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "product_label_pending_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_label_pending_variation_id_fkey"
             columns: ["variation_id"]
             isOneToOne: false
@@ -1138,6 +1159,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1362,6 +1390,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -1530,6 +1565,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_public"
             referencedColumns: ["id"]
           },
           {
@@ -1755,7 +1797,96 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      products_public: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          featured: boolean | null
+          height_cm: number | null
+          id: string | null
+          image_url: string | null
+          images: string[] | null
+          length_cm: number | null
+          minimum_quantity: number | null
+          name: string | null
+          on_sale: boolean | null
+          pound_test: string | null
+          price: number | null
+          rating: number | null
+          sale_ends_at: string | null
+          sale_price: number | null
+          short_description: string | null
+          size: string | null
+          sku: string | null
+          sold_by_weight: boolean | null
+          stock: number | null
+          subcategory: string | null
+          updated_at: string | null
+          weight_grams: number | null
+          width_cm: number | null
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          height_cm?: number | null
+          id?: string | null
+          image_url?: string | null
+          images?: string[] | null
+          length_cm?: number | null
+          minimum_quantity?: number | null
+          name?: string | null
+          on_sale?: boolean | null
+          pound_test?: string | null
+          price?: number | null
+          rating?: number | null
+          sale_ends_at?: string | null
+          sale_price?: number | null
+          short_description?: string | null
+          size?: string | null
+          sku?: string | null
+          sold_by_weight?: boolean | null
+          stock?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+          weight_grams?: number | null
+          width_cm?: number | null
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          featured?: boolean | null
+          height_cm?: number | null
+          id?: string | null
+          image_url?: string | null
+          images?: string[] | null
+          length_cm?: number | null
+          minimum_quantity?: number | null
+          name?: string | null
+          on_sale?: boolean | null
+          pound_test?: string | null
+          price?: number | null
+          rating?: number | null
+          sale_ends_at?: string | null
+          sale_price?: number | null
+          short_description?: string | null
+          size?: string | null
+          sku?: string | null
+          sold_by_weight?: boolean | null
+          stock?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+          weight_grams?: number | null
+          width_cm?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_label_pending: {
