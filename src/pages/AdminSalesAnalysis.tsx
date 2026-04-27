@@ -112,7 +112,8 @@ const GROUP_META: Record<StatusGroup, { label: string; color: string; rowBg: str
 
 export default function AdminSalesAnalysis() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || (isEmployee && permissions.sales_analysis);
   const [rows, setRows] = useState<UnifiedRow[]>([]);
   const [fetching, setFetching] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<UnifiedRow | null>(null);
