@@ -150,12 +150,17 @@ export default function Admin() {
 
       <div className="max-w-7xl mx-auto p-6 -mt-4">
         {(() => {
-          const allItems = [
-            ...(isAdmin ? quickAccess.map((q) => ({ ...q, badge: undefined as number | undefined })) : []),
-            ...sections
-              .filter((s) => !s.adminOnly || isAdmin)
-              .map((s) => ({ icon: s.icon, title: s.title, desc: s.desc, path: s.path, badge: s.badge })),
-          ];
+          const quickFiltered = quickAccess
+            .filter((q) => isAdmin || permissions[q.perm])
+            .map((q) => ({ icon: q.icon, title: q.title, desc: q.desc, path: q.path, badge: undefined as number | undefined }));
+          const sectionsFiltered = sections
+            .filter((s) => {
+              if (s.adminOnly) return isAdmin;
+              if (isAdmin) return true;
+              return s.perm ? permissions[s.perm] : true;
+            })
+            .map((s) => ({ icon: s.icon, title: s.title, desc: s.desc, path: s.path, badge: s.badge }));
+          const allItems = [...quickFiltered, ...sectionsFiltered];
 
           return (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
