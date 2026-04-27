@@ -7,16 +7,17 @@ import { OrdersManagement } from '@/components/OrdersManagement';
 
 export default function AdminOrders() {
   const navigate = useNavigate();
-  const { user, isEmployee, isAdmin, loading } = useAuth();
+  const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
+  const canView = isAdmin || (isEmployee && permissions.orders);
 
   useEffect(() => {
-    if (!loading && !isEmployee && !isAdmin) {
-      navigate('/auth');
+    if (!loading && !canView) {
+      navigate('/admin');
     }
-  }, [user, isEmployee, isAdmin, loading, navigate]);
+  }, [user, canView, loading, navigate]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <AdminPageLayout
