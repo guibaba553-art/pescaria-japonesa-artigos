@@ -204,7 +204,7 @@ export function ProductsManagement() {
           width_cm: widthCm ? parseFloat(widthCm) : null,
           height_cm: heightCm ? parseFloat(heightCm) : null,
         }])
-        .select()
+        .select('id')
         .single();
 
       if (productError) throw productError;
