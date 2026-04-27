@@ -165,10 +165,10 @@ export function ProductCard({
               <Flame className="w-3 h-3 fill-current" />
               {sales} vendidos hoje
             </div>
-          ) : showSocialProof && viewers >= 6 ? (
+          ) : showSocialProof ? (
             <div className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
               <Eye className="w-3 h-3" />
-              {viewers} vendo agora
+              Em estoque
             </div>
           ) : null}
         </div>
