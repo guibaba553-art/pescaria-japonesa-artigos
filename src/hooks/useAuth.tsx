@@ -311,6 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isEmployee,
       isAdmin,
       canAccessPdv,
+      permissions,
       loading 
     }}>
       {children}
