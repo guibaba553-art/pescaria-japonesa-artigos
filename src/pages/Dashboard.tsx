@@ -258,7 +258,7 @@ export default function Dashboard() {
   if (loading || loadingData) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
-  if (!isAdmin) return null;
+  if (!canView) return null;
 
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'];
 
