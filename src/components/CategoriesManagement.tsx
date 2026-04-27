@@ -22,7 +22,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, Lock, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight, PackagePlus } from 'lucide-react';
+import { SubcategoryProductPicker } from './SubcategoryProductPicker';
 
 const slugify = (s: string) =>
   s
@@ -43,6 +44,7 @@ export function CategoriesManagement() {
   const [displayOrder, setDisplayOrder] = useState('0');
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string } | null>(null);
 
   const openNew = (presetParentId?: string) => {
     setEditing(null);
@@ -235,6 +237,17 @@ export function CategoriesManagement() {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPickerSub({ name: sub.name, primaryName: primary.name })
+                            }
+                            className="h-7"
+                          >
+                            <PackagePlus className="w-3.5 h-3.5 mr-1" />
+                            Selecionar
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(sub)}>
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
@@ -346,6 +359,15 @@ export function CategoriesManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {pickerSub && (
+        <SubcategoryProductPicker
+          open={!!pickerSub}
+          onOpenChange={(o) => !o && setPickerSub(null)}
+          subcategoryName={pickerSub.name}
+          primaryName={pickerSub.primaryName}
+        />
+      )}
     </Card>
   );
 }
