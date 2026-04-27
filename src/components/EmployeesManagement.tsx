@@ -85,11 +85,8 @@ export function EmployeesManagement() {
     if (!email) return;
     setAdding(true);
 
-    const { data: matches, error } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .ilike('full_name', email)
-      .limit(1);
+    const { data: userId, error } = await supabase
+      .rpc('get_user_id_by_email', { _email: email });
 
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -97,7 +94,7 @@ export function EmployeesManagement() {
       return;
     }
 
-    if (!matches || matches.length === 0) {
+    if (!userId) {
       toast({
         title: 'Usuário não encontrado',
         description: 'O usuário precisa criar uma conta primeiro com este email.',
@@ -106,8 +103,6 @@ export function EmployeesManagement() {
       setAdding(false);
       return;
     }
-
-    const userId = matches[0].id;
     const { error: roleErr } = await supabase
       .from('user_roles')
       .insert({ user_id: userId, role: 'employee' });
