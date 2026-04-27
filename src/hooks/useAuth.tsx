@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsEmployee(false);
           setIsAdmin(false);
           setCanAccessPdv(true);
+          setPermissions(ADMIN_PERMS);
         }
       }
     );
