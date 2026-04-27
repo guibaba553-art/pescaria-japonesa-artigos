@@ -136,17 +136,17 @@ export default function AdminSalesAnalysis() {
   const [autoLoaded, setAutoLoaded] = useState(false);
 
   useEffect(() => {
-    if (!loading && !isEmployee && !isAdmin) navigate('/auth');
-  }, [user, isEmployee, isAdmin, loading, navigate]);
+    if (!loading && !canView) navigate('/admin');
+  }, [user, canView, loading, navigate]);
 
   // Carrega automaticamente as vendas do mês atual ao entrar na tela
   useEffect(() => {
     if (loading || autoLoaded) return;
-    if (!isEmployee && !isAdmin) return;
+    if (!canView) return;
     setAutoLoaded(true);
     fetchAll(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, isEmployee, isAdmin]);
+  }, [loading, canView]);
 
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
