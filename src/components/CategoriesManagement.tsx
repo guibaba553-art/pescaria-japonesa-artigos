@@ -237,6 +237,17 @@ export function CategoriesManagement() {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPickerSub({ name: sub.name, primaryName: primary.name })
+                            }
+                            className="h-7"
+                          >
+                            <PackagePlus className="w-3.5 h-3.5 mr-1" />
+                            Selecionar
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(sub)}>
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
