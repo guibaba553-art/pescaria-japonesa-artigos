@@ -176,7 +176,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
 
               <div className="pt-3">
                 <ShippingCalculator
-                  products={items.map((it) => ({ id: it.id, quantity: it.quantity }))}
+                  products={items.map((it) => ({ id: it.id, variationId: it.variationId, quantity: it.quantity }))}
                   onSelectShipping={(option) => {
                     setShippingCost(option.valor);
                     setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
