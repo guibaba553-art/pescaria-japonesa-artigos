@@ -94,6 +94,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         return { ...v, [field]: numValue };
       }
       
+      if (field === 'weight_grams') {
+        if (value === '' || value === null) return { ...v, [field]: null };
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 0) return v;
+        return { ...v, [field]: numValue };
+      }
+      
+      if (field === 'length_cm' || field === 'width_cm' || field === 'height_cm') {
+        if (value === '' || value === null) return { ...v, [field]: null };
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0) return v;
+        return { ...v, [field]: numValue };
+      }
+      
       if (field === 'name' && typeof value === 'string') {
         if (!value.trim()) return v;
         return { ...v, [field]: value };
