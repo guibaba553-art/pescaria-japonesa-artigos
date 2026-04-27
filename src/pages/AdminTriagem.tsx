@@ -97,8 +97,8 @@ export default function AdminTriagem() {
   }, [toast]);
 
   useEffect(() => {
-    if (isEmployee || isAdmin) loadOrders();
-  }, [isEmployee, isAdmin, loadOrders]);
+    if (canView) loadOrders();
+  }, [canView, loadOrders]);
 
   const filterByQuery = (list: TriagemOrder[]) => {
     const q = search.trim().toLowerCase();
