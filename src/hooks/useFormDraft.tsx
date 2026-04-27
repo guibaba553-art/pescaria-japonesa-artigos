@@ -35,9 +35,13 @@ export function useFormDraft<T extends Record<string, any>>(
   const timeoutRef = useRef<number | null>(null);
   const dirtyRef = useRef(false);
 
-  // Auto-save com debounce
+  // Auto-save com debounce.
+  // Importante: enquanto existe um draft salvo de sessão anterior aguardando
+  // decisão do usuário (restaurar/descartar), não gravamos por cima.
+  const pendingDecisionRef = useRef(hasDraft);
   useEffect(() => {
     if (!enabled) return;
+    if (pendingDecisionRef.current) return;
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => {
       try {
