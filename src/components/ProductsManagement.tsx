@@ -21,6 +21,8 @@ import { validateProductForm } from '@/utils/productValidation';
 import { useSalesVelocity } from '@/hooks/useSalesVelocity';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 
 interface Product {
   id: string;
@@ -75,6 +77,34 @@ export function ProductsManagement() {
 
   const { variations: newProductVariations, setVariations: setNewProductVariations, saveVariations } =
     useProductVariations();
+
+  // Auto-save de rascunho (recupera campos se a aba fechar antes de salvar).
+  // Imagens não são persistidas (são File objects).
+  const draftData = {
+    name, description, shortDescription, price, category, subcategory,
+    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    pricePdv, weightGrams, lengthCm, widthCm, heightCm,
+    variations: newProductVariations,
+  };
+  const { hasDraft, draftSavedAt, getDraft, clearDraft } = useFormDraft(
+    'new-product',
+    draftData,
+    { enabled: showForm }
+  );
+
+  const restoreDraft = () => {
+    const d = getDraft();
+    if (!d) return;
+    setName(d.name || ''); setDescription(d.description || ''); setShortDescription(d.shortDescription || '');
+    setPrice(d.price || ''); setCategory(d.category || ''); setSubcategory(d.subcategory || '');
+    setStock(d.stock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
+    setSoldByWeight(!!d.soldByWeight); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
+    setSize(d.size || ''); setPricePdv(d.pricePdv || '');
+    setWeightGrams(d.weightGrams || ''); setLengthCm(d.lengthCm || '');
+    setWidthCm(d.widthCm || ''); setHeightCm(d.heightCm || '');
+    if (Array.isArray(d.variations)) setNewProductVariations(d.variations);
+    toast({ title: 'Rascunho restaurado', description: 'Imagens precisam ser anexadas novamente.' });
+  };
 
   useEffect(() => {
     loadProducts();
@@ -213,6 +243,7 @@ export function ProductsManagement() {
 
       toast({ title: 'Produto adicionado!' });
       resetForm();
+      clearDraft();
       setShowForm(false);
       loadProducts();
     } catch (error: any) {
@@ -460,6 +491,13 @@ export function ProductsManagement() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {hasDraft && (
+                <DraftRestoreBanner
+                  savedAt={draftSavedAt}
+                  onRestore={restoreDraft}
+                  onDiscard={() => { clearDraft(); }}
+                />
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Produto</Label>

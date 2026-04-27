@@ -22,6 +22,8 @@ import { useProductVariations } from '@/hooks/useProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
+import { useFormDraft } from '@/hooks/useFormDraft';
+import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 
 interface ProductEditProps {
   product: Product;
@@ -72,6 +74,49 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     loadVariations, 
     saveVariations 
   } = useProductVariations();
+
+  // Auto-save de rascunho durante a edição. Imagens não são persistidas.
+  const draftData = {
+    name, description, shortDescription, price, category, subcategory,
+    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    pricePdv, weightGrams, lengthCm, widthCm, heightCm,
+    featured, onSale, salePrice, saleEndsAt,
+    variations,
+  };
+  const { hasDraft, draftSavedAt, getDraft, clearDraft } = useFormDraft(
+    `edit-product:${product.id}`,
+    draftData,
+    { enabled: open }
+  );
+
+  const restoreDraft = () => {
+    const d = getDraft();
+    if (!d) return;
+    setName(d.name ?? product.name);
+    setDescription(d.description ?? product.description);
+    setShortDescription(d.shortDescription ?? '');
+    setPrice(d.price ?? '');
+    setCategory(d.category ?? product.category);
+    setSubcategory(d.subcategory ?? '');
+    setStock(d.stock ?? '');
+    setSku(d.sku ?? '');
+    setMinimumQuantity(d.minimumQuantity ?? '1');
+    setSoldByWeight(!!d.soldByWeight);
+    setBrand(d.brand ?? '');
+    setPoundTest(d.poundTest ?? '');
+    setSize(d.size ?? '');
+    setPricePdv(d.pricePdv ?? '');
+    setWeightGrams(d.weightGrams ?? '');
+    setLengthCm(d.lengthCm ?? '');
+    setWidthCm(d.widthCm ?? '');
+    setHeightCm(d.heightCm ?? '');
+    setFeatured(!!d.featured);
+    setOnSale(!!d.onSale);
+    setSalePrice(d.salePrice ?? '');
+    setSaleEndsAt(d.saleEndsAt ?? '');
+    if (Array.isArray(d.variations)) setVariations(d.variations);
+    toast({ title: 'Rascunho restaurado' });
+  };
 
   // Carregar variações quando o dialog abre
   useEffect(() => {
@@ -360,6 +405,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       });
 
       console.log('=== ATUALIZAÇÃO CONCLUÍDA ===');
+      clearDraft();
       setOpen(false);
       onUpdate();
       
@@ -395,6 +441,13 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4 pb-4">
+            {hasDraft && (
+              <DraftRestoreBanner
+                savedAt={draftSavedAt}
+                onRestore={restoreDraft}
+                onDiscard={() => { clearDraft(); }}
+              />
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Nome do Produto</Label>
