@@ -22,15 +22,21 @@ export function StockAlerts() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from('products')
-        .select('id, name, stock, min_stock, category, image_url')
-        .neq('category', 'Pendente Revisão')
-        .order('stock');
+      // min_stock é campo sensível: usa RPC para admin/funcionário
+      const { data } = await supabase.rpc('get_products_admin');
       if (data) {
-        const filtered = (data as AlertProduct[]).filter(
-          (p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock)
-        );
+        const filtered = (data as any[])
+          .filter((p) => p.category !== 'Pendente Revisão')
+          .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
+          .sort((a, b) => a.stock - b.stock)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            stock: p.stock,
+            min_stock: p.min_stock,
+            category: p.category,
+            image_url: p.image_url,
+          })) as AlertProduct[];
         setProducts(filtered);
       }
       setLoading(false);

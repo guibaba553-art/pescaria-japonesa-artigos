@@ -166,17 +166,25 @@ export default function PDV() {
 
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          *,
-          variations:product_variations(*)
-        `)
-        .gt('stock', 0)
-        .order('name');
-
+      // Use RPC para que admins/funcionários acessem campos sensíveis (custo, preços PDV, margens)
+      const { data: prods, error } = await supabase.rpc('get_products_admin');
       if (error) throw error;
-      setProducts(data || []);
+
+      // Carrega variações e junta no objeto produto, mantendo apenas em estoque
+      const ids = (prods || []).map((p: any) => p.id);
+      const { data: vars } = ids.length
+        ? await supabase.from('product_variations').select('*').in('product_id', ids)
+        : { data: [] as any[] } as any;
+      const byProduct = new Map<string, any[]>();
+      (vars || []).forEach((v: any) => {
+        if (!byProduct.has(v.product_id)) byProduct.set(v.product_id, []);
+        byProduct.get(v.product_id)!.push(v);
+      });
+      const merged = (prods || [])
+        .filter((p: any) => p.stock > 0)
+        .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setProducts(merged);
     } catch (error: any) {
       toast({
         title: 'Erro ao carregar produtos',
@@ -556,18 +564,18 @@ export default function PDV() {
         return;
       }
 
-      // Se não encontrou variação, buscar produto principal por SKU
-      const { data: product, error: prodError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          variations:product_variations(*)
-        `)
-        .eq('sku', barcode.trim())
-        .gt('stock', 0)
-        .maybeSingle();
-
+      // Se não encontrou variação, buscar produto principal por SKU usando RPC (acessa campos sensíveis de PDV)
+      const { data: prods, error: prodError } = await supabase.rpc('get_products_admin');
       if (prodError) throw prodError;
+      const matched = (prods || []).find((p: any) => p.sku === barcode.trim() && p.stock > 0);
+      let product: any = null;
+      if (matched) {
+        const { data: vars } = await supabase
+          .from('product_variations')
+          .select('*')
+          .eq('product_id', matched.id);
+        product = { ...matched, variations: vars || [] };
+      }
 
       if (product) {
         console.log('✅ Produto encontrado:', product.name);

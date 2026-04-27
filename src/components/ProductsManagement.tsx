@@ -111,11 +111,12 @@ export function ProductsManagement() {
   }, []);
 
   const loadProducts = async () => {
-    const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
+    // Usa RPC para incluir campos sensíveis (custo, preço PDV, margens) visíveis apenas a admin/funcionário
+    const { data, error } = await supabase.rpc('get_products_admin');
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
-      setProducts(data || []);
+      setProducts((data || []) as any);
     }
   };
 

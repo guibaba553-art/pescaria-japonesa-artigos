@@ -1790,6 +1790,114 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_product_admin: {
+        Args: { p_id: string }
+        Returns: {
+          brand: string | null
+          category: string
+          cest: string | null
+          cfop: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          csosn: string | null
+          description: string
+          featured: boolean
+          height_cm: number | null
+          id: string
+          image_url: string | null
+          images: string[] | null
+          include_in_nfe: boolean
+          length_cm: number | null
+          min_stock: number
+          minimum_quantity: number
+          name: string
+          ncm: string | null
+          on_sale: boolean
+          origem: string | null
+          pound_test: string | null
+          price: number
+          price_cash_percent: number
+          price_credit_percent: number
+          price_debit_percent: number
+          price_pdv: number | null
+          price_pix_percent: number
+          rating: number | null
+          sale_ends_at: string | null
+          sale_price: number | null
+          short_description: string | null
+          size: string | null
+          sku: string | null
+          sold_by_weight: boolean
+          stock: number
+          subcategory: string | null
+          supplier_id: string | null
+          unidade_comercial: string | null
+          updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_products_admin: {
+        Args: never
+        Returns: {
+          brand: string | null
+          category: string
+          cest: string | null
+          cfop: string | null
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          csosn: string | null
+          description: string
+          featured: boolean
+          height_cm: number | null
+          id: string
+          image_url: string | null
+          images: string[] | null
+          include_in_nfe: boolean
+          length_cm: number | null
+          min_stock: number
+          minimum_quantity: number
+          name: string
+          ncm: string | null
+          on_sale: boolean
+          origem: string | null
+          pound_test: string | null
+          price: number
+          price_cash_percent: number
+          price_credit_percent: number
+          price_debit_percent: number
+          price_pdv: number | null
+          price_pix_percent: number
+          rating: number | null
+          sale_ends_at: string | null
+          sale_price: number | null
+          short_description: string | null
+          size: string | null
+          sku: string | null
+          sold_by_weight: boolean
+          stock: number
+          subcategory: string | null
+          supplier_id: string | null
+          unidade_comercial: string | null
+          updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "products"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       has_role: {
         Args: {
