@@ -293,7 +293,7 @@ export function CategoriesManagement() {
             {!editing?.is_primary && (
               <div>
                 <Label>Categoria primária (pai) *</Label>
-                <Select value={parentId} onValueChange={setParentId}>
+                <Select value={parentId || undefined} onValueChange={setParentId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Escolha a primária" />
                   </SelectTrigger>
