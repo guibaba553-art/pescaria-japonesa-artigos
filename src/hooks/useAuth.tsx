@@ -5,6 +5,22 @@ import { useToast } from '@/hooks/use-toast';
 import { signUpSchema } from '@/utils/validation';
 import { VALIDATION_RULES } from '@/config/constants';
 
+export interface EmployeePermissions {
+  pdv: boolean;
+  catalog: boolean;
+  cash_register: boolean;
+  dashboard: boolean;
+  orders: boolean;
+  sales_analysis: boolean;
+  triagem: boolean;
+  fiscal: boolean;
+}
+
+const ADMIN_PERMS: EmployeePermissions = {
+  pdv: true, catalog: true, cash_register: true, dashboard: true,
+  orders: true, sales_analysis: true, triagem: true, fiscal: true,
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -16,6 +32,7 @@ interface AuthContextType {
   isEmployee: boolean;
   isAdmin: boolean;
   canAccessPdv: boolean;
+  permissions: EmployeePermissions;
   loading: boolean;
 }
 
