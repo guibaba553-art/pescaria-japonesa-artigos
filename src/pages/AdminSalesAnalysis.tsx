@@ -675,7 +675,7 @@ export default function AdminSalesAnalysis() {
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  if (!isEmployee && !isAdmin) return null;
+  if (!canView) return null;
 
   return (
     <div className="min-h-screen bg-muted/30">
