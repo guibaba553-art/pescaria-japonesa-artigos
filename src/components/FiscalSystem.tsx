@@ -7,7 +7,8 @@ import { NFESettings } from './NFESettings';
 import { TGASettings } from './TGASettings';
 import { FocusNFeSettings } from './FocusNFeSettings';
 import { XMLExporter } from './XMLExporter';
-import { FileText, Settings, Download, TrendingUp } from 'lucide-react';
+import { CategoryFiscalDefaultsManager } from './CategoryFiscalDefaultsManager';
+import { FileText, Settings, Download, TrendingUp, Tag } from 'lucide-react';
 
 interface FiscalSettings {
   id: string;
