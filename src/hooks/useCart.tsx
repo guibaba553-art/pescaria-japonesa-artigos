@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CartItem {
   id: string;
@@ -13,7 +14,7 @@ interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity?: number) => void;
+  addItem: (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity?: number) => Promise<void>;
   removeItem: (cartItemKey: string) => void;
   updateQuantity: (cartItemKey: string, quantity: number) => void;
   clearCart: () => void;
@@ -56,7 +57,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
 
-  const addItem = (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity: number = 1) => {
+  const addItem = async (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity: number = 1) => {
     // Validação de quantidade
     if (quantity < 1) {
       toast({
@@ -81,12 +82,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       ? `${product.id}-${product.variationId}` 
       : product.id;
 
+    // Verificar estoque atual no banco antes de adicionar
+    const existingItem = items.find((item) => item.cartItemKey === cartItemKey);
+    const currentInCart = existingItem?.quantity ?? 0;
+    const desiredTotal = currentInCart + quantity;
+
+    try {
+      const { data: stockData, error } = await supabase
+        .from(product.variationId ? 'product_variations' : 'products')
+        .select('stock')
+        .eq('id', product.variationId || product.id)
+        .single();
+
+      if (error || !stockData) {
+        toast({
+          title: 'Erro ao verificar estoque',
+          description: 'Tente novamente',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (stockData.stock < desiredTotal) {
+        const available = stockData.stock - currentInCart;
+        toast({
+          title: 'Estoque insuficiente',
+          description: available > 0
+            ? `Apenas ${stockData.stock} unidades em estoque (você já tem ${currentInCart} no carrinho)`
+            : `Você já tem o estoque máximo (${stockData.stock}) deste produto no carrinho`,
+          variant: 'destructive'
+        });
+        return;
+      }
+    } catch (e) {
+      toast({
+        title: 'Erro ao verificar estoque',
+        description: 'Tente novamente',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setItems((currentItems) => {
-      // Verificar se o produto já existe no carrinho usando cartItemKey
-      const existingItem = currentItems.find((item) => item.cartItemKey === cartItemKey);
+      const existing = currentItems.find((item) => item.cartItemKey === cartItemKey);
       
-      if (existingItem) {
-        const newQuantity = existingItem.quantity + quantity;
+      if (existing) {
+        const newQuantity = existing.quantity + quantity;
         if (newQuantity > 100) {
           toast({
             title: 'Quantidade máxima atingida',
