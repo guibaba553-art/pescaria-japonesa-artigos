@@ -110,26 +110,31 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     for (let i = 0; i < it.quantity; i++) units.push({ item: it });
   }
 
-  // 1) Itens muito longos (>100cm / 1m) → tubo individual.
+  // 1) Itens muito longos (>100cm / 1m) → consolidados em UM ÚNICO tubo.
+  //    Comprimento do tubo = MAIOR altura entre os itens longos (não soma).
+  //    Peso = soma dos pesos dos itens longos + peso do tubo.
   //    Itens entre 50cm e 100cm que não cabem na caixa grande serão divididos
   //    em 2 pacotes (caixa grande) na etapa 4.
+  const longUnits: typeof units = [];
   const remaining: typeof units = [];
   for (const u of units) {
-    const longest = maxDimension(u.item);
-    if (longest > 100) {
-      const len = Math.ceil(longest + 5); // folga
-      const insurancePerItem = insuranceValue / Math.max(1, units.length);
-      packages.push({
-        id: nextId(),
-        ...clampMin({ w: 12, h: 12, l: len }),
-        weight: (itemWeight(u.item) + packagingWeight('tubo', len)) / 1000,
-        insurance_value: insurancePerItem,
-        quantity: 1,
-        packaging: 'tubo',
-      });
-    } else {
-      remaining.push(u);
-    }
+    if (maxDimension(u.item) > 100) longUnits.push(u);
+    else remaining.push(u);
+  }
+
+  if (longUnits.length > 0) {
+    const maxLen = Math.max(...longUnits.map((u) => maxDimension(u.item)));
+    const totalWeight = longUnits.reduce((sum, u) => sum + itemWeight(u.item), 0);
+    const len = Math.ceil(maxLen + 5); // folga
+    const insurance = insuranceValue * (longUnits.length / Math.max(1, units.length));
+    packages.push({
+      id: nextId(),
+      ...clampMin({ w: 12, h: 12, l: len }),
+      weight: (totalWeight + packagingWeight('tubo', len)) / 1000,
+      insurance_value: insurance,
+      quantity: 1,
+      packaging: 'tubo',
+    });
   }
 
   if (remaining.length === 0) return packages;
