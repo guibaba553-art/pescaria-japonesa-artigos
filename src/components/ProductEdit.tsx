@@ -23,6 +23,7 @@ import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
+import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 
 interface ProductEditProps {
@@ -214,24 +215,32 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
       // Upload de novas imagens
       for (let i = 0; i < newImages.length; i++) {
-        const file = newImages[i];
+        const original = newImages[i];
         try {
-          // Validar tamanho (máximo 5MB)
-          if (file.size > 5 * 1024 * 1024) {
+          // Validar tamanho (máximo 10MB)
+          if (original.size > 10 * 1024 * 1024) {
             toast({
               title: 'Imagem muito grande',
-              description: `A imagem ${file.name} excede 5MB`,
+              description: `A imagem ${original.name} excede 10MB`,
               variant: 'destructive'
             });
             continue;
           }
 
-          const fileExt = file.name.split('.').pop()?.toLowerCase();
+          // Normaliza para quadrado 800x800 com fundo branco
+          let file: File;
+          try {
+            file = await normalizeProductImage(original, 800, 0.9);
+          } catch {
+            file = original;
+          }
+
+          const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `product-${Date.now()}-${i}.${fileExt}`;
-          
+
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('product-images')
-            .upload(fileName, file);
+            .upload(fileName, file, { contentType: file.type });
 
           if (uploadError) {
             console.error('Erro no upload:', uploadError);

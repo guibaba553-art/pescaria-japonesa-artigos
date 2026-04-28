@@ -23,6 +23,7 @@ import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
+import { normalizeProductImage } from '@/utils/normalizeProductImage';
 
 interface Product {
   id: string;
@@ -162,14 +163,20 @@ export function ProductsManagement() {
       const imageUrls: string[] = [];
       if (images.length > 0) {
         for (let i = 0; i < images.length; i++) {
-          const file = images[i];
-          if (file.size > 5 * 1024 * 1024) {
-            toast({ title: 'Imagem muito grande', description: `${file.name} excede 5MB.`, variant: 'destructive' });
+          const original = images[i];
+          if (original.size > 10 * 1024 * 1024) {
+            toast({ title: 'Imagem muito grande', description: `${original.name} excede 10MB.`, variant: 'destructive' });
             continue;
           }
-          const fileExt = file.name.split('.').pop()?.toLowerCase();
+          let file: File;
+          try {
+            file = await normalizeProductImage(original, 800, 0.9);
+          } catch {
+            file = original;
+          }
+          const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `product-${Date.now()}-${i}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+          const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file, { contentType: file.type });
           if (uploadError) {
             toast({ title: 'Erro no upload', description: uploadError.message, variant: 'destructive' });
             continue;
