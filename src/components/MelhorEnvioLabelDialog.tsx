@@ -62,19 +62,43 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
       const productIds = [...new Set(order.order_items.map((it) => it.product_id))];
       const { data: products } = await supabase
         .from('products')
-        .select('id')
+        .select('id, weight_grams, length_cm, width_cm, height_cm')
         .in('id', productIds);
 
-      // Usa dimensões padrão por item (ME exige > 11cm largura/comprimento)
-      const productsPayload = order.order_items.map((it, idx) => ({
-        id: String(idx + 1),
-        width: 15,
-        height: 5,
-        length: 20,
-        weight: 0.3,
-        insurance_value: 0,
-        quantity: it.quantity,
-      }));
+      const dimsByProduct = new Map<string, {
+        weight_grams: number | null;
+        length_cm: number | null;
+        width_cm: number | null;
+        height_cm: number | null;
+      }>();
+      (products || []).forEach((p: any) => {
+        dimsByProduct.set(p.id, {
+          weight_grams: p.weight_grams,
+          length_cm: p.length_cm ? Number(p.length_cm) : null,
+          width_cm: p.width_cm ? Number(p.width_cm) : null,
+          height_cm: p.height_cm ? Number(p.height_cm) : null,
+        });
+      });
+
+      // Fallback (Melhor Envio exige largura/comprimento >= 11cm)
+      const FALLBACK = { width: 15, height: 5, length: 20, weightKg: 0.3 };
+
+      // Monta payload usando dados reais quando disponíveis
+      const productsPayload = order.order_items.map((it, idx) => {
+        const d = dimsByProduct.get(it.product_id);
+        const weightKg = d?.weight_grams && d.weight_grams > 0
+          ? d.weight_grams / 1000
+          : FALLBACK.weightKg;
+        return {
+          id: String(idx + 1),
+          width: Math.max(11, d?.width_cm ?? FALLBACK.width),
+          height: Math.max(2, d?.height_cm ?? FALLBACK.height),
+          length: Math.max(11, d?.length_cm ?? FALLBACK.length),
+          weight: weightKg,
+          insurance_value: 0,
+          quantity: it.quantity,
+        };
+      });
 
       const { data, error } = await supabase.functions.invoke('calculate-shipping', {
         body: {
