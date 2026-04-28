@@ -23,6 +23,7 @@ import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
+import { normalizeProductImage } from '@/utils/normalizeProductImage';
 
 interface Product {
   id: string;
