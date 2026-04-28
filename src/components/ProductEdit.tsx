@@ -23,6 +23,7 @@ import { SubcategorySelect } from '@/components/SubcategorySelect';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
+import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 
 interface ProductEditProps {
