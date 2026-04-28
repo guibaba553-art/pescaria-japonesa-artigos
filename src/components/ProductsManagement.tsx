@@ -423,9 +423,14 @@ export function ProductsManagement() {
 
                 return (
                   <Card key={product.id} className={`border-l-4 ${accent} overflow-hidden transition-all hover:shadow-md flex flex-col`}>
-                    <div className="aspect-square bg-white relative overflow-hidden flex items-center justify-center p-3">
+                    <div className="relative bg-white overflow-hidden flex items-center justify-center p-3" style={{ height: 180 }}>
                       {product.image_url ? (
-                        <img src={product.image_url} alt={product.name} className="max-w-full max-h-full w-auto h-auto object-contain" loading="lazy" />
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          loading="lazy"
+                          style={{ maxHeight: '100%', maxWidth: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                       )}
