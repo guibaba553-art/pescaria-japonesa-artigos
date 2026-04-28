@@ -14,7 +14,7 @@ interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity?: number) => void;
+  addItem: (product: { id: string; name: string; price: number; image_url: string | null; variationId?: string }, quantity?: number) => Promise<void>;
   removeItem: (cartItemKey: string) => void;
   updateQuantity: (cartItemKey: string, quantity: number) => void;
   clearCart: () => void;
