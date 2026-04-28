@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Truck, ExternalLink, Copy } from 'lucide-react';
+import { packItems } from '@/utils/packShipment';
 
 interface ShippingOption {
   codigo: string;
@@ -80,25 +81,19 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
         });
       });
 
-      // Fallback (Melhor Envio exige largura/comprimento >= 11cm)
-      const FALLBACK = { width: 15, height: 5, length: 20, weightKg: 0.3 };
-
-      // Monta payload usando dados reais quando disponíveis
-      const productsPayload = order.order_items.map((it, idx) => {
+      // Consolida itens em embalagens reais da loja (caixas/envelope/tubo)
+      const shipmentItems = order.order_items.map((it, idx) => {
         const d = dimsByProduct.get(it.product_id);
-        const weightKg = d?.weight_grams && d.weight_grams > 0
-          ? d.weight_grams / 1000
-          : FALLBACK.weightKg;
         return {
-          id: String(idx + 1),
-          width: Math.max(11, d?.width_cm ?? FALLBACK.width),
-          height: Math.max(2, d?.height_cm ?? FALLBACK.height),
-          length: Math.max(11, d?.length_cm ?? FALLBACK.length),
-          weight: weightKg,
-          insurance_value: 0,
+          id: `${it.product_id}-${idx}`,
           quantity: it.quantity,
+          width_cm: d?.width_cm ?? null,
+          height_cm: d?.height_cm ?? null,
+          length_cm: d?.length_cm ?? null,
+          weight_grams: d?.weight_grams ?? null,
         };
       });
+      const productsPayload = packItems(shipmentItems, order.total_amount);
 
       const { data, error } = await supabase.functions.invoke('calculate-shipping', {
         body: {
