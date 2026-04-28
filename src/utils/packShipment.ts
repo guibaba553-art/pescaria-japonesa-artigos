@@ -110,11 +110,13 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     for (let i = 0; i < it.quantity; i++) units.push({ item: it });
   }
 
-  // 1) Itens longos (>50cm) → tubo individual
+  // 1) Itens muito longos (>100cm / 1m) → tubo individual.
+  //    Itens entre 50cm e 100cm que não cabem na caixa grande serão divididos
+  //    em 2 pacotes (caixa grande) na etapa 4.
   const remaining: typeof units = [];
   for (const u of units) {
     const longest = maxDimension(u.item);
-    if (longest > 50) {
+    if (longest > 100) {
       const len = Math.ceil(longest + 5); // folga
       const insurancePerItem = insuranceValue / Math.max(1, units.length);
       packages.push({
