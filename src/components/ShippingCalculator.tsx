@@ -11,6 +11,7 @@ import { SHIPPING_CONFIG } from '@/config/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { AddressFormDialog } from '@/components/AddressFormDialog';
 import type { UserAddress } from '@/components/MyAddresses';
+import { packItems } from '@/utils/packShipment';
 
 interface ShippingOption {
   codigo: string;
@@ -141,32 +142,23 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products]);
 
-  const buildMeProducts = () =>
-    products && products.length > 0
-      ? products.map((p, i) => {
-          const productD = (p.id && productDims[p.id]) || null;
-          const variationD = (p.variationId && variationDims[p.variationId]) || null;
-          // Variação tem prioridade quando tem valor; senão cai pro produto; senão default
-          const pickWidth = variationD?.width_cm ?? productD?.width_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width;
-          const pickHeight = variationD?.height_cm ?? productD?.height_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height;
-          const pickLength = variationD?.length_cm ?? productD?.length_cm ?? SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length;
-          const pickWeight = variationD?.weight_grams ?? productD?.weight_grams ?? SHIPPING_CONFIG.DEFAULT_WEIGHT;
-          // Mínimos exigidos pelo Melhor Envio
-          const width = Math.max(11, pickWidth);
-          const height = Math.max(2, pickHeight);
-          const length = Math.max(11, pickLength);
-          const weightKg = Math.max(0.01, pickWeight / 1000);
-          return {
-            id: p.variationId || p.id || String(i + 1),
-            width,
-            height,
-            length,
-            weight: weightKg,
-            insurance_value: 0,
-            quantity: p.quantity,
-          };
-        })
-      : undefined;
+  const buildMeProducts = () => {
+    if (!products || products.length === 0) return undefined;
+    const shipmentItems = products.map((p, i) => {
+      const productD = (p.id && productDims[p.id]) || null;
+      const variationD = (p.variationId && variationDims[p.variationId]) || null;
+      // Variação tem prioridade quando tem valor; senão cai pro produto
+      return {
+        id: p.variationId || p.id || String(i + 1),
+        quantity: p.quantity,
+        width_cm: variationD?.width_cm ?? productD?.width_cm ?? null,
+        height_cm: variationD?.height_cm ?? productD?.height_cm ?? null,
+        length_cm: variationD?.length_cm ?? productD?.length_cm ?? null,
+        weight_grams: variationD?.weight_grams ?? productD?.weight_grams ?? null,
+      };
+    });
+    return packItems(shipmentItems);
+  };
 
   const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
     if (!/^\d{8}$/.test(cepDestino)) {
