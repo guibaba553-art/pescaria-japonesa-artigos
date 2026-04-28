@@ -110,11 +110,13 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     for (let i = 0; i < it.quantity; i++) units.push({ item: it });
   }
 
-  // 1) Itens longos (>50cm) → tubo individual
+  // 1) Itens muito longos (>100cm / 1m) → tubo individual.
+  //    Itens entre 50cm e 100cm que não cabem na caixa grande serão divididos
+  //    em 2 pacotes (caixa grande) na etapa 4.
   const remaining: typeof units = [];
   for (const u of units) {
     const longest = maxDimension(u.item);
-    if (longest > 50) {
+    if (longest > 100) {
       const len = Math.ceil(longest + 5); // folga
       const insurancePerItem = insuranceValue / Math.max(1, units.length);
       packages.push({
@@ -212,7 +214,28 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     const v = itemVolume(u.item);
     const w = itemWeight(u.item);
     const md = maxDimension(u.item);
-    // Se exceder caixa grande, fecha o atual e abre novo
+
+    // Caso especial: item sozinho não cabe na caixa grande (50–100cm).
+    // Divide em 2 pacotes "caixa grande" — fechamos o pack atual e emitimos
+    // 2 caixas grandes para esse item (peso/seguro divididos pela metade).
+    if (md > BOXES.caixa_grande.maxDim) {
+      chooseAndFlush();
+      const insurancePerPkg = (insuranceValue * (1 / units.length)) / 2;
+      const halfWeight = (w / 2 + packagingWeight('caixa_grande')) / 1000;
+      for (let k = 0; k < 2; k++) {
+        packages.push({
+          id: nextId(),
+          ...clampMin({ w: BOXES.caixa_grande.w, h: BOXES.caixa_grande.h, l: BOXES.caixa_grande.l }),
+          weight: halfWeight,
+          insurance_value: insurancePerPkg,
+          quantity: 1,
+          packaging: 'caixa_grande',
+        });
+      }
+      continue;
+    }
+
+    // Se exceder caixa grande consolidando, fecha o atual e abre novo
     const wouldOverflow =
       boxVol + v > BOXES.caixa_grande.volume * PACK_EFFICIENCY ||
       boxWeight + w > 25000 || // 25kg limite Correios
