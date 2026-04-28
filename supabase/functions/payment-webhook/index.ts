@@ -187,6 +187,8 @@ serve(async (req) => {
         console.log(`Order ${order.id} updated successfully to em_preparo`);
 
         // Subtrair estoque após pagamento aprovado
+        let stockFailed = false;
+        let stockFailureDetails: any[] = [];
         try {
           const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
             method: 'POST',
@@ -199,12 +201,109 @@ serve(async (req) => {
 
           if (stockResponse.ok) {
             const stockData = await stockResponse.json();
-            console.log('Stock subtracted successfully:', stockData.message);
+            console.log('Stock subtraction result:', stockData);
+            // subtract-stock retorna { success, processed, errors[], results[] }
+            // success === false significa que pelo menos UM item falhou (estoque insuficiente)
+            if (stockData.success === false && Array.isArray(stockData.errors) && stockData.errors.length > 0) {
+              stockFailed = true;
+              stockFailureDetails = stockData.errors;
+              console.error('[payment-webhook] STOCK INSUFFICIENT — auto-refund will be triggered', stockData.errors);
+            }
           } else {
             console.error('Failed to subtract stock:', await stockResponse.text());
           }
         } catch (stockError) {
           console.error('Error calling subtract-stock function:', stockError);
+        }
+
+        // ----- Estorno automático se estoque insuficiente -----
+        // Race condition: dois clientes compraram a última unidade simultaneamente.
+        // O 1º paga e leva; o 2º paga mas não tem produto → estornamos automaticamente.
+        if (stockFailed && !alreadyProcessed) {
+          console.log(`[payment-webhook] Iniciando estorno automático para pedido ${order.id}`);
+          try {
+            // 1) Estornar no Mercado Pago (chamada direta — webhook não tem JWT de admin)
+            const idempotencyKey = `auto-refund-stock-${order.id}`;
+            const mpRefundResp = await fetch(
+              `https://api.mercadopago.com/v1/payments/${paymentId}/refunds`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                  'X-Idempotency-Key': idempotencyKey,
+                },
+                body: '{}', // estorno total
+              },
+            );
+            const mpRefundData = await mpRefundResp.json();
+            console.log('[payment-webhook] MP refund response:', mpRefundResp.status, mpRefundData);
+
+            // 2) Registrar o estorno
+            await supabase.from('payment_refunds').insert({
+              order_id: order.id,
+              payment_id: String(paymentId),
+              amount: Number(order.total_amount),
+              mp_refund_id: mpRefundData?.id ? String(mpRefundData.id) : null,
+              status: mpRefundResp.ok && mpRefundData?.status === 'approved' ? 'approved' : (mpRefundResp.ok ? 'pending' : 'rejected'),
+              reason: 'Estoque insuficiente — venda concorrente esgotou o produto',
+              error_message: mpRefundResp.ok ? null : (mpRefundData?.message || `HTTP ${mpRefundResp.status}`),
+              performed_by: null,
+            });
+
+            // 3) Cancelar o pedido (volta de em_preparo → cancelado)
+            const { error: cancelErr } = await supabase
+              .from('orders')
+              .update({ status: 'cancelado' })
+              .eq('id', order.id);
+            if (cancelErr) {
+              console.error('[payment-webhook] Erro ao cancelar pedido:', cancelErr);
+            }
+
+            // 4) E-mail ao cliente avisando do estorno
+            try {
+              const { data: { user: userInfo } } = await supabase.auth.admin.getUserById(order.user_id);
+              const recipientEmail = userInfo?.email;
+              if (recipientEmail) {
+                const { data: profile } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', order.user_id)
+                  .maybeSingle();
+
+                await supabase.functions.invoke('send-transactional-email', {
+                  body: {
+                    templateName: 'order-cancelled',
+                    recipientEmail,
+                    idempotencyKey: `auto-refund-${order.id}`,
+                    templateData: {
+                      customerName: profile?.full_name?.split(' ')[0] ?? null,
+                      orderNumber: String(order.id).slice(0, 8).toUpperCase(),
+                      totalAmount: `R$ ${Number(order.total_amount).toFixed(2).replace('.', ',')}`,
+                      paymentMethod: 'Estorno automático — produto esgotado',
+                    },
+                  },
+                });
+                console.log(`[payment-webhook] Email de estorno enviado para ${recipientEmail}`);
+              }
+            } catch (emailErr) {
+              console.error('[payment-webhook] Erro ao enviar email de estorno:', emailErr);
+            }
+
+            // Pula o e-mail de confirmação de compra (pedido foi cancelado)
+            return new Response(
+              JSON.stringify({
+                success: true,
+                auto_refunded: true,
+                reason: 'stock_insufficient',
+                stock_errors: stockFailureDetails,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+            );
+          } catch (refundErr) {
+            console.error('[payment-webhook] FALHA NO ESTORNO AUTOMÁTICO — intervenção manual necessária:', refundErr);
+            // Não retorna aqui — segue o fluxo normal para que pelo menos o admin veja o pedido
+          }
         }
 
         // ----- E-mail de confirmação de compra (1x por pedido) -----
