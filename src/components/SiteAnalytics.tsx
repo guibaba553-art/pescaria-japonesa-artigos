@@ -141,11 +141,45 @@ export function SiteAnalytics() {
       });
     }
 
-    // Top pages
+    // Top pages — agrupa por rota base (UUIDs viram :id) e resolve nomes amigáveis
     const pageMap = new Map<string, number>();
-    for (const v of rows) pageMap.set(v.path, (pageMap.get(v.path) ?? 0) + 1);
-    const top = Array.from(pageMap.entries())
-      .map(([path, visits]) => ({ path, visits }))
+    const productIds = new Set<string>();
+    for (const v of rows) {
+      const base = basePath(v.path);
+      pageMap.set(base, (pageMap.get(base) ?? 0) + 1);
+      if (base === '/produto/:id') {
+        const id = extractId(v.path);
+        if (id) productIds.add(id);
+      }
+    }
+
+    // Busca nomes dos produtos visitados
+    const productNames = new Map<string, string>();
+    if (productIds.size > 0) {
+      const { data: prods } = await supabase
+        .from('products')
+        .select('id, name')
+        .in('id', Array.from(productIds));
+      for (const p of prods || []) productNames.set(p.id, p.name);
+    }
+
+    // Reagrupa: cada produto vira sua própria linha com nome
+    const finalMap = new Map<string, number>();
+    for (const v of rows) {
+      const base = basePath(v.path);
+      let key: string;
+      if (base === '/produto/:id') {
+        const id = extractId(v.path);
+        const name = id ? productNames.get(id) : null;
+        key = name ? `Produto: ${name}` : 'Produto (removido)';
+      } else {
+        key = STATIC_LABELS[base] ?? base;
+      }
+      finalMap.set(key, (finalMap.get(key) ?? 0) + 1);
+    }
+
+    const top = Array.from(finalMap.entries())
+      .map(([label, visits]) => ({ path: label, label, visits }))
       .sort((a, b) => b.visits - a.visits)
       .slice(0, 10);
 
