@@ -10,8 +10,49 @@ import { Eye, Users, MousePointerClick, TrendingUp } from 'lucide-react';
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
 interface DailyVisit { date: string; visits: number; visitors: number }
-interface PageStat { path: string; visits: number }
+interface PageStat { path: string; label: string; visits: number }
 interface SourceStat { source: string; visits: number }
+
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+const STATIC_LABELS: Record<string, string> = {
+  '/': 'Início',
+  '/produtos': 'Produtos',
+  '/conta': 'Minha conta',
+  '/auth': 'Login',
+  '/forgot-password': 'Esqueci a senha',
+  '/reset-password': 'Redefinir senha',
+  '/politica-privacidade': 'Política de privacidade',
+  '/termos-de-uso': 'Termos de uso',
+  '/politica-de-trocas': 'Política de trocas',
+  '/politica-de-frete': 'Política de frete',
+  '/completar-cadastro': 'Completar cadastro',
+  '/meus-dados': 'Meus dados',
+  '/unsubscribe': 'Cancelar inscrição',
+};
+
+function basePath(path: string): string {
+  const clean = path.split('?')[0].split('#')[0];
+  if (clean.startsWith('/produto/')) return '/produto/:id';
+  if (clean.startsWith('/retirada/')) return '/retirada/:id';
+  return clean;
+}
+
+function extractId(path: string): string | null {
+  const m = path.match(UUID_RE);
+  return m ? m[0] : null;
+}
+
+function friendlyLabel(path: string, productNames: Map<string, string>): string {
+  const base = basePath(path);
+  if (base === '/produto/:id') {
+    const id = extractId(path);
+    const name = id ? productNames.get(id) : null;
+    return name ? `Produto: ${name}` : 'Produto';
+  }
+  if (base === '/retirada/:id') return 'Retirada de pedido';
+  return STATIC_LABELS[base] ?? base;
+}
 
 function classifyReferrer(ref: string | null): string {
   if (!ref) return 'Direto';
@@ -100,11 +141,45 @@ export function SiteAnalytics() {
       });
     }
 
-    // Top pages
+    // Top pages — agrupa por rota base (UUIDs viram :id) e resolve nomes amigáveis
     const pageMap = new Map<string, number>();
-    for (const v of rows) pageMap.set(v.path, (pageMap.get(v.path) ?? 0) + 1);
-    const top = Array.from(pageMap.entries())
-      .map(([path, visits]) => ({ path, visits }))
+    const productIds = new Set<string>();
+    for (const v of rows) {
+      const base = basePath(v.path);
+      pageMap.set(base, (pageMap.get(base) ?? 0) + 1);
+      if (base === '/produto/:id') {
+        const id = extractId(v.path);
+        if (id) productIds.add(id);
+      }
+    }
+
+    // Busca nomes dos produtos visitados
+    const productNames = new Map<string, string>();
+    if (productIds.size > 0) {
+      const { data: prods } = await supabase
+        .from('products')
+        .select('id, name')
+        .in('id', Array.from(productIds));
+      for (const p of prods || []) productNames.set(p.id, p.name);
+    }
+
+    // Reagrupa: cada produto vira sua própria linha com nome
+    const finalMap = new Map<string, number>();
+    for (const v of rows) {
+      const base = basePath(v.path);
+      let key: string;
+      if (base === '/produto/:id') {
+        const id = extractId(v.path);
+        const name = id ? productNames.get(id) : null;
+        key = name ? `Produto: ${name}` : 'Produto (removido)';
+      } else {
+        key = STATIC_LABELS[base] ?? base;
+      }
+      finalMap.set(key, (finalMap.get(key) ?? 0) + 1);
+    }
+
+    const top = Array.from(finalMap.entries())
+      .map(([label, visits]) => ({ path: label, label, visits }))
       .sort((a, b) => b.visits - a.visits)
       .slice(0, 10);
 
@@ -219,7 +294,7 @@ export function SiteAnalytics() {
                 <BarChart data={topPages} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
-                  <YAxis dataKey="path" type="category" width={120} tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="label" type="category" width={180} tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Bar dataKey="visits" fill="hsl(var(--primary))" name="Visitas" />
                 </BarChart>
