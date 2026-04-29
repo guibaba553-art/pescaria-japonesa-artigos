@@ -69,8 +69,18 @@ export function PageViewTracker() {
     if (consent !== 'accepted') return;
     // Wait for auth resolution to avoid counting staff before role is known
     if (authLoading) return;
-    // Skip internal users (admin/employee) from analytics
-    if (isAdmin || isEmployee) return;
+
+    const sid = getSessionId();
+
+    // Se este device/browser já foi identificado como staff em qualquer momento,
+    // nunca rastreia mais (mesmo após logout). Evita poluir os analytics.
+    if (isStaffSession(sid)) return;
+
+    // Marca permanentemente esta sessão como staff e para de rastrear
+    if (isAdmin || isEmployee) {
+      markSessionAsStaff(sid);
+      return;
+    }
 
     const path = location.pathname;
     if (path === lastPath.current) return;
@@ -88,7 +98,7 @@ export function PageViewTracker() {
         path,
         referrer,
         user_agent: ua,
-        session_id: getSessionId(),
+        session_id: sid,
         user_id: data.user?.id ?? null,
         device_type: detectDevice(ua),
       }).then(() => {
