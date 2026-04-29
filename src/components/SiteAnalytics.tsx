@@ -178,8 +178,9 @@ export function SiteAnalytics() {
       finalMap.set(key, (finalMap.get(key) ?? 0) + 1);
     }
 
+    const truncate = (s: string, n = 32) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
     const top = Array.from(finalMap.entries())
-      .map(([label, visits]) => ({ path: label, label, visits }))
+      .map(([label, visits]) => ({ path: label, label: truncate(label), visits }))
       .sort((a, b) => b.visits - a.visits)
       .slice(0, 10);
 
