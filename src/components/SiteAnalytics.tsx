@@ -294,7 +294,7 @@ export function SiteAnalytics() {
                 <BarChart data={topPages} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
-                  <YAxis dataKey="path" type="category" width={120} tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="label" type="category" width={180} tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Bar dataKey="visits" fill="hsl(var(--primary))" name="Visitas" />
                 </BarChart>
