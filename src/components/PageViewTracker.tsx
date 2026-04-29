@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getCookieConsent } from './CookieBanner';
 
 const SESSION_KEY = 'jp_session_id';
+const STAFF_SESSIONS_KEY = 'jp_staff_sessions'; // sessões já identificadas como staff (nunca rastrear)
 
 function getSessionId(): string {
   let sid = sessionStorage.getItem(SESSION_KEY);
@@ -14,6 +15,27 @@ function getSessionId(): string {
   }
   return sid;
 }
+
+function getStaffSessions(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(STAFF_SESSIONS_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function markSessionAsStaff(sid: string) {
+  const set = getStaffSessions();
+  set.add(sid);
+  try {
+    localStorage.setItem(STAFF_SESSIONS_KEY, JSON.stringify(Array.from(set)));
+  } catch { /* ignore */ }
+}
+
+function isStaffSession(sid: string): boolean {
+  return getStaffSessions().has(sid);
+}
+
 
 function detectDevice(ua: string): string {
   if (/Mobi|Android|iPhone/i.test(ua)) return 'mobile';
