@@ -4,16 +4,12 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
 
-// "Lembrar de mim": se o usuário NÃO marcou na tela de login, limpa o token do
-// Supabase ao fechar o navegador (a flag é setada em src/pages/Auth.tsx).
+// Sessão sempre persistente — o Supabase mantém o token no localStorage e renova
+// automaticamente. Não removemos o token em beforeunload pois isso desconectava
+// o usuário ao navegar entre páginas e ao fechar o navegador.
 if (typeof window !== "undefined") {
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const authKey = `sb-${projectId}-auth-token`;
-  window.addEventListener("beforeunload", () => {
-    if (sessionStorage.getItem("japas:sessionOnly") === "1") {
-      localStorage.removeItem(authKey);
-    }
-  });
+  // Limpa flag legada que podia derrubar a sessão em versões anteriores.
+  sessionStorage.removeItem("japas:sessionOnly");
 }
 
 const root = createRoot(document.getElementById("root")!);

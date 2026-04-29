@@ -55,11 +55,8 @@ export default function Auth() {
     if (!error) {
       if (rememberMe) {
         localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
-        sessionStorage.removeItem('japas:sessionOnly');
       } else {
         localStorage.removeItem(REMEMBER_ME_KEY);
-        // Marca sessão como temporária — será removida ao fechar o navegador
-        sessionStorage.setItem('japas:sessionOnly', '1');
       }
       navigate(redirectTo);
     }
@@ -86,12 +83,6 @@ export default function Auth() {
 
   const handleGoogle = async () => {
     setLoading(true);
-    // Mantém preferência "lembrar de mim" também para login social
-    if (rememberMe) {
-      sessionStorage.removeItem('japas:sessionOnly');
-    } else {
-      sessionStorage.setItem('japas:sessionOnly', '1');
-    }
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirectTo)}`,
     });
