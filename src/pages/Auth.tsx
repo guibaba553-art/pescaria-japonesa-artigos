@@ -83,12 +83,6 @@ export default function Auth() {
 
   const handleGoogle = async () => {
     setLoading(true);
-    // Mantém preferência "lembrar de mim" também para login social
-    if (rememberMe) {
-      sessionStorage.removeItem('japas:sessionOnly');
-    } else {
-      sessionStorage.setItem('japas:sessionOnly', '1');
-    }
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirectTo)}`,
     });
