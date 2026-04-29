@@ -55,11 +55,8 @@ export default function Auth() {
     if (!error) {
       if (rememberMe) {
         localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
-        sessionStorage.removeItem('japas:sessionOnly');
       } else {
         localStorage.removeItem(REMEMBER_ME_KEY);
-        // Marca sessão como temporária — será removida ao fechar o navegador
-        sessionStorage.setItem('japas:sessionOnly', '1');
       }
       navigate(redirectTo);
     }
