@@ -10,8 +10,49 @@ import { Eye, Users, MousePointerClick, TrendingUp } from 'lucide-react';
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
 interface DailyVisit { date: string; visits: number; visitors: number }
-interface PageStat { path: string; visits: number }
+interface PageStat { path: string; label: string; visits: number }
 interface SourceStat { source: string; visits: number }
+
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+const STATIC_LABELS: Record<string, string> = {
+  '/': 'Início',
+  '/produtos': 'Produtos',
+  '/conta': 'Minha conta',
+  '/auth': 'Login',
+  '/forgot-password': 'Esqueci a senha',
+  '/reset-password': 'Redefinir senha',
+  '/politica-privacidade': 'Política de privacidade',
+  '/termos-de-uso': 'Termos de uso',
+  '/politica-de-trocas': 'Política de trocas',
+  '/politica-de-frete': 'Política de frete',
+  '/completar-cadastro': 'Completar cadastro',
+  '/meus-dados': 'Meus dados',
+  '/unsubscribe': 'Cancelar inscrição',
+};
+
+function basePath(path: string): string {
+  const clean = path.split('?')[0].split('#')[0];
+  if (clean.startsWith('/produto/')) return '/produto/:id';
+  if (clean.startsWith('/retirada/')) return '/retirada/:id';
+  return clean;
+}
+
+function extractId(path: string): string | null {
+  const m = path.match(UUID_RE);
+  return m ? m[0] : null;
+}
+
+function friendlyLabel(path: string, productNames: Map<string, string>): string {
+  const base = basePath(path);
+  if (base === '/produto/:id') {
+    const id = extractId(path);
+    const name = id ? productNames.get(id) : null;
+    return name ? `Produto: ${name}` : 'Produto';
+  }
+  if (base === '/retirada/:id') return 'Retirada de pedido';
+  return STATIC_LABELS[base] ?? base;
+}
 
 function classifyReferrer(ref: string | null): string {
   if (!ref) return 'Direto';
