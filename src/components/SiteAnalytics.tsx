@@ -178,8 +178,9 @@ export function SiteAnalytics() {
       finalMap.set(key, (finalMap.get(key) ?? 0) + 1);
     }
 
+    const truncate = (s: string, n = 32) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
     const top = Array.from(finalMap.entries())
-      .map(([label, visits]) => ({ path: label, label, visits }))
+      .map(([label, visits]) => ({ path: label, label: truncate(label), visits }))
       .sort((a, b) => b.visits - a.visits)
       .slice(0, 10);
 
@@ -290,11 +291,17 @@ export function SiteAnalytics() {
             {topPages.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">Sem dados ainda.</p>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={topPages} layout="vertical">
+              <ResponsiveContainer width="100%" height={Math.max(300, topPages.length * 38)}>
+                <BarChart data={topPages} layout="vertical" margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="label" type="category" width={180} tick={{ fontSize: 11 }} />
+                  <XAxis type="number" allowDecimals={false} />
+                  <YAxis
+                    dataKey="label"
+                    type="category"
+                    width={220}
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                  />
                   <Tooltip />
                   <Bar dataKey="visits" fill="hsl(var(--primary))" name="Visitas" />
                 </BarChart>

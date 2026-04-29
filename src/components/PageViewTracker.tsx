@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { getCookieConsent } from './CookieBanner';
 
 const SESSION_KEY = 'jp_session_id';
+const STAFF_SESSIONS_KEY = 'jp_staff_sessions'; // sessões já identificadas como staff (nunca rastrear)
 
 function getSessionId(): string {
   let sid = sessionStorage.getItem(SESSION_KEY);
@@ -14,6 +15,27 @@ function getSessionId(): string {
   }
   return sid;
 }
+
+function getStaffSessions(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(STAFF_SESSIONS_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function markSessionAsStaff(sid: string) {
+  const set = getStaffSessions();
+  set.add(sid);
+  try {
+    localStorage.setItem(STAFF_SESSIONS_KEY, JSON.stringify(Array.from(set)));
+  } catch { /* ignore */ }
+}
+
+function isStaffSession(sid: string): boolean {
+  return getStaffSessions().has(sid);
+}
+
 
 function detectDevice(ua: string): string {
   if (/Mobi|Android|iPhone/i.test(ua)) return 'mobile';
@@ -47,8 +69,18 @@ export function PageViewTracker() {
     if (consent !== 'accepted') return;
     // Wait for auth resolution to avoid counting staff before role is known
     if (authLoading) return;
-    // Skip internal users (admin/employee) from analytics
-    if (isAdmin || isEmployee) return;
+
+    const sid = getSessionId();
+
+    // Se este device/browser já foi identificado como staff em qualquer momento,
+    // nunca rastreia mais (mesmo após logout). Evita poluir os analytics.
+    if (isStaffSession(sid)) return;
+
+    // Marca permanentemente esta sessão como staff e para de rastrear
+    if (isAdmin || isEmployee) {
+      markSessionAsStaff(sid);
+      return;
+    }
 
     const path = location.pathname;
     if (path === lastPath.current) return;
@@ -66,7 +98,7 @@ export function PageViewTracker() {
         path,
         referrer,
         user_agent: ua,
-        session_id: getSessionId(),
+        session_id: sid,
         user_id: data.user?.id ?? null,
         device_type: detectDevice(ua),
       }).then(() => {
