@@ -450,14 +450,20 @@ export function ProductsManagement() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                       )}
-                      <div className="absolute top-1 right-1 flex flex-col gap-1">
+                      <div className="absolute top-1 right-1 flex flex-col gap-1 items-end">
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
                         {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
                         {product.stock > 0 && v?.status === 'critical' && (
                           <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
                         )}
+                        {isMissingShippingDims(product) && (
+                          <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto sem peso/medidas — indisponível para envio">
+                            ⚠ Sem medidas
+                          </Badge>
+                        )}
                       </div>
+
                     </div>
                     <div className="p-2.5 flex-1 flex flex-col gap-1.5">
                       <div>
