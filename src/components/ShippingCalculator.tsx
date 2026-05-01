@@ -323,7 +323,17 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   return (
     <div className="space-y-4">
-      {/* Endereços salvos do usuário (acima de Retirar na Loja) */}
+      {hasItemsWithoutDims && (
+        <Card className="p-3 border-destructive/40 bg-destructive/5">
+          <p className="text-sm font-semibold text-destructive">
+            ⚠ Frete indisponível para este pedido
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Há itens sem peso/medidas cadastradas. Você ainda pode escolher <strong>Retirar na Loja</strong> ou contatar o vendedor.
+          </p>
+        </Card>
+      )}
+
       {user && savedAddresses.length > 0 && (
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
