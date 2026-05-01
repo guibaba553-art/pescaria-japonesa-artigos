@@ -346,6 +346,7 @@ export function ProductsManagement() {
             { label: 'Esgotados', value: outOfStock, tone: 'danger' },
             { label: 'Promoção', value: onSaleCount, tone: 'success' },
             { label: 'Destaque', value: featuredCount, tone: 'warning' },
+            { label: 'Sem medidas', value: noDimsCount, tone: 'danger' },
           ]}
         />
         <CardContent className="p-4 md:p-6 space-y-4">
