@@ -41,6 +41,15 @@ interface Product {
   sale_ends_at?: string;
   minimum_quantity?: number;
   sku?: string | null;
+  weight_grams?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
+}
+
+// Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
+function isMissingShippingDims(p: Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>): boolean {
+  return !p.weight_grams || !p.length_cm || !p.width_cm || !p.height_cm;
 }
 
 export function ProductsManagement() {
