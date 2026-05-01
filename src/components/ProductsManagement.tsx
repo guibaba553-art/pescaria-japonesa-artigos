@@ -330,6 +330,7 @@ export function ProductsManagement() {
     { key: 'on-sale', label: 'Promoção', count: onSaleCount },
     { key: 'featured', label: 'Destaque', count: featuredCount },
     { key: 'restock', label: 'Reestoque', count: restockIds.size },
+    { key: 'no-dims', label: '⚠ Sem medidas', count: noDimsCount },
   ];
 
   return (
