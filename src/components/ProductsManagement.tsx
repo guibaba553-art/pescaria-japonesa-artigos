@@ -41,6 +41,15 @@ interface Product {
   sale_ends_at?: string;
   minimum_quantity?: number;
   sku?: string | null;
+  weight_grams?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
+}
+
+// Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
+function isMissingShippingDims(p: Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>): boolean {
+  return !p.weight_grams || !p.length_cm || !p.width_cm || !p.height_cm;
 }
 
 export function ProductsManagement() {
@@ -64,7 +73,7 @@ export function ProductsManagement() {
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock'>('all');
+  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims'>('all');
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
@@ -289,6 +298,7 @@ export function ProductsManagement() {
   const onSaleCount = visibleProducts.filter((p) => p.on_sale).length;
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
   const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const noDimsCount = visibleProducts.filter(isMissingShippingDims).length;
 
   const restockIds = new Set(
     visibleProducts
@@ -305,6 +315,7 @@ export function ProductsManagement() {
   if (filter === 'on-sale') filteredProducts = filteredProducts.filter((p) => p.on_sale);
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
+  if (filter === 'no-dims') filteredProducts = filteredProducts.filter(isMissingShippingDims);
   filteredProducts = filteredProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -319,6 +330,7 @@ export function ProductsManagement() {
     { key: 'on-sale', label: 'Promoção', count: onSaleCount },
     { key: 'featured', label: 'Destaque', count: featuredCount },
     { key: 'restock', label: 'Reestoque', count: restockIds.size },
+    { key: 'no-dims', label: '⚠ Sem medidas', count: noDimsCount },
   ];
 
   return (
@@ -334,6 +346,7 @@ export function ProductsManagement() {
             { label: 'Esgotados', value: outOfStock, tone: 'danger' },
             { label: 'Promoção', value: onSaleCount, tone: 'success' },
             { label: 'Destaque', value: featuredCount, tone: 'warning' },
+            { label: 'Sem medidas', value: noDimsCount, tone: 'danger' },
           ]}
         />
         <CardContent className="p-4 md:p-6 space-y-4">
@@ -441,14 +454,20 @@ export function ProductsManagement() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                       )}
-                      <div className="absolute top-1 right-1 flex flex-col gap-1">
+                      <div className="absolute top-1 right-1 flex flex-col gap-1 items-end">
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
                         {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
                         {product.stock > 0 && v?.status === 'critical' && (
                           <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
                         )}
+                        {isMissingShippingDims(product) && (
+                          <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto sem peso/medidas — indisponível para envio">
+                            ⚠ Sem medidas
+                          </Badge>
+                        )}
                       </div>
+
                     </div>
                     <div className="p-2.5 flex-1 flex flex-col gap-1.5">
                       <div>
