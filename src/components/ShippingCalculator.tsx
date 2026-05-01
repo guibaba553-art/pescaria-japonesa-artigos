@@ -142,6 +142,35 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products]);
 
+  // Detecta itens sem medidas/peso cadastrados — frete não pode ser calculado
+  const itemsMissingDims = (): { id: string; quantity: number }[] => {
+    if (!products || products.length === 0) return [];
+    return products
+      .map((p) => {
+        const productD = (p.id && productDims[p.id]) || null;
+        const variationD = (p.variationId && variationDims[p.variationId]) || null;
+        const w = variationD?.weight_grams ?? productD?.weight_grams ?? null;
+        const l = variationD?.length_cm ?? productD?.length_cm ?? null;
+        const wd = variationD?.width_cm ?? productD?.width_cm ?? null;
+        const h = variationD?.height_cm ?? productD?.height_cm ?? null;
+        const missing = !w || !l || !wd || !h;
+        return missing ? { id: p.variationId || p.id || '', quantity: p.quantity } : null;
+      })
+      .filter((x): x is { id: string; quantity: number } => !!x);
+  };
+
+  // Aguarda o cache de dimensões carregar antes de decidir
+  const dimsReady = (() => {
+    if (!products || products.length === 0) return true;
+    return products.every((p) => {
+      const pidOk = !p.id || p.id in productDims;
+      const vidOk = !p.variationId || p.variationId in variationDims;
+      return pidOk && vidOk;
+    });
+  })();
+
+  const hasItemsWithoutDims = dimsReady && itemsMissingDims().length > 0;
+
   const buildMeProducts = () => {
     if (!products || products.length === 0) return undefined;
     const shipmentItems = products.map((p, i) => {
@@ -161,6 +190,14 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   };
 
   const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
+    if (hasItemsWithoutDims) {
+      toast({
+        title: 'Frete indisponível',
+        description: 'Há itens no carrinho sem peso/medidas cadastradas. Escolha "Retirar na Loja" ou contate o vendedor.',
+        variant: 'destructive',
+      });
+      return null;
+    }
     if (!/^\d{8}$/.test(cepDestino)) {
       toast({ title: 'CEP inválido', description: 'CEP deve conter 8 dígitos', variant: 'destructive' });
       return null;
@@ -187,6 +224,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     }
     return data.options as ShippingOption[];
   };
+
 
   const calculateShipping = async () => {
     if (!cep || cep.length !== 8) {
