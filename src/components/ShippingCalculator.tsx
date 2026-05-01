@@ -256,13 +256,14 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   // Carrega automaticamente o frete mais barato de cada endereço (sem expandir)
   useEffect(() => {
     if (!user || savedAddresses.length === 0) return;
+    if (hasItemsWithoutDims) return; // não tenta calcular se não há medidas
     savedAddresses.forEach((a) => {
       if (!addressOptions[a.id] && loadingAddressId !== a.id) {
         handleCalculateForAddress(a, false);
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [savedAddresses, user?.id]);
+  }, [savedAddresses, user?.id, hasItemsWithoutDims]);
 
   // Remove a opção "Retirar na Loja" das listas por endereço (ela já aparece embaixo)
   const filterDeliveryOnly = (opts: ShippingOption[]) =>
