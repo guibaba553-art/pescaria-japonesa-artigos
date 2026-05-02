@@ -354,7 +354,7 @@ export function ProductsManagement() {
   if (filter === 'on-sale') filteredProducts = filteredProducts.filter((p) => p.on_sale);
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
-  if (filter === 'no-dims') filteredProducts = filteredProducts.filter(isMissingShippingDims);
+  if (filter === 'no-dims') filteredProducts = filteredProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id]));
   if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
   filteredProducts = filteredProducts.filter(
     (p) =>
