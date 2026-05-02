@@ -314,6 +314,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         width_cm: widthCm ? parseFloat(widthCm) : null,
         height_cm: heightCm ? parseFloat(heightCm) : null,
         pdv_only: pdvOnly,
+        pdv_no_markup: pdvNoMarkup,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
