@@ -208,6 +208,7 @@ export default function Account() {
         )
       `)
       .eq('user_id', user.id)
+      .or('source.is.null,source.neq.pdv')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
