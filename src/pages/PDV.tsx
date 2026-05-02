@@ -919,7 +919,7 @@ export default function PDV() {
         });
       }
 
-      const requestedByTarget = new Map<string, { requested: number; available: number; isByWeight: boolean }>();
+      const requestedByTarget = new Map<string, { requested: number; available: number; isByWeight: boolean; label: string }>();
 
       cart.forEach((item, index) => {
         const resolved = inventory.resolvedItems[index];
@@ -928,11 +928,15 @@ export default function PDV() {
           : `product:${item.product.id}`;
         const current = requestedByTarget.get(key);
         const requested = Number(item.quantity ?? 0);
+        const itemLabel = item.variation
+          ? `${item.product.name} - ${item.variation.name}`
+          : item.product.name;
 
         requestedByTarget.set(key, {
           requested: (current?.requested ?? 0) + requested,
           available: Number(resolved?.availableStock ?? 0),
           isByWeight: current?.isByWeight ?? !!item.product.sold_by_weight,
+          label: current?.label ?? itemLabel,
         });
       });
 
@@ -943,7 +947,7 @@ export default function PDV() {
         if (target.requested - target.available > tolerance) {
           toast({
             title: 'Estoque insuficiente',
-            description: `Disponível: ${target.available.toFixed(target.isByWeight ? 3 : 0)} ${unit} · solicitado: ${target.requested.toFixed(target.isByWeight ? 3 : 0)} ${unit}`,
+            description: `${target.label}: disponível ${target.available.toFixed(target.isByWeight ? 3 : 0)} ${unit}, solicitado ${target.requested.toFixed(target.isByWeight ? 3 : 0)} ${unit}`,
             variant: 'destructive',
           });
           await loadProducts();
