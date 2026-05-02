@@ -9,6 +9,7 @@ import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
+import { useProductsRealtime } from "@/hooks/useProductsRealtime";
 
 const FeaturedProducts = () => {
   const navigate = useNavigate();
