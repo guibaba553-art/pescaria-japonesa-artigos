@@ -227,6 +227,59 @@ export default function AdminTriagem() {
     }
   };
 
+  // Captura global do leitor de código de barras: acumula teclas rápidas
+  // mesmo sem foco em nenhum input e abre o pedido automaticamente.
+  useEffect(() => {
+    if (!canView) return;
+    let buffer = '';
+    let lastTime = 0;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignora se o usuário está digitando em um campo editável
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        (target as any)?.isContentEditable;
+      if (isEditable) return;
+
+      // Ignora se um diálogo já está aberto (triagem em andamento)
+      if (scanOpen) return;
+
+      const now = Date.now();
+      // Reset se demorou muito entre teclas (digitação humana)
+      if (now - lastTime > 80) buffer = '';
+      lastTime = now;
+
+      if (e.key === 'Enter') {
+        const orderId = extractOrderId(buffer);
+        buffer = '';
+        if (orderId && lastHandledQrRef.current !== orderId) {
+          lastHandledQrRef.current = orderId;
+          openOrderById(orderId);
+        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        buffer += e.key;
+        // Se já apareceu UUID completo, dispara sem esperar Enter
+        const orderId = extractOrderId(buffer);
+        if (orderId && lastHandledQrRef.current !== orderId) {
+          lastHandledQrRef.current = orderId;
+          buffer = '';
+          openOrderById(orderId);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canView, scanOpen, orders]);
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
