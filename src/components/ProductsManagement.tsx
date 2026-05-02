@@ -472,6 +472,11 @@ export function ProductsManagement() {
                             ⚠ Sem medidas
                           </Badge>
                         )}
+                        {product.pdv_only && (
+                          <Badge className="bg-amber-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto exclusivo do PDV — não aparece no site">
+                            🏪 Só PDV
+                          </Badge>
+                        )}
                       </div>
 
                     </div>
