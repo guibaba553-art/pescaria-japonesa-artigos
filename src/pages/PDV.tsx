@@ -913,13 +913,38 @@ export default function PDV() {
       const subtotal = calculateSubtotal();
       const discount = getDiscountValue();
       const discountRatio = subtotal > 0 ? discount / subtotal : 0;
+
+      // Validar que toda variation_id ainda existe (evita FK violation se variação foi removida/recriada)
+      const variationIds = Array.from(new Set(
+        cart.map(i => i.variation?.id).filter((v): v is string => !!v)
+      ));
+      let validVariationIds = new Set<string>();
+      if (variationIds.length > 0) {
+        const { data: existingVars, error: varCheckErr } = await supabase
+          .from('product_variations')
+          .select('id')
+          .in('id', variationIds);
+        if (varCheckErr) throw varCheckErr;
+        validVariationIds = new Set((existingVars || []).map((v: any) => v.id));
+        const missing = variationIds.filter(id => !validVariationIds.has(id));
+        if (missing.length > 0) {
+          // Reverte criação do pedido para não deixar órfão
+          await supabase.from('orders').delete().eq('id', order.id);
+          await loadProducts();
+          throw new Error('Algumas variações no carrinho foram alteradas/removidas. Recarregamos os produtos — adicione novamente os itens.');
+        }
+      }
+
       const orderItems = cart.map(item => {
         const unit = getItemUnitPrice(item);
         const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
+        const variationId = item.variation && validVariationIds.has(item.variation.id)
+          ? item.variation.id
+          : null;
         return {
           order_id: order.id,
           product_id: item.product.id,
-          variation_id: item.variation ? item.variation.id : null,
+          variation_id: variationId,
           quantity: item.quantity,
           price_at_purchase: adjustedUnit,
         };
