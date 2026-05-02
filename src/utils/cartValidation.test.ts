@@ -251,4 +251,24 @@ describe('Integração: deleção/recriação de variação no PDV', () => {
       },
     ]);
   });
+
+  it('mantém o estoque fracionado exato para itens vendidos por peso', async () => {
+    const supa = makeSupabaseInventoryMock({
+      products: [{ id: 'p1', stock: 0 }],
+      variations: [{ id: 'v1', product_id: 'p1', stock: 0.238, sku: 'PESO-1', name: 'Granel', price: 10 }],
+    });
+
+    const cart: CartItemForValidation[] = [
+      {
+        product: { id: 'p1', stock: 0, name: 'Isca' },
+        variation: { id: 'v1', sku: 'PESO-1', name: 'Granel', price: 10, stock: 0.238 },
+        quantity: 0.254,
+      },
+    ];
+
+    const result = await resolveCartInventory(supa as any, cart);
+
+    expect(result.resolvedItems[0]?.availableStock).toBe(0.238);
+    expect(cart[0].quantity).toBeGreaterThan(result.resolvedItems[0]?.availableStock ?? 0);
+  });
 });
