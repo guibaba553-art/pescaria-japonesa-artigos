@@ -888,6 +888,7 @@ export default function AdminSalesAnalysis() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
