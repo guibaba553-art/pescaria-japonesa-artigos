@@ -646,6 +646,18 @@ export function ProductsManagement() {
                 <Switch id="pdvOnly" checked={pdvOnly} onCheckedChange={setPdvOnly} />
               </div>
 
+              <div className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdvNoMarkup" className="text-blue-700 dark:text-blue-400">
+                    Sem acréscimo no PDV (débito/crédito)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Preço não muda com o método de pagamento — sempre cobra o valor do PIX (igual Refil de gás / Yamalube)
+                  </p>
+                </div>
+                <Switch id="pdvNoMarkup" checked={pdvNoMarkup} onCheckedChange={setPdvNoMarkup} />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição (opcional)</Label>
                 <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
