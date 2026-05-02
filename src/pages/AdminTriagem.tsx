@@ -254,7 +254,7 @@ export default function AdminTriagem() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por ID, nome, CPF, telefone — ou escaneie o QR de retirada..."
             className="pl-9"
             autoComplete="off"
