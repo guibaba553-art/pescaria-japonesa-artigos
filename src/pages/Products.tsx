@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
+import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories } from '@/hooks/useCategories';
 
@@ -45,6 +46,8 @@ export default function Products() {
   useEffect(() => {
     loadProducts();
   }, [categoryParam, subcategoryParam]);
+
+  useProductsRealtime(() => loadProducts(), 'products-list');
 
   // Reset filters quando muda categoria
   useEffect(() => {
