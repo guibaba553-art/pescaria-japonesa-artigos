@@ -883,12 +883,17 @@ export default function PDV() {
   };
 
   const finalizeSale = async () => {
+    // Guarda síncrona: bloqueia cliques duplos antes do estado React atualizar
+    if (finalizingRef.current) return;
+    finalizingRef.current = true;
+
     if (cart.length === 0) {
       toast({
         title: 'Carrinho vazio',
         description: 'Adicione produtos antes de finalizar',
         variant: 'destructive'
       });
+      finalizingRef.current = false;
       return;
     }
 
@@ -900,11 +905,26 @@ export default function PDV() {
           description: 'O valor recebido é menor que o total',
           variant: 'destructive'
         });
+        finalizingRef.current = false;
         return;
       }
     }
 
     setProcessing(true);
+
+    // Gera/reutiliza chave de idempotência: se a venda falhar e o usuário tentar
+    // novamente sem limpar o carrinho, a mesma chave será enviada e o banco
+    // rejeitará duplicatas via índice único.
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current =
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    const idempotencyKey = idempotencyKeyRef.current;
+
+    let createdOrderId: string | null = null;
+
     try {
       const subtotal = calculateSubtotal();
       const discount = getDiscountValue();
@@ -958,7 +978,7 @@ export default function PDV() {
         }
       }
 
-      // Criar pedido
+      // Criar pedido com idempotency_key (índice único impede duplicatas)
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -970,12 +990,27 @@ export default function PDV() {
           shipping_address: selectedCustomer ? `${selectedCustomer.street}, ${selectedCustomer.number} - ${selectedCustomer.neighborhood}` : 'Venda Presencial',
           shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
           customer_id: selectedCustomer?.id || null,
-          source: 'pdv'
+          source: 'pdv',
+          idempotency_key: idempotencyKey,
         }])
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        // 23505 = unique_violation: pedido já foi criado em uma tentativa anterior
+        if ((orderError as any).code === '23505') {
+          toast({
+            title: 'Venda já registrada',
+            description: 'Esta venda já havia sido finalizada. Carrinho limpo.',
+          });
+          clearSale();
+          await loadProducts();
+          return;
+        }
+        throw orderError;
+      }
+
+      createdOrderId = order.id;
 
       const orderItems = cart.map((item, index) => {
         const resolved = inventory.resolvedItems[index];
@@ -997,7 +1032,6 @@ export default function PDV() {
       if (itemsError) throw itemsError;
 
       // Atualizar estoque de forma ATÔMICA via RPC (livro-caixa + lock de linha)
-      // Garante: 1) sem race condition, 2) idempotente por pedido, 3) histórico auditável
       for (const [index, item] of cart.entries()) {
         const resolved = inventory.resolvedItems[index];
         const { error: stockError } = await supabase.rpc('apply_stock_movement', {
@@ -1011,6 +1045,9 @@ export default function PDV() {
 
         if (stockError) throw stockError;
       }
+
+      // Pedido finalizado com sucesso — não precisa mais da idempotency key
+      createdOrderId = null;
 
       if (hasProductFallback) {
         toast({
@@ -1038,6 +1075,16 @@ export default function PDV() {
       await loadProducts();
 
     } catch (error: any) {
+      // Rollback manual: se criamos o pedido mas algo falhou depois,
+      // remove o pedido órfão para não poluir relatórios.
+      if (createdOrderId) {
+        try {
+          await supabase.from('order_items').delete().eq('order_id', createdOrderId);
+          await supabase.from('orders').delete().eq('id', createdOrderId);
+        } catch (cleanupError) {
+          console.error('Falha ao limpar pedido órfão:', cleanupError);
+        }
+      }
       toast({
         title: 'Erro ao finalizar venda',
         description: error.message,
@@ -1045,6 +1092,7 @@ export default function PDV() {
       });
     } finally {
       setProcessing(false);
+      finalizingRef.current = false;
     }
   };
 
