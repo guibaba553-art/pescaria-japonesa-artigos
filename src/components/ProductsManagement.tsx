@@ -13,6 +13,7 @@ import { Trash2, Package, Plus, Search, X } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { ProductEdit } from '@/components/ProductEdit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { Switch } from '@/components/ui/switch';
 import { useCategories } from '@/hooks/useCategories';
 import { ProductVariations } from '@/components/ProductVariations';
