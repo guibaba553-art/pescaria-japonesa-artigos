@@ -111,7 +111,7 @@ export function ProductsManagement() {
     setName(d.name || ''); setDescription(d.description || ''); setShortDescription(d.shortDescription || '');
     setPrice(d.price || ''); setCategory(d.category || ''); setSubcategory(d.subcategory || '');
     setStock(d.stock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
-    setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
+    setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setPdvNoMarkup(!!d.pdvNoMarkup); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
     setSize(d.size || ''); setPricePdv(d.pricePdv || '');
     setWeightGrams(d.weightGrams || ''); setLengthCm(d.lengthCm || '');
     setWidthCm(d.widthCm || ''); setHeightCm(d.heightCm || '');
