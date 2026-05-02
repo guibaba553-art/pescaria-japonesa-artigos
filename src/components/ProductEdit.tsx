@@ -310,6 +310,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         length_cm: lengthCm ? parseFloat(lengthCm) : null,
         width_cm: widthCm ? parseFloat(widthCm) : null,
         height_cm: heightCm ? parseFloat(heightCm) : null,
+        pdv_only: pdvOnly,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
