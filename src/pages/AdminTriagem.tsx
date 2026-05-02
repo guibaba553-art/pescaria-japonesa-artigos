@@ -124,6 +124,96 @@ export default function AdminTriagem() {
     setScanOpen(true);
   };
 
+  // Detecta UUID em texto puro ou em URL (ex.: /retirada/<uuid> do QR code)
+  const extractOrderId = (raw: string): string | null => {
+    const uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+    const m = raw.match(uuidRe);
+    return m ? m[0].toLowerCase() : null;
+  };
+
+  const handleSearchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = search.trim();
+    if (!raw) return;
+    const orderId = extractOrderId(raw);
+    if (!orderId) return; // deixa filtro normal agir
+
+    // tenta achar na lista carregada
+    const found = orders.find((o) => o.id.toLowerCase() === orderId);
+    if (found) {
+      // troca para a aba correta
+      setTab(found.delivery_type === 'pickup' ? 'pickup' : 'pack');
+      openScanFor(found);
+      setSearch('');
+      return;
+    }
+
+    // não está na lista (talvez já processado ou outra aba) — busca no banco
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(
+          `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code,
+           order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku), product_variations(name, sku)),
+           nfe_emissions(id, nfe_number, danfe_url, status)`,
+        )
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast({
+          title: 'Pedido não encontrado',
+          description: `Nenhum pedido com ID ${orderId.slice(0, 8)}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data.status !== 'em_preparo') {
+        toast({
+          title: 'Pedido não está em preparo',
+          description: `Status atual: ${data.status}. Triagem só abre pedidos em preparo.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // enrich com profile
+      let profile: any = null;
+      if (data.user_id) {
+        const { data: p } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone, cpf')
+          .eq('id', data.user_id)
+          .maybeSingle();
+        profile = p || null;
+      }
+      const nfes = ((data as any).nfe_emissions || []) as any[];
+      const authorized = nfes.find(
+        (n) => n.status === 'autorizada' || n.status === 'authorized',
+      );
+      const nfe = authorized || nfes[0] || null;
+      const enriched: TriagemOrder = {
+        ...(data as any),
+        profile,
+        nfe: nfe
+          ? { id: nfe.id, nfe_number: nfe.nfe_number, danfe_url: nfe.danfe_url, status: nfe.status }
+          : null,
+      };
+      setTab(enriched.delivery_type === 'pickup' ? 'pickup' : 'pack');
+      openScanFor(enriched);
+      setSearch('');
+    } catch (err: any) {
+      console.error('[AdminTriagem] QR lookup error:', err);
+      toast({
+        title: 'Erro ao buscar pedido',
+        description: err.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
@@ -147,15 +237,17 @@ export default function AdminTriagem() {
       }
     >
       <Card className="p-3">
-        <div className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por ID, nome, CPF ou telefone..."
+            placeholder="Buscar por ID, nome, CPF, telefone — ou escaneie o QR de retirada..."
             className="pl-9"
+            autoComplete="off"
+            maxLength={200}
           />
-        </div>
+        </form>
       </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'pickup' | 'pack')}>
