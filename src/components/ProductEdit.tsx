@@ -148,6 +148,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
       setPdvOnly((product as any).pdv_only || false);
+      setPdvNoMarkup((product as any).pdv_no_markup || false);
       setBrand(product.brand || '');
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
