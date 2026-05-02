@@ -138,13 +138,31 @@ export function ProductsManagement() {
     loadProducts();
   }, []);
 
+  const [variationDimsByProduct, setVariationDimsByProduct] = useState<Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>>>({});
+
   const loadProducts = async () => {
     // Usa RPC para incluir campos sensíveis (custo, preço PDV, margens) visíveis apenas a admin/funcionário
-    const { data, error } = await supabase.rpc('get_products_admin');
+    const [{ data, error }, { data: vData, error: vError }] = await Promise.all([
+      supabase.rpc('get_products_admin'),
+      supabase.from('product_variations').select('product_id, weight_grams, length_cm, width_cm, height_cm'),
+    ]);
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
       setProducts((data || []) as any);
+    }
+    if (!vError && vData) {
+      const map: Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>> = {};
+      for (const v of vData as any[]) {
+        if (!map[v.product_id]) map[v.product_id] = [];
+        map[v.product_id].push({
+          weight_grams: v.weight_grams,
+          length_cm: v.length_cm,
+          width_cm: v.width_cm,
+          height_cm: v.height_cm,
+        });
+      }
+      setVariationDimsByProduct(map);
     }
   };
 
