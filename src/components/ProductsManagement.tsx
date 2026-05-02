@@ -45,6 +45,7 @@ interface Product {
   length_cm?: number | null;
   width_cm?: number | null;
   height_cm?: number | null;
+  pdv_only?: boolean;
 }
 
 // Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
