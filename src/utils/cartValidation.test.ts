@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  resolveCartInventory,
   validateCartVariations,
   resolveVariationIdForOrderItem,
   type CartItemForValidation,
@@ -20,6 +21,38 @@ function makeSupabaseMock(existingIds: string[], opts?: { error?: { message: str
   const selectMock = vi.fn(() => ({ in: inMock }));
   const fromMock = vi.fn((_table: string) => ({ select: selectMock }));
   return { from: fromMock, _mocks: { fromMock, selectMock, inMock } };
+}
+
+function makeSupabaseInventoryMock({
+  products,
+  variations,
+}: {
+  products: Array<{ id: string; stock: number }>;
+  variations: Array<{ id: string; product_id: string; stock: number; sku?: string | null; name?: string | null; price?: number | null }>;
+}) {
+  return {
+    from: vi.fn((table: string) => ({
+      select: vi.fn(() => ({
+        in: vi.fn((_column: string, ids: string[]) => {
+          if (table === 'products') {
+            return Promise.resolve({
+              data: products.filter(product => ids.includes(product.id)),
+              error: null,
+            });
+          }
+
+          if (table === 'product_variations') {
+            return Promise.resolve({
+              data: variations.filter(variation => ids.includes(variation.product_id)),
+              error: null,
+            });
+          }
+
+          return Promise.resolve({ data: [], error: null });
+        }),
+      })),
+    })),
+  };
 }
 
 describe('validateCartVariations', () => {
@@ -163,5 +196,59 @@ describe('Integração: deleção/recriação de variação no PDV', () => {
         expect(validVariationIds.has(r.variation_id)).toBe(true);
       }
     }
+  });
+
+  it('reconcilia variação recriada e usa o estoque novo na finalização', async () => {
+    const supa = makeSupabaseInventoryMock({
+      products: [{ id: 'p1', stock: 0 }],
+      variations: [{ id: 'v-new', product_id: 'p1', stock: 2, sku: 'ABC', name: 'Azul', price: 10 }],
+    });
+
+    const cart: CartItemForValidation[] = [
+      {
+        product: { id: 'p1', stock: 0, name: 'Camiseta' },
+        variation: { id: 'v-old', sku: 'ABC', name: 'Azul', price: 10, stock: 0 },
+        quantity: 1,
+      },
+    ];
+
+    const result = await resolveCartInventory(supa as any, cart);
+
+    expect(result.missing).toEqual(['v-old']);
+    expect(result.reconciledVariationIds.get('v-old')).toBe('v-new');
+    expect(result.resolvedItems).toEqual([
+      {
+        resolvedVariationId: 'v-new',
+        availableStock: 2,
+        wasReconciled: true,
+        usedProductFallback: false,
+      },
+    ]);
+  });
+
+  it('só cai para o produto principal quando não consegue achar a variação substituta', async () => {
+    const supa = makeSupabaseInventoryMock({
+      products: [{ id: 'p1', stock: 7 }],
+      variations: [],
+    });
+
+    const cart: CartItemForValidation[] = [
+      {
+        product: { id: 'p1', stock: 7, name: 'Linha' },
+        variation: { id: 'v-old', sku: 'SEM-MATCH', name: '0.30mm', price: 12, stock: 0 },
+        quantity: 1,
+      },
+    ];
+
+    const result = await resolveCartInventory(supa as any, cart);
+
+    expect(result.resolvedItems).toEqual([
+      {
+        resolvedVariationId: null,
+        availableStock: 7,
+        wasReconciled: false,
+        usedProductFallback: true,
+      },
+    ]);
   });
 });
