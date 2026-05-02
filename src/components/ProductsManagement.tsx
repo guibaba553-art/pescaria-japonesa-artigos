@@ -139,6 +139,8 @@ export function ProductsManagement() {
     loadProducts();
   }, []);
 
+  useProductsRealtime(() => loadProducts(), 'products-management');
+
   const [variationDimsByProduct, setVariationDimsByProduct] = useState<Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>>>({});
 
   const loadProducts = async () => {
