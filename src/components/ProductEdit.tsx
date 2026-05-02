@@ -146,6 +146,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setMinimumQuantity(product.minimum_quantity?.toString() || '1');
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
+      setPdvOnly((product as any).pdv_only || false);
       setBrand(product.brand || '');
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
