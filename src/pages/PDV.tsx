@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
+import { validateCartVariations, resolveVariationIdForOrderItem } from '@/utils/cartValidation';
 
 interface ProductVariation {
   id: string;
