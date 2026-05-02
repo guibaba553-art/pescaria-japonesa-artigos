@@ -132,6 +132,13 @@ export default function Products() {
       if (p.pound_test) pounds.add(p.pound_test);
       if (p.size) sizes.add(p.size);
       if (p.subcategory) subs.add(p.subcategory);
+      // Variações: tratamos o "name" da variação como medida/tamanho disponível
+      const variations = (p as any).variations as Array<{ name?: string }> | undefined;
+      if (Array.isArray(variations)) {
+        variations.forEach(v => {
+          if (v?.name) sizes.add(v.name);
+        });
+      }
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
     return {
