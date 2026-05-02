@@ -701,12 +701,43 @@ export default function PDV() {
     }));
   };
 
-  // Helper: preço unitário aplicando o método de pagamento atual
+  // Helper: preço unitário aplicando o método de pagamento atual (ou preço customizado)
   const getItemUnitPrice = (item: CartItem) => {
+    if (typeof item.customPrice === 'number' && !isNaN(item.customPrice)) {
+      return item.customPrice;
+    }
     if (item.variation) {
       return getPdvPriceForVariation(item.product, item.variation.price, paymentMethod);
     }
     return getPdvPrice(item.product, paymentMethod);
+  };
+
+  const setItemPrice = (cartItemKey: string, raw: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      const cleaned = raw.replace(',', '.');
+      const parsed = parseFloat(cleaned);
+      return {
+        ...item,
+        priceInput: raw,
+        customPrice: isNaN(parsed) || parsed < 0 ? undefined : parsed,
+      };
+    }));
+  };
+
+  const commitItemPrice = (cartItemKey: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      // Limpa o input editável; o customPrice fica persistido se válido
+      return { ...item, priceInput: undefined };
+    }));
+  };
+
+  const resetItemPrice = (cartItemKey: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      return { ...item, customPrice: undefined, priceInput: undefined };
+    }));
   };
 
   const calculateSubtotal = () => {
