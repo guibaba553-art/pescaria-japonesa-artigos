@@ -897,9 +897,9 @@ export default function PDV() {
         loadSavedSales();
       }
 
-      // Limpar carrinho
+      // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
-      loadProducts();
+      await loadProducts();
 
     } catch (error: any) {
       toast({
