@@ -69,6 +69,27 @@ const STATUS_LABEL: Record<string, string> = {
   pronto_retirada: 'Pronto p/ retirada',
 };
 
+const PAYMENT_LABEL: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  cash: 'Dinheiro',
+  pix: 'PIX',
+  credit: 'Crédito',
+  credit_card: 'Crédito',
+  cartao_credito: 'Crédito',
+  debit: 'Débito',
+  debit_card: 'Débito',
+  cartao_debito: 'Débito',
+  boleto: 'Boleto',
+  transferencia: 'Transferência',
+  mercadopago: 'Mercado Pago',
+};
+
+function formatPayment(pm?: string | null): string {
+  if (!pm) return '—';
+  const k = String(pm).toLowerCase();
+  return PAYMENT_LABEL[k] || String(pm);
+}
+
 // Maps order status -> visual group
 function getOrderStatusGroup(status: string): StatusGroup {
   if (status === 'cancelado') return 'cancelado';
@@ -175,7 +196,7 @@ export default function AdminSalesAnalysis() {
       const [ordersRes, savedRes, nfeRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id')
+          .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id, payment_method')
           .gte('created_at', fromIso).lte('created_at', toIso),
         supabase
           .from('saved_sales')
@@ -867,6 +888,7 @@ export default function AdminSalesAnalysis() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Pagamento</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -930,6 +952,11 @@ export default function AdminSalesAnalysis() {
                               )}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {formatPayment(r.raw?.payment_method)}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
@@ -973,7 +1000,7 @@ export default function AdminSalesAnalysis() {
 
                         {isExpanded && (
                           <TableRow key={`${expandKey}-expand`} className={meta.rowBg}>
-                            <TableCell colSpan={9} className="p-0">
+                            <TableCell colSpan={10} className="p-0">
                               <div className="bg-muted/30 border-t border-border px-6 py-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <Package className="w-4 h-4 text-muted-foreground" />
