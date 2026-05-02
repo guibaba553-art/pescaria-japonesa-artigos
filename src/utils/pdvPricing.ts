@@ -14,6 +14,8 @@ export interface PdvPricingFields {
   name?: string;
   price: number; // preço do site (fallback quando price_pdv não está definido)
   price_pdv?: number | null;
+  // Quando true, produto não recebe acréscimo de débito/crédito (usa sempre valor PIX).
+  pdv_no_markup?: boolean | null;
   // Os campos abaixo permanecem no tipo apenas por compatibilidade,
   // mas NÃO são mais usados no cálculo (a fórmula é fixa).
   price_credit_percent?: number | null;
