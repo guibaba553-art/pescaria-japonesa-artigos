@@ -83,7 +83,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     name, description, shortDescription, price, category, subcategory,
     stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
-    featured, onSale, salePrice, saleEndsAt, pdvOnly,
+    featured, onSale, salePrice, saleEndsAt, pdvOnly, pdvNoMarkup,
     variations,
   };
   const { hasDraft, draftSavedAt, getDraft, clearDraft } = useFormDraft(
