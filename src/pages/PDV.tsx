@@ -1151,9 +1151,17 @@ export default function PDV() {
                               >
                                 <Minus className="w-3 h-3" />
                               </Button>
-                              <span className="w-8 text-center font-medium">
-                                {item.quantity}
-                              </span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                step={item.product.sold_by_weight ? 0.001 : 1}
+                                min={item.product.sold_by_weight ? 0.001 : 1}
+                                value={item.quantity === 0 ? '' : item.quantity}
+                                onChange={(e) => setItemQuantity(item.cartItemKey, e.target.value)}
+                                onBlur={() => commitItemQuantity(item.cartItemKey)}
+                                onFocus={(e) => e.target.select()}
+                                className="w-14 h-7 text-center font-medium text-sm rounded border border-border bg-background outline-none focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              />
                               <Button
                                 size="icon"
                                 variant="outline"
