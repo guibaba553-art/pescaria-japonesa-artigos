@@ -23,6 +23,8 @@ const FeaturedProducts = () => {
     loadProducts();
   }, []);
 
+  useProductsRealtime(() => loadProducts(), 'featured-products');
+
   const loadProducts = async () => {
     setLoading(true);
     const { data, error } = await supabase
