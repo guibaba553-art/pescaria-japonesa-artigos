@@ -524,17 +524,20 @@ export default function PDV() {
     if (!barcode.trim()) return;
 
     try {
-      console.log('🔍 Buscando por código:', barcode.trim());
+      const code = barcode.trim();
+      console.log('🔍 Buscando por código:', code);
       
-      // Primeiro buscar variação por SKU
-      const { data: variation, error: varError } = await supabase
+      // Primeiro buscar variação por SKU (lista para evitar erro com múltiplos resultados)
+      const { data: variations, error: varError } = await supabase
         .from('product_variations')
         .select('*, product:products(*)')
-        .eq('sku', barcode.trim())
+        .eq('sku', code)
         .gt('stock', 0)
-        .maybeSingle();
+        .limit(1);
 
       if (varError) throw varError;
+
+      const variation = variations && variations.length > 0 ? variations[0] : null;
 
       if (variation) {
         console.log('✅ Variação encontrada:', variation.name);
