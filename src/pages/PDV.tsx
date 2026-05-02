@@ -915,13 +915,15 @@ export default function PDV() {
       const discount = getDiscountValue();
       const discountRatio = subtotal > 0 ? discount / subtotal : 0;
 
-      // Validar que toda variation_id ainda existe (evita FK violation se variação foi removida/recriada)
+      // Validar que toda variation_id ainda existe.
+      // Se uma variação foi removida/recriada, simplesmente gravamos a venda
+      // referenciando apenas o product_id (variation_id = null) — sem bloquear o caixa.
       const { validVariationIds, missing } = await validateCartVariations(supabase, cart);
       if (missing.length > 0) {
-        // Reverte criação do pedido para não deixar órfão
-        await supabase.from('orders').delete().eq('id', order.id);
-        await loadProducts();
-        throw new Error('Algumas variações no carrinho foram alteradas/removidas. Recarregamos os produtos — adicione novamente os itens.');
+        toast({
+          title: 'Variação atualizada',
+          description: 'Alguma variação foi alterada — venda registrada no produto principal.',
+        });
       }
 
       const orderItems = cart.map(item => {
