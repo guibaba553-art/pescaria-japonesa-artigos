@@ -68,6 +68,7 @@ export default function Products() {
         sold_by_weight, created_at,
         variations:product_variations(id, name, price, stock, image_url)
       `)
+      .eq('pdv_only', false)
       .gt('stock', 0)
       .order('name', { ascending: true })
       .limit(1000);

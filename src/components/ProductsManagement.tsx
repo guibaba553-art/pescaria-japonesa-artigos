@@ -45,6 +45,7 @@ interface Product {
   length_cm?: number | null;
   width_cm?: number | null;
   height_cm?: number | null;
+  pdv_only?: boolean;
 }
 
 // Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
@@ -67,13 +68,14 @@ export function ProductsManagement() {
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
+  const [pdvOnly, setPdvOnly] = useState(false);
   const [brand, setBrand] = useState('');
   const [poundTest, setPoundTest] = useState('');
   const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims'>('all');
+  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
@@ -92,7 +94,7 @@ export function ProductsManagement() {
   // Imagens não são persistidas (são File objects).
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    stock, sku, minimumQuantity, soldByWeight, pdvOnly, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     variations: newProductVariations,
   };
@@ -108,7 +110,7 @@ export function ProductsManagement() {
     setName(d.name || ''); setDescription(d.description || ''); setShortDescription(d.shortDescription || '');
     setPrice(d.price || ''); setCategory(d.category || ''); setSubcategory(d.subcategory || '');
     setStock(d.stock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
-    setSoldByWeight(!!d.soldByWeight); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
+    setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
     setSize(d.size || ''); setPricePdv(d.pricePdv || '');
     setWeightGrams(d.weightGrams || ''); setLengthCm(d.lengthCm || '');
     setWidthCm(d.widthCm || ''); setHeightCm(d.heightCm || '');
@@ -150,7 +152,7 @@ export function ProductsManagement() {
 
   const resetForm = () => {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
-    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false);
+    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
     setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
@@ -205,6 +207,7 @@ export function ProductsManagement() {
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
+          pdv_only: pdvOnly,
           brand: brand || null, pound_test: poundTest || null, size: size || null,
           images: imageUrls,
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
@@ -299,6 +302,7 @@ export function ProductsManagement() {
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
   const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
   const noDimsCount = visibleProducts.filter(isMissingShippingDims).length;
+  const pdvOnlyCount = visibleProducts.filter((p) => p.pdv_only).length;
 
   const restockIds = new Set(
     visibleProducts
@@ -316,6 +320,7 @@ export function ProductsManagement() {
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
   if (filter === 'no-dims') filteredProducts = filteredProducts.filter(isMissingShippingDims);
+  if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
   filteredProducts = filteredProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -331,6 +336,7 @@ export function ProductsManagement() {
     { key: 'featured', label: 'Destaque', count: featuredCount },
     { key: 'restock', label: 'Reestoque', count: restockIds.size },
     { key: 'no-dims', label: '⚠ Sem medidas', count: noDimsCount },
+    { key: 'pdv-only', label: '🏪 Só PDV', count: pdvOnlyCount },
   ];
 
   return (
@@ -464,6 +470,11 @@ export function ProductsManagement() {
                         {isMissingShippingDims(product) && (
                           <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto sem peso/medidas — indisponível para envio">
                             ⚠ Sem medidas
+                          </Badge>
+                        )}
+                        {product.pdv_only && (
+                          <Badge className="bg-amber-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto exclusivo do PDV — não aparece no site">
+                            🏪 Só PDV
                           </Badge>
                         )}
                       </div>
@@ -621,6 +632,16 @@ export function ProductsManagement() {
                   </div>
                   <Switch id="soldByWeight" checked={soldByWeight} onCheckedChange={setSoldByWeight} />
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdvOnly" className="text-amber-700 dark:text-amber-400">Exclusivo do PDV</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Não aparece no site — disponível apenas no Ponto de Venda
+                  </p>
+                </div>
+                <Switch id="pdvOnly" checked={pdvOnly} onCheckedChange={setPdvOnly} />
               </div>
 
               <div className="space-y-2">

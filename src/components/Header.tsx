@@ -52,6 +52,7 @@ export function Header() {
       const { data, error } = await supabase
         .from('products')
         .select('id, name, price, image_url, category')
+        .eq('pdv_only', false)
         .ilike('name', `%${query}%`)
         .limit(6);
 

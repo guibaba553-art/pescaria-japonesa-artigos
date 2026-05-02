@@ -44,6 +44,7 @@ export function SearchSection() {
     let query = supabase
       .from('products')
       .select(PUBLIC_PRODUCT_COLUMNS)
+      .eq('pdv_only', false)
       .gt('stock', 0);
 
     if (searchQuery.trim()) {

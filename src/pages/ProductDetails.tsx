@@ -67,6 +67,7 @@ export default function ProductDetails() {
       .from('products')
       .select(PUBLIC_PRODUCT_COLUMNS)
       .eq('id', id)
+      .eq('pdv_only', false)
       .maybeSingle();
 
     if (error) {
