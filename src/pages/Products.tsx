@@ -61,10 +61,6 @@ export default function Products() {
     // (omite description, images[], short_description, sku, etc. que só são usados em ProductDetails)
     let query = supabase
       .from('products')
-      // @ts-ignore - pdv_only adicionado via migração; tipos podem demorar a regenerar
-      .eq('pdv_only', false as any)
-      .from('products' as any)
-      .from('products')
       .select(`
         id, name, price, sale_price, on_sale, sale_ends_at,
         category, subcategory, brand, pound_test, size,
@@ -72,6 +68,7 @@ export default function Products() {
         sold_by_weight, created_at,
         variations:product_variations(id, name, price, stock, image_url)
       `)
+      .eq('pdv_only', false)
       .gt('stock', 0)
       .order('name', { ascending: true })
       .limit(1000);
