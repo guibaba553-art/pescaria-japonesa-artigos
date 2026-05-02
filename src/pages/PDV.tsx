@@ -85,6 +85,8 @@ interface CartItem {
   quantity: number;
   variation?: ProductVariation;
   cartItemKey: string;
+  customPrice?: number; // Preço unitário sobrescrito manualmente no PDV
+  priceInput?: string;  // String editável do input (permite digitar "12,")
 }
 
 export default function PDV() {
@@ -699,12 +701,43 @@ export default function PDV() {
     }));
   };
 
-  // Helper: preço unitário aplicando o método de pagamento atual
+  // Helper: preço unitário aplicando o método de pagamento atual (ou preço customizado)
   const getItemUnitPrice = (item: CartItem) => {
+    if (typeof item.customPrice === 'number' && !isNaN(item.customPrice)) {
+      return item.customPrice;
+    }
     if (item.variation) {
       return getPdvPriceForVariation(item.product, item.variation.price, paymentMethod);
     }
     return getPdvPrice(item.product, paymentMethod);
+  };
+
+  const setItemPrice = (cartItemKey: string, raw: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      const cleaned = raw.replace(',', '.');
+      const parsed = parseFloat(cleaned);
+      return {
+        ...item,
+        priceInput: raw,
+        customPrice: isNaN(parsed) || parsed < 0 ? undefined : parsed,
+      };
+    }));
+  };
+
+  const commitItemPrice = (cartItemKey: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      // Limpa o input editável; o customPrice fica persistido se válido
+      return { ...item, priceInput: undefined };
+    }));
+  };
+
+  const resetItemPrice = (cartItemKey: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      return { ...item, customPrice: undefined, priceInput: undefined };
+    }));
   };
 
   const calculateSubtotal = () => {
@@ -1136,58 +1169,92 @@ export default function PDV() {
                           : item.product.name;
                         
                         return (
-                          <div key={item.cartItemKey} className="flex items-center gap-2 p-2 border rounded">
-                            <div className="flex-1">
-                              <p className="font-medium text-sm line-clamp-1">
-                                {itemName}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                R$ {itemPrice.toFixed(2)} × {item.product.sold_by_weight ? `${item.quantity.toFixed(3)} kg` : item.quantity}
-                              </p>
+                          <div key={item.cartItemKey} className="flex flex-col gap-2 p-2 border rounded">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm line-clamp-1">
+                                  {itemName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {item.product.sold_by_weight ? `${item.quantity.toFixed(3)} kg` : `${item.quantity} un`}
+                                  {typeof item.customPrice === 'number' && (
+                                    <span className="ml-1 text-amber-600 font-medium">• preço alterado</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-7 w-7"
+                                  onClick={() => updateQuantity(item.cartItemKey, -1)}
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </Button>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  step={item.product.sold_by_weight ? 0.001 : 1}
+                                  min={item.product.sold_by_weight ? 0.001 : 1}
+                                  value={item.quantity === 0 ? '' : item.quantity}
+                                  onChange={(e) => setItemQuantity(item.cartItemKey, e.target.value)}
+                                  onBlur={() => commitItemQuantity(item.cartItemKey)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-14 h-7 text-center font-medium text-sm rounded border border-border bg-background outline-none focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                />
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-7 w-7"
+                                  onClick={() => updateQuantity(item.cartItemKey, 1)}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => removeFromCart(item.cartItemKey)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-7 w-7"
-                                onClick={() => updateQuantity(item.cartItemKey, -1)}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                step={item.product.sold_by_weight ? 0.001 : 1}
-                                min={item.product.sold_by_weight ? 0.001 : 1}
-                                value={item.quantity === 0 ? '' : item.quantity}
-                                onChange={(e) => setItemQuantity(item.cartItemKey, e.target.value)}
-                                onBlur={() => commitItemQuantity(item.cartItemKey)}
-                                onFocus={(e) => e.target.select()}
-                                className="w-14 h-7 text-center font-medium text-sm rounded border border-border bg-background outline-none focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              />
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-7 w-7"
-                                onClick={() => updateQuantity(item.cartItemKey, 1)}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-destructive"
-                                onClick={() => removeFromCart(item.cartItemKey)}
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground">R$</span>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  step={0.01}
+                                  min={0}
+                                  value={item.priceInput !== undefined ? item.priceInput : itemPrice.toFixed(2)}
+                                  onChange={(e) => setItemPrice(item.cartItemKey, e.target.value)}
+                                  onBlur={() => commitItemPrice(item.cartItemKey)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-20 h-7 text-center font-medium text-sm rounded border border-border bg-background outline-none focus:ring-2 focus:ring-ring [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  title="Preço unitário (editável)"
+                                />
+                                <span className="text-xs text-muted-foreground">× {item.product.sold_by_weight ? `${item.quantity.toFixed(3)}kg` : item.quantity}</span>
+                                {typeof item.customPrice === 'number' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-1 text-[10px]"
+                                    onClick={() => resetItemPrice(item.cartItemKey)}
+                                    title="Restaurar preço original"
+                                  >
+                                    Resetar
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="font-bold">
+                                R$ {(itemPrice * item.quantity).toFixed(2)}
+                              </div>
+                            </div>
                           </div>
-                          <div className="font-bold">
-                            R$ {(itemPrice * item.quantity).toFixed(2)}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                     </div>
                   )}
                 </ScrollArea>
