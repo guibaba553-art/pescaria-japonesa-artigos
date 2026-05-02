@@ -991,6 +991,7 @@ export default function PDV() {
           shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
           customer_id: selectedCustomer?.id || null,
           source: 'pdv',
+          payment_method: paymentMethod,
           idempotency_key: idempotencyKey,
         }])
         .select()
