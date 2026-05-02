@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,7 @@ export default function AdminTriagem() {
   const [tab, setTab] = useState<'pickup' | 'pack'>('pickup');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const lastHandledQrRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !canView) navigate('/admin');
@@ -131,17 +132,10 @@ export default function AdminTriagem() {
     return m ? m[0].toLowerCase() : null;
   };
 
-  const handleSearchSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const raw = search.trim();
-    if (!raw) return;
-    const orderId = extractOrderId(raw);
-    if (!orderId) return; // deixa filtro normal agir
-
+  const openOrderById = async (orderId: string) => {
     // tenta achar na lista carregada
     const found = orders.find((o) => o.id.toLowerCase() === orderId);
     if (found) {
-      // troca para a aba correta
       setTab(found.delivery_type === 'pickup' ? 'pickup' : 'pack');
       openScanFor(found);
       setSearch('');
@@ -179,7 +173,6 @@ export default function AdminTriagem() {
         return;
       }
 
-      // enrich com profile
       let profile: any = null;
       if (data.user_id) {
         const { data: p } = await supabase
@@ -214,6 +207,26 @@ export default function AdminTriagem() {
     }
   };
 
+  // Auto-abre quando o leitor injeta um UUID (sem precisar apertar Enter)
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    const orderId = extractOrderId(value);
+    if (orderId && lastHandledQrRef.current !== orderId) {
+      lastHandledQrRef.current = orderId;
+      openOrderById(orderId);
+    }
+    if (!value) lastHandledQrRef.current = null;
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const orderId = extractOrderId(search.trim());
+    if (orderId && lastHandledQrRef.current !== orderId) {
+      lastHandledQrRef.current = orderId;
+      openOrderById(orderId);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
@@ -241,7 +254,7 @@ export default function AdminTriagem() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por ID, nome, CPF, telefone — ou escaneie o QR de retirada..."
             className="pl-9"
             autoComplete="off"
