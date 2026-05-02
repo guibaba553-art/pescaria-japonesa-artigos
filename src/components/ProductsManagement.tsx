@@ -94,7 +94,7 @@ export function ProductsManagement() {
   // Imagens não são persistidas (são File objects).
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    stock, sku, minimumQuantity, soldByWeight, pdvOnly, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     variations: newProductVariations,
   };
