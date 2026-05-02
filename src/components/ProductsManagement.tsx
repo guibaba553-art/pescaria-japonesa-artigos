@@ -69,6 +69,7 @@ export function ProductsManagement() {
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
   const [pdvOnly, setPdvOnly] = useState(false);
+  const [pdvNoMarkup, setPdvNoMarkup] = useState(false);
   const [brand, setBrand] = useState('');
   const [poundTest, setPoundTest] = useState('');
   const [size, setSize] = useState('');
