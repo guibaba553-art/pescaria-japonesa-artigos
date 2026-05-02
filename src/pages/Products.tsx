@@ -159,7 +159,13 @@ export default function Products() {
       if (q && !p.name.toLowerCase().includes(q)) return false;
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (selectedSizes.length && (!p.size || !selectedSizes.includes(p.size))) return false;
+      if (selectedSizes.length) {
+        const variations = (p as any).variations as Array<{ name?: string }> | undefined;
+        const variationSizes = Array.isArray(variations) ? variations.map(v => v?.name).filter(Boolean) as string[] : [];
+        const productMatches = p.size && selectedSizes.includes(p.size);
+        const variationMatches = variationSizes.some(n => selectedSizes.includes(n));
+        if (!productMatches && !variationMatches) return false;
+      }
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
       if (priceRange) {
         const effectivePrice = p.on_sale && p.sale_price ? p.sale_price : p.price;
