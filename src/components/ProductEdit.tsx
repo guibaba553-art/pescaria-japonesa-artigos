@@ -745,6 +745,22 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 />
               </div>
 
+              <div className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdv-no-markup" className="text-blue-700 dark:text-blue-400">
+                    Sem acréscimo no PDV (débito/crédito)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    O preço não muda conforme o método de pagamento — sempre cobra o valor do PIX (igual Refil de gás / Yamalube)
+                  </p>
+                </div>
+                <Switch
+                  id="pdv-no-markup"
+                  checked={pdvNoMarkup}
+                  onCheckedChange={setPdvNoMarkup}
+                />
+              </div>
+
               {onSale && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
                   <div className="space-y-2">
