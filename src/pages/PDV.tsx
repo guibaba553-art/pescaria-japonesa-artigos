@@ -656,6 +656,46 @@ export default function PDV() {
     }));
   };
 
+  // Define a quantidade diretamente (entrada digitada). Aceita string para permitir
+  // edição parcial (ex: vazio durante digitação).
+  const setItemQuantity = (cartItemKey: string, raw: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      const isByWeight = item.product.sold_by_weight;
+      // normaliza vírgula -> ponto
+      const parsed = parseFloat((raw || '').replace(',', '.'));
+      if (isNaN(parsed) || parsed <= 0) {
+        // mantém o item, deixa o onBlur corrigir
+        return { ...item, quantity: 0 };
+      }
+      const availableStock = item.variation ? item.variation.stock : item.product.stock;
+      const unit = isByWeight ? 'kg' : 'unidades';
+      let q = isByWeight ? parseFloat(parsed.toFixed(3)) : Math.floor(parsed);
+      if (q > availableStock) {
+        toast({
+          title: 'Estoque insuficiente',
+          description: `Apenas ${availableStock} ${unit} disponíveis`,
+          variant: 'destructive'
+        });
+        q = availableStock;
+      }
+      return { ...item, quantity: q };
+    }));
+  };
+
+  // No blur, garante quantidade mínima válida
+  const commitItemQuantity = (cartItemKey: string) => {
+    setCart(prev => prev.map(item => {
+      if (item.cartItemKey !== cartItemKey) return item;
+      const isByWeight = item.product.sold_by_weight;
+      const minimumQty = isByWeight ? 0.001 : (item.product.minimum_quantity || 1);
+      if (!item.quantity || item.quantity < minimumQty) {
+        return { ...item, quantity: minimumQty };
+      }
+      return item;
+    }));
+  };
+
   // Helper: preço unitário aplicando o método de pagamento atual
   const getItemUnitPrice = (item: CartItem) => {
     if (item.variation) {
