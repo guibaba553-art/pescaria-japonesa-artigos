@@ -55,6 +55,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
   const [sku, setSku] = useState(product.sku || '');
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
+  const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
   const [brand, setBrand] = useState(product.brand || '');
   const [poundTest, setPoundTest] = useState(product.pound_test || '');
   const [size, setSize] = useState(product.size || '');
