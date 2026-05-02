@@ -69,6 +69,27 @@ const STATUS_LABEL: Record<string, string> = {
   pronto_retirada: 'Pronto p/ retirada',
 };
 
+const PAYMENT_LABEL: Record<string, string> = {
+  dinheiro: 'Dinheiro',
+  cash: 'Dinheiro',
+  pix: 'PIX',
+  credit: 'Crédito',
+  credit_card: 'Crédito',
+  cartao_credito: 'Crédito',
+  debit: 'Débito',
+  debit_card: 'Débito',
+  cartao_debito: 'Débito',
+  boleto: 'Boleto',
+  transferencia: 'Transferência',
+  mercadopago: 'Mercado Pago',
+};
+
+function formatPayment(pm?: string | null): string {
+  if (!pm) return '—';
+  const k = String(pm).toLowerCase();
+  return PAYMENT_LABEL[k] || String(pm);
+}
+
 // Maps order status -> visual group
 function getOrderStatusGroup(status: string): StatusGroup {
   if (status === 'cancelado') return 'cancelado';
