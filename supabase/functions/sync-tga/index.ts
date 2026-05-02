@@ -68,7 +68,8 @@ serve(async (req) => {
       );
     }
 
-    const { action, orderId, credentials } = await req.json();
+    // Security: ignore client-supplied `credentials` to prevent traffic redirection.
+    const { action, orderId } = await req.json();
 
     // Buscar configurações TGA
     const { data: settings, error: settingsError } = await supabase
