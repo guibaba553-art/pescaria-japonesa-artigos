@@ -626,6 +626,16 @@ export function ProductsManagement() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdvOnly" className="text-amber-700 dark:text-amber-400">Exclusivo do PDV</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Não aparece no site — disponível apenas no Ponto de Venda
+                  </p>
+                </div>
+                <Switch id="pdvOnly" checked={pdvOnly} onCheckedChange={setPdvOnly} />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição (opcional)</Label>
                 <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
