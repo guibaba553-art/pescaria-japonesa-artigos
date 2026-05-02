@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
-import { validateCartVariations, resolveVariationIdForOrderItem } from '@/utils/cartValidation';
+import { resolveCartInventory } from '@/utils/cartValidation';
 
 interface ProductVariation {
   id: string;
@@ -385,6 +385,22 @@ export default function PDV() {
     setCurrentSaleId(null);
   };
 
+  const getLiveAvailableStock = (item: CartItem) => {
+    const nextVariation = item.variation
+      ? products
+          .find(product => product.id === item.product.id)
+          ?.variations
+          ?.find(variation => variation.id === item.variation?.id)
+      : undefined;
+
+    if (nextVariation) {
+      return Number(nextVariation.stock || 0);
+    }
+
+    const nextProduct = products.find(product => product.id === item.product.id);
+    return Number(nextProduct?.stock ?? item.product.stock ?? 0);
+  };
+
   const newOrder = async () => {
     // Se há itens no carrinho, salva o pedido atual antes de iniciar um novo
     if (cart.length > 0) {
@@ -663,7 +679,7 @@ export default function PDV() {
         const increment = isByWeight ? 0.1 : 1; // 100g para produtos por peso
         const newQuantity = Math.max(0, item.quantity + (delta * increment));
         const minimumQty = isByWeight ? 0.001 : (item.product.minimum_quantity || 1);
-        const availableStock = item.variation ? item.variation.stock : item.product.stock;
+        const availableStock = getLiveAvailableStock(item);
         const unit = isByWeight ? 'kg' : 'unidades';
         
         if (newQuantity < minimumQty) {
@@ -701,7 +717,7 @@ export default function PDV() {
         // mantém o item, deixa o onBlur corrigir
         return { ...item, quantity: 0 };
       }
-      const availableStock = item.variation ? item.variation.stock : item.product.stock;
+      const availableStock = getLiveAvailableStock(item);
       const unit = isByWeight ? 'kg' : 'unidades';
       let q = isByWeight ? parseFloat(parsed.toFixed(3)) : Math.floor(parsed);
       if (q > availableStock) {
@@ -915,24 +931,35 @@ export default function PDV() {
       const discount = getDiscountValue();
       const discountRatio = subtotal > 0 ? discount / subtotal : 0;
 
-      // Validar que toda variation_id ainda existe.
-      // Se uma variação foi removida/recriada, simplesmente gravamos a venda
-      // referenciando apenas o product_id (variation_id = null) — sem bloquear o caixa.
-      const { validVariationIds, missing } = await validateCartVariations(supabase, cart);
-      if (missing.length > 0) {
+      const inventory = await resolveCartInventory(supabase, cart);
+      const hasReconciled = inventory.resolvedItems.some(item => item.wasReconciled);
+      const hasProductFallback = inventory.resolvedItems.some(item => item.usedProductFallback);
+
+      if (inventory.missing.length > 0) {
         toast({
           title: 'Variação atualizada',
-          description: 'Alguma variação foi alterada — venda registrada no produto principal.',
+          description: hasReconciled
+            ? 'Uma variação foi recriada e o PDV usou a versão atual do estoque.'
+            : 'Alguma variação foi alterada — venda registrada no produto principal.',
         });
       }
 
+      for (const [index, item] of cart.entries()) {
+        const liveStock = inventory.resolvedItems[index]?.availableStock ?? 0;
+        if (item.quantity > liveStock) {
+          const unit = item.product.sold_by_weight ? 'kg' : 'unidades';
+          throw new Error(`Estoque insuficiente: atual ${liveStock}, tentando descontar ${item.quantity} ${unit}`);
+        }
+      }
+
       const orderItems = cart.map(item => {
+        const resolved = inventory.resolvedItems[cart.indexOf(item)];
         const unit = getItemUnitPrice(item);
         const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
         return {
           order_id: order.id,
           product_id: item.product.id,
-          variation_id: resolveVariationIdForOrderItem(item, validVariationIds),
+          variation_id: resolved?.resolvedVariationId ?? null,
           quantity: item.quantity,
           price_at_purchase: adjustedUnit,
         };
@@ -946,10 +973,11 @@ export default function PDV() {
 
       // Atualizar estoque de forma ATÔMICA via RPC (livro-caixa + lock de linha)
       // Garante: 1) sem race condition, 2) idempotente por pedido, 3) histórico auditável
-      for (const item of cart) {
+      for (const [index, item] of cart.entries()) {
+        const resolved = inventory.resolvedItems[index];
         const { error: stockError } = await supabase.rpc('apply_stock_movement', {
           p_product_id: item.product.id,
-          p_variation_id: item.variation && validVariationIds.has(item.variation.id) ? item.variation.id : null,
+          p_variation_id: resolved?.resolvedVariationId ?? null,
           p_quantity_delta: -Math.abs(item.quantity),
           p_movement_type: 'pdv_sale',
           p_order_id: order.id,
@@ -957,6 +985,13 @@ export default function PDV() {
         });
 
         if (stockError) throw stockError;
+      }
+
+      if (hasProductFallback) {
+        toast({
+          title: 'Venda concluída com ajuste',
+          description: 'Itens com variação removida foram lançados no produto principal.',
+        });
       }
 
       toast({
