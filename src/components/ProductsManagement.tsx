@@ -302,6 +302,7 @@ export function ProductsManagement() {
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
   const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
   const noDimsCount = visibleProducts.filter(isMissingShippingDims).length;
+  const pdvOnlyCount = visibleProducts.filter((p) => p.pdv_only).length;
 
   const restockIds = new Set(
     visibleProducts
