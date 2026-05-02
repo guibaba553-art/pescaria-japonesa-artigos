@@ -903,6 +903,40 @@ export default function PDV() {
 
     setProcessing(true);
     try {
+      const subtotal = calculateSubtotal();
+      const discount = getDiscountValue();
+      const discountRatio = subtotal > 0 ? discount / subtotal : 0;
+      const inventory = await resolveCartInventory(supabase, cart);
+      const hasReconciled = inventory.resolvedItems.some(item => item.wasReconciled);
+      const hasProductFallback = inventory.resolvedItems.some(item => item.usedProductFallback);
+
+      if (inventory.missing.length > 0) {
+        toast({
+          title: 'Variação atualizada',
+          description: hasReconciled
+            ? 'Uma variação foi recriada e o PDV usou a versão atual do estoque.'
+            : 'Alguma variação foi alterada — venda registrada no produto principal.',
+        });
+      }
+
+      for (const [index, item] of cart.entries()) {
+        const liveStock = Number(inventory.resolvedItems[index]?.availableStock ?? 0);
+        const requested = Number(item.quantity ?? 0);
+        const isByWeight = !!item.product.sold_by_weight;
+        const unit = isByWeight ? 'kg' : 'unidades';
+        const tolerance = isByWeight ? 0.001 : 0;
+
+        if (requested - liveStock > tolerance) {
+          toast({
+            title: 'Estoque insuficiente',
+            description: `Disponível: ${liveStock.toFixed(isByWeight ? 3 : 0)} ${unit} · solicitado: ${requested.toFixed(isByWeight ? 3 : 0)} ${unit}`,
+            variant: 'destructive',
+          });
+          await loadProducts();
+          return;
+        }
+      }
+
       // Criar pedido
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -921,36 +955,6 @@ export default function PDV() {
         .single();
 
       if (orderError) throw orderError;
-
-      // Criar itens do pedido
-      // product_id sempre referencia products.id (FK do produto pai).
-      // variation_id (opcional) referencia product_variations.id quando o item vendido é uma variação.
-      // Quando há desconto em R$, distribuímos proporcionalmente entre os itens
-      // para que a soma de (price_at_purchase * quantity) bata com o total.
-      const subtotal = calculateSubtotal();
-      const discount = getDiscountValue();
-      const discountRatio = subtotal > 0 ? discount / subtotal : 0;
-
-      const inventory = await resolveCartInventory(supabase, cart);
-      const hasReconciled = inventory.resolvedItems.some(item => item.wasReconciled);
-      const hasProductFallback = inventory.resolvedItems.some(item => item.usedProductFallback);
-
-      if (inventory.missing.length > 0) {
-        toast({
-          title: 'Variação atualizada',
-          description: hasReconciled
-            ? 'Uma variação foi recriada e o PDV usou a versão atual do estoque.'
-            : 'Alguma variação foi alterada — venda registrada no produto principal.',
-        });
-      }
-
-      for (const [index, item] of cart.entries()) {
-        const liveStock = inventory.resolvedItems[index]?.availableStock ?? 0;
-        if (item.quantity > liveStock) {
-          const unit = item.product.sold_by_weight ? 'kg' : 'unidades';
-          throw new Error(`Estoque insuficiente: atual ${liveStock}, tentando descontar ${item.quantity} ${unit}`);
-        }
-      }
 
       const orderItems = cart.map(item => {
         const resolved = inventory.resolvedItems[cart.indexOf(item)];
