@@ -132,17 +132,10 @@ export default function AdminTriagem() {
     return m ? m[0].toLowerCase() : null;
   };
 
-  const handleSearchSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const raw = search.trim();
-    if (!raw) return;
-    const orderId = extractOrderId(raw);
-    if (!orderId) return; // deixa filtro normal agir
-
+  const openOrderById = async (orderId: string) => {
     // tenta achar na lista carregada
     const found = orders.find((o) => o.id.toLowerCase() === orderId);
     if (found) {
-      // troca para a aba correta
       setTab(found.delivery_type === 'pickup' ? 'pickup' : 'pack');
       openScanFor(found);
       setSearch('');
@@ -180,7 +173,6 @@ export default function AdminTriagem() {
         return;
       }
 
-      // enrich com profile
       let profile: any = null;
       if (data.user_id) {
         const { data: p } = await supabase
@@ -212,6 +204,26 @@ export default function AdminTriagem() {
         description: err.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  // Auto-abre quando o leitor injeta um UUID (sem precisar apertar Enter)
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    const orderId = extractOrderId(value);
+    if (orderId && lastHandledQrRef.current !== orderId) {
+      lastHandledQrRef.current = orderId;
+      openOrderById(orderId);
+    }
+    if (!value) lastHandledQrRef.current = null;
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const orderId = extractOrderId(search.trim());
+    if (orderId && lastHandledQrRef.current !== orderId) {
+      lastHandledQrRef.current = orderId;
+      openOrderById(orderId);
     }
   };
 
