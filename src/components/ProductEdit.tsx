@@ -727,6 +727,20 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                 />
               </div>
 
+              <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdv-only" className="text-amber-700 dark:text-amber-400">Exclusivo do PDV</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Não aparece no site — disponível apenas no Ponto de Venda
+                  </p>
+                </div>
+                <Switch
+                  id="pdv-only"
+                  checked={pdvOnly}
+                  onCheckedChange={setPdvOnly}
+                />
+              </div>
+
               {onSale && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
                   <div className="space-y-2">
