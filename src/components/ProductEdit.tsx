@@ -56,6 +56,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [sku, setSku] = useState(product.sku || '');
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
+  const [pdvNoMarkup, setPdvNoMarkup] = useState((product as any).pdv_no_markup || false);
   const [brand, setBrand] = useState(product.brand || '');
   const [poundTest, setPoundTest] = useState(product.pound_test || '');
   const [size, setSize] = useState(product.size || '');
