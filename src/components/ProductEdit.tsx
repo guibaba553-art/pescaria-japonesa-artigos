@@ -118,6 +118,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     setSalePrice(d.salePrice ?? '');
     setSaleEndsAt(d.saleEndsAt ?? '');
     setPdvOnly(!!d.pdvOnly);
+    setPdvNoMarkup(!!d.pdvNoMarkup);
     if (Array.isArray(d.variations)) setVariations(d.variations);
     toast({ title: 'Rascunho restaurado' });
   };
