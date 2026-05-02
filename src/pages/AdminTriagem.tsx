@@ -237,15 +237,17 @@ export default function AdminTriagem() {
       }
     >
       <Card className="p-3">
-        <div className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por ID, nome, CPF ou telefone..."
+            placeholder="Buscar por ID, nome, CPF, telefone — ou escaneie o QR de retirada..."
             className="pl-9"
+            autoComplete="off"
+            maxLength={200}
           />
-        </div>
+        </form>
       </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'pickup' | 'pack')}>
