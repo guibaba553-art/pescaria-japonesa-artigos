@@ -85,6 +85,8 @@ interface CartItem {
   quantity: number;
   variation?: ProductVariation;
   cartItemKey: string;
+  customPrice?: number; // Preço unitário sobrescrito manualmente no PDV
+  priceInput?: string;  // String editável do input (permite digitar "12,")
 }
 
 export default function PDV() {
