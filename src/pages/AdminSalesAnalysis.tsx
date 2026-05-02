@@ -175,7 +175,7 @@ export default function AdminSalesAnalysis() {
       const [ordersRes, savedRes, nfeRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id')
+          .select('id, source, total_amount, shipping_cost, status, created_at, delivery_type, customer_id, user_id, payment_method')
           .gte('created_at', fromIso).lte('created_at', toIso),
         supabase
           .from('saved_sales')
