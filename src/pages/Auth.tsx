@@ -90,7 +90,7 @@ export default function Auth() {
   const handleGoogle = async () => {
     setLoading(true);
     const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: `${window.location.origin}/auth?redirect=${encodeURIComponent(redirectTo)}`,
+      redirect_uri: window.location.origin,
     });
     if (result.error) {
       setLoading(false);
@@ -98,8 +98,7 @@ export default function Auth() {
       return;
     }
     if (result.redirected) return; // browser vai redirecionar
-    // Tokens recebidos — useAuth detecta e redireciona se perfil incompleto
-    navigate(redirectTo);
+    // Tokens recebidos — useAuth detecta e o useEffect acima redireciona
   };
 
   const benefits = [
