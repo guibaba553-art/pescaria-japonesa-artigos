@@ -55,7 +55,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // toda vez que a aba volta a ficar visível (TOKEN_REFRESHED, USER_UPDATED, etc.)
     let lastUserId: string | null = null;
 
-    const handleSession = (session: Session | null, isInitial = false) => {
+    const handleSession = (session: Session | null, isInitial = false, event?: string) => {
+      // IMPORTANTE: Ignorar SIGNED_OUT que vem de falha de refresh quando offline
+      // ou quando há outras abas. Só desloga se realmente foi um signOut explícito
+      // ou se o servidor confirmou (USER_DELETED, etc.).
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        // Falha de refresh — não desloga imediatamente, mantém estado atual
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -84,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => handleSession(session)
+      (event, session) => handleSession(session, false, event)
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
