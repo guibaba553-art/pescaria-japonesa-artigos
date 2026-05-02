@@ -1205,6 +1205,7 @@ export type Database = {
           ncm: string | null
           on_sale: boolean
           origem: string | null
+          pdv_no_markup: boolean
           pdv_only: boolean
           pound_test: string | null
           price: number
@@ -1251,6 +1252,7 @@ export type Database = {
           ncm?: string | null
           on_sale?: boolean
           origem?: string | null
+          pdv_no_markup?: boolean
           pdv_only?: boolean
           pound_test?: string | null
           price: number
@@ -1297,6 +1299,7 @@ export type Database = {
           ncm?: string | null
           on_sale?: boolean
           origem?: string | null
+          pdv_no_markup?: boolean
           pdv_only?: boolean
           pound_test?: string | null
           price?: number
@@ -1862,6 +1865,7 @@ export type Database = {
           ncm: string | null
           on_sale: boolean
           origem: string | null
+          pdv_no_markup: boolean
           pdv_only: boolean
           pound_test: string | null
           price: number
@@ -1917,6 +1921,7 @@ export type Database = {
           ncm: string | null
           on_sale: boolean
           origem: string | null
+          pdv_no_markup: boolean
           pdv_only: boolean
           pound_test: string | null
           price: number

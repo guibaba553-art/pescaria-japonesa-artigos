@@ -56,6 +56,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [sku, setSku] = useState(product.sku || '');
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
+  const [pdvNoMarkup, setPdvNoMarkup] = useState((product as any).pdv_no_markup || false);
   const [brand, setBrand] = useState(product.brand || '');
   const [poundTest, setPoundTest] = useState(product.pound_test || '');
   const [size, setSize] = useState(product.size || '');
@@ -82,7 +83,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     name, description, shortDescription, price, category, subcategory,
     stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
-    featured, onSale, salePrice, saleEndsAt, pdvOnly,
+    featured, onSale, salePrice, saleEndsAt, pdvOnly, pdvNoMarkup,
     variations,
   };
   const { hasDraft, draftSavedAt, getDraft, clearDraft } = useFormDraft(
@@ -117,6 +118,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     setSalePrice(d.salePrice ?? '');
     setSaleEndsAt(d.saleEndsAt ?? '');
     setPdvOnly(!!d.pdvOnly);
+    setPdvNoMarkup(!!d.pdvNoMarkup);
     if (Array.isArray(d.variations)) setVariations(d.variations);
     toast({ title: 'Rascunho restaurado' });
   };
@@ -147,6 +149,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
       setPdvOnly((product as any).pdv_only || false);
+      setPdvNoMarkup((product as any).pdv_no_markup || false);
       setBrand(product.brand || '');
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
@@ -311,6 +314,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         width_cm: widthCm ? parseFloat(widthCm) : null,
         height_cm: heightCm ? parseFloat(heightCm) : null,
         pdv_only: pdvOnly,
+        pdv_no_markup: pdvNoMarkup,
       };
 
       // Se NÃO mudou o estoque, atualiza tudo de uma vez
@@ -738,6 +742,22 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   id="pdv-only"
                   checked={pdvOnly}
                   onCheckedChange={setPdvOnly}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdv-no-markup" className="text-blue-700 dark:text-blue-400">
+                    Sem acréscimo no PDV (débito/crédito)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    O preço não muda conforme o método de pagamento — sempre cobra o valor do PIX (igual Refil de gás / Yamalube)
+                  </p>
+                </div>
+                <Switch
+                  id="pdv-no-markup"
+                  checked={pdvNoMarkup}
+                  onCheckedChange={setPdvNoMarkup}
                 />
               </div>
 

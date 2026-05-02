@@ -14,6 +14,8 @@ export interface PdvPricingFields {
   name?: string;
   price: number; // preço do site (fallback quando price_pdv não está definido)
   price_pdv?: number | null;
+  // Quando true, produto não recebe acréscimo de débito/crédito (usa sempre valor PIX).
+  pdv_no_markup?: boolean | null;
   // Os campos abaixo permanecem no tipo apenas por compatibilidade,
   // mas NÃO são mais usados no cálculo (a fórmula é fixa).
   price_credit_percent?: number | null;
@@ -50,6 +52,8 @@ function normalize(s: string): string {
 
 /** Indica se o produto é isento de acréscimo por método de pagamento. */
 export function isExemptFromMarkup(p: PdvPricingFields): boolean {
+  // Flag manual no produto tem prioridade
+  if (p.pdv_no_markup === true) return true;
   const name = normalize(p.name || '');
   if (!name) return false;
   return EXEMPT_KEYWORDS.some((kw) => name.includes(normalize(kw)));

@@ -69,6 +69,7 @@ export function ProductsManagement() {
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
   const [pdvOnly, setPdvOnly] = useState(false);
+  const [pdvNoMarkup, setPdvNoMarkup] = useState(false);
   const [brand, setBrand] = useState('');
   const [poundTest, setPoundTest] = useState('');
   const [size, setSize] = useState('');
@@ -94,7 +95,7 @@ export function ProductsManagement() {
   // Imagens não são persistidas (são File objects).
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, pdvOnly, brand, poundTest, size,
+    stock, sku, minimumQuantity, soldByWeight, pdvOnly, pdvNoMarkup, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     variations: newProductVariations,
   };
@@ -110,7 +111,7 @@ export function ProductsManagement() {
     setName(d.name || ''); setDescription(d.description || ''); setShortDescription(d.shortDescription || '');
     setPrice(d.price || ''); setCategory(d.category || ''); setSubcategory(d.subcategory || '');
     setStock(d.stock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
-    setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
+    setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setPdvNoMarkup(!!d.pdvNoMarkup); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
     setSize(d.size || ''); setPricePdv(d.pricePdv || '');
     setWeightGrams(d.weightGrams || ''); setLengthCm(d.lengthCm || '');
     setWidthCm(d.widthCm || ''); setHeightCm(d.heightCm || '');
@@ -152,7 +153,7 @@ export function ProductsManagement() {
 
   const resetForm = () => {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
-    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false);
+    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false); setPdvNoMarkup(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
     setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
@@ -208,6 +209,7 @@ export function ProductsManagement() {
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
           pdv_only: pdvOnly,
+          pdv_no_markup: pdvNoMarkup,
           brand: brand || null, pound_test: poundTest || null, size: size || null,
           images: imageUrls,
           image_url: imageUrls.length > 0 ? imageUrls[0] : null,
@@ -642,6 +644,18 @@ export function ProductsManagement() {
                   </p>
                 </div>
                 <Switch id="pdvOnly" checked={pdvOnly} onCheckedChange={setPdvOnly} />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-blue-500/40 bg-blue-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="pdvNoMarkup" className="text-blue-700 dark:text-blue-400">
+                    Sem acréscimo no PDV (débito/crédito)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Preço não muda com o método de pagamento — sempre cobra o valor do PIX (igual Refil de gás / Yamalube)
+                  </p>
+                </div>
+                <Switch id="pdvNoMarkup" checked={pdvNoMarkup} onCheckedChange={setPdvNoMarkup} />
               </div>
 
               <div className="space-y-2">

@@ -1,0 +1,1 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS pdv_no_markup boolean NOT NULL DEFAULT false;
