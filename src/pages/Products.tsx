@@ -47,6 +47,8 @@ export default function Products() {
     loadProducts();
   }, [categoryParam, subcategoryParam]);
 
+  useProductsRealtime(() => loadProducts(), 'products-list');
+
   // Reset filters quando muda categoria
   useEffect(() => {
     setSelectedBrands([]);
