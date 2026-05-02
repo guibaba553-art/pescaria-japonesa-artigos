@@ -385,6 +385,7 @@ export default function PDV() {
     setInstallments(1);
     setDiscountInput('');
     setCurrentSaleId(null);
+    idempotencyKeyRef.current = null;
   };
 
   const getLiveAvailableStock = (item: CartItem) => {
