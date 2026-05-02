@@ -1000,7 +1000,7 @@ export default function AdminSalesAnalysis() {
 
                         {isExpanded && (
                           <TableRow key={`${expandKey}-expand`} className={meta.rowBg}>
-                            <TableCell colSpan={9} className="p-0">
+                            <TableCell colSpan={10} className="p-0">
                               <div className="bg-muted/30 border-t border-border px-6 py-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <Package className="w-4 h-4 text-muted-foreground" />
