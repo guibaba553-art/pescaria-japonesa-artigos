@@ -949,7 +949,7 @@ export default function PDV() {
       for (const item of cart) {
         const { error: stockError } = await supabase.rpc('apply_stock_movement', {
           p_product_id: item.product.id,
-          p_variation_id: item.variation ? item.variation.id : null,
+          p_variation_id: item.variation && validVariationIds.has(item.variation.id) ? item.variation.id : null,
           p_quantity_delta: -Math.abs(item.quantity),
           p_movement_type: 'pdv_sale',
           p_order_id: order.id,
