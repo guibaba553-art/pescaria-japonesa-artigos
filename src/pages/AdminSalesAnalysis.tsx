@@ -952,6 +952,11 @@ export default function AdminSalesAnalysis() {
                               )}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {formatPayment(r.raw?.payment_method)}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
