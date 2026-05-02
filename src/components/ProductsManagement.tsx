@@ -48,9 +48,24 @@ interface Product {
   pdv_only?: boolean;
 }
 
-// Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
-function isMissingShippingDims(p: Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>): boolean {
-  return !p.weight_grams || !p.length_cm || !p.width_cm || !p.height_cm;
+type DimsCheck = Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>;
+
+function hasFullDims(p: { weight_grams?: number | null; length_cm?: number | null; width_cm?: number | null; height_cm?: number | null }): boolean {
+  return !!(p.weight_grams && p.length_cm && p.width_cm && p.height_cm);
+}
+
+// Produto está "sem medidas" para frete quando não tem medidas próprias
+// E nenhuma das suas variações tem medidas completas.
+function isMissingShippingDims(
+  p: DimsCheck,
+  variations?: Array<{ weight_grams?: number | null; length_cm?: number | null; width_cm?: number | null; height_cm?: number | null }>
+): boolean {
+  if (hasFullDims(p)) return false;
+  if (variations && variations.length > 0) {
+    // Se ALGUMA variação tem medidas completas, o produto pode ser enviado
+    return !variations.some(hasFullDims);
+  }
+  return true;
 }
 
 export function ProductsManagement() {
@@ -123,13 +138,31 @@ export function ProductsManagement() {
     loadProducts();
   }, []);
 
+  const [variationDimsByProduct, setVariationDimsByProduct] = useState<Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>>>({});
+
   const loadProducts = async () => {
     // Usa RPC para incluir campos sensíveis (custo, preço PDV, margens) visíveis apenas a admin/funcionário
-    const { data, error } = await supabase.rpc('get_products_admin');
+    const [{ data, error }, { data: vData, error: vError }] = await Promise.all([
+      supabase.rpc('get_products_admin'),
+      supabase.from('product_variations').select('product_id, weight_grams, length_cm, width_cm, height_cm'),
+    ]);
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
     } else {
       setProducts((data || []) as any);
+    }
+    if (!vError && vData) {
+      const map: Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>> = {};
+      for (const v of vData as any[]) {
+        if (!map[v.product_id]) map[v.product_id] = [];
+        map[v.product_id].push({
+          weight_grams: v.weight_grams,
+          length_cm: v.length_cm,
+          width_cm: v.width_cm,
+          height_cm: v.height_cm,
+        });
+      }
+      setVariationDimsByProduct(map);
     }
   };
 
@@ -303,7 +336,7 @@ export function ProductsManagement() {
   const onSaleCount = visibleProducts.filter((p) => p.on_sale).length;
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
   const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
-  const noDimsCount = visibleProducts.filter(isMissingShippingDims).length;
+  const noDimsCount = visibleProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id])).length;
   const pdvOnlyCount = visibleProducts.filter((p) => p.pdv_only).length;
 
   const restockIds = new Set(
@@ -321,7 +354,7 @@ export function ProductsManagement() {
   if (filter === 'on-sale') filteredProducts = filteredProducts.filter((p) => p.on_sale);
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
-  if (filter === 'no-dims') filteredProducts = filteredProducts.filter(isMissingShippingDims);
+  if (filter === 'no-dims') filteredProducts = filteredProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id]));
   if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
   filteredProducts = filteredProducts.filter(
     (p) =>
@@ -469,7 +502,7 @@ export function ProductsManagement() {
                         {product.stock > 0 && v?.status === 'critical' && (
                           <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
                         )}
-                        {isMissingShippingDims(product) && (
+                        {isMissingShippingDims(product, variationDimsByProduct[product.id]) && (
                           <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto sem peso/medidas — indisponível para envio">
                             ⚠ Sem medidas
                           </Badge>
