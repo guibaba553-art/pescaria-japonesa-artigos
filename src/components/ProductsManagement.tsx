@@ -48,9 +48,24 @@ interface Product {
   pdv_only?: boolean;
 }
 
-// Produto está "sem medidas" para frete quando faltar peso ou alguma dimensão
-function isMissingShippingDims(p: Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>): boolean {
-  return !p.weight_grams || !p.length_cm || !p.width_cm || !p.height_cm;
+type DimsCheck = Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>;
+
+function hasFullDims(p: { weight_grams?: number | null; length_cm?: number | null; width_cm?: number | null; height_cm?: number | null }): boolean {
+  return !!(p.weight_grams && p.length_cm && p.width_cm && p.height_cm);
+}
+
+// Produto está "sem medidas" para frete quando não tem medidas próprias
+// E nenhuma das suas variações tem medidas completas.
+function isMissingShippingDims(
+  p: DimsCheck,
+  variations?: Array<{ weight_grams?: number | null; length_cm?: number | null; width_cm?: number | null; height_cm?: number | null }>
+): boolean {
+  if (hasFullDims(p)) return false;
+  if (variations && variations.length > 0) {
+    // Se ALGUMA variação tem medidas completas, o produto pode ser enviado
+    return !variations.some(hasFullDims);
+  }
+  return true;
 }
 
 export function ProductsManagement() {
