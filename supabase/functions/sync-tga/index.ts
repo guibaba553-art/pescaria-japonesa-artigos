@@ -30,6 +30,20 @@ serve(async (req) => {
       });
     }
 
+    // Security: only admins/employees may run TGA sync (accesses PII from any order)
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'employee']);
+
+    if (!roleRows || roleRows.length === 0) {
+      return new Response(JSON.stringify({ error: 'Acesso negado' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Security: Rate limiting check (10 syncs per day = 24 hours)
     const { data: rateLimitCheck, error: rateLimitError } = await supabase.rpc(
       'check_fiscal_rate_limit',
@@ -54,7 +68,8 @@ serve(async (req) => {
       );
     }
 
-    const { action, orderId, credentials } = await req.json();
+    // Security: ignore client-supplied `credentials` to prevent traffic redirection.
+    const { action, orderId } = await req.json();
 
     // Buscar configurações TGA
     const { data: settings, error: settingsError } = await supabase
@@ -70,9 +85,9 @@ serve(async (req) => {
       );
     }
 
-    const tgaUrl = credentials?.apiUrl || settings.tga_api_url;
-    const tgaUser = credentials?.username || settings.tga_username;
-    const tgaPass = credentials?.password || settings.tga_password;
+    const tgaUrl = settings.tga_api_url;
+    const tgaUser = (settings as any).tga_username;
+    const tgaPass = (settings as any).tga_password;
 
     // Testar conexão
     if (action === 'test') {

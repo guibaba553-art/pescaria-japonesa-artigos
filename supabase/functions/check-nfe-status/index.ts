@@ -11,10 +11,40 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authentication: accept EITHER a valid CRON_SECRET (for scheduled jobs)
+    // OR an admin/employee JWT. Otherwise reject.
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const providedCron = req.headers.get('x-cron-secret');
+    const authHeader = req.headers.get('Authorization');
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    let authorized = false;
+
+    if (cronSecret && providedCron && providedCron === cronSecret) {
+      authorized = true;
+    } else if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (!userErr && userData?.user) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userData.user.id)
+          .in('role', ['admin', 'employee']);
+        if (roles && roles.length > 0) authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Buscar configuração de ambiente
     const { data: focusSettings } = await supabase

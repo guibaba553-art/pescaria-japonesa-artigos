@@ -41,6 +41,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Security: only admins/employees may import NF-e (alters prices, stock, NCM)
+    const { data: roleRows } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'employee']);
+
+    if (!roleRows || roleRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Acesso negado: apenas admins e funcionários podem importar NF-e' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { data: rateLimitCheck, error: rateLimitError } = await serviceClient.rpc(
       'check_fiscal_rate_limit',
       {
