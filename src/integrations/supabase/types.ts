@@ -1807,17 +1807,29 @@ export type Database = {
         Args: { p_product_id: string; p_qty: number; p_variation_id: string }
         Returns: string
       }
-      apply_stock_movement: {
-        Args: {
-          p_movement_type: string
-          p_order_id?: string
-          p_product_id: string
-          p_quantity_delta: number
-          p_reason?: string
-          p_variation_id: string
-        }
-        Returns: Json
-      }
+      apply_stock_movement:
+        | {
+            Args: {
+              p_movement_type: string
+              p_order_id?: string
+              p_product_id: string
+              p_quantity_delta: number
+              p_reason?: string
+              p_variation_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_movement_type: string
+              p_order_id?: string
+              p_product_id: string
+              p_quantity_delta: number
+              p_reason?: string
+              p_variation_id: string
+            }
+            Returns: Json
+          }
       check_fiscal_rate_limit: {
         Args: {
           p_function_name: string
