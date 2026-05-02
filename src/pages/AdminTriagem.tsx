@@ -34,6 +34,7 @@ export default function AdminTriagem() {
   const [tab, setTab] = useState<'pickup' | 'pack'>('pickup');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const lastHandledQrRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !canView) navigate('/admin');
