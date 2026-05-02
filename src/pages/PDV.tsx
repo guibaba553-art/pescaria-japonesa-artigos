@@ -919,17 +919,31 @@ export default function PDV() {
         });
       }
 
-      for (const [index, item] of cart.entries()) {
-        const liveStock = Number(inventory.resolvedItems[index]?.availableStock ?? 0);
-        const requested = Number(item.quantity ?? 0);
-        const isByWeight = !!item.product.sold_by_weight;
-        const unit = isByWeight ? 'kg' : 'unidades';
-        const tolerance = isByWeight ? 0.001 : 0;
+      const requestedByTarget = new Map<string, { requested: number; available: number; isByWeight: boolean }>();
 
-        if (requested - liveStock > tolerance) {
+      cart.forEach((item, index) => {
+        const resolved = inventory.resolvedItems[index];
+        const key = resolved?.resolvedVariationId
+          ? `variation:${resolved.resolvedVariationId}`
+          : `product:${item.product.id}`;
+        const current = requestedByTarget.get(key);
+        const requested = Number(item.quantity ?? 0);
+
+        requestedByTarget.set(key, {
+          requested: (current?.requested ?? 0) + requested,
+          available: Number(resolved?.availableStock ?? 0),
+          isByWeight: current?.isByWeight ?? !!item.product.sold_by_weight,
+        });
+      });
+
+      for (const [, target] of requestedByTarget) {
+        const unit = target.isByWeight ? 'kg' : 'unidades';
+        const tolerance = target.isByWeight ? 0.001 : 0;
+
+        if (target.requested - target.available > tolerance) {
           toast({
             title: 'Estoque insuficiente',
-            description: `Disponível: ${liveStock.toFixed(isByWeight ? 3 : 0)} ${unit} · solicitado: ${requested.toFixed(isByWeight ? 3 : 0)} ${unit}`,
+            description: `Disponível: ${target.available.toFixed(target.isByWeight ? 3 : 0)} ${unit} · solicitado: ${target.requested.toFixed(target.isByWeight ? 3 : 0)} ${unit}`,
             variant: 'destructive',
           });
           await loadProducts();
@@ -956,8 +970,8 @@ export default function PDV() {
 
       if (orderError) throw orderError;
 
-      const orderItems = cart.map(item => {
-        const resolved = inventory.resolvedItems[cart.indexOf(item)];
+      const orderItems = cart.map((item, index) => {
+        const resolved = inventory.resolvedItems[index];
         const unit = getItemUnitPrice(item);
         const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
         return {
