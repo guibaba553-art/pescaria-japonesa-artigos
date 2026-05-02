@@ -52,6 +52,8 @@ function normalize(s: string): string {
 
 /** Indica se o produto é isento de acréscimo por método de pagamento. */
 export function isExemptFromMarkup(p: PdvPricingFields): boolean {
+  // Flag manual no produto tem prioridade
+  if (p.pdv_no_markup === true) return true;
   const name = normalize(p.name || '');
   if (!name) return false;
   return EXEMPT_KEYWORDS.some((kw) => name.includes(normalize(kw)));
