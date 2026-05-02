@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.apply_stock_movement(uuid, uuid, integer, text, uuid, text);
