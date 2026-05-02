@@ -271,4 +271,34 @@ describe('Integração: deleção/recriação de variação no PDV', () => {
     expect(result.resolvedItems[0]?.availableStock).toBe(0.238);
     expect(cart[0].quantity).toBeGreaterThan(result.resolvedItems[0]?.availableStock ?? 0);
   });
+
+  it('retorna o mesmo alvo de estoque para linhas repetidas do mesmo produto sem variação', async () => {
+    const supa = makeSupabaseInventoryMock({
+      products: [{ id: 'p1', stock: 0.238 }],
+      variations: [],
+    });
+
+    const cart: CartItemForValidation[] = [
+      { product: { id: 'p1', stock: 0.238, name: 'Chumbo' }, quantity: 0.127 },
+      { product: { id: 'p1', stock: 0.238, name: 'Chumbo' }, quantity: 0.127 },
+    ];
+
+    const result = await resolveCartInventory(supa as any, cart);
+
+    expect(result.resolvedItems).toEqual([
+      {
+        resolvedVariationId: null,
+        availableStock: 0.238,
+        wasReconciled: false,
+        usedProductFallback: false,
+      },
+      {
+        resolvedVariationId: null,
+        availableStock: 0.238,
+        wasReconciled: false,
+        usedProductFallback: false,
+      },
+    ]);
+    expect(cart.reduce((sum, item) => sum + item.quantity, 0)).toBeGreaterThan(result.resolvedItems[0]!.availableStock);
+  });
 });
