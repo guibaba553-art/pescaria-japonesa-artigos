@@ -30,6 +30,20 @@ serve(async (req) => {
       });
     }
 
+    // Security: only admins/employees may run TGA sync (accesses PII from any order)
+    const { data: roleRows } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'employee']);
+
+    if (!roleRows || roleRows.length === 0) {
+      return new Response(JSON.stringify({ error: 'Acesso negado' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Security: Rate limiting check (10 syncs per day = 24 hours)
     const { data: rateLimitCheck, error: rateLimitError } = await supabase.rpc(
       'check_fiscal_rate_limit',
