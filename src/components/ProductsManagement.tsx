@@ -153,7 +153,7 @@ export function ProductsManagement() {
 
   const resetForm = () => {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
-    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false);
+    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false); setPdvNoMarkup(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
     setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
