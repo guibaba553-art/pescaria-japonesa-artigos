@@ -102,6 +102,8 @@ export default function PDV() {
   const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const finalizingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
   
   // Pagamento — padrão é crédito (mesmo preço usado nas etiquetas dos cards)
   const [paymentMethod, setPaymentMethod] = useState<PdvPaymentMethod>('credit');
