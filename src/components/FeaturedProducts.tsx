@@ -27,6 +27,7 @@ const FeaturedProducts = () => {
     const { data, error } = await supabase
       .from('products')
       .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+      .eq('pdv_only', false)
       .gt('stock', 0)
       .eq('featured', true)
       .order('created_at', { ascending: false })
