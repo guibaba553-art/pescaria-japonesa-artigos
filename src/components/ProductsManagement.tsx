@@ -336,6 +336,7 @@ export function ProductsManagement() {
     { key: 'featured', label: 'Destaque', count: featuredCount },
     { key: 'restock', label: 'Reestoque', count: restockIds.size },
     { key: 'no-dims', label: '⚠ Sem medidas', count: noDimsCount },
+    { key: 'pdv-only', label: '🏪 Só PDV', count: pdvOnlyCount },
   ];
 
   return (
