@@ -502,7 +502,7 @@ export function ProductsManagement() {
                         {product.stock > 0 && v?.status === 'critical' && (
                           <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
                         )}
-                        {isMissingShippingDims(product) && (
+                        {isMissingShippingDims(product, variationDimsByProduct[product.id]) && (
                           <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto sem peso/medidas — indisponível para envio">
                             ⚠ Sem medidas
                           </Badge>
