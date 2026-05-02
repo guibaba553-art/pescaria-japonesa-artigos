@@ -42,8 +42,14 @@ export default function Auth() {
     }
   }, []);
 
+  // Redireciona quando o usuário fica autenticado (ex: após callback do Google)
+  useEffect(() => {
+    if (user) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, redirectTo, navigate]);
+
   if (user) {
-    navigate(redirectTo);
     return null;
   }
 
