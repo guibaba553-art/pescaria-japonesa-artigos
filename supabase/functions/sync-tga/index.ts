@@ -85,9 +85,9 @@ serve(async (req) => {
       );
     }
 
-    const tgaUrl = credentials?.apiUrl || settings.tga_api_url;
-    const tgaUser = credentials?.username || settings.tga_username;
-    const tgaPass = credentials?.password || settings.tga_password;
+    const tgaUrl = settings.tga_api_url;
+    const tgaUser = (settings as any).tga_username;
+    const tgaPass = (settings as any).tga_password;
 
     // Testar conexão
     if (action === 'test') {
