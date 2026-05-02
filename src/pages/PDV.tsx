@@ -158,12 +158,39 @@ export default function PDV() {
       loadCustomers();
       loadSavedSales();
     };
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
     if (w.requestIdleCallback) {
       w.requestIdleCallback(runDeferred);
     } else {
-      const t = setTimeout(runDeferred, 800);
-      return () => clearTimeout(t);
+      idleTimer = setTimeout(runDeferred, 800);
     }
+
+    // Realtime: recarrega produtos quando estoque/preço mudam (ex.: funcionário edita)
+    let reloadTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleReload = () => {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => loadProducts(), 400);
+    };
+    const channel = supabase
+      .channel('pdv-products-stock')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_variations' }, scheduleReload)
+      .subscribe();
+
+    // Refetch ao voltar para a aba (fallback caso realtime falhe)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadProducts();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', loadProducts);
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (reloadTimer) clearTimeout(reloadTimer);
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', loadProducts);
+    };
   }, []);
 
   const loadProducts = async () => {
