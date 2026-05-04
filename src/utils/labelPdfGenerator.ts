@@ -16,6 +16,8 @@ export interface LabelItem {
   description: string;
   /** Quantas vezes essa etiqueta deve ser impressa. */
   quantity: number;
+  /** Preço (no crédito) a exibir na etiqueta. Opcional. */
+  price?: number | null;
 }
 
 export interface LabelPdfOptions {
