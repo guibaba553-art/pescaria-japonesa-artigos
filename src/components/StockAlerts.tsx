@@ -205,22 +205,28 @@ export function StockAlerts() {
                       className={`transition-colors ${isOut ? 'border-destructive/40' : 'border-amber-500/40'}`}
                     >
                       <CardContent className="p-3 flex items-center gap-3">
-                        {p.image_url ? (
-                          <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover bg-muted" />
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
-                            <Package2 className="w-5 h-5 text-muted-foreground" />
+                        <button
+                          type="button"
+                          onClick={() => openProductEdit(p.product_id)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover bg-muted" />
+                          ) : (
+                            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                              <Package2 className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {p.name}
+                              {p.variation_name && (
+                                <span className="text-muted-foreground"> — {p.variation_name}</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{p.category}</div>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">
-                            {p.name}
-                            {p.variation_name && (
-                              <span className="text-muted-foreground"> — {p.variation_name}</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{p.category}</div>
-                        </div>
+                        </button>
                         <div className="text-right space-y-1">
                           {isOut ? (
                             <Badge variant="destructive" className="text-[10px]">ESGOTADO</Badge>
