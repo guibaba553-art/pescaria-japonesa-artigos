@@ -44,10 +44,34 @@ function barcodeDataUrl(code: string): string {
   }
 }
 
-/** Trunca texto pra caber na largura da etiqueta (aprox.). */
-function truncate(text: string, max: number): string {
-  if (!text) return '';
-  return text.length > max ? text.slice(0, max - 1) + '…' : text;
+/** Quebra texto em até N linhas com largura máxima por linha. */
+function wrapLines(text: string, maxCharsPerLine: number, maxLines: number): string[] {
+  if (!text) return [];
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = '';
+  for (const w of words) {
+    const tentative = current ? current + ' ' + w : w;
+    if (tentative.length <= maxCharsPerLine) {
+      current = tentative;
+    } else {
+      if (current) lines.push(current);
+      // palavra maior que a linha — quebra dura
+      if (w.length > maxCharsPerLine) {
+        let rest = w;
+        while (rest.length > maxCharsPerLine) {
+          lines.push(rest.slice(0, maxCharsPerLine));
+          rest = rest.slice(maxCharsPerLine);
+        }
+        current = rest;
+      } else {
+        current = w;
+      }
+    }
+    if (lines.length >= maxLines) break;
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines.slice(0, maxLines);
 }
 
 /**
@@ -121,9 +145,12 @@ export async function generateLabelsPdf(
         doc.setFontSize(6);
         doc.text(item.code, x + cellW / 2 + offX, y + 10 + offY, { align: 'center' });
 
-        // Descrição
+        // Descrição (até 2 linhas, sem reticências)
         doc.setFontSize(5.5);
-        doc.text(truncate(item.description, 30), x + 1.5 + offX, y + 13.5 + offY);
+        const descLines = wrapLines(item.description, 32, 2);
+        descLines.forEach((line, i) => {
+          doc.text(line, x + 1.5 + offX, y + 13.5 + offY + i * 2.4);
+        });
 
         // Preço (crédito) — em destaque, à direita
         if (item.price != null && !isNaN(Number(item.price))) {
