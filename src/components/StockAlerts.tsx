@@ -60,7 +60,23 @@ export function StockAlerts() {
     const channel = supabase
       .channel('purchase_list_items_alerts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dismissed_stock_alerts' }, () => load())
       .subscribe();
+
+    // Optimistic remove handler usado pelo botão X
+  };
+
+  const handleDismiss = async (p: AlertProduct) => {
+    setProducts((prev) => prev.filter((x) => x.id !== p.id));
+    const { error } = await supabase
+      .from('dismissed_stock_alerts')
+      .insert({ product_id: p.id });
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      load();
+      return;
+    }
+    toast({ title: 'Produto removido dos alertas', description: p.name });
     return () => {
       supabase.removeChannel(channel);
     };
