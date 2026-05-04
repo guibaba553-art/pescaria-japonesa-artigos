@@ -27,6 +27,8 @@ interface Props {
   currentStock?: number;
   /** Estoque mínimo configurado */
   minStock?: number;
+  /** Pré-seleciona uma lista existente */
+  defaultListId?: string;
 }
 
 /**
