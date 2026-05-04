@@ -553,6 +553,9 @@ export function ProductsManagement() {
                       </code>
                       <div className="flex gap-1 mt-auto pt-1.5 border-t">
                         <div className="flex-1"><ProductEdit product={product} onUpdate={loadProducts} /></div>
+                        <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary shrink-0 h-8 w-8" onClick={() => setPurchaseDialog(product)} title="Adicionar à lista de compras">
+                          <ShoppingBasket className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0 h-8 w-8" onClick={() => handleDelete(product.id, product.image_url)}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
