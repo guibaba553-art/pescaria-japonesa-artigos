@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
 import { PurchaseLists } from './PurchaseLists';
+import { ProductEdit } from './ProductEdit';
+import type { Product } from '@/types/product';
 
 interface AlertItem {
   key: string; // product_id|variation_id
