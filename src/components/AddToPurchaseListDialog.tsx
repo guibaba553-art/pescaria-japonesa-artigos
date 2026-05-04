@@ -65,7 +65,7 @@ async function suggestQuantity(productId: string, currentStock: number, minStock
 
 export function AddToPurchaseListDialog({
   open, onOpenChange, productId, productName, variationId = null,
-  currentStock = 0, minStock = 0,
+  currentStock = 0, minStock = 0, defaultListId,
 }: Props) {
   const { toast } = useToast();
   const [lists, setLists] = useState<PurchaseList[]>([]);
@@ -94,11 +94,14 @@ export function AddToPurchaseListDialog({
         setNewListName('Lista de compras');
       } else {
         setMode('existing');
-        setSelectedList(ls[0].id);
+        const preselect = defaultListId && ls.some((l) => l.id === defaultListId)
+          ? defaultListId
+          : ls[0].id;
+        setSelectedList(preselect);
       }
       setLoading(false);
     })();
-  }, [open, productId, currentStock, minStock]);
+  }, [open, productId, currentStock, minStock, defaultListId]);
 
   const handleSave = async () => {
     if (quantity <= 0) {
