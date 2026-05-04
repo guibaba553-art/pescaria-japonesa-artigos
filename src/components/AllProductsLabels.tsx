@@ -34,6 +34,33 @@ export function AllProductsLabels({ storeName }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [qty, setQty] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
+  const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
+
+  const handleGenerateCode = async (row: Row) => {
+    try {
+      setGeneratingCodeFor(row.id);
+      const code = await generateUniqueBarcode();
+      if (row.variation_id) {
+        const { error } = await supabase
+          .from('product_variations')
+          .update({ sku: code })
+          .eq('id', row.variation_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('products')
+          .update({ sku: code })
+          .eq('id', row.product_id);
+        if (error) throw error;
+      }
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, sku: code } : r)));
+      toast({ title: 'Código gerado', description: code });
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar código', description: err.message, variant: 'destructive' });
+    } finally {
+      setGeneratingCodeFor(null);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
