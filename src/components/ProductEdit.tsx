@@ -29,12 +29,20 @@ import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 interface ProductEditProps {
   product: Product;
   onUpdate: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export function ProductEdit({ product, onUpdate }: ProductEditProps) {
+export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, hideTrigger }: ProductEditProps) {
   const { toast } = useToast();
   const { categories, primaries, getSubcategoriesOf } = useCategories();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+  };
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description);
   const [shortDescription, setShortDescription] = useState(product.short_description || '');
@@ -444,13 +452,15 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
-        <Pencil className="w-4 h-4" />
-      </Button>
+      {!hideTrigger && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOpen(true)}
+        >
+          <Pencil className="w-4 h-4" />
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

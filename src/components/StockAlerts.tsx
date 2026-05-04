@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
 import { PurchaseLists } from './PurchaseLists';
+import { ProductEdit } from './ProductEdit';
+import type { Product } from '@/types/product';
 
 interface AlertItem {
   key: string; // product_id|variation_id
@@ -26,6 +28,16 @@ export function StockAlerts() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<AlertItem[]>([]);
   const [dialog, setDialog] = useState<AlertItem | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+
+  const openProductEdit = async (productId: string) => {
+    const { data, error } = await supabase.rpc('get_product_admin', { p_id: productId });
+    if (error || !data || data.length === 0) {
+      toast({ title: 'Erro ao carregar produto', description: error?.message, variant: 'destructive' });
+      return;
+    }
+    setEditProduct(data[0] as Product);
+  };
 
   const load = async () => {
     const [prodsRes, varsRes, listItemsRes, dismissedRes] = await Promise.all([
@@ -193,22 +205,28 @@ export function StockAlerts() {
                       className={`transition-colors ${isOut ? 'border-destructive/40' : 'border-amber-500/40'}`}
                     >
                       <CardContent className="p-3 flex items-center gap-3">
-                        {p.image_url ? (
-                          <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover bg-muted" />
-                        ) : (
-                          <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
-                            <Package2 className="w-5 h-5 text-muted-foreground" />
+                        <button
+                          type="button"
+                          onClick={() => openProductEdit(p.product_id)}
+                          className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover bg-muted" />
+                          ) : (
+                            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                              <Package2 className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">
+                              {p.name}
+                              {p.variation_name && (
+                                <span className="text-muted-foreground"> — {p.variation_name}</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{p.category}</div>
                           </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">
-                            {p.name}
-                            {p.variation_name && (
-                              <span className="text-muted-foreground"> — {p.variation_name}</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">{p.category}</div>
-                        </div>
+                        </button>
                         <div className="text-right space-y-1">
                           {isOut ? (
                             <Badge variant="destructive" className="text-[10px]">ESGOTADO</Badge>
@@ -256,6 +274,16 @@ export function StockAlerts() {
           }
           currentStock={dialog.stock}
           minStock={dialog.min_stock}
+        />
+      )}
+
+      {editProduct && (
+        <ProductEdit
+          product={editProduct}
+          onUpdate={() => { load(); }}
+          open={!!editProduct}
+          onOpenChange={(v) => !v && setEditProduct(null)}
+          hideTrigger
         />
       )}
     </Tabs>
