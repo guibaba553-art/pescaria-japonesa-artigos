@@ -222,7 +222,22 @@ export function AllProductsLabels({ storeName }: Props) {
                   </td>
                   <td className="p-2 font-medium">{r.name}</td>
                   <td className="p-2 font-mono text-xs">
-                    {r.sku || <Badge variant="destructive" className="text-xs">sem código</Badge>}
+                    {r.sku || (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2"
+                        disabled={generatingCodeFor === r.id}
+                        onClick={() => handleGenerateCode(r)}
+                      >
+                        {generatingCodeFor === r.id ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3 h-3 mr-1" />
+                        )}
+                        Gerar código
+                      </Button>
+                    )}
                   </td>
                   <td className="p-2 text-right">{r.stock}</td>
                   <td className="p-2 text-right">
