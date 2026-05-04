@@ -25,6 +25,9 @@ const XMLImporter = lazy(() =>
 const AccountantReport = lazy(() =>
   import("@/components/AccountantReport").then((m) => ({ default: m.AccountantReport }))
 );
+const EmitNFeManual = lazy(() =>
+  import("@/components/EmitNFeManual").then((m) => ({ default: m.EmitNFeManual }))
+);
 
 const FiscalTabFallback = () => (
   <div className="flex items-center justify-center py-16 text-muted-foreground">
