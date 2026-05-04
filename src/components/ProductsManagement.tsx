@@ -83,6 +83,7 @@ export function ProductsManagement() {
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [stock, setStock] = useState('');
+  const [minStock, setMinStock] = useState('');
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
