@@ -276,6 +276,16 @@ export function StockAlerts() {
           minStock={dialog.min_stock}
         />
       )}
+
+      {editProduct && (
+        <ProductEdit
+          product={editProduct}
+          onUpdate={() => { load(); }}
+          open={!!editProduct}
+          onOpenChange={(v) => !v && setEditProduct(null)}
+          hideTrigger
+        />
+      )}
     </Tabs>
   );
 }
