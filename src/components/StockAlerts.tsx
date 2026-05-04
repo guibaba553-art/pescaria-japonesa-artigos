@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PackageX, Package2, Loader2, ShoppingBasket, Plus } from 'lucide-react';
+import { AlertTriangle, PackageX, Package2, Loader2, ShoppingBasket } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
 import { PurchaseLists } from './PurchaseLists';
