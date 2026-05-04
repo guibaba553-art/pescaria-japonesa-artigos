@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, PackageX, Package2, Loader2, ShoppingBasket } from 'lucide-react';
+import { AlertTriangle, PackageX, Package2, Loader2, ShoppingBasket, X } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
 import { PurchaseLists } from './PurchaseLists';
@@ -18,23 +19,27 @@ interface AlertProduct {
 }
 
 export function StockAlerts() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<AlertProduct[]>([]);
   const [dialog, setDialog] = useState<AlertProduct | null>(null);
 
   const load = async () => {
-    const [prodsRes, listItemsRes] = await Promise.all([
+    const [prodsRes, listItemsRes, dismissedRes] = await Promise.all([
       supabase.rpc('get_products_admin'),
       supabase.from('purchase_list_items').select('product_id'),
+      supabase.from('dismissed_stock_alerts').select('product_id'),
     ]);
 
     const inListIds = new Set((listItemsRes.data ?? []).map((i: any) => i.product_id));
+    const dismissedIds = new Set((dismissedRes.data ?? []).map((i: any) => i.product_id));
 
     if (prodsRes.data) {
       const filtered = (prodsRes.data as any[])
         .filter((p) => p.category !== 'Pendente Revisão')
         .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
         .filter((p) => !inListIds.has(p.id)) // oculta produtos já em alguma lista
+        .filter((p) => !dismissedIds.has(p.id)) // oculta produtos dispensados
         .sort((a, b) => a.stock - b.stock)
         .map((p) => ({
           id: p.id,
@@ -55,11 +60,25 @@ export function StockAlerts() {
     const channel = supabase
       .channel('purchase_list_items_alerts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dismissed_stock_alerts' }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleDismiss = async (p: AlertProduct) => {
+    setProducts((prev) => prev.filter((x) => x.id !== p.id));
+    const { error } = await supabase
+      .from('dismissed_stock_alerts')
+      .insert({ product_id: p.id });
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      load();
+      return;
+    }
+    toast({ title: 'Produto removido dos alertas', description: p.name });
+  };
 
   const outOfStock = products.filter((p) => p.stock === 0);
   const lowStock = products.filter((p) => p.stock > 0);
@@ -144,6 +163,15 @@ export function StockAlerts() {
                         <Button size="sm" onClick={() => setDialog(p)} className="shrink-0 gap-1">
                           <ShoppingBasket className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Adicionar à lista</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDismiss(p)}
+                          className="shrink-0"
+                          title="Remover dos alertas (não exclui o produto)"
+                        >
+                          <X className="w-4 h-4 text-muted-foreground" />
                         </Button>
                       </CardContent>
                     </Card>
