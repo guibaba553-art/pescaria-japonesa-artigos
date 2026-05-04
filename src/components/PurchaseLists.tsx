@@ -287,7 +287,12 @@ export function PurchaseLists() {
       {pendingAdd && (
         <AddToPurchaseListDialog
           open={!!pendingAdd}
-          onOpenChange={(v) => !v && setPendingAdd(null)}
+          onOpenChange={(v) => {
+            if (!v) {
+              setPendingAdd(null);
+              load();
+            }
+          }}
           productId={pendingAdd.product.id}
           productName={pendingAdd.product.name}
           currentStock={pendingAdd.product.stock}
