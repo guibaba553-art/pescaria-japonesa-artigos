@@ -224,23 +224,23 @@ export function PurchaseLists() {
                       <p className="text-xs text-muted-foreground text-center py-4">Lista vazia</p>
                     ) : (
                       items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 py-1.5">
+                        <div key={item.id} className="flex items-center gap-3 py-2">
                           <input
                             type="number"
                             min={0}
                             value={item.quantity}
                             onChange={(e) => handleQty(item, Math.max(0, Number(e.target.value) || 0))}
-                            className="w-16 h-8 rounded border bg-background px-2 text-sm shrink-0"
+                            className="w-16 h-9 rounded border bg-background px-2 text-sm shrink-0"
                           />
                           {item.product_image ? (
                             <img
                               src={item.product_image}
                               alt={item.product_name}
-                              className="w-9 h-9 rounded object-cover bg-muted shrink-0"
+                              className="w-20 h-20 rounded-md object-cover bg-muted shrink-0"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0">
-                              <Package2 className="w-4 h-4 text-muted-foreground" />
+                            <div className="w-20 h-20 rounded-md bg-muted flex items-center justify-center shrink-0">
+                              <Package2 className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0 text-sm truncate">
