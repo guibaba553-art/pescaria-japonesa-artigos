@@ -102,7 +102,7 @@ export async function generateLabelsPdf(
         const y = marginY + r * (cellH + gapY);
 
         // Deslocamento fino para alinhar com a etiqueta física
-        const offX = -1.5; // esquerda
+        const offX = -0.5; // esquerda
         const offY = 1.5;  // baixo
 
         // Barcode (no topo, menor)
