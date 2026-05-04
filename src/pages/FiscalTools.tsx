@@ -213,7 +213,7 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
@@ -221,6 +221,10 @@ export default function FiscalTools() {
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas Fiscais</span>
+            </TabsTrigger>
+            <TabsTrigger value="emitir">
+              <Send className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Emitir NF-e</span>
             </TabsTrigger>
             <TabsTrigger value="entrada">
               <ArrowDownToLine className="w-4 h-4 mr-2" />
