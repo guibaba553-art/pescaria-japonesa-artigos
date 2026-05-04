@@ -125,6 +125,16 @@ export async function generateLabelsPdf(
         doc.setFontSize(5.5);
         doc.text(truncate(item.description, 30), x + 1.5 + offX, y + 13.5 + offY);
 
+        // Preço (crédito) — em destaque, à direita
+        if (item.price != null && !isNaN(Number(item.price))) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.text(fmtPrice(Number(item.price)), x + cellW - 1.5 + offX, y + cellH - 1 + offY, {
+            align: 'right',
+          });
+          doc.setFont('helvetica', 'normal');
+        }
+
         // Nome da loja (rodapé)
         doc.setFontSize(4.5);
         doc.text(storeName, x + 1.5 + offX, y + cellH - 1 + offY);
