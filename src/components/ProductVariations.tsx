@@ -417,6 +417,19 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 onChange={(e) => setNewVariation({ ...newVariation, stock: e.target.value })}
               />
             </div>
+            <div>
+              <Label htmlFor="new-var-min-stock" className="text-xs">
+                Estoque mínimo (alerta)
+              </Label>
+              <Input
+                id="new-var-min-stock"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newVariation.min_stock}
+                onChange={(e) => setNewVariation({ ...newVariation, min_stock: e.target.value })}
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
