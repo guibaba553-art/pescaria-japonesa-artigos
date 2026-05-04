@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Printer, Search, RefreshCw } from 'lucide-react';
+import { Loader2, Printer, Search, RefreshCw, Wand2 } from 'lucide-react';
 import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
+import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
 
 interface Row {
   id: string; // unique id (product or product:variation)
