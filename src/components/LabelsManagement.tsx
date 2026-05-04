@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Printer, Search, Tag, RefreshCw, CheckCheck, ScanLine, Sparkles } from 'lucide-react';
+import { Loader2, Printer, Search, Tag, RefreshCw, CheckCheck, ScanLine, Sparkles, Package } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
 import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
 import { LabelAssignBarcodeDialog } from './LabelAssignBarcodeDialog';
+import { AllProductsLabels } from './AllProductsLabels';
 
 interface PendingRow {
   id: string;
@@ -262,9 +264,20 @@ export function LabelsManagement() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <Tabs defaultValue="pendentes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pendentes">
+            <Tag className="w-4 h-4 mr-2" /> Pendentes
+          </TabsTrigger>
+          <TabsTrigger value="todos">
+            <Package className="w-4 h-4 mr-2" /> Todos os produtos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pendentes">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Tag className="w-5 h-5" />
@@ -477,6 +490,25 @@ export function LabelsManagement() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="todos">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Imprimir etiquetas de qualquer produto
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Selecione produtos e defina a quantidade de etiquetas a imprimir.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AllProductsLabels storeName={storeName} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {scanDialog && (
         <LabelAssignBarcodeDialog
