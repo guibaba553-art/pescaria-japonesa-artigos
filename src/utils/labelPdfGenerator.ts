@@ -98,8 +98,8 @@ export async function generateLabelsPdf(
       for (let c = 0; c < cols; c++) {
         if (idx >= expanded.length) break;
         const item = expanded[idx++];
-        const x = marginX + c * cellW;
-        const y = marginY + r * cellH;
+        const x = marginX + c * (cellW + gapX);
+        const y = marginY + r * (cellH + gapY);
 
         // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
