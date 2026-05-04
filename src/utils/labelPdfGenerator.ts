@@ -71,16 +71,18 @@ export async function generateLabelsPdf(
     throw new Error('Nenhuma etiqueta para imprimir');
   }
 
-  // Layout: A4 em mm
+  // Layout: A4 em mm — padrão Pimaco/Avery 5×13 (etiqueta 38.1×21.2mm)
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageW = 210;
-  const pageH = 297;
   const cols = 5;
   const rows = 13;
-  const marginX = 5;
-  const marginY = 8;
-  const cellW = (pageW - marginX * 2) / cols; // ~40mm
-  const cellH = (pageH - marginY * 2) / rows; // ~21.6mm
+  const labelW = 38.1;
+  const labelH = 21.2;
+  const gapX = 2.5;
+  const gapY = 0;
+  const marginX = (210 - (labelW * cols + gapX * (cols - 1))) / 2; // ~4.7mm
+  const marginY = (297 - (labelH * rows + gapY * (rows - 1))) / 2; // ~10.3mm
+  const cellW = labelW;
+  const cellH = labelH;
 
   // Pré-gera os barcodes únicos pra evitar reprocesso
   const barcodeCache = new Map<string, string>();
@@ -96,8 +98,8 @@ export async function generateLabelsPdf(
       for (let c = 0; c < cols; c++) {
         if (idx >= expanded.length) break;
         const item = expanded[idx++];
-        const x = marginX + c * cellW;
-        const y = marginY + r * cellH;
+        const x = marginX + c * (cellW + gapX);
+        const y = marginY + r * (cellH + gapY);
 
         // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
