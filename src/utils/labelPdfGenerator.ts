@@ -33,8 +33,8 @@ function barcodeDataUrl(code: string): string {
       format: 'CODE39',
       displayValue: false,
       margin: 0,
-      height: 40,
-      width: 1.4,
+      height: 25,
+      width: 1,
     });
     return canvas.toDataURL('image/png');
   } catch {
@@ -99,25 +99,24 @@ export async function generateLabelsPdf(
         const x = marginX + c * cellW;
         const y = marginY + r * cellH;
 
-        // Cabeçalho — nome loja
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(5);
-        doc.text(storeName, x + 1, y + 2);
-
-        // Barcode
+        // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          // image area: largura ~ cellW - 2 mm, altura ~ 9mm
-          doc.addImage(dataUrl, 'PNG', x + 1, y + 3, cellW - 2, 9);
+          doc.addImage(dataUrl, 'PNG', x + 2, y + 1.5, cellW - 4, 6);
         }
 
         // Código numérico embaixo do barcode
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
-        doc.text(item.code, x + cellW / 2, y + 14, { align: 'center' });
+        doc.text(item.code, x + cellW / 2, y + 10, { align: 'center' });
 
         // Descrição
         doc.setFontSize(5.5);
-        doc.text(truncate(item.description, 30), x + 1, y + 17);
+        doc.text(truncate(item.description, 30), x + 1.5, y + 13.5);
+
+        // Nome da loja (rodapé)
+        doc.setFontSize(4.5);
+        doc.text(storeName, x + 1.5, y + cellH - 1);
       }
       if (idx >= expanded.length) break;
     }
