@@ -61,13 +61,16 @@ export async function generateLabelsPdf(
   const fileName = opts.fileName || `etiquetas_${new Date().toISOString().slice(0, 10)}.pdf`;
 
   // Expande lista de acordo com a quantidade
-  const expanded: { code: string; description: string }[] = [];
+  const expanded: { code: string; description: string; price?: number | null }[] = [];
   for (const it of items) {
     const qty = Math.max(0, Math.floor(it.quantity || 0));
     for (let i = 0; i < qty; i++) {
-      expanded.push({ code: it.code, description: it.description });
+      expanded.push({ code: it.code, description: it.description, price: it.price });
     }
   }
+
+  const fmtPrice = (v: number) =>
+    `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   if (expanded.length === 0) {
     throw new Error('Nenhuma etiqueta para imprimir');
