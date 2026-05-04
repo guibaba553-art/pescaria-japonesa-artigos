@@ -9,9 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
 import { PurchaseLists } from './PurchaseLists';
 
-interface AlertProduct {
-  id: string;
+interface AlertItem {
+  key: string; // product_id|variation_id
+  product_id: string;
+  variation_id: string | null;
   name: string;
+  variation_name: string | null;
   stock: number;
   min_stock: number;
   category: string;
@@ -21,42 +24,89 @@ interface AlertProduct {
 export function StockAlerts() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<AlertProduct[]>([]);
-  const [dialog, setDialog] = useState<AlertProduct | null>(null);
+  const [items, setItems] = useState<AlertItem[]>([]);
+  const [dialog, setDialog] = useState<AlertItem | null>(null);
 
   const load = async () => {
-    const [prodsRes, listItemsRes, dismissedRes] = await Promise.all([
+    const [prodsRes, varsRes, listItemsRes, dismissedRes] = await Promise.all([
       supabase.rpc('get_products_admin'),
-      supabase.from('purchase_list_items').select('product_id'),
-      supabase.from('dismissed_stock_alerts').select('product_id'),
+      supabase.from('product_variations').select('id, product_id, name, stock, image_url'),
+      supabase.from('purchase_list_items').select('product_id, variation_id'),
+      supabase.from('dismissed_stock_alerts').select('product_id, variation_id'),
     ]);
 
-    const inListIds = new Set((listItemsRes.data ?? []).map((i: any) => i.product_id));
-    const dismissedIds = new Set((dismissedRes.data ?? []).map((i: any) => i.product_id));
+    const keyOf = (pid: string, vid: string | null) => `${pid}|${vid ?? ''}`;
+    const inListKeys = new Set(
+      (listItemsRes.data ?? []).map((i: any) => keyOf(i.product_id, i.variation_id))
+    );
+    const dismissedKeys = new Set(
+      (dismissedRes.data ?? []).map((i: any) => keyOf(i.product_id, i.variation_id))
+    );
 
-    if (prodsRes.data) {
-      const filtered = (prodsRes.data as any[])
-        .filter((p) => p.category !== 'Pendente Revisão')
-        .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
-        .filter((p) => !inListIds.has(p.id)) // oculta produtos já em alguma lista
-        .filter((p) => !dismissedIds.has(p.id)) // oculta produtos dispensados
-        .sort((a, b) => a.stock - b.stock)
-        .map((p) => ({
-          id: p.id,
+    const products = (prodsRes.data ?? []) as any[];
+    const variations = (varsRes.data ?? []) as any[];
+
+    // Agrupa variações por produto
+    const varsByProduct = new Map<string, any[]>();
+    variations.forEach((v) => {
+      if (!varsByProduct.has(v.product_id)) varsByProduct.set(v.product_id, []);
+      varsByProduct.get(v.product_id)!.push(v);
+    });
+
+    const result: AlertItem[] = [];
+
+    for (const p of products) {
+      if (p.category === 'Pendente Revisão') continue;
+      const prodVars = varsByProduct.get(p.id) ?? [];
+
+      if (prodVars.length > 0) {
+        // Produto com variações: alerta apenas por variação
+        for (const v of prodVars) {
+          const stock = Number(v.stock ?? 0);
+          const isAlert = stock === 0 || (p.min_stock > 0 && stock <= p.min_stock);
+          if (!isAlert) continue;
+          const k = keyOf(p.id, v.id);
+          if (inListKeys.has(k) || dismissedKeys.has(k)) continue;
+          result.push({
+            key: k,
+            product_id: p.id,
+            variation_id: v.id,
+            name: p.name,
+            variation_name: v.name,
+            stock,
+            min_stock: p.min_stock,
+            category: p.category,
+            image_url: v.image_url ?? p.image_url,
+          });
+        }
+      } else {
+        // Produto sem variações: usa estoque do próprio produto
+        const stock = Number(p.stock ?? 0);
+        const isAlert = stock === 0 || (p.min_stock > 0 && stock <= p.min_stock);
+        if (!isAlert) continue;
+        const k = keyOf(p.id, null);
+        if (inListKeys.has(k) || dismissedKeys.has(k)) continue;
+        result.push({
+          key: k,
+          product_id: p.id,
+          variation_id: null,
           name: p.name,
-          stock: p.stock,
+          variation_name: null,
+          stock,
           min_stock: p.min_stock,
           category: p.category,
           image_url: p.image_url,
-        })) as AlertProduct[];
-      setProducts(filtered);
+        });
+      }
     }
+
+    result.sort((a, b) => a.stock - b.stock);
+    setItems(result);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-    // Recarrega quando itens de lista são adicionados/removidos em qualquer lugar
     const channel = supabase
       .channel('purchase_list_items_alerts')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
@@ -67,21 +117,24 @@ export function StockAlerts() {
     };
   }, []);
 
-  const handleDismiss = async (p: AlertProduct) => {
-    setProducts((prev) => prev.filter((x) => x.id !== p.id));
+  const handleDismiss = async (it: AlertItem) => {
+    setItems((prev) => prev.filter((x) => x.key !== it.key));
     const { error } = await supabase
       .from('dismissed_stock_alerts')
-      .insert({ product_id: p.id });
+      .insert({ product_id: it.product_id, variation_id: it.variation_id });
     if (error) {
       toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
       load();
       return;
     }
-    toast({ title: 'Produto removido dos alertas', description: p.name });
+    toast({
+      title: 'Removido dos alertas',
+      description: it.variation_name ? `${it.name} — ${it.variation_name}` : it.name,
+    });
   };
 
-  const outOfStock = products.filter((p) => p.stock === 0);
-  const lowStock = products.filter((p) => p.stock > 0);
+  const outOfStock = items.filter((p) => p.stock === 0);
+  const lowStock = items.filter((p) => p.stock > 0);
 
   return (
     <Tabs defaultValue="alerts" className="space-y-4">
@@ -122,7 +175,7 @@ export function StockAlerts() {
               </Card>
             </div>
 
-            {products.length === 0 ? (
+            {items.length === 0 ? (
               <Card>
                 <CardContent className="py-12 text-center text-muted-foreground">
                   <Package2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
@@ -132,11 +185,11 @@ export function StockAlerts() {
               </Card>
             ) : (
               <div className="space-y-2">
-                {products.map((p) => {
+                {items.map((p) => {
                   const isOut = p.stock === 0;
                   return (
                     <Card
-                      key={p.id}
+                      key={p.key}
                       className={`transition-colors ${isOut ? 'border-destructive/40' : 'border-amber-500/40'}`}
                     >
                       <CardContent className="p-3 flex items-center gap-3">
@@ -148,7 +201,12 @@ export function StockAlerts() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{p.name}</div>
+                          <div className="font-medium text-sm truncate">
+                            {p.name}
+                            {p.variation_name && (
+                              <span className="text-muted-foreground"> — {p.variation_name}</span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">{p.category}</div>
                         </div>
                         <div className="text-right space-y-1">
@@ -191,8 +249,11 @@ export function StockAlerts() {
         <AddToPurchaseListDialog
           open={!!dialog}
           onOpenChange={(v) => !v && setDialog(null)}
-          productId={dialog.id}
-          productName={dialog.name}
+          productId={dialog.product_id}
+          variationId={dialog.variation_id}
+          productName={
+            dialog.variation_name ? `${dialog.name} — ${dialog.variation_name}` : dialog.name
+          }
           currentStock={dialog.stock}
           minStock={dialog.min_stock}
         />
