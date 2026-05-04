@@ -1370,10 +1370,6 @@ export function OrdersManagement() {
                 <p className="text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pendentes</p>
                 <p className="text-base md:text-xl font-bold text-orange-500">{pendingCount}</p>
               </div>
-              <div className="shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-background/80 backdrop-blur border min-w-[88px] md:min-w-[110px]">
-                <p className="text-[9px] md:text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Receita</p>
-                <p className="text-base md:text-xl font-bold text-primary">R$ {totalRevenue.toFixed(2)}</p>
-              </div>
             </div>
           </div>
         </div>
