@@ -25,6 +25,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     name: "",
     price: "",
     stock: "",
+    min_stock: "",
     description: "",
     image_url: "",
     sku: "",
@@ -54,11 +55,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     }
 
     const variation: ProductVariation = {
-      id: `temp-${Date.now()}-${Math.random()}`, // ID temporário único
+      id: `temp-${Date.now()}-${Math.random()}`,
       product_id: "",
       name,
       price,
       stock,
+      min_stock: newVariation.min_stock ? parseInt(newVariation.min_stock) : 0,
       description: newVariation.description.trim() || null,
       image_url: newVariation.image_url.trim() || null,
       sku: newVariation.sku.trim() || null,
@@ -70,8 +72,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
 
     onVariationsChange([...variations, variation]);
     
-    // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
+    setNewVariation({ name: "", price: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
@@ -88,7 +89,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         return { ...v, [field]: numValue };
       }
       
-      if (field === 'stock') {
+      if (field === 'stock' || field === 'min_stock') {
         const numValue = parseInt(value);
         if (isNaN(numValue) || numValue < 0) return v;
         return { ...v, [field]: numValue };
@@ -195,6 +196,21 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           min="0"
                           value={variation.stock}
                           onChange={(e) => updateVariation(variation.id, 'stock', e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor={`minstock-${variation.id}`} className="text-xs">
+                          Estoque mínimo (alerta)
+                        </Label>
+                        <Input
+                          id={`minstock-${variation.id}`}
+                          type="number"
+                          min="0"
+                          value={variation.min_stock ?? 0}
+                          onChange={(e) => updateVariation(variation.id, 'min_stock', e.target.value)}
                           placeholder="0"
                         />
                       </div>
@@ -399,6 +415,19 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 placeholder="0"
                 value={newVariation.stock}
                 onChange={(e) => setNewVariation({ ...newVariation, stock: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-var-min-stock" className="text-xs">
+                Estoque mínimo (alerta)
+              </Label>
+              <Input
+                id="new-var-min-stock"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={newVariation.min_stock}
+                onChange={(e) => setNewVariation({ ...newVariation, min_stock: e.target.value })}
               />
             </div>
           </div>

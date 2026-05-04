@@ -1160,6 +1160,7 @@ export type Database = {
           id: string
           image_url: string | null
           length_cm: number | null
+          min_stock: number
           name: string
           price: number
           product_id: string
@@ -1176,6 +1177,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           length_cm?: number | null
+          min_stock?: number
           name: string
           price?: number
           product_id: string
@@ -1192,6 +1194,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           length_cm?: number | null
+          min_stock?: number
           name?: string
           price?: number
           product_id?: string

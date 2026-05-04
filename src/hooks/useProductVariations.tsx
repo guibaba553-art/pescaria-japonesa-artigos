@@ -96,7 +96,8 @@ export function useProductVariations(productId?: string) {
             weight_grams: v.weight_grams != null ? Number(v.weight_grams) : null,
             length_cm: v.length_cm != null ? Number(v.length_cm) : null,
             width_cm: v.width_cm != null ? Number(v.width_cm) : null,
-            height_cm: v.height_cm != null ? Number(v.height_cm) : null
+            height_cm: v.height_cm != null ? Number(v.height_cm) : null,
+            min_stock: v.min_stock != null ? Number(v.min_stock) : 0
           };
         });
 

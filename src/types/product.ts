@@ -12,6 +12,7 @@ export interface ProductVariation {
   length_cm?: number | null;
   width_cm?: number | null;
   height_cm?: number | null;
+  min_stock?: number;
   created_at?: string;
   updated_at?: string;
 }

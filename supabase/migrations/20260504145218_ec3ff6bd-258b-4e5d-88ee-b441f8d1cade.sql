@@ -1,0 +1,1 @@
+ALTER TABLE public.product_variations ADD COLUMN IF NOT EXISTS min_stock INTEGER NOT NULL DEFAULT 0;
