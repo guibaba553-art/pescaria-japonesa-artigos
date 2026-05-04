@@ -780,6 +780,17 @@ export function ProductsManagement() {
           </CardContent>
         </Card>
       )}
+
+      {purchaseDialog && (
+        <AddToPurchaseListDialog
+          open={!!purchaseDialog}
+          onOpenChange={(v) => !v && setPurchaseDialog(null)}
+          productId={purchaseDialog.id}
+          productName={purchaseDialog.name}
+          currentStock={purchaseDialog.stock}
+          minStock={(purchaseDialog as any).min_stock ?? 0}
+        />
+      )}
     </div>
   );
 }
