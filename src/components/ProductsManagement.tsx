@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Package, Plus, Search, X } from 'lucide-react';
+import { Trash2, Package, Plus, Search, X, ShoppingBasket } from 'lucide-react';
+import { AddToPurchaseListDialog } from '@/components/AddToPurchaseListDialog';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { ProductEdit } from '@/components/ProductEdit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -75,6 +76,7 @@ export function ProductsManagement() {
   const { primaries } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [purchaseDialog, setPurchaseDialog] = useState<Product | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -551,6 +553,9 @@ export function ProductsManagement() {
                       </code>
                       <div className="flex gap-1 mt-auto pt-1.5 border-t">
                         <div className="flex-1"><ProductEdit product={product} onUpdate={loadProducts} /></div>
+                        <Button variant="ghost" size="icon" className="hover:bg-primary/10 hover:text-primary shrink-0 h-8 w-8" onClick={() => setPurchaseDialog(product)} title="Adicionar à lista de compras">
+                          <ShoppingBasket className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive shrink-0 h-8 w-8" onClick={() => handleDelete(product.id, product.image_url)}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -774,6 +779,17 @@ export function ProductsManagement() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {purchaseDialog && (
+        <AddToPurchaseListDialog
+          open={!!purchaseDialog}
+          onOpenChange={(v) => !v && setPurchaseDialog(null)}
+          productId={purchaseDialog.id}
+          productName={purchaseDialog.name}
+          currentStock={purchaseDialog.stock}
+          minStock={(purchaseDialog as any).min_stock ?? 0}
+        />
       )}
     </div>
   );
