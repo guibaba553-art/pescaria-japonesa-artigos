@@ -244,6 +244,7 @@ export function ProductsManagement() {
           price: price ? parseFloat(price) : 0,
           category, subcategory: subcategory || null,
           stock: stock ? parseInt(stock) : 0,
+          min_stock: minStock ? parseInt(minStock) : 0,
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
