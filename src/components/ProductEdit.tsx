@@ -141,6 +141,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setCategory(product.category);
       setSubcategory((product as any).subcategory || '');
       setStock(product.stock.toString());
+      setMinStock((product as any).min_stock?.toString() || '');
       setExistingImages(product.images || []);
       setNewImages([]);
       setFeatured(product.featured || false);
