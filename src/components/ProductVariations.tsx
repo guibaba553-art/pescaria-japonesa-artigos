@@ -25,6 +25,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     name: "",
     price: "",
     stock: "",
+    min_stock: "",
     description: "",
     image_url: "",
     sku: "",
