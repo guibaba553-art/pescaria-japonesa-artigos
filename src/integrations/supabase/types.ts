@@ -1369,6 +1369,74 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_list_items: {
+        Row: {
+          added_by: string
+          created_at: string
+          id: string
+          list_id: string
+          product_id: string
+          quantity: number
+          updated_at: string
+          variation_id: string | null
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          id?: string
+          list_id: string
+          product_id: string
+          quantity?: number
+          updated_at?: string
+          variation_id?: string | null
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          id?: string
+          list_id?: string
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_lists: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string
