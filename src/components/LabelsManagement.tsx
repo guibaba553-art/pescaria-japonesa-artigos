@@ -264,9 +264,20 @@ export function LabelsManagement() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <Tabs defaultValue="pendentes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="pendentes">
+            <Tag className="w-4 h-4 mr-2" /> Pendentes
+          </TabsTrigger>
+          <TabsTrigger value="todos">
+            <Package className="w-4 h-4 mr-2" /> Todos os produtos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pendentes">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Tag className="w-5 h-5" />
