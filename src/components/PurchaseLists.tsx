@@ -294,7 +294,12 @@ export function PurchaseLists() {
             }
           }}
           productId={pendingAdd.product.id}
-          productName={pendingAdd.product.name}
+          productName={
+            pendingAdd.product.variation_name
+              ? `${pendingAdd.product.name} — ${pendingAdd.product.variation_name}`
+              : pendingAdd.product.name
+          }
+          variationId={pendingAdd.product.variation_id ?? null}
           currentStock={pendingAdd.product.stock}
           minStock={pendingAdd.product.min_stock}
           defaultListId={pendingAdd.listId}

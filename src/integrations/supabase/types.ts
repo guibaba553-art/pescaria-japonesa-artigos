@@ -493,18 +493,21 @@ export type Database = {
           dismissed_by: string | null
           id: string
           product_id: string
+          variation_id: string | null
         }
         Insert: {
           created_at?: string
           dismissed_by?: string | null
           id?: string
           product_id: string
+          variation_id?: string | null
         }
         Update: {
           created_at?: string
           dismissed_by?: string | null
           id?: string
           product_id?: string
+          variation_id?: string | null
         }
         Relationships: []
       }

@@ -13,6 +13,8 @@ interface ProductLite {
   image_url: string | null;
   stock: number;
   min_stock: number;
+  variation_id?: string | null;
+  variation_name?: string | null;
 }
 
 interface Props {
@@ -23,7 +25,7 @@ interface Props {
 
 export function ProductSearchDialog({ open, onOpenChange, onSelect }: Props) {
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<ProductLite[]>([]);
+  const [items, setItems] = useState<ProductLite[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -31,44 +33,85 @@ export function ProductSearchDialog({ open, onOpenChange, onSelect }: Props) {
     setLoading(true);
     setSearch('');
     (async () => {
-      const { data } = await supabase.rpc('get_products_admin');
-      const list = (data ?? [])
-        .filter((p: any) => p.category !== 'Pendente Revisão')
-        .map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          category: p.category,
-          image_url: p.image_url,
-          stock: Number(p.stock ?? 0),
-          min_stock: Number(p.min_stock ?? 0),
-        })) as ProductLite[];
-      list.sort((a, b) => a.name.localeCompare(b.name));
-      setProducts(list);
+      const [prodsRes, varsRes] = await Promise.all([
+        supabase.rpc('get_products_admin'),
+        supabase.from('product_variations').select('id, product_id, name, stock, image_url'),
+      ]);
+
+      const products = (prodsRes.data ?? []) as any[];
+      const variations = (varsRes.data ?? []) as any[];
+
+      const varsByProduct = new Map<string, any[]>();
+      variations.forEach((v) => {
+        if (!varsByProduct.has(v.product_id)) varsByProduct.set(v.product_id, []);
+        varsByProduct.get(v.product_id)!.push(v);
+      });
+
+      const list: ProductLite[] = [];
+      for (const p of products) {
+        if (p.category === 'Pendente Revisão') continue;
+        const prodVars = varsByProduct.get(p.id) ?? [];
+        if (prodVars.length > 0) {
+          for (const v of prodVars) {
+            list.push({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              image_url: v.image_url ?? p.image_url,
+              stock: Number(v.stock ?? 0),
+              min_stock: Number(p.min_stock ?? 0),
+              variation_id: v.id,
+              variation_name: v.name,
+            });
+          }
+        } else {
+          list.push({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            image_url: p.image_url,
+            stock: Number(p.stock ?? 0),
+            min_stock: Number(p.min_stock ?? 0),
+            variation_id: null,
+            variation_name: null,
+          });
+        }
+      }
+
+      list.sort((a, b) => {
+        const an = a.variation_name ? `${a.name} ${a.variation_name}` : a.name;
+        const bn = b.variation_name ? `${b.name} ${b.variation_name}` : b.name;
+        return an.localeCompare(bn);
+      });
+      setItems(list);
       setLoading(false);
     })();
   }, [open]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return products.slice(0, 100);
-    return products
-      .filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+    if (!q) return items.slice(0, 100);
+    return items
+      .filter((p) => {
+        const hay = `${p.name} ${p.variation_name ?? ''} ${p.category}`.toLowerCase();
+        return hay.includes(q);
+      })
       .slice(0, 100);
-  }, [products, search]);
+  }, [items, search]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Adicionar produto à lista</DialogTitle>
-          <DialogDescription>Busque qualquer produto do catálogo</DialogDescription>
+          <DialogDescription>Busque qualquer produto ou variação do catálogo</DialogDescription>
         </DialogHeader>
 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             autoFocus
-            placeholder="Buscar por nome ou categoria..."
+            placeholder="Buscar por nome, variação ou categoria..."
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -87,7 +130,7 @@ export function ProductSearchDialog({ open, onOpenChange, onSelect }: Props) {
           ) : (
             <ul className="divide-y">
               {filtered.map((p) => (
-                <li key={p.id}>
+                <li key={`${p.id}|${p.variation_id ?? ''}`}>
                   <button
                     type="button"
                     className="w-full flex items-center gap-3 py-2 px-2 hover:bg-accent rounded text-left"
@@ -104,7 +147,12 @@ export function ProductSearchDialog({ open, onOpenChange, onSelect }: Props) {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{p.name}</div>
+                      <div className="text-sm font-medium truncate">
+                        {p.name}
+                        {p.variation_name && (
+                          <span className="text-muted-foreground"> — {p.variation_name}</span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {p.category} • Estoque: {p.stock}
                       </div>
