@@ -490,6 +490,25 @@ export function LabelsManagement() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="todos">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Imprimir etiquetas de qualquer produto
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Selecione produtos e defina a quantidade de etiquetas a imprimir.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AllProductsLabels storeName={storeName} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {scanDialog && (
         <LabelAssignBarcodeDialog
