@@ -36,6 +36,7 @@ export function NfeEntradaPendentes() {
   const [filtroStatus, setFiltroStatus] = useState<'pendente' | 'processado' | 'ignorado'>('pendente');
   const [xmlPreview, setXmlPreview] = useState<NfePendente | null>(null);
   const [importingXml, setImportingXml] = useState<string | null>(null);
+  const [diagnostico, setDiagnostico] = useState<any | null>(null);
 
   const carregar = async () => {
     setLoading(true);
@@ -64,8 +65,11 @@ export function NfeEntradaPendentes() {
         body: { manual: true },
       });
       if (error) throw error;
+      setDiagnostico(data);
       if (data?.skipped) {
         toast.info(data.reason || 'Busca não executada');
+      } else if ((data?.total_consultadas ?? 0) === 0) {
+        toast.warning('A Focus retornou 0 notas. Veja o diagnóstico abaixo.');
       } else {
         toast.success(`${data.baixadas} nota(s) baixada(s), ${data.manifestadas} manifestada(s)`);
       }
