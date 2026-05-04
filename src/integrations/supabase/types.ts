@@ -487,6 +487,27 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_stock_alerts: {
+        Row: {
+          created_at: string
+          dismissed_by: string | null
+          id: string
+          product_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          product_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          product_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
