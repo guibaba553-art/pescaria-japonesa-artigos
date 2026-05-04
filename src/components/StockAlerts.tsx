@@ -39,6 +39,7 @@ export function StockAlerts() {
         .filter((p) => p.category !== 'Pendente Revisão')
         .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
         .filter((p) => !inListIds.has(p.id)) // oculta produtos já em alguma lista
+        .filter((p) => !dismissedIds.has(p.id)) // oculta produtos dispensados
         .sort((a, b) => a.stock - b.stock)
         .map((p) => ({
           id: p.id,
