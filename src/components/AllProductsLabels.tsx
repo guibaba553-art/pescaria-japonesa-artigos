@@ -163,7 +163,7 @@ export function AllProductsLabels({ storeName }: Props) {
       ) : (
         <div className="border rounded-md overflow-x-auto max-h-[60vh] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 sticky top-0">
+            <thead className="bg-muted sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="p-2 w-10">
                   <Checkbox
