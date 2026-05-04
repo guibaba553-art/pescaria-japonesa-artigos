@@ -101,24 +101,28 @@ export async function generateLabelsPdf(
         const x = marginX + c * (cellW + gapX);
         const y = marginY + r * (cellH + gapY);
 
+        // Deslocamento fino para alinhar com a etiqueta física
+        const offX = -1.5; // esquerda
+        const offY = 1.5;  // baixo
+
         // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2, y + 1.5, cellW - 4, 6);
+          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 6);
         }
 
         // Código numérico embaixo do barcode
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
-        doc.text(item.code, x + cellW / 2, y + 10, { align: 'center' });
+        doc.text(item.code, x + cellW / 2 + offX, y + 10 + offY, { align: 'center' });
 
         // Descrição
         doc.setFontSize(5.5);
-        doc.text(truncate(item.description, 30), x + 1.5, y + 13.5);
+        doc.text(truncate(item.description, 30), x + 1.5 + offX, y + 13.5 + offY);
 
         // Nome da loja (rodapé)
         doc.setFontSize(4.5);
-        doc.text(storeName, x + 1.5, y + cellH - 1);
+        doc.text(storeName, x + 1.5 + offX, y + cellH - 1 + offY);
       }
       if (idx >= expanded.length) break;
     }
