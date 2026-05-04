@@ -296,6 +296,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         subcategory: subcategory || null,
         sku: sku || null,
         minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
+        min_stock: minStock ? parseInt(minStock) : 0,
         sold_by_weight: soldByWeight,
         brand: brand || null,
         pound_test: poundTest || null,
