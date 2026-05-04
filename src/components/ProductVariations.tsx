@@ -55,11 +55,12 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
     }
 
     const variation: ProductVariation = {
-      id: `temp-${Date.now()}-${Math.random()}`, // ID temporário único
+      id: `temp-${Date.now()}-${Math.random()}`,
       product_id: "",
       name,
       price,
       stock,
+      min_stock: newVariation.min_stock ? parseInt(newVariation.min_stock) : 0,
       description: newVariation.description.trim() || null,
       image_url: newVariation.image_url.trim() || null,
       sku: newVariation.sku.trim() || null,
@@ -71,8 +72,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
 
     onVariationsChange([...variations, variation]);
     
-    // Limpar formulário
-    setNewVariation({ name: "", price: "", stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
+    setNewVariation({ name: "", price: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
