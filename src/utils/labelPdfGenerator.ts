@@ -145,9 +145,12 @@ export async function generateLabelsPdf(
         doc.setFontSize(6);
         doc.text(item.code, x + cellW / 2 + offX, y + 10 + offY, { align: 'center' });
 
-        // Descrição
+        // Descrição (até 2 linhas, sem reticências)
         doc.setFontSize(5.5);
-        doc.text(truncate(item.description, 30), x + 1.5 + offX, y + 13.5 + offY);
+        const descLines = wrapLines(item.description, 32, 2);
+        descLines.forEach((line, i) => {
+          doc.text(line, x + 1.5 + offX, y + 13.5 + offY + i * 2.4);
+        });
 
         // Preço (crédito) — em destaque, à direita
         if (item.price != null && !isNaN(Number(item.price))) {
