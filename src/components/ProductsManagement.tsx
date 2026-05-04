@@ -667,6 +667,13 @@ export function ProductsManagement() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label htmlFor="minStock">Estoque mínimo (alerta)</Label>
+                  <Input id="minStock" type="number" min="0" value={minStock} onChange={(e) => setMinStock(e.target.value)} placeholder="Ex.: 5" />
+                  <p className="text-xs text-muted-foreground">Quando o estoque atingir esse valor, o produto aparecerá em Alertas.</p>
+                </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="minimumQuantity">Quantidade Mínima de Venda</Label>
                   <Input id="minimumQuantity" type="number" min="1" value={minimumQuantity} onChange={(e) => setMinimumQuantity(e.target.value)} disabled={soldByWeight} />
                 </div>
