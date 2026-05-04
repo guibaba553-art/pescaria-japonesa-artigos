@@ -3,8 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Trash2, Copy, ShoppingBasket, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Loader2, Trash2, Copy, ShoppingBasket, ChevronDown, ChevronRight, Plus, Package2,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { AddToPurchaseListDialog } from './AddToPurchaseListDialog';
+import { ProductSearchDialog, ProductLite } from './ProductSearchDialog';
 
 interface ListRow {
   id: string;
@@ -20,6 +24,7 @@ interface ItemRow {
   variation_id: string | null;
   quantity: number;
   product_name: string;
+  product_image: string | null;
   variation_name: string | null;
 }
 
@@ -29,6 +34,8 @@ export function PurchaseLists() {
   const [lists, setLists] = useState<ListRow[]>([]);
   const [itemsByList, setItemsByList] = useState<Record<string, ItemRow[]>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [searchOpenForList, setSearchOpenForList] = useState<string | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<{ product: ProductLite; listId: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -58,39 +65,57 @@ export function PurchaseLists() {
 
     const [prodsRes, varsRes] = await Promise.all([
       productIds.length
-        ? supabase.from('products').select('id, name').in('id', productIds)
+        ? supabase.from('products').select('id, name, image_url').in('id', productIds)
         : Promise.resolve({ data: [] as any[] }),
       variationIds.length
-        ? supabase.from('product_variations').select('id, name').in('id', variationIds)
+        ? supabase.from('product_variations').select('id, name, image_url').in('id', variationIds)
         : Promise.resolve({ data: [] as any[] }),
     ]);
 
-    const prodMap = new Map((prodsRes.data ?? []).map((p: any) => [p.id, p.name]));
-    const varMap = new Map((varsRes.data ?? []).map((v: any) => [v.id, v.name]));
+    const prodMap = new Map(
+      (prodsRes.data ?? []).map((p: any) => [p.id, { name: p.name, image_url: p.image_url as string | null }])
+    );
+    const varMap = new Map(
+      (varsRes.data ?? []).map((v: any) => [v.id, { name: v.name, image_url: v.image_url as string | null }])
+    );
 
     const grouped: Record<string, ItemRow[]> = {};
     (items ?? []).forEach((i: any) => {
+      const prod = prodMap.get(i.product_id);
+      const vari = i.variation_id ? varMap.get(i.variation_id) : null;
       const row: ItemRow = {
         id: i.id,
         list_id: i.list_id,
         product_id: i.product_id,
         variation_id: i.variation_id,
         quantity: Number(i.quantity),
-        product_name: prodMap.get(i.product_id) ?? 'Produto removido',
-        variation_name: i.variation_id ? varMap.get(i.variation_id) ?? null : null,
+        product_name: prod?.name ?? 'Produto removido',
+        product_image: vari?.image_url ?? prod?.image_url ?? null,
+        variation_name: vari?.name ?? null,
       };
       (grouped[i.list_id] ||= []).push(row);
     });
     setItemsByList(grouped);
-    // expandir tudo por padrão
-    const exp: Record<string, boolean> = {};
-    lsRows.forEach((l) => (exp[l.id] = true));
-    setExpanded(exp);
+    setExpanded((prev) => {
+      const next = { ...prev };
+      lsRows.forEach((l) => {
+        if (next[l.id] === undefined) next[l.id] = true;
+      });
+      return next;
+    });
     setLoading(false);
   };
 
   useEffect(() => {
     load();
+    const channel = supabase
+      .channel('purchase_lists_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_lists' }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const buildText = (list: ListRow) => {
@@ -181,6 +206,9 @@ export function PurchaseLists() {
                     </div>
                   </div>
                 </button>
+                <Button size="sm" variant="outline" onClick={() => setSearchOpenForList(list.id)}>
+                  <Plus className="w-3 h-3 mr-1" /> Produto
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => handleCopy(list)}>
                   <Copy className="w-3 h-3 mr-1" /> Copiar
                 </Button>
@@ -196,14 +224,25 @@ export function PurchaseLists() {
                       <p className="text-xs text-muted-foreground text-center py-4">Lista vazia</p>
                     ) : (
                       items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-2 py-1">
+                        <div key={item.id} className="flex items-center gap-2 py-1.5">
                           <input
                             type="number"
                             min={0}
                             value={item.quantity}
                             onChange={(e) => handleQty(item, Math.max(0, Number(e.target.value) || 0))}
-                            className="w-16 h-8 rounded border bg-background px-2 text-sm"
+                            className="w-16 h-8 rounded border bg-background px-2 text-sm shrink-0"
                           />
+                          {item.product_image ? (
+                            <img
+                              src={item.product_image}
+                              alt={item.product_name}
+                              className="w-9 h-9 rounded object-cover bg-muted shrink-0"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded bg-muted flex items-center justify-center shrink-0">
+                              <Package2 className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
                           <div className="flex-1 min-w-0 text-sm truncate">
                             {item.product_name}
                             {item.variation_name && (
@@ -233,6 +272,29 @@ export function PurchaseLists() {
           </Card>
         );
       })}
+
+      <ProductSearchDialog
+        open={!!searchOpenForList}
+        onOpenChange={(v) => !v && setSearchOpenForList(null)}
+        onSelect={(product) => {
+          if (searchOpenForList) {
+            setPendingAdd({ product, listId: searchOpenForList });
+            setSearchOpenForList(null);
+          }
+        }}
+      />
+
+      {pendingAdd && (
+        <AddToPurchaseListDialog
+          open={!!pendingAdd}
+          onOpenChange={(v) => !v && setPendingAdd(null)}
+          productId={pendingAdd.product.id}
+          productName={pendingAdd.product.name}
+          currentStock={pendingAdd.product.stock}
+          minStock={pendingAdd.product.min_stock}
+          defaultListId={pendingAdd.listId}
+        />
+      )}
     </div>
   );
 }
