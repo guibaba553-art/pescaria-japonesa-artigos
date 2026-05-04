@@ -75,7 +75,8 @@ export function StockAlerts() {
         // Produto com variações: alerta apenas por variação
         for (const v of prodVars) {
           const stock = Number(v.stock ?? 0);
-          const isAlert = stock === 0 || (p.min_stock > 0 && stock <= p.min_stock);
+          const varMin = Number(v.min_stock ?? 0);
+          const isAlert = stock === 0 || (varMin > 0 && stock <= varMin);
           if (!isAlert) continue;
           const k = keyOf(p.id, v.id);
           if (inListKeys.has(k) || dismissedKeys.has(k)) continue;
@@ -86,7 +87,7 @@ export function StockAlerts() {
             name: p.name,
             variation_name: v.name,
             stock,
-            min_stock: p.min_stock,
+            min_stock: varMin,
             category: p.category,
             image_url: v.image_url ?? p.image_url,
           });
