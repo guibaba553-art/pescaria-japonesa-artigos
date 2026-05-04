@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Printer, Search, RefreshCw } from 'lucide-react';
+import { Loader2, Printer, Search, RefreshCw, Wand2 } from 'lucide-react';
 import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
+import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
 
 interface Row {
   id: string; // unique id (product or product:variation)
@@ -33,6 +34,33 @@ export function AllProductsLabels({ storeName }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [qty, setQty] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
+  const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
+
+  const handleGenerateCode = async (row: Row) => {
+    try {
+      setGeneratingCodeFor(row.id);
+      const code = await generateUniqueBarcode();
+      if (row.variation_id) {
+        const { error } = await supabase
+          .from('product_variations')
+          .update({ sku: code })
+          .eq('id', row.variation_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('products')
+          .update({ sku: code })
+          .eq('id', row.product_id);
+        if (error) throw error;
+      }
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, sku: code } : r)));
+      toast({ title: 'Código gerado', description: code });
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar código', description: err.message, variant: 'destructive' });
+    } finally {
+      setGeneratingCodeFor(null);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -194,7 +222,22 @@ export function AllProductsLabels({ storeName }: Props) {
                   </td>
                   <td className="p-2 font-medium">{r.name}</td>
                   <td className="p-2 font-mono text-xs">
-                    {r.sku || <Badge variant="destructive" className="text-xs">sem código</Badge>}
+                    {r.sku || (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2"
+                        disabled={generatingCodeFor === r.id}
+                        onClick={() => handleGenerateCode(r)}
+                      >
+                        {generatingCodeFor === r.id ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3 h-3 mr-1" />
+                        )}
+                        Gerar código
+                      </Button>
+                    )}
                   </td>
                   <td className="p-2 text-right">{r.stock}</td>
                   <td className="p-2 text-right">
