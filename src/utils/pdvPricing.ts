@@ -28,8 +28,8 @@ export interface PdvPricingFields {
 export const PDV_METHOD_MARKUP: Record<PdvPaymentMethod, number> = {
   pix: 0,        // base
   cash: 0,       // mesmo do PIX
-  debit: 0.03,   // PIX + 3%
-  credit: 0.04,  // PIX + 4%
+  debit: 0.02,   // PIX + 2%
+  credit: 0.03,  // PIX + 3%
 };
 
 /**
