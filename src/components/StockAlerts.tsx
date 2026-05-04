@@ -19,17 +19,20 @@ interface AlertProduct {
 }
 
 export function StockAlerts() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<AlertProduct[]>([]);
   const [dialog, setDialog] = useState<AlertProduct | null>(null);
 
   const load = async () => {
-    const [prodsRes, listItemsRes] = await Promise.all([
+    const [prodsRes, listItemsRes, dismissedRes] = await Promise.all([
       supabase.rpc('get_products_admin'),
       supabase.from('purchase_list_items').select('product_id'),
+      supabase.from('dismissed_stock_alerts').select('product_id'),
     ]);
 
     const inListIds = new Set((listItemsRes.data ?? []).map((i: any) => i.product_id));
+    const dismissedIds = new Set((dismissedRes.data ?? []).map((i: any) => i.product_id));
 
     if (prodsRes.data) {
       const filtered = (prodsRes.data as any[])
