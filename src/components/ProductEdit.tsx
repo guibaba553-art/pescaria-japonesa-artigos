@@ -595,6 +595,20 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                   </p>
                 )}
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-min-stock">Estoque mínimo (alerta)</Label>
+                <Input
+                  id="edit-min-stock"
+                  type="number"
+                  min="0"
+                  value={minStock}
+                  onChange={(e) => setMinStock(e.target.value)}
+                  placeholder="Ex.: 5"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quando o estoque atingir esse valor, o produto aparecerá em Alertas.
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
