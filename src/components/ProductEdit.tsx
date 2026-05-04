@@ -82,7 +82,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   // Auto-save de rascunho durante a edição. Imagens não são persistidas.
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    stock, minStock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     featured, onSale, salePrice, saleEndsAt, pdvOnly, pdvNoMarkup,
     variations,
