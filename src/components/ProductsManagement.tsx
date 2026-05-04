@@ -76,6 +76,7 @@ export function ProductsManagement() {
   const { primaries } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [purchaseDialog, setPurchaseDialog] = useState<Product | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
