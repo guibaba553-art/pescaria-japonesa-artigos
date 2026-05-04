@@ -164,6 +164,15 @@ export function StockAlerts() {
                           <ShoppingBasket className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">Adicionar à lista</span>
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDismiss(p)}
+                          className="shrink-0"
+                          title="Remover dos alertas (não exclui o produto)"
+                        >
+                          <X className="w-4 h-4 text-muted-foreground" />
+                        </Button>
                       </CardContent>
                     </Card>
                   );
