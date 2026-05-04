@@ -62,9 +62,10 @@ export function StockAlerts() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dismissed_stock_alerts' }, () => load())
       .subscribe();
-
-    // Optimistic remove handler usado pelo botão X
-  };
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleDismiss = async (p: AlertProduct) => {
     setProducts((prev) => prev.filter((x) => x.id !== p.id));
@@ -77,10 +78,7 @@ export function StockAlerts() {
       return;
     }
     toast({ title: 'Produto removido dos alertas', description: p.name });
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  };
 
   const outOfStock = products.filter((p) => p.stock === 0);
   const lowStock = products.filter((p) => p.stock > 0);
