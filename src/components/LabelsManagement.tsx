@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Printer, Search, Tag, RefreshCw, CheckCheck, ScanLine, Sparkles } from 'lucide-react';
+import { Loader2, Printer, Search, Tag, RefreshCw, CheckCheck, ScanLine, Sparkles, Package } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
 import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
 import { LabelAssignBarcodeDialog } from './LabelAssignBarcodeDialog';
+import { AllProductsLabels } from './AllProductsLabels';
 
 interface PendingRow {
   id: string;
