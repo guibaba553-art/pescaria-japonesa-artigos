@@ -103,6 +103,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     setCategory(d.category ?? product.category);
     setSubcategory(d.subcategory ?? '');
     setStock(d.stock ?? '');
+    setMinStock(d.minStock ?? '');
     setSku(d.sku ?? '');
     setMinimumQuantity(d.minimumQuantity ?? '1');
     setSoldByWeight(!!d.soldByWeight);
