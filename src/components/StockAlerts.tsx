@@ -42,7 +42,7 @@ export function StockAlerts() {
   const load = async () => {
     const [prodsRes, varsRes, listItemsRes, dismissedRes] = await Promise.all([
       supabase.rpc('get_products_admin'),
-      supabase.from('product_variations').select('id, product_id, name, stock, image_url'),
+      supabase.from('product_variations').select('id, product_id, name, stock, image_url, min_stock'),
       supabase.from('purchase_list_items').select('product_id, variation_id'),
       supabase.from('dismissed_stock_alerts').select('product_id, variation_id'),
     ]);
