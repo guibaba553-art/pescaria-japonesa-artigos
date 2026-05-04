@@ -22,26 +22,43 @@ export function StockAlerts() {
   const [products, setProducts] = useState<AlertProduct[]>([]);
   const [dialog, setDialog] = useState<AlertProduct | null>(null);
 
+  const load = async () => {
+    const [prodsRes, listItemsRes] = await Promise.all([
+      supabase.rpc('get_products_admin'),
+      supabase.from('purchase_list_items').select('product_id'),
+    ]);
+
+    const inListIds = new Set((listItemsRes.data ?? []).map((i: any) => i.product_id));
+
+    if (prodsRes.data) {
+      const filtered = (prodsRes.data as any[])
+        .filter((p) => p.category !== 'Pendente Revisão')
+        .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
+        .filter((p) => !inListIds.has(p.id)) // oculta produtos já em alguma lista
+        .sort((a, b) => a.stock - b.stock)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          stock: p.stock,
+          min_stock: p.min_stock,
+          category: p.category,
+          image_url: p.image_url,
+        })) as AlertProduct[];
+      setProducts(filtered);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.rpc('get_products_admin');
-      if (data) {
-        const filtered = (data as any[])
-          .filter((p) => p.category !== 'Pendente Revisão')
-          .filter((p) => p.stock === 0 || (p.min_stock > 0 && p.stock <= p.min_stock))
-          .sort((a, b) => a.stock - b.stock)
-          .map((p) => ({
-            id: p.id,
-            name: p.name,
-            stock: p.stock,
-            min_stock: p.min_stock,
-            category: p.category,
-            image_url: p.image_url,
-          })) as AlertProduct[];
-        setProducts(filtered);
-      }
-      setLoading(false);
-    })();
+    load();
+    // Recarrega quando itens de lista são adicionados/removidos em qualquer lugar
+    const channel = supabase
+      .channel('purchase_list_items_alerts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchase_list_items' }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const outOfStock = products.filter((p) => p.stock === 0);
