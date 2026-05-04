@@ -83,6 +83,7 @@ export function ProductsManagement() {
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
   const [stock, setStock] = useState('');
+  const [minStock, setMinStock] = useState('');
   const [sku, setSku] = useState('');
   const [minimumQuantity, setMinimumQuantity] = useState('1');
   const [soldByWeight, setSoldByWeight] = useState(false);
@@ -113,7 +114,7 @@ export function ProductsManagement() {
   // Imagens não são persistidas (são File objects).
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, pdvOnly, pdvNoMarkup, brand, poundTest, size,
+    stock, minStock, sku, minimumQuantity, soldByWeight, pdvOnly, pdvNoMarkup, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     variations: newProductVariations,
   };
@@ -128,7 +129,7 @@ export function ProductsManagement() {
     if (!d) return;
     setName(d.name || ''); setDescription(d.description || ''); setShortDescription(d.shortDescription || '');
     setPrice(d.price || ''); setCategory(d.category || ''); setSubcategory(d.subcategory || '');
-    setStock(d.stock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
+    setStock(d.stock || ''); setMinStock(d.minStock || ''); setSku(d.sku || ''); setMinimumQuantity(d.minimumQuantity || '1');
     setSoldByWeight(!!d.soldByWeight); setPdvOnly(!!d.pdvOnly); setPdvNoMarkup(!!d.pdvNoMarkup); setBrand(d.brand || ''); setPoundTest(d.poundTest || '');
     setSize(d.size || ''); setPricePdv(d.pricePdv || '');
     setWeightGrams(d.weightGrams || ''); setLengthCm(d.lengthCm || '');
@@ -191,7 +192,7 @@ export function ProductsManagement() {
 
   const resetForm = () => {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
-    setSubcategory(''); setStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false); setPdvNoMarkup(false);
+    setSubcategory(''); setStock(''); setMinStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false); setPdvNoMarkup(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
     setPricePdv('');
     setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
@@ -243,6 +244,7 @@ export function ProductsManagement() {
           price: price ? parseFloat(price) : 0,
           category, subcategory: subcategory || null,
           stock: stock ? parseInt(stock) : 0,
+          min_stock: minStock ? parseInt(minStock) : 0,
           sku: sku || null,
           minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
           sold_by_weight: soldByWeight,
@@ -663,6 +665,13 @@ export function ProductsManagement() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minStock">Estoque mínimo (alerta)</Label>
+                  <Input id="minStock" type="number" min="0" value={minStock} onChange={(e) => setMinStock(e.target.value)} placeholder="Ex.: 5" />
+                  <p className="text-xs text-muted-foreground">Quando o estoque atingir esse valor, o produto aparecerá em Alertas.</p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="minimumQuantity">Quantidade Mínima de Venda</Label>

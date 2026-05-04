@@ -42,6 +42,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [category, setCategory] = useState(product.category);
   const [subcategory, setSubcategory] = useState((product as any).subcategory || '');
   const [stock, setStock] = useState(product.stock.toString());
+  const [minStock, setMinStock] = useState((product as any).min_stock?.toString() || '');
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
@@ -81,7 +82,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   // Auto-save de rascunho durante a edição. Imagens não são persistidas.
   const draftData = {
     name, description, shortDescription, price, category, subcategory,
-    stock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
+    stock, minStock, sku, minimumQuantity, soldByWeight, brand, poundTest, size,
     pricePdv, weightGrams, lengthCm, widthCm, heightCm,
     featured, onSale, salePrice, saleEndsAt, pdvOnly, pdvNoMarkup,
     variations,
@@ -102,6 +103,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
     setCategory(d.category ?? product.category);
     setSubcategory(d.subcategory ?? '');
     setStock(d.stock ?? '');
+    setMinStock(d.minStock ?? '');
     setSku(d.sku ?? '');
     setMinimumQuantity(d.minimumQuantity ?? '1');
     setSoldByWeight(!!d.soldByWeight);
@@ -139,6 +141,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
       setCategory(product.category);
       setSubcategory((product as any).subcategory || '');
       setStock(product.stock.toString());
+      setMinStock((product as any).min_stock?.toString() || '');
       setExistingImages(product.images || []);
       setNewImages([]);
       setFeatured(product.featured || false);
@@ -293,6 +296,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
         subcategory: subcategory || null,
         sku: sku || null,
         minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
+        min_stock: minStock ? parseInt(minStock) : 0,
         sold_by_weight: soldByWeight,
         brand: brand || null,
         pound_test: poundTest || null,
@@ -590,6 +594,20 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
                     O estoque será controlado nas variações
                   </p>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-min-stock">Estoque mínimo (alerta)</Label>
+                <Input
+                  id="edit-min-stock"
+                  type="number"
+                  min="0"
+                  value={minStock}
+                  onChange={(e) => setMinStock(e.target.value)}
+                  placeholder="Ex.: 5"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Quando o estoque atingir esse valor, o produto aparecerá em Alertas.
+                </p>
               </div>
             </div>
 
