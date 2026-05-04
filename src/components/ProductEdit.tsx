@@ -42,6 +42,7 @@ export function ProductEdit({ product, onUpdate }: ProductEditProps) {
   const [category, setCategory] = useState(product.category);
   const [subcategory, setSubcategory] = useState((product as any).subcategory || '');
   const [stock, setStock] = useState(product.stock.toString());
+  const [minStock, setMinStock] = useState((product as any).min_stock?.toString() || '');
   const [existingImages, setExistingImages] = useState<string[]>(product.images || []);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [updating, setUpdating] = useState(false);
