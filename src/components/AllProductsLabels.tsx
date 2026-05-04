@@ -1,0 +1,228 @@
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Printer, Search, RefreshCw } from 'lucide-react';
+import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
+
+interface Row {
+  id: string; // unique id (product or product:variation)
+  product_id: string;
+  variation_id: string | null;
+  name: string; // display name
+  sku: string | null;
+  stock: number;
+}
+
+interface Props {
+  storeName: string;
+}
+
+/**
+ * Lista TODOS os produtos/variações (independente de pendência).
+ * Permite selecionar e definir a quantidade de etiquetas a imprimir.
+ */
+export function AllProductsLabels({ storeName }: Props) {
+  const { toast } = useToast();
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [qty, setQty] = useState<Record<string, number>>({});
+  const [generating, setGenerating] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [{ data: prods, error: e1 }, { data: vars, error: e2 }] = await Promise.all([
+        supabase
+          .from('products')
+          .select('id, name, sku, stock')
+          .order('name', { ascending: true })
+          .limit(2000),
+        supabase
+          .from('product_variations')
+          .select('id, product_id, name, sku, stock, products:product_id(name)')
+          .order('name', { ascending: true })
+          .limit(2000),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+
+      const variationProductIds = new Set((vars || []).map((v: any) => v.product_id));
+
+      const productRows: Row[] = (prods || [])
+        .filter((p: any) => !variationProductIds.has(p.id)) // se tem variação, mostra só as variações
+        .map((p: any) => ({
+          id: `p:${p.id}`,
+          product_id: p.id,
+          variation_id: null,
+          name: p.name,
+          sku: p.sku,
+          stock: Number(p.stock || 0),
+        }));
+
+      const varRows: Row[] = (vars || []).map((v: any) => ({
+        id: `v:${v.id}`,
+        product_id: v.product_id,
+        variation_id: v.id,
+        name: `${v.products?.name || ''} - ${v.name}`,
+        sku: v.sku,
+        stock: Number(v.stock || 0),
+      }));
+
+      const all = [...productRows, ...varRows].sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR')
+      );
+      setRows(all);
+    } catch (err: any) {
+      toast({ title: 'Erro ao carregar produtos', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.name, r.sku].filter(Boolean).some((v) => v!.toLowerCase().includes(q))
+    );
+  }, [rows, search]);
+
+  const selectedRows = useMemo(
+    () => filtered.filter((r) => selected[r.id] && !!r.sku),
+    [filtered, selected]
+  );
+
+  const totalLabels = useMemo(
+    () => selectedRows.reduce((acc, r) => acc + (qty[r.id] || 1), 0),
+    [selectedRows, qty]
+  );
+
+  const toggleAll = (checked: boolean) => {
+    const next: Record<string, boolean> = {};
+    if (checked) filtered.forEach((r) => { if (r.sku) next[r.id] = true; });
+    setSelected(next);
+  };
+
+  const handlePrint = async () => {
+    if (selectedRows.length === 0) {
+      toast({ title: 'Selecione produtos', description: 'Marque ao menos um item com código.', variant: 'destructive' });
+      return;
+    }
+    const items: LabelItem[] = selectedRows.map((r) => ({
+      code: r.sku!,
+      description: r.name,
+      quantity: Math.max(1, qty[r.id] || 1),
+    }));
+    try {
+      setGenerating(true);
+      await generateLabelsPdf(items, { storeName });
+      toast({ title: 'PDF gerado', description: `${items.reduce((a, i) => a + i.quantity, 0)} etiqueta(s).` });
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar PDF', description: err.message, variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome ou código..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button variant="outline" onClick={load} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+        <Button onClick={handlePrint} disabled={generating || selectedRows.length === 0}>
+          {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
+          Imprimir selecionados ({totalLabels})
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+        </div>
+      ) : (
+        <div className="border rounded-md overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 sticky top-0">
+              <tr>
+                <th className="p-2 w-10">
+                  <Checkbox
+                    checked={
+                      filtered.filter((r) => !!r.sku).length > 0 &&
+                      filtered.filter((r) => !!r.sku).every((r) => selected[r.id])
+                    }
+                    onCheckedChange={(c) => toggleAll(!!c)}
+                  />
+                </th>
+                <th className="text-left p-2">Produto</th>
+                <th className="text-left p-2">Código</th>
+                <th className="text-right p-2">Estoque</th>
+                <th className="text-right p-2 w-32">Qtd. etiquetas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} className="border-t hover:bg-muted/30">
+                  <td className="p-2">
+                    <Checkbox
+                      checked={!!selected[r.id]}
+                      disabled={!r.sku}
+                      onCheckedChange={(c) =>
+                        setSelected((prev) => ({ ...prev, [r.id]: !!c }))
+                      }
+                    />
+                  </td>
+                  <td className="p-2 font-medium">{r.name}</td>
+                  <td className="p-2 font-mono text-xs">
+                    {r.sku || <Badge variant="destructive" className="text-xs">sem código</Badge>}
+                  </td>
+                  <td className="p-2 text-right">{r.stock}</td>
+                  <td className="p-2 text-right">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={qty[r.id] ?? 1}
+                      disabled={!r.sku || !selected[r.id]}
+                      onChange={(e) =>
+                        setQty((prev) => ({ ...prev, [r.id]: Math.max(1, parseInt(e.target.value) || 1) }))
+                      }
+                      className="h-8 w-20 ml-auto text-right"
+                    />
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    Nenhum produto encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
