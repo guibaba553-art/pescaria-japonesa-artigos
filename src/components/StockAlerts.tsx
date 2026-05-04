@@ -124,8 +124,9 @@ export function StockAlerts() {
                             </Badge>
                           )}
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => setDialog(p)}>
-                          <Plus className="w-3 h-3 mr-1" /> Lista
+                        <Button size="sm" onClick={() => setDialog(p)} className="shrink-0 gap-1">
+                          <ShoppingBasket className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Adicionar à lista</span>
                         </Button>
                       </CardContent>
                     </Card>
