@@ -89,7 +89,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
         return { ...v, [field]: numValue };
       }
       
-      if (field === 'stock') {
+      if (field === 'stock' || field === 'min_stock') {
         const numValue = parseInt(value);
         if (isNaN(numValue) || numValue < 0) return v;
         return { ...v, [field]: numValue };
