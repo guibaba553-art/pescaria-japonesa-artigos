@@ -137,6 +137,65 @@ export function NfeEntradaPendentes() {
         As notas baixadas ficam aqui aguardando sua revisão antes de atualizar o estoque.
       </div>
 
+      {diagnostico && (
+        <Card className="border-dashed">
+          <CardContent className="p-4 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <strong className="text-sm">Diagnóstico da última busca</strong>
+              <Button size="sm" variant="ghost" onClick={() => setDiagnostico(null)}>
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="bg-muted/50 rounded p-2">
+                <div className="text-muted-foreground">Consultadas na Focus</div>
+                <div className="text-lg font-bold">{diagnostico.total_consultadas ?? 0}</div>
+              </div>
+              <div className="bg-muted/50 rounded p-2">
+                <div className="text-muted-foreground">Baixadas</div>
+                <div className="text-lg font-bold text-green-600">{diagnostico.baixadas ?? 0}</div>
+              </div>
+              <div className="bg-muted/50 rounded p-2">
+                <div className="text-muted-foreground">Manifestadas</div>
+                <div className="text-lg font-bold">{diagnostico.manifestadas ?? 0}</div>
+              </div>
+              <div className="bg-muted/50 rounded p-2">
+                <div className="text-muted-foreground">Erros</div>
+                <div className={`text-lg font-bold ${diagnostico.erros ? 'text-destructive' : ''}`}>
+                  {diagnostico.erros ?? 0}
+                </div>
+              </div>
+            </div>
+
+            {(diagnostico.total_consultadas ?? 0) === 0 && !diagnostico.skipped && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 text-xs space-y-1">
+                <div className="font-semibold text-yellow-700 dark:text-yellow-400">
+                  ⚠ A Focus NFe respondeu com sucesso, mas retornou 0 notas.
+                </div>
+                <div className="text-muted-foreground">Causas mais comuns:</div>
+                <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                  <li>Serviço <strong>"Download automático de NFe (DFe)"</strong> não habilitado no painel da Focus para o seu CNPJ</li>
+                  <li>Certificado digital A1 não enviado ou vencido na Focus</li>
+                  <li>Não há NFes novas emitidas contra seu CNPJ desde a última consulta</li>
+                  <li>NSU já está atualizado (todas as notas anteriores já foram baixadas)</li>
+                </ul>
+              </div>
+            )}
+
+            {diagnostico.detalhes && diagnostico.detalhes.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Ver detalhes ({diagnostico.detalhes.length})
+                </summary>
+                <pre className="mt-2 bg-muted p-2 rounded overflow-auto max-h-48 text-[10px]">
+                  {JSON.stringify(diagnostico.detalhes, null, 2)}
+                </pre>
+              </details>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin" />
