@@ -28,6 +28,16 @@ export function StockAlerts() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<AlertItem[]>([]);
   const [dialog, setDialog] = useState<AlertItem | null>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+
+  const openProductEdit = async (productId: string) => {
+    const { data, error } = await supabase.rpc('get_product_admin', { p_id: productId });
+    if (error || !data || data.length === 0) {
+      toast({ title: 'Erro ao carregar produto', description: error?.message, variant: 'destructive' });
+      return;
+    }
+    setEditProduct(data[0] as Product);
+  };
 
   const load = async () => {
     const [prodsRes, varsRes, listItemsRes, dismissedRes] = await Promise.all([
