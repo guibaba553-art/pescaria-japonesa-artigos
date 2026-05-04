@@ -452,13 +452,15 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
-        <Pencil className="w-4 h-4" />
-      </Button>
+      {!hideTrigger && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOpen(true)}
+        >
+          <Pencil className="w-4 h-4" />
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
