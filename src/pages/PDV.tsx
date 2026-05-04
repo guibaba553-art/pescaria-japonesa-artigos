@@ -671,6 +671,62 @@ export default function PDV() {
     }
   };
 
+  // Listener global do leitor de código de barras.
+  // Hardware scanners "digitam" muito rápido e terminam com Enter.
+  // Capturamos a sequência em qualquer lugar da página (mesmo sem foco
+  // no campo) desde que o usuário não esteja digitando em outro input/textarea.
+  const scannerBufferRef = useRef<string>('');
+  const scannerLastKeyAtRef = useRef<number>(0);
+  useEffect(() => {
+    const SCAN_TIMEOUT_MS = 50; // intervalo máximo entre teclas do scanner
+    const MIN_SCAN_LENGTH = 4;
+
+    const isTypingTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      if (el.isContentEditable) return true;
+      if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (tag === 'INPUT') {
+        const t = (el as HTMLInputElement).type;
+        // Permite captura quando o foco está justamente no campo do leitor
+        if ((el as HTMLInputElement).id === 'barcode') return false;
+        // Outros inputs de texto: usuário está digitando, não interferimos
+        if (['text', 'search', 'number', 'tel', 'email', 'password', 'url'].includes(t)) return true;
+      }
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target)) return;
+
+      const now = Date.now();
+      if (now - scannerLastKeyAtRef.current > 300) {
+        scannerBufferRef.current = '';
+      }
+      scannerLastKeyAtRef.current = now;
+
+      if (e.key === 'Enter') {
+        const code = scannerBufferRef.current.trim();
+        scannerBufferRef.current = '';
+        if (code.length >= MIN_SCAN_LENGTH) {
+          e.preventDefault();
+          setBarcodeInput(code);
+          handleBarcodeSearch(code);
+        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        scannerBufferRef.current += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const removeFromCart = (cartItemKey: string) => {
     setCart(cart.filter(item => item.cartItemKey !== cartItemKey));
   };
