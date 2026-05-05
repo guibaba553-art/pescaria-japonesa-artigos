@@ -52,8 +52,36 @@ export function AllProductsLabels({ storeName }: Props) {
     }
     try {
       setSavingStockFor(row.id);
-      const delta = newStock - row.stock;
-      const { error } = await supabase.rpc('apply_stock_movement', {
+
+      // Buscar estoque atual fresco do banco (evita delta errado se a tela estiver desatualizada)
+      let currentStock = row.stock;
+      if (row.variation_id) {
+        const { data, error } = await supabase
+          .from('product_variations')
+          .select('stock')
+          .eq('id', row.variation_id)
+          .single();
+        if (error) throw error;
+        currentStock = Number(data?.stock || 0);
+      } else {
+        const { data, error } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', row.product_id)
+          .single();
+        if (error) throw error;
+        currentStock = Number(data?.stock || 0);
+      }
+
+      const delta = newStock - currentStock;
+      if (delta === 0) {
+        setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, stock: newStock } : r)));
+        setStockEdit((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
+        toast({ title: 'Estoque já estava em ' + newStock });
+        return;
+      }
+
+      const { data: rpcData, error } = await supabase.rpc('apply_stock_movement', {
         p_product_id: row.product_id,
         p_variation_id: row.variation_id,
         p_quantity_delta: delta,
@@ -62,9 +90,34 @@ export function AllProductsLabels({ storeName }: Props) {
         p_reason: 'Ajuste manual via Etiquetas',
       });
       if (error) throw error;
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, stock: newStock } : r)));
+
+      const result = rpcData as any;
+      const finalStock = Number(result?.stock_after ?? newStock);
+
+      // Confirmar lendo do banco
+      let confirmed = finalStock;
+      if (row.variation_id) {
+        const { data } = await supabase
+          .from('product_variations').select('stock').eq('id', row.variation_id).single();
+        if (data) confirmed = Number(data.stock);
+      } else {
+        const { data } = await supabase
+          .from('products').select('stock').eq('id', row.product_id).single();
+        if (data) confirmed = Number(data.stock);
+      }
+
+      if (confirmed !== newStock) {
+        toast({
+          title: 'Atenção: estoque divergente',
+          description: `Solicitado ${newStock}, salvo ${confirmed}. Verifique movimentações concorrentes.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Estoque atualizado', description: `${row.name}: ${confirmed}` });
+      }
+
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, stock: confirmed } : r)));
       setStockEdit((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
-      toast({ title: 'Estoque atualizado', description: `${row.name}: ${newStock}` });
     } catch (err: any) {
       toast({ title: 'Erro ao atualizar estoque', description: err.message, variant: 'destructive' });
     } finally {
