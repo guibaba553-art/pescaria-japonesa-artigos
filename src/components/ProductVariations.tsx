@@ -317,11 +317,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           }}
                         />
                         {variation.image_url && (
-                          <div className="mt-2 relative">
+                          <div className="mt-2 relative inline-block">
                             <img 
                               src={variation.image_url} 
                               alt="Preview" 
-                              className="h-20 w-20 object-cover rounded border-2 border-primary"
+                              className="h-20 w-20 object-cover rounded border-2 border-primary bg-checker"
                             />
                             <Button
                               type="button"
@@ -331,6 +331,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                               onClick={() => updateVariation(variation.id, 'image_url', null)}
                             >
                               <Trash2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="mt-1 h-7 px-2 text-[11px] gap-1 w-full"
+                              disabled={bgProcessing === variation.id}
+                              onClick={() => handleRemoveBg(variation.id, variation.image_url as string, (url) => updateVariation(variation.id, 'image_url', url))}
+                            >
+                              {bgProcessing === variation.id ? (
+                                <><Loader2 className="w-3 h-3 animate-spin" /> Processando</>
+                              ) : (
+                                <><Scissors className="w-3 h-3" /> Remover fundo</>
+                              )}
                             </Button>
                           </div>
                         )}
