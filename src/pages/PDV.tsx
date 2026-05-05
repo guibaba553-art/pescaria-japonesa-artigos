@@ -473,70 +473,67 @@ export default function PDV() {
     const cartItemKey = variation 
       ? `${product.id}-${variation.id}`
       : product.id;
-    
-    const existingItem = cart.find(item => item.cartItemKey === cartItemKey);
     const minimumQty = product.sold_by_weight ? 0.001 : (product.minimum_quantity || 1);
     const availableStock = variation ? variation.stock : product.stock;
-    const itemPrice = variation ? variation.price : product.price;
-    
-    if (existingItem) {
-      const newQuantity = existingItem.quantity + quantity;
-      
-      if (newQuantity > availableStock) {
-        toast({
-          title: 'Estoque insuficiente',
-          description: `Apenas ${availableStock} ${product.sold_by_weight ? 'kg' : 'unidades'} disponíveis`,
-          variant: 'destructive'
-        });
-        return;
+    const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
+
+    let resultMessage: { title: string; description: string; variant?: 'destructive' } | null = null;
+
+    // IMPORTANTE: usar updater funcional para evitar stale state
+    // (leitor de código de barras pode disparar várias chamadas antes do re-render)
+    setCart(prev => {
+      const existingItem = prev.find(item => item.cartItemKey === cartItemKey);
+
+      if (existingItem) {
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > availableStock) {
+          resultMessage = {
+            title: 'Estoque insuficiente',
+            description: `Apenas ${availableStock} ${product.sold_by_weight ? 'kg' : 'unidades'} disponíveis`,
+            variant: 'destructive',
+          };
+          return prev;
+        }
+        const unit = product.sold_by_weight ? 'kg' : (newQuantity > 1 ? 'unidades' : 'unidade');
+        resultMessage = {
+          title: 'Quantidade atualizada',
+          description: `${itemName} - ${newQuantity} ${unit}`,
+        };
+        return prev.map(item =>
+          item.cartItemKey === cartItemKey
+            ? { ...item, quantity: newQuantity }
+            : item
+        );
       }
-      
-      setCart(cart.map(item =>
-        item.cartItemKey === cartItemKey
-          ? { ...item, quantity: newQuantity }
-          : item
-      ));
-    } else {
+
       if (quantity < minimumQty) {
-        toast({
+        resultMessage = {
           title: 'Quantidade inválida',
           description: `Quantidade mínima: ${minimumQty} ${product.sold_by_weight ? 'kg' : 'unidades'}`,
-          variant: 'destructive'
-        });
-        return;
+          variant: 'destructive',
+        };
+        return prev;
       }
-      
       if (quantity > availableStock) {
-        toast({
+        resultMessage = {
           title: 'Estoque insuficiente',
           description: `Apenas ${availableStock} ${product.sold_by_weight ? 'kg' : 'unidades'} disponíveis`,
-          variant: 'destructive'
-        });
-        return;
+          variant: 'destructive',
+        };
+        return prev;
       }
-      
-      setCart([...cart, { 
-        product, 
-        quantity, 
-        variation,
-        cartItemKey 
-      }]);
-      
-      const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
+
       const unit = product.sold_by_weight ? 'kg' : (quantity > 1 ? 'unidades' : 'unidade');
-      
-      toast({
+      resultMessage = {
         title: 'Produto adicionado',
         description: `${itemName} - ${quantity} ${unit}`,
-      });
-      return;
-    }
-
-    const itemName = variation ? `${product.name} - ${variation.name}` : product.name;
-    toast({
-      title: 'Produto adicionado',
-      description: `${itemName} adicionado ao carrinho`,
+      };
+      return [...prev, { product, quantity, variation, cartItemKey }];
     });
+
+    if (resultMessage) {
+      toast(resultMessage);
+    }
   };
 
   const handleWeightSubmit = () => {
