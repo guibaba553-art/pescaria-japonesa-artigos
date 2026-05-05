@@ -32,9 +32,9 @@ export function FeaturedManagement() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const load = async () => {
-    const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
+    const { data, error } = await supabase.rpc('get_products_admin');
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    else setProducts(data || []);
+    else setProducts(((data as Product[]) || []).sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   useEffect(() => { load(); }, []);
