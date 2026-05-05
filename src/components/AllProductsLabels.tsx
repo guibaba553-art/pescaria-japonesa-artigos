@@ -153,39 +153,77 @@ export function AllProductsLabels({ storeName }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const fetchWithRetry = async <T,>(fn: () => Promise<T>, retries = 2): Promise<T> => {
+    const fetchWithRetry = async <T,>(fn: () => Promise<T>, retries = 3): Promise<T> => {
       let lastErr: any;
       for (let i = 0; i <= retries; i++) {
         try {
           return await fn();
         } catch (err: any) {
           lastErr = err;
-          if (i < retries) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+          const msg = String(err?.message || err || '');
+          // Só retentar em falhas de rede/transientes
+          if (i < retries && /fetch|network|timeout|TypeError/i.test(msg)) {
+            await new Promise((r) => setTimeout(r, 600 * (i + 1)));
+          } else if (i >= retries) {
+            break;
+          } else {
+            await new Promise((r) => setTimeout(r, 600 * (i + 1)));
+          }
         }
       }
       throw lastErr;
     };
+
+    // Carrega independentemente: se um falhar, ainda mostramos o outro
+    const loadProducts = async () => {
+      const res: any = await fetchWithRetry(async () =>
+        await supabase
+          .from('products')
+          .select('id, name, sku, stock')
+          .order('name', { ascending: true })
+          .limit(2000)
+      );
+      if (res.error) throw res.error;
+      return res.data || [];
+    };
+    const loadVariations = async () => {
+      const res: any = await fetchWithRetry(async () =>
+        await supabase
+          .from('product_variations')
+          .select('id, product_id, name, sku, stock, products:product_id(name)')
+          .order('name', { ascending: true })
+          .limit(2000)
+      );
+      if (res.error) throw res.error;
+      return res.data || [];
+    };
+
     try {
-      const [prodsRes, varsRes] = await Promise.all([
-        fetchWithRetry(async () =>
-          await supabase
-            .from('products')
-            .select('id, name, sku, stock')
-            .order('name', { ascending: true })
-            .limit(2000)
-        ),
-        fetchWithRetry(async () =>
-          await supabase
-            .from('product_variations')
-            .select('id, product_id, name, sku, stock, products:product_id(name)')
-            .order('name', { ascending: true })
-            .limit(2000)
-        ),
+      const [prodsSettled, varsSettled] = await Promise.allSettled([
+        loadProducts(),
+        loadVariations(),
       ]);
-      const { data: prods, error: e1 } = prodsRes as any;
-      const { data: vars, error: e2 } = varsRes as any;
-      if (e1) throw e1;
-      if (e2) throw e2;
+
+      if (prodsSettled.status === 'rejected' && varsSettled.status === 'rejected') {
+        throw prodsSettled.reason;
+      }
+      if (prodsSettled.status === 'rejected') {
+        toast({
+          title: 'Falha parcial',
+          description: 'Não foi possível carregar produtos simples. Mostrando apenas variações.',
+          variant: 'destructive',
+        });
+      }
+      if (varsSettled.status === 'rejected') {
+        toast({
+          title: 'Falha parcial',
+          description: 'Não foi possível carregar variações. Mostrando apenas produtos simples.',
+          variant: 'destructive',
+        });
+      }
+
+      const prods = prodsSettled.status === 'fulfilled' ? prodsSettled.value : [];
+      const vars = varsSettled.status === 'fulfilled' ? varsSettled.value : [];
 
       const variationProductIds = new Set((vars || []).map((v: any) => v.product_id));
 
