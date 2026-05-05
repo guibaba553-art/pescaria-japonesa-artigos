@@ -548,11 +548,11 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 }}
               />
               {newVariation.image_url && (
-                <div className="mt-2 relative">
+                <div className="mt-2 relative inline-block">
                   <img 
                     src={newVariation.image_url} 
                     alt="Preview" 
-                    className="h-20 w-20 object-cover rounded border-2 border-primary"
+                    className="h-20 w-20 object-cover rounded border-2 border-primary bg-checker"
                   />
                   <Button
                     type="button"
@@ -562,6 +562,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                     onClick={() => setNewVariation({ ...newVariation, image_url: '' })}
                   >
                     <Trash2 className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-1 h-7 px-2 text-[11px] gap-1 w-full"
+                    disabled={bgProcessing === '__new__'}
+                    onClick={() => handleRemoveBg('__new__', newVariation.image_url, (url) => setNewVariation({ ...newVariation, image_url: url }))}
+                  >
+                    {bgProcessing === '__new__' ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> Processando</>
+                    ) : (
+                      <><Scissors className="w-3 h-3" /> Remover fundo</>
+                    )}
                   </Button>
                 </div>
               )}
