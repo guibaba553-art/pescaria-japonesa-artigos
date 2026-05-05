@@ -275,7 +275,37 @@ export function AllProductsLabels({ storeName }: Props) {
                       </Button>
                     )}
                   </td>
-                  <td className="p-2 text-right">{r.stock}</td>
+                  <td className="p-2 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={stockEdit[r.id] ?? String(r.stock)}
+                        onChange={(e) =>
+                          setStockEdit((prev) => ({ ...prev, [r.id]: e.target.value }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveStock(r);
+                        }}
+                        className="h-8 w-20 text-right"
+                      />
+                      {stockEdit[r.id] !== undefined && stockEdit[r.id] !== String(r.stock) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          disabled={savingStockFor === r.id}
+                          onClick={() => handleSaveStock(r)}
+                        >
+                          {savingStockFor === r.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            'OK'
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-2 text-right">
                     <Input
                       type="number"
