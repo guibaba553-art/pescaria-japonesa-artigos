@@ -85,7 +85,7 @@ export function AllProductsLabels({ storeName }: Props) {
         p_product_id: row.product_id,
         p_variation_id: row.variation_id,
         p_quantity_delta: delta,
-        p_movement_type: 'adjustment',
+        p_movement_type: 'manual_adjust',
         p_order_id: null,
         p_reason: 'Ajuste manual via Etiquetas',
       });
