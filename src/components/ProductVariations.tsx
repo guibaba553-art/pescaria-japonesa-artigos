@@ -3,7 +3,7 @@ import { ProductVariation } from "@/types/product";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Scissors, Loader2 } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { isValidImageUrl } from "@/utils/validation";
