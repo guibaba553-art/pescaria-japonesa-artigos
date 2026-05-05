@@ -34,7 +34,7 @@ export function FeaturedManagement() {
   const load = async () => {
     const { data, error } = await supabase.rpc('get_products_admin');
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    else setProducts(data || []);
+    else setProducts(((data as Product[]) || []).sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   useEffect(() => { load(); }, []);
