@@ -21,6 +21,52 @@ interface ProductVariationsProps {
  */
 export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
   const { toast } = useToast();
+  const [bgProcessing, setBgProcessing] = useState<string | null>(null);
+
+  const removeBgFromDataUrl = async (dataUrl: string): Promise<string> => {
+    const { removeBackground, loadImageFromUrl } = await import('@/utils/removeBackground');
+    const img = await loadImageFromUrl(dataUrl);
+    const blob = await removeBackground(img);
+    return await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  };
+
+  const handleRemoveBg = async (key: string, currentUrl: string, apply: (newUrl: string) => void) => {
+    if (!currentUrl) return;
+    setBgProcessing(key);
+    try {
+      toast({ title: 'Processando imagem...', description: 'Removendo fundo com IA. Pode levar alguns segundos.' });
+      let sourceDataUrl = currentUrl;
+      if (!currentUrl.startsWith('data:')) {
+        // Converte URL remota para dataURL para evitar CORS no canvas
+        const resp = await fetch(currentUrl, { mode: 'cors' });
+        const blob = await resp.blob();
+        sourceDataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onloadend = () => resolve(r.result as string);
+          r.onerror = reject;
+          r.readAsDataURL(blob);
+        });
+      }
+      const newDataUrl = await removeBgFromDataUrl(sourceDataUrl);
+      apply(newDataUrl);
+      toast({ title: 'Fundo removido!', description: 'Lembre-se de salvar para aplicar.' });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Erro ao remover fundo',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBgProcessing(null);
+    }
+  };
+
   const [newVariation, setNewVariation] = useState({
     name: "",
     price: "",
