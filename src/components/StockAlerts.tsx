@@ -212,10 +212,10 @@ export function StockAlerts() {
                           className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
                         >
                           {p.image_url ? (
-                            <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover bg-muted" />
+                            <img src={p.image_url} alt={p.name} className="w-20 h-20 rounded object-cover bg-muted" />
                           ) : (
-                            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
-                              <Package2 className="w-5 h-5 text-muted-foreground" />
+                            <div className="w-20 h-20 rounded bg-muted flex items-center justify-center">
+                              <Package2 className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
