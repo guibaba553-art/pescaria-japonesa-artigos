@@ -1243,33 +1243,6 @@ export default function PDV() {
                 <CardTitle>Produtos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Campo para Leitor de Código de Barras */}
-                <div className="p-4 bg-primary/5 border-2 border-primary/20 rounded-lg">
-                  <Label htmlFor="barcode" className="text-sm font-semibold mb-2 block">
-                    Leitor de Código de Barras
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="barcode"
-                      placeholder="Escaneie ou digite o código de barras..."
-                      value={barcodeInput}
-                      onChange={(e) => setBarcodeInput(e.target.value)}
-                      onKeyPress={handleBarcodeKeyPress}
-                      className="text-lg font-mono"
-                      autoFocus
-                    />
-                    <Badge 
-                      variant="secondary" 
-                      className="absolute right-2 top-1/2 -translate-y-1/2"
-                    >
-                      Pressione Enter
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    💡 Dica: Mantenha o cursor neste campo para usar o leitor de código de barras
-                  </p>
-                </div>
-
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
