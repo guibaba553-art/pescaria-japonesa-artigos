@@ -567,89 +567,95 @@ export default function PDV() {
   };
 
   const handleBarcodeSearch = async (barcode: string) => {
-    if (!barcode.trim()) return;
+    const code = barcode.trim();
+    if (!code) return;
+
+    // Beep imediato (não bloqueia a busca)
+    const playBeep = () => {
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
+        audio.play().catch(() => {});
+      } catch {}
+    };
 
     try {
-      const code = barcode.trim();
       console.log('🔍 Buscando por código:', code);
-      
-      // Primeiro buscar variação por SKU (lista para evitar erro com múltiplos resultados)
-      const { data: variations, error: varError } = await supabase
-        .from('product_variations')
-        .select('*, product:products(*)')
-        .eq('sku', code)
-        .gt('stock', 0)
-        .limit(1);
 
-      if (varError) throw varError;
+      // Buscar variação E produto em paralelo (consultas diretas, sem RPC pesada)
+      const [varRes, prodRes] = await Promise.all([
+        supabase
+          .from('product_variations')
+          .select('*, product:products(*)')
+          .eq('sku', code)
+          .gt('stock', 0)
+          .limit(1),
+        supabase
+          .from('products')
+          .select('*')
+          .eq('sku', code)
+          .gt('stock', 0)
+          .limit(1),
+      ]);
 
-      const variation = variations && variations.length > 0 ? variations[0] : null;
+      if (varRes.error) throw varRes.error;
+      if (prodRes.error) throw prodRes.error;
+
+      const variation = varRes.data && varRes.data.length > 0 ? varRes.data[0] : null;
 
       if (variation) {
         console.log('✅ Variação encontrada:', variation.name);
         const product = variation.product as unknown as Product;
-        
-        // Carregar todas as variações do produto
-        const { data: allVariations } = await supabase
+
+        // Carrega outras variações em background (não bloqueia o add)
+        product.variations = [];
+        supabase
           .from('product_variations')
           .select('*')
-          .eq('product_id', product.id);
-        
-        product.variations = allVariations || [];
-        
+          .eq('product_id', product.id)
+          .then(({ data }) => { product.variations = data || []; });
+
         if (product.sold_by_weight) {
           setSelectedProduct(product);
           setWeightInput('');
           setShowWeightDialog(true);
-          setBarcodeInput('');
         } else {
           addToCart(product, variation, 1);
-          setBarcodeInput('');
         }
-        
-        // Som de "beep" para feedback
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
-        audio.play().catch(() => {});
+        setBarcodeInput('');
+        playBeep();
         return;
       }
 
-      // Se não encontrou variação, buscar produto principal por SKU usando RPC (acessa campos sensíveis de PDV)
-      const { data: prods, error: prodError } = await supabase.rpc('get_products_admin');
-      if (prodError) throw prodError;
-      const matched = (prods || []).find((p: any) => p.sku === barcode.trim() && p.stock > 0);
-      let product: any = null;
+      const matched = prodRes.data && prodRes.data.length > 0 ? prodRes.data[0] : null;
       if (matched) {
-        const { data: vars } = await supabase
+        const product: any = { ...matched, variations: [] };
+        // Carrega variações em background
+        supabase
           .from('product_variations')
           .select('*')
-          .eq('product_id', matched.id);
-        product = { ...matched, variations: vars || [] };
-      }
+          .eq('product_id', matched.id)
+          .then(({ data }) => { product.variations = data || []; });
 
-      if (product) {
         console.log('✅ Produto encontrado:', product.name);
         if (product.sold_by_weight) {
           setSelectedProduct(product);
           setWeightInput('');
           setShowWeightDialog(true);
-          setBarcodeInput('');
         } else {
           addToCart(product, undefined, 1);
-          setBarcodeInput('');
         }
-        
-        // Som de "beep" para feedback
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZRQ0PVa7m77BfGAg+luLxwW0iBC5+y/LZhS8GHGu77OuYSg0MUqzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw0PVKzl8K9gGQc8lN/ywm8hBDGFzvPVgzAGHm2+7+WYRw==');
-        audio.play().catch(() => {});
-      } else {
-        console.log('❌ Nenhum produto ou variação encontrado');
-        toast({
-          title: 'Produto não encontrado',
-          description: `Código de barras: ${barcode}`,
-          variant: 'destructive'
-        });
         setBarcodeInput('');
+        playBeep();
+        return;
       }
+
+      console.log('❌ Nenhum produto ou variação encontrado');
+      toast({
+        title: 'Produto não encontrado',
+        description: `Código de barras: ${code}`,
+        variant: 'destructive'
+      });
+      setBarcodeInput('');
     } catch (error: any) {
       console.error('❌ Erro ao buscar:', error);
       toast({
