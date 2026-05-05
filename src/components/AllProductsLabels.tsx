@@ -153,19 +153,37 @@ export function AllProductsLabels({ storeName }: Props) {
 
   const load = async () => {
     setLoading(true);
+    const fetchWithRetry = async <T,>(fn: () => Promise<T>, retries = 2): Promise<T> => {
+      let lastErr: any;
+      for (let i = 0; i <= retries; i++) {
+        try {
+          return await fn();
+        } catch (err: any) {
+          lastErr = err;
+          if (i < retries) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+        }
+      }
+      throw lastErr;
+    };
     try {
-      const [{ data: prods, error: e1 }, { data: vars, error: e2 }] = await Promise.all([
-        supabase
-          .from('products')
-          .select('id, name, sku, stock')
-          .order('name', { ascending: true })
-          .limit(2000),
-        supabase
-          .from('product_variations')
-          .select('id, product_id, name, sku, stock, products:product_id(name)')
-          .order('name', { ascending: true })
-          .limit(2000),
+      const [prodsRes, varsRes] = await Promise.all([
+        fetchWithRetry(async () =>
+          await supabase
+            .from('products')
+            .select('id, name, sku, stock')
+            .order('name', { ascending: true })
+            .limit(2000)
+        ),
+        fetchWithRetry(async () =>
+          await supabase
+            .from('product_variations')
+            .select('id, product_id, name, sku, stock, products:product_id(name)')
+            .order('name', { ascending: true })
+            .limit(2000)
+        ),
       ]);
+      const { data: prods, error: e1 } = prodsRes as any;
+      const { data: vars, error: e2 } = varsRes as any;
       if (e1) throw e1;
       if (e2) throw e2;
 
