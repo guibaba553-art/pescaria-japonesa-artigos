@@ -167,15 +167,15 @@ export function AllProductsLabels({ storeName }: Props) {
     };
     try {
       const [prodsRes, varsRes] = await Promise.all([
-        fetchWithRetry(() =>
-          supabase
+        fetchWithRetry(async () =>
+          await supabase
             .from('products')
             .select('id, name, sku, stock')
             .order('name', { ascending: true })
             .limit(2000)
         ),
-        fetchWithRetry(() =>
-          supabase
+        fetchWithRetry(async () =>
+          await supabase
             .from('product_variations')
             .select('id, product_id, name, sku, stock, products:product_id(name)')
             .order('name', { ascending: true })
