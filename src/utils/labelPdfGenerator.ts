@@ -100,16 +100,22 @@ export async function generateLabelsPdf(
     throw new Error('Nenhuma etiqueta para imprimir');
   }
 
-  // Layout: A4 em mm — padrão Pimaco/Avery 5×13 (etiqueta 38.1×21.2mm)
+  // Layout: A4 com margens fornecidas pelo usuário
+  // Margens: superior 1,3cm | inferior 1,0cm | laterais 0,5cm
+  // Etiqueta: 3,8cm largura × 2,1cm altura — 5 colunas × 13 linhas (65 etiquetas)
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const cols = 5;
   const rows = 13;
-  const labelW = 38.1;
-  const labelH = 21.2;
-  const gapX = 2.5;
-  const gapY = 0;
-  const marginX = (210 - (labelW * cols + gapX * (cols - 1))) / 2; // ~4.7mm
-  const marginY = (297 - (labelH * rows + gapY * (rows - 1))) / 2; // ~10.3mm
+  const labelW = 38; // 3,8cm
+  const labelH = 21; // 2,1cm
+  const marginX = 5;     // 0,5cm laterais
+  const marginTop = 13;  // 1,3cm superior
+  // espaço horizontal restante distribuído como gap entre colunas
+  const gapX = (210 - marginX * 2 - labelW * cols) / (cols - 1);
+  // espaço vertical restante (considerando inferior de 1,0cm) distribuído entre linhas
+  const marginBottom = 10; // 1,0cm
+  const gapY = (297 - marginTop - marginBottom - labelH * rows) / (rows - 1);
+  const marginY = marginTop;
   const cellW = labelW;
   const cellH = labelH;
 
