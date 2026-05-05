@@ -50,9 +50,12 @@ const FALLBACK: Required<ItemDims> = {
 };
 
 // Embalagens (dimensões internas aproximadas)
+// Convenção: C(length) x L(width) x A(height)
+// Caixa pequena: 19 x 16 x 10 → length=19, width=16, height=10
+// Caixa grande:  21 x 17 x 17 → length=21, width=17, height=17
 const BOXES = {
-  caixa_pequena: { w: 19, h: 10, l: 16, volume: 19 * 10 * 16, maxDim: 19 },
-  caixa_grande: { w: 21, h: 17, l: 17, volume: 21 * 17 * 17, maxDim: 21 },
+  caixa_pequena: { w: 16, h: 10, l: 19, volume: 19 * 16 * 10, maxDim: 19 },
+  caixa_grande: { w: 17, h: 17, l: 21, volume: 21 * 17 * 17, maxDim: 21 },
 } as const;
 
 const ENVELOPE = { w: 19, h: 3, l: 25, volume: 19 * 3 * 25, maxDim: 25 };
