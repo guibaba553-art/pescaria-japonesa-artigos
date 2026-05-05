@@ -35,6 +35,42 @@ export function AllProductsLabels({ storeName }: Props) {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
   const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
+  const [stockEdit, setStockEdit] = useState<Record<string, string>>({});
+  const [savingStockFor, setSavingStockFor] = useState<string | null>(null);
+
+  const handleSaveStock = async (row: Row) => {
+    const raw = stockEdit[row.id];
+    if (raw === undefined) return;
+    const newStock = parseInt(raw, 10);
+    if (isNaN(newStock) || newStock < 0) {
+      toast({ title: 'Valor inválido', description: 'Informe um número válido.', variant: 'destructive' });
+      return;
+    }
+    if (newStock === row.stock) {
+      setStockEdit((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
+      return;
+    }
+    try {
+      setSavingStockFor(row.id);
+      const delta = newStock - row.stock;
+      const { error } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: row.product_id,
+        p_variation_id: row.variation_id,
+        p_quantity_delta: delta,
+        p_movement_type: 'adjustment',
+        p_order_id: null,
+        p_reason: 'Ajuste manual via Etiquetas',
+      });
+      if (error) throw error;
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, stock: newStock } : r)));
+      setStockEdit((prev) => { const n = { ...prev }; delete n[row.id]; return n; });
+      toast({ title: 'Estoque atualizado', description: `${row.name}: ${newStock}` });
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar estoque', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingStockFor(null);
+    }
+  };
 
   const handleGenerateCode = async (row: Row) => {
     try {
