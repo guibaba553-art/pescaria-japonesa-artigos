@@ -71,7 +71,7 @@ serve(async (req) => {
     
     try {
       const text = await req.text();
-      console.log('Request body received:', text);
+      // SECURITY: Never log raw body — it contains card PAN/CVV (PCI DSS)
       
       if (!text || text.trim() === '') {
         console.error('Empty request body');
