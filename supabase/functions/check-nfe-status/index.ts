@@ -68,13 +68,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Buscar todas as NF-e pendentes (até 30 min de idade)
+    // Buscar todas as NF-e/NFC-e pendentes com referência na Focus.
+    // Antes limitávamos às últimas 30 min, o que deixava notas antigas
+    // presas em "pending" para sempre caso a checagem falhasse nesse período.
     const { data: pendingEmissions, error: fetchError } = await supabase
       .from('nfe_emissions')
       .select('id, ref_focus, modelo, status, created_at')
       .eq('status', 'pending')
       .not('ref_focus', 'is', null)
-      .gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString());
+      .order('created_at', { ascending: true })
+      .limit(100);
 
     if (fetchError) throw fetchError;
 
@@ -126,12 +129,10 @@ Deno.serve(async (req) => {
         }
         // processando_autorizacao / em_processamento -> mantém pending
 
-        if (updateData.status) {
-          await supabase
-            .from('nfe_emissions')
-            .update(updateData)
-            .eq('id', emission.id);
-        }
+        await supabase
+          .from('nfe_emissions')
+          .update(updateData)
+          .eq('id', emission.id);
 
         results.push({ id: emission.id, ref: emission.ref_focus, focusStatus, updated: !!updateData.status });
       } catch (err: any) {
