@@ -196,101 +196,164 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
 
   // ============== TABELA DE ITENS ==============
   const rowH = 20;
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    head: [
-      [
-        { content: '', rowSpan: 2 },
-        { content: 'Cód.', rowSpan: 2 },
-        { content: 'Produto', rowSpan: 2 },
-        { content: 'Qtd', rowSpan: 2, styles: { halign: 'center' } },
-        {
-          content: 'Preço unitário',
-          colSpan: 3,
-          styles: { halign: 'center', fillColor: C.ink },
-        },
-        { content: 'Total à vista', rowSpan: 2, styles: { halign: 'right' } },
-      ],
-      [
-        { content: 'PIX / Dinheiro', styles: { halign: 'right', fillColor: C.ink } },
-        { content: 'Débito', styles: { halign: 'right', fillColor: C.ink } },
-        { content: 'Crédito', styles: { halign: 'right', fillColor: C.ink } },
-      ],
-    ],
-    body: data.items.map((it, idx) => {
-      const desc = it.variation
-        ? `${it.product.name}\n${it.variation.name}`
-        : it.product.name;
-      const pPix = priceFor(it, 'pix');
-      const pDeb = priceFor(it, 'debit');
-      const pCre = priceFor(it, 'credit');
-      return [
-        '',
-        it.product.sku || String(idx + 1),
-        desc,
-        it.quantity.toString(),
-        brl(pPix),
-        brl(pDeb),
-        brl(pCre),
-        brl(pPix * it.quantity),
-      ];
-    }),
-    theme: 'plain',
-    headStyles: {
-      fillColor: C.ink,
-      textColor: 255,
-      fontSize: 8,
-      fontStyle: 'bold',
-      halign: 'left',
-      valign: 'middle',
-      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
-    },
-    bodyStyles: {
-      fontSize: 9,
-      minCellHeight: rowH,
-      valign: 'middle',
-      textColor: C.ink as any,
-      lineColor: C.line as any,
-      lineWidth: { top: 0, right: 0, bottom: 0.2, left: 0 },
-      cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
-    },
-    alternateRowStyles: { fillColor: [252, 252, 253] as any },
-    columnStyles: {
-      0: { cellWidth: 18, halign: 'center' },
-      1: { cellWidth: 18, textColor: C.muted as any, fontSize: 8 },
-      2: { cellWidth: 'auto', fontStyle: 'bold' },
-      3: { cellWidth: 12, halign: 'center' },
-      4: { cellWidth: 24, halign: 'right' },
-      5: { cellWidth: 20, halign: 'right', textColor: C.inkSoft as any },
-      6: { cellWidth: 20, halign: 'right', textColor: C.inkSoft as any },
-      7: { cellWidth: 24, halign: 'right', fontStyle: 'bold', textColor: C.primary as any },
-    },
-    didDrawCell: (cellData) => {
-      if (cellData.section === 'body' && cellData.column.index === 0) {
-        const item = data.items[cellData.row.index];
-        const url = item.variation?.image_url || item.product.image_url;
-        if (!url) return;
-        const img = imageCache.get(url);
-        if (!img) return;
+  const finalized = !!data.finalized;
+  const paidMethod = (data.paymentMethod || '').toLowerCase();
+  // Mapeia o método salvo para a tabela de markup (cash trata como pix)
+  const paidKey: 'pix' | 'debit' | 'credit' =
+    paidMethod === 'debit' ? 'debit' : paidMethod === 'credit' ? 'credit' : 'pix';
+  const paidLabel = PAYMENT_LABELS[paidMethod] || 'À vista';
 
-        const maxSize = 15;
-        const ratio = img.w / img.h;
-        let drawW = maxSize,
-          drawH = maxSize;
-        if (ratio > 1) drawH = maxSize / ratio;
-        else drawW = maxSize * ratio;
-
-        const cx = cellData.cell.x + cellData.cell.width / 2;
-        const cy = cellData.cell.y + cellData.cell.height / 2;
-        try {
-          doc.addImage(img.data, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
-        } catch {
-          /* ignore */
+  if (finalized) {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [[
+        { content: '' },
+        { content: 'Cód.' },
+        { content: 'Produto' },
+        { content: 'Qtd', styles: { halign: 'center' } },
+        { content: 'Preço unit.', styles: { halign: 'right' } },
+        { content: 'Total', styles: { halign: 'right' } },
+      ]],
+      body: data.items.map((it, idx) => {
+        const desc = it.variation ? `${it.product.name}\n${it.variation.name}` : it.product.name;
+        const p = priceFor(it, paidKey);
+        return ['', it.product.sku || String(idx + 1), desc, it.quantity.toString(), brl(p), brl(p * it.quantity)];
+      }),
+      theme: 'plain',
+      headStyles: {
+        fillColor: C.ink, textColor: 255, fontSize: 8, fontStyle: 'bold',
+        halign: 'left', valign: 'middle', cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      },
+      bodyStyles: {
+        fontSize: 9, minCellHeight: rowH, valign: 'middle',
+        textColor: C.ink as any, lineColor: C.line as any,
+        lineWidth: { top: 0, right: 0, bottom: 0.2, left: 0 },
+        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      },
+      alternateRowStyles: { fillColor: [252, 252, 253] as any },
+      columnStyles: {
+        0: { cellWidth: 18, halign: 'center' },
+        1: { cellWidth: 22, textColor: C.muted as any, fontSize: 8 },
+        2: { cellWidth: 'auto', fontStyle: 'bold' },
+        3: { cellWidth: 16, halign: 'center' },
+        4: { cellWidth: 28, halign: 'right' },
+        5: { cellWidth: 30, halign: 'right', fontStyle: 'bold', textColor: C.primary as any },
+      },
+      didDrawCell: (cellData) => {
+        if (cellData.section === 'body' && cellData.column.index === 0) {
+          const item = data.items[cellData.row.index];
+          const url = item.variation?.image_url || item.product.image_url;
+          if (!url) return;
+          const img = imageCache.get(url);
+          if (!img) return;
+          const maxSize = 15;
+          const ratio = img.w / img.h;
+          let drawW = maxSize, drawH = maxSize;
+          if (ratio > 1) drawH = maxSize / ratio; else drawW = maxSize * ratio;
+          const cx = cellData.cell.x + cellData.cell.width / 2;
+          const cy = cellData.cell.y + cellData.cell.height / 2;
+          try { doc.addImage(img.data, cx - drawW / 2, cy - drawH / 2, drawW, drawH); } catch { /* ignore */ }
         }
-      }
-    },
-  });
+      },
+    });
+  } else {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [
+        [
+          { content: '', rowSpan: 2 },
+          { content: 'Cód.', rowSpan: 2 },
+          { content: 'Produto', rowSpan: 2 },
+          { content: 'Qtd', rowSpan: 2, styles: { halign: 'center' } },
+          {
+            content: 'Preço unitário',
+            colSpan: 3,
+            styles: { halign: 'center', fillColor: C.ink },
+          },
+          { content: 'Total à vista', rowSpan: 2, styles: { halign: 'right' } },
+        ],
+        [
+          { content: 'PIX / Dinheiro', styles: { halign: 'right', fillColor: C.ink } },
+          { content: 'Débito', styles: { halign: 'right', fillColor: C.ink } },
+          { content: 'Crédito', styles: { halign: 'right', fillColor: C.ink } },
+        ],
+      ],
+      body: data.items.map((it, idx) => {
+        const desc = it.variation
+          ? `${it.product.name}\n${it.variation.name}`
+          : it.product.name;
+        const pPix = priceFor(it, 'pix');
+        const pDeb = priceFor(it, 'debit');
+        const pCre = priceFor(it, 'credit');
+        return [
+          '',
+          it.product.sku || String(idx + 1),
+          desc,
+          it.quantity.toString(),
+          brl(pPix),
+          brl(pDeb),
+          brl(pCre),
+          brl(pPix * it.quantity),
+        ];
+      }),
+      theme: 'plain',
+      headStyles: {
+        fillColor: C.ink,
+        textColor: 255,
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'left',
+        valign: 'middle',
+        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      },
+      bodyStyles: {
+        fontSize: 9,
+        minCellHeight: rowH,
+        valign: 'middle',
+        textColor: C.ink as any,
+        lineColor: C.line as any,
+        lineWidth: { top: 0, right: 0, bottom: 0.2, left: 0 },
+        cellPadding: { top: 3, right: 3, bottom: 3, left: 3 },
+      },
+      alternateRowStyles: { fillColor: [252, 252, 253] as any },
+      columnStyles: {
+        0: { cellWidth: 18, halign: 'center' },
+        1: { cellWidth: 18, textColor: C.muted as any, fontSize: 8 },
+        2: { cellWidth: 'auto', fontStyle: 'bold' },
+        3: { cellWidth: 12, halign: 'center' },
+        4: { cellWidth: 24, halign: 'right' },
+        5: { cellWidth: 20, halign: 'right', textColor: C.inkSoft as any },
+        6: { cellWidth: 20, halign: 'right', textColor: C.inkSoft as any },
+        7: { cellWidth: 24, halign: 'right', fontStyle: 'bold', textColor: C.primary as any },
+      },
+      didDrawCell: (cellData) => {
+        if (cellData.section === 'body' && cellData.column.index === 0) {
+          const item = data.items[cellData.row.index];
+          const url = item.variation?.image_url || item.product.image_url;
+          if (!url) return;
+          const img = imageCache.get(url);
+          if (!img) return;
+
+          const maxSize = 15;
+          const ratio = img.w / img.h;
+          let drawW = maxSize,
+            drawH = maxSize;
+          if (ratio > 1) drawH = maxSize / ratio;
+          else drawW = maxSize * ratio;
+
+          const cx = cellData.cell.x + cellData.cell.width / 2;
+          const cy = cellData.cell.y + cellData.cell.height / 2;
+          try {
+            doc.addImage(img.data, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+          } catch {
+            /* ignore */
+          }
+        }
+      },
+    });
+  }
 
   // ============== TOTAIS ==============
   const finalY = (doc as any).lastAutoTable.finalY || y + 50;
