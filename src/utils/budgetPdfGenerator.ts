@@ -454,12 +454,18 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
     ty += boxH + 6;
   }
 
-    'Valores no crédito podem ser parcelados — consulte condições no atendimento.',
-    pageW - margin,
-    ty,
-    { align: 'right' },
-  );
-  ty += 8;
+  if (!finalized) {
+    doc.setTextColor(...C.muted);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.text(
+      'Valores no crédito podem ser parcelados — consulte condições no atendimento.',
+      pageW - margin,
+      ty,
+      { align: 'right' },
+    );
+    ty += 8;
+  }
 
   // ============== OBSERVAÇÕES ==============
   if (data.notes) {
