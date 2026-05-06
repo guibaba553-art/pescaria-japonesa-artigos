@@ -2627,6 +2627,11 @@ export default function PDV() {
                                            sale.payment_method === 'pix' ? '📱 PIX' : '—'}
                                         </div>
                                       </div>
+                                      {sale.notes && (
+                                        <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-2 py-1.5 rounded text-foreground whitespace-pre-wrap">
+                                          📝 {sale.notes}
+                                        </div>
+                                      )}
                                     </div>
 
                                     <div className="flex flex-col gap-1.5 shrink-0">
