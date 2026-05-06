@@ -188,10 +188,18 @@ export default function SalesHistory() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end gap-2">
                             <p className="text-2xl font-bold text-primary">
                               R$ {order.total_amount.toFixed(2)}
                             </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleGeneratePdf(order)}
+                            >
+                              <FileDown className="w-3.5 h-3.5 mr-1" />
+                              PDF
+                            </Button>
                           </div>
                         </div>
                       </CardHeader>
