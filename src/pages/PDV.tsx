@@ -466,6 +466,7 @@ export default function PDV() {
     setPaymentMethod('credit');
     setInstallments(1);
     setDiscountInput('');
+    setSaleNotes('');
     setCurrentSaleId(null);
     idempotencyKeyRef.current = null;
     tefResultRef.current = null;
