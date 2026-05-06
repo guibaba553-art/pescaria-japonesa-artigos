@@ -755,13 +755,16 @@ export default function AdminSalesAnalysis() {
             .single();
           if (orderErr) throw orderErr;
 
-          const itemsPayload = cart.map((it: any) => ({
-            order_id: newOrder.id,
-            product_id: it.id || it.product_id,
-            quantity: Number(it.quantity || 1),
-            price_at_purchase: Number(it.price ?? it.unit_price ?? 0),
-            variation_id: it.variation_id || null,
-          }));
+          const itemsPayload = cart.map((it: any) => {
+            const p = it.product || {};
+            return {
+              order_id: newOrder.id,
+              product_id: p.id || it.id || it.product_id,
+              quantity: Number(it.quantity || 1),
+              price_at_purchase: Number(it.customPrice ?? p.price ?? it.price ?? it.unit_price ?? 0),
+              variation_id: it.variation?.id || it.variation_id || null,
+            };
+          });
           const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
           if (itemsErr) throw itemsErr;
 
