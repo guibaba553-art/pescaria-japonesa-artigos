@@ -339,6 +339,19 @@ export function FocusNFeSettings() {
               onChange={(e) => setForm({ ...form, serie_nfe: parseInt(e.target.value) || 1 })}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="proximo_numero_nfe">Próximo número NF-e</Label>
+            <Input
+              id="proximo_numero_nfe"
+              type="number"
+              min="1"
+              value={form.proximo_numero_nfe}
+              onChange={(e) => setForm({ ...form, proximo_numero_nfe: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Em caso de Rejeição 539 (duplicidade), aumente este número até passar das notas já autorizadas pela SEFAZ.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
