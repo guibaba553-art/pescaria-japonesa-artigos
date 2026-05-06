@@ -207,16 +207,58 @@ serve(async (req) => {
     }
 
     // ---------- DESTINATÁRIO ----------
-    const cpf = cleanDoc(profile?.cpf);
-    const hasCpf = cpf.length === 11;
-    if (!hasCpf) {
+    // Para NF-e (modelo 55) os dados do destinatário são OBRIGATÓRIOS:
+    // nome, CPF/CNPJ e endereço completo (logradouro, número, bairro, município, UF e CEP).
+    // Se o pedido tiver customer_id, usamos os dados estruturados de `customers`;
+    // caso contrário, usamos o profile + shipping_address parseado.
+    let destNome = (profile?.full_name || '').trim();
+    let destCpf = cleanDoc(profile?.cpf);
+    let destCnpj = '';
+    const addr = parseAddress(order.shipping_address);
+
+    if (order.customer_id) {
+      const { data: cust } = await supabase
+        .from('customers')
+        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood')
+        .eq('id', order.customer_id)
+        .maybeSingle();
+      if (cust) {
+        destNome = (cust.company_name || cust.full_name || destNome || '').trim();
+        destCpf = cleanDoc(cust.cpf);
+        destCnpj = cleanDoc(cust.cnpj);
+        if (cust.street) addr.logradouro = cust.street;
+        if (cust.number) addr.numero = cust.number;
+        if (cust.neighborhood) addr.bairro = cust.neighborhood;
+        if (cust.cep) addr.cep = cleanDoc(cust.cep);
+      }
+    }
+
+    const hasCpf = destCpf.length === 11;
+    const hasCnpj = destCnpj.length === 14;
+
+    const missingClient: string[] = [];
+    if (!destNome) missingClient.push('nome');
+    if (!hasCpf && !hasCnpj) missingClient.push('CPF ou CNPJ');
+    if (!addr.logradouro || addr.logradouro === 'NAO INFORMADO') missingClient.push('logradouro');
+    if (!addr.numero) missingClient.push('número');
+    if (!addr.bairro) missingClient.push('bairro');
+    if (!addr.municipio) missingClient.push('município');
+    if (!addr.uf) missingClient.push('UF');
+    if (!addr.cep || addr.cep === '00000000' || addr.cep.length !== 8) missingClient.push('CEP');
+
+    if (missingClient.length > 0) {
       return new Response(
-        JSON.stringify({ error: 'CPF do cliente não cadastrado. NF-e exige identificação do destinatário.' }),
+        JSON.stringify({
+          error:
+            'Dados do cliente incompletos para emissão de NF-e. Faltam: ' +
+            missingClient.join(', ') +
+            '. Vincule um cliente completo ao pedido antes de emitir.',
+          missing_client_fields: missingClient,
+        }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const addr = parseAddress(order.shipping_address);
     const ufDestino = addr.uf;
     const isInterestadual = ufDestino !== (company.uf || 'MT').toUpperCase();
     const cfopPadrao = isInterestadual
@@ -311,9 +353,11 @@ serve(async (req) => {
       inscricao_estadual_emitente: company.inscricao_estadual,
       regime_tributario_emitente: company.regime_tributario === 'simples_nacional' ? 1 : 3,
 
-      // Destinatário (pessoa física)
-      nome_destinatario: profile?.full_name || 'CONSUMIDOR',
-      cpf_destinatario: cpf,
+      // Destinatário
+      nome_destinatario: destNome,
+      ...(hasCnpj
+        ? { cnpj_destinatario: destCnpj }
+        : { cpf_destinatario: destCpf }),
       logradouro_destinatario: addr.logradouro,
       numero_destinatario: addr.numero,
       bairro_destinatario: addr.bairro,
@@ -321,6 +365,7 @@ serve(async (req) => {
       uf_destinatario: addr.uf,
       cep_destinatario: addr.cep,
       indicador_inscricao_estadual_destinatario: 9, // não contribuinte
+
 
       presenca_comprador: 2,    // operação não presencial — internet
       modalidade_frete: 0,      // por conta do emitente

@@ -1207,9 +1207,10 @@ export default function AdminSalesAnalysis() {
                           </div>
                           {invoiceModel === 'nfe' && (
                             <p className="text-xs text-muted-foreground">
-                              NF-e exige cliente com CPF ou CNPJ vinculado ao pedido.
+                              NF-e exige cliente vinculado ao pedido com <strong>nome</strong>, <strong>CPF ou CNPJ</strong> e <strong>endereço completo</strong> (logradouro, número, bairro, município, UF e CEP). Sem esses dados a SEFAZ rejeita a emissão.
                             </p>
                           )}
+
                         </div>
                       )}
                     </>
