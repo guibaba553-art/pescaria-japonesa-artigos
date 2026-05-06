@@ -138,7 +138,12 @@ Deno.serve(async (req) => {
     xmlParts.push("</estoque_backup>");
     const xml = xmlParts.join("\n");
     const xmlBytes = new TextEncoder().encode(xml);
-    const xmlBase64 = btoa(String.fromCharCode(...xmlBytes));
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < xmlBytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...xmlBytes.subarray(i, i + chunkSize));
+    }
+    const xmlBase64 = btoa(binary);
 
     // 4. Envia email com anexo via Resend
     const subject = `Backup Estoque ${today} — ${discrepancies.length > 0 ? `${discrepancies.length} divergência(s)` : "OK ✓"}`;
