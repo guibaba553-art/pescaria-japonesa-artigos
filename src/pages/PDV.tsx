@@ -222,8 +222,8 @@ export default function PDV() {
         byProduct.get(v.product_id)!.push(v);
       });
       const merged = (prods || [])
-        .filter((p: any) => p.stock > 0)
         .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
+        .filter((p: any) => Number(p.stock || 0) > 0 || (p.variations || []).some((v: any) => Number(v.stock || 0) > 0))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setProducts(merged);
     } catch (error: any) {
