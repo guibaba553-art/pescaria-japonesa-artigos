@@ -20,17 +20,26 @@ function parseAddress(raw: string): {
   complemento?: string;
 } {
   const safe = raw || '';
-  const ufMatch = safe.toUpperCase().match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/);
+  const UF_RE = /\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/;
+  const ufMatch = safe.toUpperCase().match(UF_RE);
   const cepMatch = safe.match(/(\d{5}-?\d{3})/);
 
-  // Heurística simples para os outros campos
   // "Rua X, 123 - Centro, Cidade - UF, 78000-000"
   const parts = safe.split(/[,\-]/).map((s) => s.trim()).filter(Boolean);
+
+  // Localiza município pelo segmento imediatamente antes do UF (evita capturar "SUL", "NORTE" etc.)
+  let municipio = '';
+  if (ufMatch) {
+    const ufIdx = parts.findIndex((p) => p.toUpperCase() === ufMatch[1]);
+    if (ufIdx > 0) municipio = parts[ufIdx - 1];
+  }
+  if (!municipio) municipio = parts[3] || parts[2] || 'CUIABA';
+
   return {
     logradouro: parts[0] || 'NAO INFORMADO',
     numero: (parts[1] || 'S/N').replace(/\D/g, '') || 'S/N',
     bairro: parts[2] || 'CENTRO',
-    municipio: parts[3] || parts[2] || 'CUIABA',
+    municipio,
     uf: ufMatch ? ufMatch[1] : 'MT',
     cep: cepMatch ? cleanDoc(cepMatch[1]) : '00000000',
   };
@@ -219,7 +228,7 @@ serve(async (req) => {
     if (order.customer_id) {
       const { data: cust } = await supabase
         .from('customers')
-        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood')
+        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood, municipio, uf, complemento')
         .eq('id', order.customer_id)
         .maybeSingle();
       if (cust) {
@@ -230,6 +239,9 @@ serve(async (req) => {
         if (cust.number) addr.numero = cust.number;
         if (cust.neighborhood) addr.bairro = cust.neighborhood;
         if (cust.cep) addr.cep = cleanDoc(cust.cep);
+        if (cust.municipio) addr.municipio = cust.municipio;
+        if (cust.uf) addr.uf = cust.uf;
+        if (cust.complemento) addr.complemento = cust.complemento;
       }
     }
 
