@@ -285,6 +285,15 @@ export default function PDV() {
     }
   };
 
+  const loadTefSettings = async () => {
+    try {
+      const { data } = await supabase.from('tef_settings').select('enabled').limit(1).maybeSingle();
+      setTefEnabled(!!data?.enabled);
+    } catch (err) {
+      console.error('Erro ao carregar config TEF:', err);
+    }
+  };
+
   const saveSale = async () => {
     if (cart.length === 0) {
       toast({
