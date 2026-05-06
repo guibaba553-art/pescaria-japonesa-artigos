@@ -987,6 +987,18 @@ export default function PDV() {
       }
     }
 
+    // TEF: para crédito/débito com TEF habilitado, abre dialog da maquininha
+    // antes de criar o pedido. Só prossegue após aprovação.
+    if (
+      tefEnabled &&
+      (paymentMethod === 'credit' || paymentMethod === 'debit') &&
+      !tefResultRef.current
+    ) {
+      finalizingRef.current = false;
+      setShowTefDialog(true);
+      return;
+    }
+
     setProcessing(true);
 
     // Gera/reutiliza chave de idempotência: se a venda falhar e o usuário tentar
