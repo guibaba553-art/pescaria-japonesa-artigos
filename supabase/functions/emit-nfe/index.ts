@@ -313,6 +313,10 @@ serve(async (req) => {
         valor_bruto: (Number(item.quantity) * Number(item.price_at_purchase)).toFixed(2),
         icms_origem: p.origem || focusSettings.origem_padrao || '0',
         icms_situacao_tributaria: p.csosn || focusSettings.csosn_padrao || '102',
+        // PIS — obrigatório. CST 49 = Outras operações (Simples Nacional)
+        pis_situacao_tributaria: '49',
+        // COFINS — obrigatório
+        cofins_situacao_tributaria: '49',
         ...(p.cest ? { cest: p.cest } : {}),
       };
     });
