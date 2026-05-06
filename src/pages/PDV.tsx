@@ -1720,6 +1720,34 @@ export default function PDV() {
                     </div>
                   )}
 
+                  {/* Emissão fiscal opcional */}
+                  <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={emitInvoice}
+                        onChange={(e) => setEmitInvoice(e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-medium">Emitir nota fiscal</span>
+                    </label>
+                    {emitInvoice && (
+                      <>
+                        <Tabs value={invoiceModel} onValueChange={(v: any) => setInvoiceModel(v)}>
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="nfce">NFC-e (consumidor)</TabsTrigger>
+                            <TabsTrigger value="nfe">NF-e (com CPF/CNPJ)</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                        {invoiceModel === 'nfe' && !selectedCustomer && (
+                          <p className="text-xs text-destructive">
+                            Selecione um cliente com CPF ou CNPJ para emitir NF-e (modelo 55).
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <Button
                     onClick={finalizeSale}
                     disabled={processing}
