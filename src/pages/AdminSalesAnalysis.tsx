@@ -716,7 +716,29 @@ export default function AdminSalesAnalysis() {
 
       // Caminho 3: orçamento (saved_sales)
       if (row.kind === 'saved') {
-        const cart = Array.isArray(row.raw?.cart_data) ? row.raw.cart_data : [];
+        // Normaliza cart_data: pode vir como array, string JSON ou estar ausente no raw em cache
+        const parseCart = (v: any): any[] => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === 'string') {
+            try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; }
+          }
+          return [];
+        };
+        let cart = parseCart(row.raw?.cart_data);
+
+        // Fallback: busca direto do banco se o raw em memória não tiver itens
+        if (cart.length === 0) {
+          const { data: fresh, error: freshErr } = await supabase
+            .from('saved_sales')
+            .select('cart_data, customer_data, payment_method, total_amount')
+            .eq('id', row.id)
+            .maybeSingle();
+          if (freshErr) throw freshErr;
+          cart = parseCart(fresh?.cart_data);
+          if (fresh) {
+            row.raw = { ...(row.raw || {}), ...fresh };
+          }
+        }
         if (cart.length === 0) throw new Error('Orçamento sem itens');
 
         // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
