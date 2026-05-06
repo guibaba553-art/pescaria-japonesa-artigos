@@ -76,6 +76,7 @@ export function FocusNFeSettings() {
     serie_nfce: 1,
     serie_nfe: 1,
     proximo_numero_nfce: 1,
+    proximo_numero_nfe: 1,
     cfop_padrao: '5102',
     cfop_interestadual: '6102',
     csosn_padrao: '102',
@@ -111,6 +112,7 @@ export function FocusNFeSettings() {
           serie_nfce: settings.serie_nfce,
           serie_nfe: settings.serie_nfe,
           proximo_numero_nfce: settings.proximo_numero_nfce || 1,
+          proximo_numero_nfe: settings.proximo_numero_nfe || 1,
           cfop_padrao: settings.cfop_padrao,
           cfop_interestadual: settings.cfop_interestadual,
           csosn_padrao: settings.csosn_padrao,
@@ -336,6 +338,19 @@ export function FocusNFeSettings() {
               value={form.serie_nfe}
               onChange={(e) => setForm({ ...form, serie_nfe: parseInt(e.target.value) || 1 })}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="proximo_numero_nfe">Próximo número NF-e</Label>
+            <Input
+              id="proximo_numero_nfe"
+              type="number"
+              min="1"
+              value={form.proximo_numero_nfe}
+              onChange={(e) => setForm({ ...form, proximo_numero_nfe: parseInt(e.target.value) || 1 })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Em caso de Rejeição 539 (duplicidade), aumente este número até passar das notas já autorizadas pela SEFAZ.
+            </p>
           </div>
         </CardContent>
       </Card>

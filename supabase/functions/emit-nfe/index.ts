@@ -339,10 +339,12 @@ serve(async (req) => {
     };
 
     // ---------- NUMERAÇÃO NF-e ----------
-    // Reaproveitamos o campo `proximo_numero_nfce` para NFC-e; para NF-e vamos
-    // deixar a Focus atribuir o próximo número (não enviando o campo `numero`).
-    // A `serie_nfe` vem de focus_nfe_settings.
+    // Controlamos o número da NF-e localmente para evitar dessincronia com a SEFAZ
+    // (Rejeição 539 - duplicidade). O contador `proximo_numero_nfe` é incrementado
+    // a cada emissão. Em caso de duplicidade, basta ajustar esse campo nas
+    // configurações fiscais para o próximo número livre na SEFAZ.
     const nfeSeries = String(focusSettings.serie_nfe || 1);
+    const nfeNumero = Number(focusSettings.proximo_numero_nfe || 1);
 
     // ---------- PAYLOAD ----------
     const totalProdutos = focusItems.reduce((sum, it) => sum + Number(it.valor_bruto), 0);
@@ -355,7 +357,7 @@ serve(async (req) => {
       tipo_documento: 1,
       finalidade_emissao: 1,
       serie: nfeSeries,
-      // numero: omitido — Focus atribui automaticamente
+      numero: String(nfeNumero),
       cnpj_emitente: cleanDoc(company.cnpj),
       nome_emitente: company.razao_social,
       nome_fantasia_emitente: company.nome_fantasia || company.razao_social,
@@ -473,6 +475,12 @@ serve(async (req) => {
         })
         .eq('id', emission.id);
     }
+
+    // Incrementa o contador local de NF-e (a Focus aceitou o envio).
+    await supabase
+      .from('focus_nfe_settings')
+      .update({ proximo_numero_nfe: nfeNumero + 1 })
+      .eq('id', focusSettings.id);
 
     return new Response(
       JSON.stringify({

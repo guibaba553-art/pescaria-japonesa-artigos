@@ -862,6 +862,7 @@ export type Database = {
           ncm_padrao: string | null
           origem_padrao: string
           proximo_numero_nfce: number
+          proximo_numero_nfe: number
           serie_nfce: number
           serie_nfe: number
           unidade_padrao: string
@@ -882,6 +883,7 @@ export type Database = {
           ncm_padrao?: string | null
           origem_padrao?: string
           proximo_numero_nfce?: number
+          proximo_numero_nfe?: number
           serie_nfce?: number
           serie_nfe?: number
           unidade_padrao?: string
@@ -902,6 +904,7 @@ export type Database = {
           ncm_padrao?: string | null
           origem_padrao?: string
           proximo_numero_nfce?: number
+          proximo_numero_nfe?: number
           serie_nfce?: number
           serie_nfe?: number
           unidade_padrao?: string

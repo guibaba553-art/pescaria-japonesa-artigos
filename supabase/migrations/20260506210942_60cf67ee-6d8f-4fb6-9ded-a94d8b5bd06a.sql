@@ -1,0 +1,1 @@
+ALTER TABLE public.focus_nfe_settings ADD COLUMN IF NOT EXISTS proximo_numero_nfe integer NOT NULL DEFAULT 1;
