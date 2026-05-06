@@ -148,6 +148,11 @@ export default function PDV() {
   const [savedSalesSearch, setSavedSalesSearch] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
+  // TEF
+  const [tefEnabled, setTefEnabled] = useState(false);
+  const [showTefDialog, setShowTefDialog] = useState(false);
+  const tefResultRef = useRef<TefApprovedResult | null>(null);
+
   useEffect(() => {
     if (!loading && !canView) {
       navigate('/admin');
