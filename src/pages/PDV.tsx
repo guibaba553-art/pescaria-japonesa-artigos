@@ -1134,6 +1134,79 @@ export default function PDV() {
         loadSavedSales();
       }
 
+      // Emissão fiscal opcional (NFC-e ou NF-e)
+      if (emitInvoice) {
+        try {
+          if (invoiceModel === 'nfe') {
+            if (!selectedCustomer || (!selectedCustomer.cpf && !selectedCustomer.cnpj)) {
+              toast({
+                title: 'NF-e não emitida',
+                description: 'Selecione cliente com CPF ou CNPJ para emitir NF-e.',
+                variant: 'destructive',
+              });
+            } else {
+              // NF-e (modelo 55) — usa o pedido já criado
+              const { data: nfeData, error: nfeErr } = await supabase.functions.invoke('emit-nfe', {
+                body: { orderId: order.id },
+              });
+              if (nfeErr || (nfeData as any)?.error) {
+                toast({
+                  title: 'Erro ao emitir NF-e',
+                  description: (nfeData as any)?.error || nfeErr?.message || 'Falha desconhecida',
+                  variant: 'destructive',
+                });
+              } else {
+                toast({ title: 'NF-e enviada à SEFAZ ✅' });
+              }
+            }
+          } else {
+            // NFC-e (modelo 65)
+            const payload = {
+              order_id: order.id,
+              payment_method: paymentMethod === 'cash' ? 'dinheiro'
+                : paymentMethod === 'pix' ? 'pix'
+                : paymentMethod === 'credit' ? 'cartao_credito'
+                : 'cartao_debito',
+              total_amount: calculateTotal(),
+              customer: selectedCustomer ? {
+                cpf: selectedCustomer.cpf || undefined,
+                cnpj: selectedCustomer.cnpj || undefined,
+                nome: selectedCustomer.company_name || selectedCustomer.full_name || undefined,
+              } : undefined,
+              items: cart.map((item) => ({
+                product_id: item.product.id,
+                name: item.product.name,
+                quantity: item.quantity,
+                unit_price: getItemUnitPrice(item),
+                ncm: (item.product as any).ncm || undefined,
+                cfop: (item.product as any).cfop || undefined,
+                csosn: (item.product as any).csosn || undefined,
+                origem: (item.product as any).origem || undefined,
+                unidade: (item.product as any).unidade_comercial || undefined,
+                cest: (item.product as any).cest || undefined,
+              })),
+            };
+            const { data: nfceData, error: nfceErr } = await supabase.functions.invoke('emit-nfce', { body: payload });
+            if (nfceErr || (nfceData as any)?.error) {
+              toast({
+                title: 'Erro ao emitir NFC-e',
+                description: (nfceData as any)?.error || nfceErr?.message || 'Falha desconhecida',
+                variant: 'destructive',
+              });
+            } else {
+              toast({ title: 'NFC-e emitida ✅' });
+            }
+          }
+        } catch (e: any) {
+          console.error('Erro emissão fiscal PDV:', e);
+          toast({
+            title: 'Erro ao emitir nota',
+            description: e?.message || 'Verifique as configurações fiscais.',
+            variant: 'destructive',
+          });
+        }
+      }
+
       // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
       await loadProducts();
