@@ -1630,6 +1630,113 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_audit_discrepancies: {
+        Row: {
+          created_at: string
+          current_stock: number
+          difference: number
+          expected_stock: number
+          id: string
+          movements_summary: Json | null
+          probable_cause: string | null
+          product_id: string
+          product_name: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          run_id: string
+          sku: string | null
+          variation_id: string | null
+          variation_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_stock: number
+          difference: number
+          expected_stock: number
+          id?: string
+          movements_summary?: Json | null
+          probable_cause?: string | null
+          product_id: string
+          product_name: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id: string
+          sku?: string | null
+          variation_id?: string | null
+          variation_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_stock?: number
+          difference?: number
+          expected_stock?: number
+          id?: string
+          movements_summary?: Json | null
+          probable_cause?: string | null
+          product_id?: string
+          product_name?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          run_id?: string
+          sku?: string | null
+          variation_id?: string | null
+          variation_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_audit_discrepancies_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "stock_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_audit_runs: {
+        Row: {
+          backup_xml_size: number | null
+          created_at: string
+          discrepancy_count: number
+          email_message_id: string | null
+          email_sent: boolean
+          error_message: string | null
+          id: string
+          ok_count: number
+          run_at: string
+          status: string
+          total_skus: number
+        }
+        Insert: {
+          backup_xml_size?: number | null
+          created_at?: string
+          discrepancy_count?: number
+          email_message_id?: string | null
+          email_sent?: boolean
+          error_message?: string | null
+          id?: string
+          ok_count?: number
+          run_at?: string
+          status?: string
+          total_skus?: number
+        }
+        Update: {
+          backup_xml_size?: number | null
+          created_at?: string
+          discrepancy_count?: number
+          email_message_id?: string | null
+          email_sent?: boolean
+          error_message?: string | null
+          id?: string
+          ok_count?: number
+          run_at?: string
+          status?: string
+          total_skus?: number
+        }
+        Relationships: []
+      }
       stock_movements: {
         Row: {
           created_at: string
@@ -2150,6 +2257,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_products_with_stock_discrepancy: {
+        Args: never
+        Returns: {
+          discrepancy_count: number
+          last_run_at: string
+          product_id: string
+        }[]
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       has_role: {
