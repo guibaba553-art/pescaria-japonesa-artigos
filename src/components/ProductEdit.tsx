@@ -25,6 +25,7 @@ import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
+import { resolveOptionalMeasurementUpdate } from '@/utils/productMeasurements';
 
 interface ProductEditProps {
   product: Product;
@@ -321,10 +322,10 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
         price_cash_percent: 0,
         price_debit_percent: 5,
         price_credit_percent: 10.25,
-        weight_grams: weightGrams ? parseInt(weightGrams) : null,
-        length_cm: lengthCm ? parseFloat(lengthCm) : null,
-        width_cm: widthCm ? parseFloat(widthCm) : null,
-        height_cm: heightCm ? parseFloat(heightCm) : null,
+        weight_grams: resolveOptionalMeasurementUpdate(weightGrams, (product as any).weight_grams, 'int'),
+        length_cm: resolveOptionalMeasurementUpdate(lengthCm, (product as any).length_cm, 'float'),
+        width_cm: resolveOptionalMeasurementUpdate(widthCm, (product as any).width_cm, 'float'),
+        height_cm: resolveOptionalMeasurementUpdate(heightCm, (product as any).height_cm, 'float'),
         pdv_only: pdvOnly,
         pdv_no_markup: pdvNoMarkup,
       };
