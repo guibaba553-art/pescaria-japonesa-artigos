@@ -42,7 +42,9 @@ import {
 import { toast } from "sonner";
 
 interface Product {
-  id: string;
+  id: string; // row id (product id or variation id)
+  product_id: string; // always the parent product id (used to update products.* fields)
+  variation_id: string | null;
   name: string;
   price: number;
   cost: number | null;
@@ -97,26 +99,62 @@ export function PriceFormation() {
     if (opts.silent) setRefreshing(true);
     else setLoading(true);
     try {
-      const [pRes, gRes] = await Promise.all([
+      const [pRes, gRes, vRes] = await Promise.all([
         supabase.rpc("get_products_admin"),
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
+        supabase
+          .from("product_variations")
+          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id")
+          .order("name"),
       ]);
 
       if (pRes.error) throw pRes.error;
       if (gRes.error) throw gRes.error;
+      if (vRes.error) throw vRes.error;
 
-      const normalized = ((pRes.data as any[] | null) || []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: Number(p.price || 0),
-        cost: p.cost !== null ? Number(p.cost) : null,
-        sale_price: p.sale_price !== null ? Number(p.sale_price) : null,
-        on_sale: !!p.on_sale,
-        category: p.category || "Sem categoria",
-        image_url: p.image_url || null,
-        sku: p.sku || null,
-        cost_group_id: p.cost_group_id || null,
-      })) as Product[];
+      const rawProducts = (pRes.data as any[] | null) || [];
+      const variations = (vRes.data as any[] | null) || [];
+      const productsWithVariationIds = new Set(variations.map((v) => v.product_id));
+
+      const productRows: Product[] = rawProducts
+        .filter((p) => !productsWithVariationIds.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          product_id: p.id,
+          variation_id: null,
+          name: p.name,
+          price: Number(p.price || 0),
+          cost: p.cost !== null ? Number(p.cost) : null,
+          sale_price: p.sale_price !== null ? Number(p.sale_price) : null,
+          on_sale: !!p.on_sale,
+          category: p.category || "Sem categoria",
+          image_url: p.image_url || null,
+          sku: p.sku || null,
+          cost_group_id: p.cost_group_id || null,
+        }));
+
+      const productById = new Map(rawProducts.map((p) => [p.id, p]));
+      const variationRows: Product[] = variations.map((v) => {
+        const parent = productById.get(v.product_id) || ({} as any);
+        return {
+          id: `v:${v.id}`,
+          product_id: v.product_id,
+          variation_id: v.id,
+          name: `${parent.name || ""} - ${v.name}`,
+          price: Number(v.price || 0),
+          cost: v.cost !== null && v.cost !== undefined ? Number(v.cost) : null,
+          sale_price: null,
+          on_sale: false,
+          category: parent.category || "Sem categoria",
+          image_url: v.image_url || parent.image_url || null,
+          sku: v.sku || null,
+          cost_group_id: v.cost_group_id || null,
+        };
+      });
+
+      const normalized = [...productRows, ...variationRows].sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR")
+      );
 
       setProducts(normalized);
       setGroups(
@@ -222,19 +260,30 @@ export function PriceFormation() {
     setSaving(true);
     try {
       const newGroupId = editGroupId === "none" ? null : editGroupId;
-      const { error } = await supabase
-        .from("products")
-        .update({
-          cost: liveCost,
-          price: livePrice,
-          cost_group_id: newGroupId,
-        })
-        .eq("id", selected.id);
-      if (error) throw error;
+      if (selected.variation_id) {
+        const { error } = await supabase
+          .from("product_variations")
+          .update({
+            cost: liveCost,
+            price: livePrice,
+            cost_group_id: newGroupId,
+          })
+          .eq("id", selected.variation_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("products")
+          .update({
+            cost: liveCost,
+            price: livePrice,
+            cost_group_id: newGroupId,
+          })
+          .eq("id", selected.product_id);
+        if (error) throw error;
+      }
 
-      toast.success("Produto atualizado");
+      toast.success(selected.variation_id ? "Variação atualizada" : "Produto atualizado");
 
-      // Atualiza apenas o produto editado em memória (sem desmontar a lista)
       const newCost = newGroupId
         ? groups.find((g) => g.id === newGroupId)?.cost ?? liveCost
         : liveCost;
@@ -252,7 +301,6 @@ export function PriceFormation() {
         cost_group_id: newGroupId,
       });
 
-      // Refresh em background (não bloqueia a UI nem oculta a lista)
       loadAll({ silent: true });
     } catch (e: any) {
       console.error(e);

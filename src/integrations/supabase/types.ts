@@ -1316,6 +1316,8 @@ export type Database = {
       }
       product_variations: {
         Row: {
+          cost: number | null
+          cost_group_id: string | null
           created_at: string
           description: string | null
           height_cm: number | null
@@ -1333,6 +1335,8 @@ export type Database = {
           width_cm: number | null
         }
         Insert: {
+          cost?: number | null
+          cost_group_id?: string | null
           created_at?: string
           description?: string | null
           height_cm?: number | null
@@ -1350,6 +1354,8 @@ export type Database = {
           width_cm?: number | null
         }
         Update: {
+          cost?: number | null
+          cost_group_id?: string | null
           created_at?: string
           description?: string | null
           height_cm?: number | null
@@ -1367,6 +1373,13 @@ export type Database = {
           width_cm?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_variations_cost_group_id_fkey"
+            columns: ["cost_group_id"]
+            isOneToOne: false
+            referencedRelation: "cost_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_variations_product_id_fkey"
             columns: ["product_id"]
