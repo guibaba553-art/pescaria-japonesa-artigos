@@ -753,9 +753,13 @@ export default function AdminSalesAnalysis() {
 
           const { data: customer } = await supabase
             .from('customers')
-            .select('cep, street, number, neighborhood')
+            .select('cep, street, number, neighborhood, city, state, complement')
             .eq('id', cd.id)
             .maybeSingle();
+
+          const addrStr = customer
+            ? `${customer.street || 'NAO INFORMADO'}, ${customer.number || 'S/N'} - ${customer.neighborhood || 'CENTRO'}, ${customer.city || 'CUIABA'} - ${customer.state || 'MT'}, ${customer.cep || '00000000'}`
+            : 'Venda Presencial';
 
           const { data: newOrder, error: orderErr } = await supabase
             .from('orders')
@@ -765,9 +769,7 @@ export default function AdminSalesAnalysis() {
               shipping_cost: 0,
               status: 'entregado',
               delivery_type: 'pickup',
-              shipping_address: customer
-                ? `${customer.street}, ${customer.number} - ${customer.neighborhood}`
-                : 'Venda Presencial',
+              shipping_address: addrStr,
               shipping_cep: customer?.cep || '00000000',
               customer_id: cd.id,
               source: 'pdv',
