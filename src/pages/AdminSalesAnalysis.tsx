@@ -144,6 +144,7 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
+  const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
