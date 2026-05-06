@@ -1089,6 +1089,17 @@ export default function AdminSalesAnalysis() {
                                   </Button>
                                 );
                               })()}
+                              {(r.kind === 'order' || r.kind === 'saved') && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                  onClick={() => handleGenerateSalePdf(r)}
+                                >
+                                  <FileDown className="w-3.5 h-3.5 mr-1" />
+                                  PDF
+                                </Button>
+                              )}
                               {canCancel && (
                                 <Button
                                   size="sm"
