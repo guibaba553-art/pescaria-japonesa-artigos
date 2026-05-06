@@ -344,6 +344,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_groups: {
+        Row: {
+          cost: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupon_redemptions: {
         Row: {
           coupon_id: string
@@ -1332,6 +1362,7 @@ export type Database = {
           cest: string | null
           cfop: string | null
           cost: number | null
+          cost_group_id: string | null
           created_at: string
           created_by: string | null
           csosn: string | null
@@ -1383,6 +1414,7 @@ export type Database = {
           cest?: string | null
           cfop?: string | null
           cost?: number | null
+          cost_group_id?: string | null
           created_at?: string
           created_by?: string | null
           csosn?: string | null
@@ -1434,6 +1466,7 @@ export type Database = {
           cest?: string | null
           cfop?: string | null
           cost?: number | null
+          cost_group_id?: string | null
           created_at?: string
           created_by?: string | null
           csosn?: string | null
@@ -1480,6 +1513,13 @@ export type Database = {
           width_cm?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "products_cost_group_id_fkey"
+            columns: ["cost_group_id"]
+            isOneToOne: false
+            referencedRelation: "cost_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_supplier_id_fkey"
             columns: ["supplier_id"]
@@ -2284,6 +2324,7 @@ export type Database = {
           cest: string | null
           cfop: string | null
           cost: number | null
+          cost_group_id: string | null
           created_at: string
           created_by: string | null
           csosn: string | null
@@ -2344,6 +2385,7 @@ export type Database = {
           cest: string | null
           cfop: string | null
           cost: number | null
+          cost_group_id: string | null
           created_at: string
           created_by: string | null
           csosn: string | null
