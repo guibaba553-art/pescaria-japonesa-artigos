@@ -494,7 +494,13 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...C.muted);
-  doc.text('Este orçamento não tem valor fiscal · Validade: 7 dias', margin, pageH - 10);
+  doc.text(
+    finalized
+      ? 'Comprovante interno · Não substitui documento fiscal'
+      : 'Este orçamento não tem valor fiscal · Validade: 7 dias',
+    margin,
+    pageH - 10,
+  );
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...C.ink);
@@ -503,5 +509,6 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   doc.setTextColor(...C.muted);
   doc.text(COMPANY.site, pageW - margin, pageH - 6, { align: 'right' });
 
-  doc.save(`orcamento-${data.saleId.slice(0, 8)}.pdf`);
+  const fileBase = finalized ? 'venda' : 'orcamento';
+  doc.save(`${fileBase}-${data.saleId.slice(0, 8)}.pdf`);
 }
