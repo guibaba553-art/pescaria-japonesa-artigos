@@ -222,8 +222,8 @@ export default function PDV() {
         byProduct.get(v.product_id)!.push(v);
       });
       const merged = (prods || [])
-        .filter((p: any) => p.stock > 0)
         .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
+        .filter((p: any) => Number(p.stock || 0) > 0 || (p.variations || []).some((v: any) => Number(v.stock || 0) > 0))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setProducts(merged);
     } catch (error: any) {
@@ -600,12 +600,10 @@ export default function PDV() {
       console.log('🔍 Buscando por código:', code);
 
       const productWithVariation = products.find((product) =>
-        (product.variations || []).some(
-          (variation) => variation.sku === code && Number(variation.stock || 0) > 0,
-        ),
+        (product.variations || []).some((variation) => variation.sku === code),
       );
       const variation = productWithVariation?.variations?.find(
-        (item) => item.sku === code && Number(item.stock || 0) > 0,
+        (item) => item.sku === code,
       );
 
       if (productWithVariation && variation) {
@@ -624,7 +622,7 @@ export default function PDV() {
       }
 
       const matched = products.find(
-        (product) => product.sku === code && Number(product.stock || 0) > 0,
+        (product) => product.sku === code,
       );
       if (matched) {
         console.log('✅ Produto encontrado:', matched.name);
