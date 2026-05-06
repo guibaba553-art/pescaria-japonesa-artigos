@@ -11,9 +11,9 @@ const USER_AGENT = 'JAPAS Pesca (robertobaba2@gmail.com)';
 
 const productSchema = z.object({
   id: z.string().optional(),
-  width: z.number().min(11).max(200),
-  height: z.number().min(2).max(200),
-  length: z.number().min(11).max(200),
+  width: z.number().min(11),
+  height: z.number().min(2),
+  length: z.number().min(11),
   weight: z.number().min(0.01).max(30),
   insurance_value: z.number().min(0).default(0),
   quantity: z.number().int().min(1).default(1),
@@ -23,9 +23,9 @@ const shippingRequestSchema = z.object({
   cepDestino: z.string().regex(/^\d{8}$/, 'CEP must be exactly 8 digits'),
   // Backwards-compatible single-product fields
   peso: z.number().min(1).max(30000).optional(),
-  comprimento: z.number().min(11).max(200).optional(),
-  altura: z.number().min(2).max(200).optional(),
-  largura: z.number().min(11).max(200).optional(),
+  comprimento: z.number().min(11).optional(),
+  altura: z.number().min(2).optional(),
+  largura: z.number().min(11).optional(),
   formato: z.number().int().min(1).max(3).optional(),
   diametro: z.number().optional(),
   // New: list of products (preferred)
