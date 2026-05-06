@@ -96,9 +96,9 @@ function packagingWeight(type: PackedBox['packaging'], lengthCm = 0): number {
 // Mínimos exigidos pelo Melhor Envio
 function clampMin(box: { w: number; h: number; l: number }) {
   return {
-    width: Math.max(11, box.w),
-    height: Math.max(2, box.h),
-    length: Math.max(11, box.l),
+    width: Math.min(105, Math.max(11, box.w)),
+    height: Math.min(105, Math.max(2, box.h)),
+    length: Math.min(105, Math.max(11, box.l)),
   };
 }
 
