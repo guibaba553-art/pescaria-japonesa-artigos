@@ -93,6 +93,45 @@ export default function SalesHistory() {
     }
   };
 
+  const handleGeneratePdf = async (order: any) => {
+    try {
+      const items = (order.items || []).map((it: any) => ({
+        product: {
+          id: it.product?.id,
+          name: it.product?.name ?? 'Produto',
+          sku: it.product?.sku,
+          image_url: it.product?.image_url,
+          pdv_no_markup: it.product?.pdv_no_markup,
+        },
+        quantity: it.quantity || 0,
+        unitPrice: Number(it.price_at_purchase || 0),
+      }));
+      const subtotal = items.reduce(
+        (s: number, it: any) => s + it.unitPrice * it.quantity,
+        0,
+      );
+      const discount = Math.max(0, subtotal - Number(order.total_amount));
+      await generateBudgetPdf({
+        saleId: order.id,
+        createdAt: order.created_at,
+        customerName: order.customer?.full_name,
+        customerCPF: order.customer?.cpf,
+        paymentMethod: order.payment_method,
+        items,
+        subtotal,
+        discount,
+        total: Number(order.total_amount),
+        finalized: true,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: err?.message ?? String(err),
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap: { [key: string]: { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' } } = {
       'aguardando_pagamento': { label: 'Aguardando', variant: 'outline' },
