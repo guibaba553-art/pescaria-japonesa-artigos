@@ -447,7 +447,7 @@ export default function AdminSalesAnalysis() {
       if (row.kind === 'order') {
         const { data, error } = await supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, products(name, sku, image_url, images, pdv_no_markup), product_variations(name, image_url)')
+          .select('quantity, price_at_purchase, products(name, sku, image_url, images), product_variations(name, image_url)')
           .eq('order_id', row.id);
         if (error) throw error;
         items = (data || []).map((it: any) => ({
@@ -456,7 +456,6 @@ export default function AdminSalesAnalysis() {
             name: it.products?.name || 'Produto',
             sku: it.products?.sku,
             image_url: it.products?.image_url || (Array.isArray(it.products?.images) ? it.products.images[0] : null),
-            pdv_no_markup: it.products?.pdv_no_markup,
           },
           variation: it.product_variations
             ? { name: it.product_variations.name, image_url: it.product_variations.image_url }
