@@ -710,10 +710,81 @@ export default function AdminSalesAnalysis() {
         return;
       }
 
-      // Caminho 3: orçamento (saved_sales) -> monta NFC-e a partir de cart_data
+      // Caminho 3: orçamento (saved_sales)
       if (row.kind === 'saved') {
         const cart = Array.isArray(row.raw?.cart_data) ? row.raw.cart_data : [];
         if (cart.length === 0) throw new Error('Orçamento sem itens');
+
+        // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
+        if (invoiceModel === 'nfe') {
+          const cd: any = row.raw?.customer_data || null;
+          if (!cd?.id) {
+            throw new Error('Para emitir NF-e a partir de um orçamento é necessário ter um cliente vinculado (com endereço completo).');
+          }
+
+          const { data: { user: u } } = await supabase.auth.getUser();
+          if (!u) throw new Error('Usuário não autenticado');
+
+          const { data: customer } = await supabase
+            .from('customers')
+            .select('cep, street, number, neighborhood')
+            .eq('id', cd.id)
+            .maybeSingle();
+
+          const { data: newOrder, error: orderErr } = await supabase
+            .from('orders')
+            .insert([{
+              user_id: u.id,
+              total_amount: Number(row.total_amount),
+              shipping_cost: 0,
+              status: 'entregado',
+              delivery_type: 'pickup',
+              shipping_address: customer
+                ? `${customer.street}, ${customer.number} - ${customer.neighborhood}`
+                : 'Venda Presencial',
+              shipping_cep: customer?.cep || '00000000',
+              customer_id: cd.id,
+              source: 'pdv',
+              payment_method: row.raw?.payment_method || 'dinheiro',
+            }])
+            .select()
+            .single();
+          if (orderErr) throw orderErr;
+
+          const itemsPayload = cart.map((it: any) => ({
+            order_id: newOrder.id,
+            product_id: it.id || it.product_id,
+            quantity: Number(it.quantity || 1),
+            price_at_purchase: Number(it.price ?? it.unit_price ?? 0),
+            variation_id: it.variation_id || null,
+          }));
+          const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+          if (itemsErr) throw itemsErr;
+
+          const { data, error } = await supabase.functions.invoke('emit-nfe', {
+            body: { orderId: newOrder.id },
+          });
+          if (error) {
+            let msg: string | null = null;
+            try {
+              const ctx: any = (error as any).context;
+              if (ctx?.clone && ctx?.json) {
+                const parsed = await ctx.clone().json().catch(() => null);
+                msg = parsed?.error || parsed?.message || null;
+              }
+            } catch { /* ignore */ }
+            throw new Error(msg || error.message || 'Falha ao emitir NF-e');
+          }
+          if (data?.error) throw new Error(data.error);
+          toast.success('NF-e emitida com sucesso! ✅', {
+            id: loadingToastId,
+            description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+          });
+          await fetchAll(true);
+          return;
+        }
+
+        // Caminho 3.B: NFC-e (modelo 65) -> monta payload direto
 
         // Buscar dados fiscais dos produtos
         const productIds = Array.from(new Set(cart.map((it: any) => it.id || it.product_id).filter(Boolean)));
