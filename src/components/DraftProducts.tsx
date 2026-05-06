@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCategories } from '@/hooks/useCategories';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { FileEdit, CheckCircle2, Trash2, Package, Hash, Search, Link2 } from 'lucide-react';
+import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 
 interface DraftProduct {
   id: string;
@@ -198,10 +199,10 @@ export function DraftProducts({ onChange }: { onChange?: () => void }) {
         ncm: form.ncm || null,
         category: form.category,
         include_in_nfe: true,
-        weight_grams: form.weight_grams ? parseInt(form.weight_grams) : null,
-        length_cm: form.length_cm ? parseFloat(form.length_cm) : null,
-        width_cm: form.width_cm ? parseFloat(form.width_cm) : null,
-        height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
+        weight_grams: parseOptionalMeasurementInput(form.weight_grams, 'int'),
+        length_cm: parseOptionalMeasurementInput(form.length_cm, 'float'),
+        width_cm: parseOptionalMeasurementInput(form.width_cm, 'float'),
+        height_cm: parseOptionalMeasurementInput(form.height_cm, 'float'),
       })
       .eq('id', editing.id);
 
