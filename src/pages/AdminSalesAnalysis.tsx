@@ -544,8 +544,33 @@ export default function AdminSalesAnalysis() {
         return;
       }
 
-      // Caminho 2: pedido PDV -> NFC-e (modelo 65) com payload completo
+      // Caminho 2: pedido PDV -> NFC-e (modelo 65) OU NF-e (modelo 55) conforme escolha
       if (row.kind === 'order') {
+        // Se admin escolheu NF-e (modelo 55) para PDV, usa a edge function emit-nfe
+        if (invoiceModel === 'nfe') {
+          const { data, error } = await supabase.functions.invoke('emit-nfe', {
+            body: { orderId: row.id },
+          });
+          if (error) {
+            let msg: string | null = null;
+            try {
+              const ctx: any = (error as any).context;
+              if (ctx?.clone && ctx?.json) {
+                const parsed = await ctx.clone().json().catch(() => null);
+                msg = parsed?.error || parsed?.message || null;
+              }
+            } catch { /* ignore */ }
+            throw new Error(msg || error.message || 'Falha ao emitir NF-e');
+          }
+          if (data?.error) throw new Error(data.error);
+          toast.success('NF-e emitida com sucesso! ✅', {
+            id: loadingToastId,
+            description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
+          });
+          await fetchAll(true);
+          return;
+        }
+
         const [{ data: items, error: itemsErr }, { data: order, error: orderErr }] = await Promise.all([
           supabase
             .from('order_items')
