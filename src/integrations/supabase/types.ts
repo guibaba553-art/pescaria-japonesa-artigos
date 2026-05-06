@@ -476,43 +476,64 @@ export type Database = {
         Row: {
           cep: string
           cnpj: string | null
+          codigo_municipio_ibge: string | null
           company_name: string | null
+          complemento: string | null
           cpf: string | null
           created_at: string
           created_by: string | null
+          email: string | null
           full_name: string
           id: string
+          ie_indicador: string | null
+          inscricao_estadual: string | null
+          municipio: string | null
           neighborhood: string
           number: string
           street: string
+          uf: string | null
           updated_at: string
         }
         Insert: {
           cep: string
           cnpj?: string | null
+          codigo_municipio_ibge?: string | null
           company_name?: string | null
+          complemento?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           full_name: string
           id?: string
+          ie_indicador?: string | null
+          inscricao_estadual?: string | null
+          municipio?: string | null
           neighborhood: string
           number: string
           street: string
+          uf?: string | null
           updated_at?: string
         }
         Update: {
           cep?: string
           cnpj?: string | null
+          codigo_municipio_ibge?: string | null
           company_name?: string | null
+          complemento?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
+          email?: string | null
           full_name?: string
           id?: string
+          ie_indicador?: string | null
+          inscricao_estadual?: string | null
+          municipio?: string | null
           neighborhood?: string
           number?: string
           street?: string
+          uf?: string | null
           updated_at?: string
         }
         Relationships: []
