@@ -52,6 +52,7 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
+import { TefChargeDialog, type TefApprovedResult } from '@/components/TefChargeDialog';
 
 interface ProductVariation {
   id: string;
@@ -147,6 +148,11 @@ export default function PDV() {
   const [savedSalesSearch, setSavedSalesSearch] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
+  // TEF
+  const [tefEnabled, setTefEnabled] = useState(false);
+  const [showTefDialog, setShowTefDialog] = useState(false);
+  const tefResultRef = useRef<TefApprovedResult | null>(null);
+
   useEffect(() => {
     if (!loading && !canView) {
       navigate('/admin');
@@ -162,6 +168,7 @@ export default function PDV() {
     const runDeferred = () => {
       loadCustomers();
       loadSavedSales();
+      loadTefSettings();
     };
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     if (w.requestIdleCallback) {
@@ -275,6 +282,15 @@ export default function PDV() {
       setSavedSales(enriched);
     } catch (error: any) {
       console.error('Erro ao carregar vendas salvas:', error);
+    }
+  };
+
+  const loadTefSettings = async () => {
+    try {
+      const { data } = await supabase.from('tef_settings').select('enabled').limit(1).maybeSingle();
+      setTefEnabled(!!data?.enabled);
+    } catch (err) {
+      console.error('Erro ao carregar config TEF:', err);
     }
   };
 
@@ -969,6 +985,18 @@ export default function PDV() {
         finalizingRef.current = false;
         return;
       }
+    }
+
+    // TEF: para crédito/débito com TEF habilitado, abre dialog da maquininha
+    // antes de criar o pedido. Só prossegue após aprovação.
+    if (
+      tefEnabled &&
+      (paymentMethod === 'credit' || paymentMethod === 'debit') &&
+      !tefResultRef.current
+    ) {
+      finalizingRef.current = false;
+      setShowTefDialog(true);
+      return;
     }
 
     setProcessing(true);
