@@ -233,17 +233,27 @@ export function PriceFormation() {
       if (error) throw error;
 
       toast.success("Produto atualizado");
-      await loadAll();
-      const updated = (await supabase.rpc("get_products_admin")).data as any[];
-      const refreshed = (updated || []).find((p: any) => p.id === selected.id);
-      if (refreshed) {
-        setSelected({
-          ...selected,
-          cost: Number(refreshed.cost ?? 0),
-          price: Number(refreshed.price ?? 0),
-          cost_group_id: refreshed.cost_group_id || null,
-        });
-      }
+
+      // Atualiza apenas o produto editado em memória (sem desmontar a lista)
+      const newCost = newGroupId
+        ? groups.find((g) => g.id === newGroupId)?.cost ?? liveCost
+        : liveCost;
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selected.id
+            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId }
+            : p
+        )
+      );
+      setSelected({
+        ...selected,
+        cost: newCost,
+        price: livePrice,
+        cost_group_id: newGroupId,
+      });
+
+      // Refresh em background (não bloqueia a UI nem oculta a lista)
+      loadAll({ silent: true });
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Erro ao salvar");
