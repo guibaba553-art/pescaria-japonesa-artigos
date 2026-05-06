@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductVariation } from '@/types/product';
+import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 
 /**
  * Hook centralizado para gerenciar variações de produtos
@@ -93,10 +94,10 @@ export function useProductVariations(productId?: string) {
             description: v.description?.trim() || null,
             sku: v.sku?.trim() || null,
             image_url: v.image_url || null,
-            weight_grams: v.weight_grams != null ? Number(v.weight_grams) : null,
-            length_cm: v.length_cm != null ? Number(v.length_cm) : null,
-            width_cm: v.width_cm != null ? Number(v.width_cm) : null,
-            height_cm: v.height_cm != null ? Number(v.height_cm) : null,
+            weight_grams: parseOptionalMeasurementInput(v.weight_grams, 'int'),
+            length_cm: parseOptionalMeasurementInput(v.length_cm, 'float'),
+            width_cm: parseOptionalMeasurementInput(v.width_cm, 'float'),
+            height_cm: parseOptionalMeasurementInput(v.height_cm, 'float'),
             min_stock: v.min_stock != null ? Number(v.min_stock) : 0
           };
         });
