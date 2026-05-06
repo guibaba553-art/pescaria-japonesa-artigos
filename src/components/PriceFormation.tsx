@@ -279,7 +279,7 @@ export function PriceFormation() {
       setNewGroupName("");
       setNewGroupCost("");
       setNewGroupDesc("");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao criar grupo");
     } finally {
@@ -295,7 +295,7 @@ export function PriceFormation() {
         .eq("id", groupId);
       if (error) throw error;
       toast.success("Custo do grupo atualizado — propagado aos produtos");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao atualizar grupo");
     }
@@ -307,7 +307,7 @@ export function PriceFormation() {
       const { error } = await supabase.from("cost_groups").delete().eq("id", groupId);
       if (error) throw error;
       toast.success("Grupo excluído");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao excluir grupo");
     }
