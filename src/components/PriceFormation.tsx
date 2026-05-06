@@ -96,6 +96,7 @@ export function PriceFormation() {
   const loadAll = async (opts: { silent?: boolean } = {}) => {
     if (opts.silent) setRefreshing(true);
     else setLoading(true);
+    try {
       const [pRes, gRes] = await Promise.all([
         supabase.rpc("get_products_admin"),
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
