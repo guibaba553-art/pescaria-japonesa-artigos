@@ -52,6 +52,7 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
+import { TefChargeDialog, type TefApprovedResult } from '@/components/TefChargeDialog';
 
 interface ProductVariation {
   id: string;
