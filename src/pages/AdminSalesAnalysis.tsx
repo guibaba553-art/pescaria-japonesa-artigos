@@ -202,7 +202,7 @@ export default function AdminSalesAnalysis() {
           .gte('created_at', fromIso).lte('created_at', toIso),
         supabase
           .from('saved_sales')
-          .select('id, total_amount, payment_method, created_at, user_id, customer_data, notes')
+          .select('id, total_amount, payment_method, created_at, user_id, cart_data, customer_data, notes')
           .gte('created_at', fromIso).lte('created_at', toIso),
         supabase
           .from('nfe_emissions')
