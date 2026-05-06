@@ -422,6 +422,7 @@ export default function PDV() {
     setSelectedCustomer(sale.customer_data);
     setPaymentMethod(sale.payment_method || 'cash');
     setCurrentSaleId(sale.id);
+    setSaleNotes(sale.notes || '');
     setShowSavedSalesDialog(false);
     
     toast({
