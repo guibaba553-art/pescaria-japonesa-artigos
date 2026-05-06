@@ -306,6 +306,32 @@ serve(async (req) => {
           }
         }
 
+        // ----- Emissão automática de NF-e (modelo 55) para pedidos do site -----
+        // Pedidos do PDV (source='pdv') usam NFC-e direto na finalização da venda.
+        if (!alreadyProcessed && !stockFailed && order.source !== 'pdv') {
+          try {
+            const { data: focusSettings } = await supabase
+              .from('focus_nfe_settings')
+              .select('enabled, auto_emit_nfe_pedido_pago')
+              .limit(1)
+              .maybeSingle();
+
+            if (focusSettings?.enabled && focusSettings?.auto_emit_nfe_pedido_pago) {
+              console.log(`[payment-webhook] Emitindo NF-e automaticamente para pedido ${order.id}`);
+              const { data: nfeData, error: nfeErr } = await supabase.functions.invoke('emit-nfe', {
+                body: { orderId: order.id },
+              });
+              if (nfeErr) {
+                console.error('[payment-webhook] Falha ao emitir NF-e automática:', nfeErr);
+              } else {
+                console.log('[payment-webhook] NF-e enviada à SEFAZ:', nfeData?.status || 'ok');
+              }
+            }
+          } catch (nfeErr) {
+            console.error('[payment-webhook] Erro inesperado em NF-e automática:', nfeErr);
+          }
+        }
+
         // ----- E-mail de confirmação de compra (1x por pedido) -----
         if (!alreadyProcessed) {
           try {
