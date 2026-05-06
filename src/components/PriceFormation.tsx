@@ -2,9 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Search, TrendingUp, DollarSign, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, Search, TrendingUp, DollarSign, Tag, Save } from "lucide-react";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -21,6 +25,12 @@ interface Product {
 const fmt = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+const parseNum = (s: string): number => {
+  if (!s) return 0;
+  const n = Number(s.replace(",", "."));
+  return isNaN(n) ? 0 : n;
+};
+
 export function PriceFormation() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,36 +38,52 @@ export function PriceFormation() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
 
+  // Editable form state
+  const [editCost, setEditCost] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editSalePrice, setEditSalePrice] = useState("");
+  const [editOnSale, setEditOnSale] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_products_admin");
+      if (error) throw error;
+      const normalized = ((data as Product[] | null) || []).map((product) => ({
+        id: product.id,
+        name: product.name,
+        price: Number(product.price || 0),
+        cost: product.cost !== null ? Number(product.cost) : null,
+        sale_price: product.sale_price !== null ? Number(product.sale_price) : null,
+        on_sale: !!product.on_sale,
+        category: product.category || "Sem categoria",
+        image_url: product.image_url || null,
+        sku: product.sku || null,
+      }));
+      setProducts(normalized);
+      setLoadError(null);
+    } catch (error) {
+      console.error("PriceFormation load error:", error);
+      setProducts([]);
+      setLoadError("Não foi possível carregar os produtos desta tela.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      try {
-        const { data, error } = await supabase.rpc("get_products_admin");
-
-        if (error) throw error;
-
-        const normalized = ((data as Product[] | null) || []).map((product) => ({
-          id: product.id,
-          name: product.name,
-          price: Number(product.price || 0),
-          cost: product.cost !== null ? Number(product.cost) : null,
-          sale_price: product.sale_price !== null ? Number(product.sale_price) : null,
-          on_sale: !!product.on_sale,
-          category: product.category || "Sem categoria",
-          image_url: product.image_url || null,
-          sku: product.sku || null,
-        }));
-
-        setProducts(normalized);
-        setLoadError(null);
-      } catch (error) {
-        console.error("PriceFormation load error:", error);
-        setProducts([]);
-        setLoadError("Não foi possível carregar os produtos desta tela.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
   }, []);
+
+  // Sync form when selected changes
+  useEffect(() => {
+    if (selected) {
+      setEditCost(String(selected.cost ?? 0));
+      setEditPrice(String(selected.price ?? 0));
+      setEditSalePrice(String(selected.sale_price ?? 0));
+      setEditOnSale(selected.on_sale);
+    }
+  }, [selected]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -79,6 +105,52 @@ export function PriceFormation() {
     return { cost, price, profit, marginPct, markupPct };
   };
 
+  // Live preview values from form
+  const liveCost = parseNum(editCost);
+  const livePrice = parseNum(editPrice);
+  const liveSale = parseNum(editSalePrice);
+  const liveCurrent = editOnSale && liveSale > 0 ? liveSale : livePrice;
+  const liveProfit = liveCurrent - liveCost;
+  const liveMargin = liveCurrent > 0 ? (liveProfit / liveCurrent) * 100 : 0;
+  const liveMarkup = liveCost > 0 ? (liveProfit / liveCost) * 100 : 0;
+
+  const handleSave = async () => {
+    if (!selected) return;
+    if (livePrice <= 0) {
+      toast.error("Preço de venda deve ser maior que zero");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("products")
+        .update({
+          cost: liveCost,
+          price: livePrice,
+          sale_price: liveSale > 0 ? liveSale : null,
+          on_sale: editOnSale && liveSale > 0,
+        })
+        .eq("id", selected.id);
+      if (error) throw error;
+
+      const updated: Product = {
+        ...selected,
+        cost: liveCost,
+        price: livePrice,
+        sale_price: liveSale > 0 ? liveSale : null,
+        on_sale: editOnSale && liveSale > 0,
+      };
+      setProducts((prev) => prev.map((p) => (p.id === selected.id ? updated : p)));
+      setSelected(updated);
+      toast.success("Produto atualizado");
+    } catch (e: any) {
+      console.error("save error:", e);
+      toast.error(e?.message || "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -94,7 +166,7 @@ export function PriceFormation() {
           <TrendingUp className="w-5 h-5" /> Formação de Preço de Venda
         </CardTitle>
         <CardDescription>
-          Clique em um produto para visualizar custo, valor original e margem de lucro.
+          Clique em um produto para visualizar e editar custo, preço e promoção.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -174,59 +246,126 @@ export function PriceFormation() {
       </CardContent>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-md">
-          {selected && (() => {
-            const { cost, price, profit, marginPct, markupPct } = calc(selected);
-            const original = Number(selected.price || 0);
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5" /> {selected.name}
-                  </DialogTitle>
-                  <DialogDescription>{selected.category}{selected.sku ? ` • SKU: ${selected.sku}` : ""}</DialogDescription>
-                </DialogHeader>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" /> {selected.name}
+                </DialogTitle>
+                <DialogDescription>
+                  {selected.category}
+                  {selected.sku ? ` • SKU: ${selected.sku}` : ""}
+                </DialogDescription>
+              </DialogHeader>
 
-                <div className="space-y-3 mt-2">
-                  {selected.image_url && (
-                    <img
-                      src={selected.image_url}
-                      alt={selected.name}
-                      className="w-full h-40 object-contain rounded-md bg-muted"
-                    />
-                  )}
+              <div className="space-y-3 mt-2">
+                {selected.image_url && (
+                  <img
+                    src={selected.image_url}
+                    alt={selected.name}
+                    className="w-full h-40 object-contain rounded-md bg-muted"
+                  />
+                )}
 
-                  <Row label="Custo" value={fmt(cost)} />
-                  <Row label="Valor original do produto" value={fmt(original)} />
-                  {selected.on_sale && selected.sale_price && (
-                    <Row label="Preço promocional" value={fmt(selected.sale_price)} accent="text-orange-600" />
-                  )}
-                  <Row label="Preço de venda atual" value={fmt(price)} bold />
-
-                  <div className="border-t pt-3 space-y-3">
-                    <Row label="Lucro por unidade" value={fmt(profit)} accent={profit >= 0 ? "text-green-600" : "text-red-600"} bold />
-                    <Row
-                      label="Margem de lucro"
-                      value={`${marginPct.toFixed(2)}%`}
-                      accent={marginPct >= 30 ? "text-green-600" : marginPct >= 15 ? "text-yellow-600" : "text-red-600"}
-                      bold
-                    />
-                    <Row
-                      label="Markup sobre custo"
-                      value={`${markupPct.toFixed(2)}%`}
-                      accent="text-muted-foreground"
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="pf-cost">Custo (R$)</Label>
+                    <Input
+                      id="pf-cost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editCost}
+                      onChange={(e) => setEditCost(e.target.value)}
                     />
                   </div>
-
-                  {cost === 0 && (
-                    <div className="text-xs bg-yellow-50 text-yellow-800 rounded-md p-2">
-                      ⚠️ Custo não cadastrado. Edite o produto no catálogo para calcular margem real.
-                    </div>
-                  )}
+                  <div>
+                    <Label htmlFor="pf-price">Valor original do produto (R$)</Label>
+                    <Input
+                      id="pf-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pf-sale">Preço promocional (R$)</Label>
+                    <Input
+                      id="pf-sale"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editSalePrice}
+                      onChange={(e) => setEditSalePrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="pf-onsale" className="cursor-pointer">
+                      Em promoção
+                    </Label>
+                    <Switch
+                      id="pf-onsale"
+                      checked={editOnSale}
+                      onCheckedChange={setEditOnSale}
+                    />
+                  </div>
                 </div>
-              </>
-            );
-          })()}
+
+                <div className="border-t pt-3 space-y-3">
+                  <Row label="Preço de venda atual" value={fmt(liveCurrent)} bold />
+                  <Row
+                    label="Lucro por unidade"
+                    value={fmt(liveProfit)}
+                    accent={liveProfit >= 0 ? "text-green-600" : "text-red-600"}
+                    bold
+                  />
+                  <Row
+                    label="Margem de lucro"
+                    value={`${liveMargin.toFixed(2)}%`}
+                    accent={
+                      liveMargin >= 30
+                        ? "text-green-600"
+                        : liveMargin >= 15
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                    }
+                    bold
+                  />
+                  <Row
+                    label="Markup sobre custo"
+                    value={`${liveMarkup.toFixed(2)}%`}
+                    accent="text-muted-foreground"
+                  />
+                </div>
+
+                {liveCost === 0 && (
+                  <div className="text-xs bg-yellow-50 text-yellow-800 rounded-md p-2">
+                    ⚠️ Custo não cadastrado. Informe o custo para calcular margem real.
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button variant="outline" onClick={() => setSelected(null)} disabled={saving}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
