@@ -29,7 +29,8 @@ import {
   ChevronRight,
   Calendar,
   Users,
-  Printer
+  Printer,
+  Loader2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -140,6 +141,38 @@ export default function PDV() {
     number: '',
     neighborhood: ''
   });
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+
+  const lookupCnpj = async (digits: string) => {
+    if (digits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'Informe os 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    setCnpjLoading(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (!res.ok) throw new Error('CNPJ não encontrado');
+      const d = await res.json();
+      const fmtCnpj = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      const fmtCep = (d.cep || '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+      setCustomerForm((prev) => ({
+        ...prev,
+        cnpj: fmtCnpj,
+        company_name: d.nome_fantasia || d.razao_social || prev.company_name,
+        full_name: prev.full_name || d.razao_social || '',
+        cep: fmtCep || prev.cep,
+        street: d.logradouro || prev.street,
+        number: d.numero || prev.number,
+        neighborhood: d.bairro || prev.neighborhood,
+      }));
+      toast({ title: 'Dados preenchidos', description: d.razao_social });
+    } catch (e: any) {
+      toast({ title: 'Erro ao buscar CNPJ', description: e?.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
   
   // Vendas salvas
   const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
@@ -1923,13 +1956,31 @@ export default function PDV() {
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="cnpj">CNPJ *</Label>
-                <Input
-                  id="cnpj"
-                  placeholder="00.000.000/0000-00"
-                  value={customerForm.cnpj}
-                  onChange={(e) => setCustomerForm({ ...customerForm, cnpj: e.target.value })}
-                  maxLength={18}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="cnpj"
+                    placeholder="00.000.000/0000-00"
+                    value={customerForm.cnpj}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setCustomerForm({ ...customerForm, cnpj: v });
+                      const digits = v.replace(/\D/g, '');
+                      if (digits.length === 14) lookupCnpj(digits);
+                    }}
+                    maxLength={18}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={cnpjLoading}
+                    onClick={() => lookupCnpj(customerForm.cnpj.replace(/\D/g, ''))}
+                  >
+                    {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Preenche automaticamente os dados via Receita Federal (BrasilAPI).
+                </p>
               </div>
             )}
 
