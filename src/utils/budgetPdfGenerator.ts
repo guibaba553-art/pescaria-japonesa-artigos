@@ -384,60 +384,76 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
     doc.text(`Desconto aplicado: − ${brl(data.discount)}`, margin, ty + 12);
   }
 
-  // Três cards de totais — design clean estilo Apple
-  const boxW = 54;
-  const boxH = 26;
-  const gap = 4;
-  const totalsW = boxW * 3 + gap * 2;
-  const startX = pageW - margin - totalsW;
+  if (finalized) {
+    // Card único com o método de pagamento utilizado
+    const boxW = 90;
+    const boxH = 32;
+    const startX = pageW - margin - boxW;
 
-  const drawTotalCard = (
-    x: number,
-    label: string,
-    value: number,
-    accent: [number, number, number],
-    bg: [number, number, number],
-    highlight = false,
-  ) => {
-    // Card de fundo suave
-    doc.setFillColor(...bg);
-    doc.roundedRect(x, ty - 4, boxW, boxH, 3, 3, 'F');
+    doc.setFillColor(...C.successSoft);
+    doc.roundedRect(startX, ty - 4, boxW, boxH, 3, 3, 'F');
+    doc.setFillColor(...C.success);
+    doc.roundedRect(startX, ty - 4, 1.5, boxH, 0.7, 0.7, 'F');
 
-    // Acento lateral fino
-    doc.setFillColor(...accent);
-    doc.roundedRect(x, ty - 4, 1.5, boxH, 0.7, 0.7, 'F');
-
-    // Label
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(...accent);
-    doc.text(label.toUpperCase(), x + 5, ty + 1);
+    doc.setTextColor(...C.success);
+    doc.text(`PAGO EM ${paidLabel.toUpperCase()}`, startX + 5, ty + 1);
 
-    // Valor
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(highlight ? 14 : 12);
+    doc.setFontSize(18);
     doc.setTextColor(...C.ink);
-    doc.text(brl(value), x + 5, ty + 11);
+    doc.text(brl(data.total), startX + 5, ty + 14);
 
-    if (highlight) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.5);
-      doc.setTextColor(...C.muted);
-      doc.text('VALOR À VISTA', x + 5, ty + 16);
-    }
-  };
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...C.muted);
+    doc.text('VALOR TOTAL DA VENDA', startX + 5, ty + 20);
 
-  drawTotalCard(startX, 'PIX / Dinheiro', totPix, C.success, C.successSoft, true);
-  drawTotalCard(startX + boxW + gap, 'Débito', totDeb, C.info, C.infoSoft);
-  drawTotalCard(startX + (boxW + gap) * 2, 'Crédito', totCre, C.primary, C.warmSoft);
+    ty += boxH + 6;
+  } else {
+    // Três cards de totais — design clean estilo Apple
+    const boxW = 54;
+    const boxH = 26;
+    const gap = 4;
+    const totalsW = boxW * 3 + gap * 2;
+    const startX = pageW - margin - totalsW;
 
-  ty += boxH + 6;
+    const drawTotalCard = (
+      x: number,
+      label: string,
+      value: number,
+      accent: [number, number, number],
+      bg: [number, number, number],
+      highlight = false,
+    ) => {
+      doc.setFillColor(...bg);
+      doc.roundedRect(x, ty - 4, boxW, boxH, 3, 3, 'F');
+      doc.setFillColor(...accent);
+      doc.roundedRect(x, ty - 4, 1.5, boxH, 0.7, 0.7, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...accent);
+      doc.text(label.toUpperCase(), x + 5, ty + 1);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(highlight ? 14 : 12);
+      doc.setTextColor(...C.ink);
+      doc.text(brl(value), x + 5, ty + 11);
+      if (highlight) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(...C.muted);
+        doc.text('VALOR À VISTA', x + 5, ty + 16);
+      }
+    };
 
-  // Aviso parcelamento
-  doc.setTextColor(...C.muted);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.text(
+    drawTotalCard(startX, 'PIX / Dinheiro', totPix, C.success, C.successSoft, true);
+    drawTotalCard(startX + boxW + gap, 'Débito', totDeb, C.info, C.infoSoft);
+    drawTotalCard(startX + (boxW + gap) * 2, 'Crédito', totCre, C.primary, C.warmSoft);
+
+    ty += boxH + 6;
+  }
+
     'Valores no crédito podem ser parcelados — consulte condições no atendimento.',
     pageW - margin,
     ty,
