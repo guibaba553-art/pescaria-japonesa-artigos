@@ -143,7 +143,19 @@ export function ProductsManagement() {
 
   useEffect(() => {
     loadProducts();
+    loadStockDiscrepancies();
   }, []);
+
+  const loadStockDiscrepancies = async () => {
+    const { data } = await supabase.rpc('get_products_with_stock_discrepancy');
+    if (data) {
+      const map: Record<string, number> = {};
+      for (const row of data as Array<{ product_id: string; discrepancy_count: number }>) {
+        map[row.product_id] = Number(row.discrepancy_count);
+      }
+      setStockDiscrepancies(map);
+    }
+  };
 
   useProductsRealtime(() => loadProducts(), 'products-management');
 
