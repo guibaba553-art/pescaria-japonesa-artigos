@@ -382,17 +382,21 @@ export default function AdminSalesAnalysis() {
     if (row.kind === 'saved') {
       if (itemsByOrder[key]) return;
       const cart = (row.raw?.cart_data as any[]) || [];
-      const items: OrderItem[] = cart.map((c: any, i: number) => ({
-        id: `${key}-${i}`,
-        product_id: c.id || c.product_id || '',
-        variation_id: c.variation_id || null,
-        quantity: Number(c.quantity || c.qty || 1),
-        price_at_purchase: Number(c.price || c.unit_price || 0),
-        product_name: c.name || c.product_name || 'Produto',
-        variation_name: c.variation_name || null,
-        sku: c.sku || null,
-        image_url: c.image_url || c.image || (Array.isArray(c.images) ? c.images[0] : null) || null,
-      }));
+      const items: OrderItem[] = cart.map((c: any, i: number) => {
+        const p = c.product || {};
+        const v = c.variation || null;
+        return {
+          id: `${key}-${i}`,
+          product_id: p.id || c.id || c.product_id || '',
+          variation_id: v?.id || c.variation_id || null,
+          quantity: Number(c.quantity || c.qty || 1),
+          price_at_purchase: Number(c.customPrice ?? p.price ?? c.price ?? c.unit_price ?? 0),
+          product_name: p.name || c.name || c.product_name || 'Produto',
+          variation_name: v?.name || c.variation_name || null,
+          sku: p.sku || c.sku || null,
+          image_url: v?.image_url || p.image_url || c.image_url || (Array.isArray(p.images) ? p.images[0] : null) || null,
+        };
+      });
       setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       return;
     }
