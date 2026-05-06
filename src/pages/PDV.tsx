@@ -139,7 +139,14 @@ export default function PDV() {
     cep: '',
     street: '',
     number: '',
-    neighborhood: ''
+    neighborhood: '',
+    complemento: '',
+    municipio: '',
+    uf: '',
+    codigo_municipio_ibge: '',
+    inscricao_estadual: '',
+    ie_indicador: '9' as '1' | '2' | '9', // 1=contribuinte, 2=isento, 9=não contribuinte
+    email: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
 
