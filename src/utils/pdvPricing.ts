@@ -78,8 +78,25 @@ function applyMethodMarkup(basePrice: number, method: PdvPaymentMethod, exempt =
   return Math.max(0, Number(final.toFixed(2)));
 }
 
+/** Retorna override manual do produto para o método, se existir e for válido. */
+function getManualOverride(p: PdvPricingFields, method: PdvPaymentMethod): number | null {
+  const map: Record<PdvPaymentMethod, number | null | undefined> = {
+    pix: p.price_pdv_pix,
+    cash: p.price_pdv_cash,
+    debit: p.price_pdv_debit,
+    credit: p.price_pdv_credit,
+  };
+  const v = map[method];
+  if (v == null) return null;
+  const n = Number(v);
+  if (!isFinite(n) || n <= 0) return null;
+  return Number(n.toFixed(2));
+}
+
 /** Calcula o preço final do produto para um método de pagamento. */
 export function getPdvPrice(p: PdvPricingFields, method: PdvPaymentMethod): number {
+  const manual = getManualOverride(p, method);
+  if (manual != null) return manual;
   return applyMethodMarkup(getPdvBasePrice(p), method, isExemptFromMarkup(p));
 }
 
