@@ -1040,6 +1040,7 @@ export default function PDV() {
       }
 
       // Criar pedido com idempotency_key (índice único impede duplicatas)
+      const tefData = tefResultRef.current;
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -1054,6 +1055,11 @@ export default function PDV() {
           source: 'pdv',
           payment_method: paymentMethod,
           idempotency_key: idempotencyKey,
+          tef_transaction_id: tefData?.transaction_id ?? null,
+          card_brand: tefData?.card_brand ?? null,
+          card_last_digits: tefData?.card_last_digits ?? null,
+          nsu: tefData?.nsu ?? null,
+          authorization_code: tefData?.authorization_code ?? null,
         }])
         .select()
         .single();
