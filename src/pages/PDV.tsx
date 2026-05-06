@@ -145,6 +145,10 @@ export default function PDV() {
   const [savedSalesSearch, setSavedSalesSearch] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
+  // Emissão fiscal opcional no PDV (NFC-e ou NF-e)
+  const [emitInvoice, setEmitInvoice] = useState(false);
+  const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
+
   useEffect(() => {
     if (!loading && !canView) {
       navigate('/admin');
