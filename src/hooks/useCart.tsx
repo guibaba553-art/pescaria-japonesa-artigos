@@ -119,7 +119,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .from(product.variationId ? 'product_variations' : 'products')
         .select('stock')
         .eq('id', product.variationId || product.id)
-        .single();
+        .maybeSingle();
 
       if (error || !stockData) {
         toast({
