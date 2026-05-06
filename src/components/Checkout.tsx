@@ -563,7 +563,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         if (prefError || !prefData?.success || !prefData?.initPoint) {
           await supabase.from('order_items').delete().eq('order_id', orderData.id);
           await supabase.from('orders').delete().eq('id', orderData.id);
-          throw new Error(prefData?.error || prefError?.message || 'Erro ao criar checkout');
+          const { extractEdgeError } = await import('@/utils/siteCartValidation');
+          const friendly = prefError ? await extractEdgeError(prefError) : null;
+          throw new Error(friendly || prefData?.error || prefError?.message || 'Erro ao criar checkout');
         }
 
         toast({
