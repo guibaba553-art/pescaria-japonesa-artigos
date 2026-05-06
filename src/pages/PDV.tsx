@@ -165,12 +165,17 @@ export default function PDV() {
       setCustomerForm((prev) => ({
         ...prev,
         cnpj: fmtCnpj,
-        company_name: d.nome_fantasia || d.razao_social || prev.company_name,
-        full_name: prev.full_name || d.razao_social || '',
+        company_name: d.razao_social || prev.company_name,
+        full_name: prev.full_name || d.nome_fantasia || d.razao_social || '',
         cep: fmtCep || prev.cep,
         street: d.logradouro || prev.street,
         number: d.numero || prev.number,
         neighborhood: d.bairro || prev.neighborhood,
+        complemento: d.complemento || prev.complemento,
+        municipio: d.municipio || prev.municipio,
+        uf: d.uf || prev.uf,
+        codigo_municipio_ibge: d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : prev.codigo_municipio_ibge,
+        email: d.email || prev.email,
       }));
       toast({ title: 'Dados preenchidos', description: d.razao_social });
     } catch (e: any) {
