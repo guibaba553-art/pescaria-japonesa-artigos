@@ -438,7 +438,7 @@ export default function AdminSalesAnalysis() {
     }
   };
 
-  const handleGenerateSalePdf = async (row: Row) => {
+  const handleGenerateSalePdf = async (row: UnifiedRow) => {
     try {
       let items: Array<{ product: any; variation?: any; quantity: number; unitPrice: number }> = [];
       let customerName: string | null = null;
