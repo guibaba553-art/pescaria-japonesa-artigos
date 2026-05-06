@@ -40,7 +40,7 @@ const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const StockMigration = lazy(() => import("./pages/StockMigration"));
-const StockAudit = lazy(() => import("./pages/StockAudit"));
+// const StockAudit = lazy(() => import("./pages/StockAudit")); // desativado
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient();
@@ -98,7 +98,7 @@ const App = () => (
                 <Route path="/politica-de-frete" element={<PoliticaFrete />} />
                 <Route path="/admin/lgpd" element={<AdminLGPD />} />
                 <Route path="/admin/migracao-estoque" element={<StockMigration />} />
-                <Route path="/admin/auditoria-estoque" element={<StockAudit />} />
+                {/* Auditoria de estoque temporariamente desativada */}
                 <Route path="/meus-dados" element={<MeusDados />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
