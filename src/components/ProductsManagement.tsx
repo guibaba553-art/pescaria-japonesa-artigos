@@ -77,6 +77,7 @@ export function ProductsManagement() {
   const { toast } = useToast();
   const { primaries } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockDiscrepancies, setStockDiscrepancies] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
   const [purchaseDialog, setPurchaseDialog] = useState<Product | null>(null);
   const [name, setName] = useState('');
