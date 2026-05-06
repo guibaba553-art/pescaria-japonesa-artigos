@@ -214,15 +214,14 @@ export default function Account() {
     if (!error && data) {
       setOrders(data as Order[]);
       
-      // Carregar avaliações existentes
-      const { data: reviews } = await supabase
-        .from('reviews')
-        .select('order_id, product_id')
-        .eq('user_id', user.id);
-      
+      // Carregar avaliações existentes (apenas as do próprio usuário, via RPC)
+      const { data: reviews } = await supabase.rpc('get_my_reviewed_products');
+
       if (reviews) {
         const reviewedSet = new Set(
-          reviews.map(r => `${r.order_id}_${r.product_id}`)
+          (reviews as { order_id: string; product_id: string }[]).map(
+            (r) => `${r.order_id}_${r.product_id}`,
+          ),
         );
         setReviewedProducts(reviewedSet);
       }
