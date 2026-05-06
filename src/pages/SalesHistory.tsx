@@ -17,9 +17,11 @@ import {
   MapPin,
   CreditCard,
   FolderOpen,
-  ShoppingBag
+  ShoppingBag,
+  FileDown
 } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 
 export default function SalesHistory() {
   const navigate = useNavigate();
