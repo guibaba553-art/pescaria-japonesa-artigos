@@ -7,12 +7,14 @@ interface BudgetItem {
     name: string;
     sku?: string | null;
     image_url?: string | null;
+    pdv_no_markup?: boolean | null;
   };
   variation?: {
     name: string;
     image_url?: string | null;
   };
   quantity: number;
+  /** Preço base = valor à vista (PIX/Dinheiro). Os outros métodos são calculados por markup. */
   unitPrice: number;
 }
 
@@ -22,6 +24,7 @@ interface BudgetData {
   operatorName?: string | null;
   customerName?: string | null;
   customerCPF?: string | null;
+  /** mantido por compatibilidade; orçamento mostra os 3 valores */
   paymentMethod?: string | null;
   items: BudgetItem[];
   subtotal: number;
@@ -36,6 +39,25 @@ const COMPANY = {
   address: 'Sinop - MT',
   site: 'japaspesca.com.br',
 };
+
+// Mesmas regras de src/utils/pdvPricing.ts
+const MARKUP = { pix: 0, debit: 0.02, credit: 0.03 } as const;
+const EXEMPT_KEYWORDS = ['yamalube', 'refil de gas', 'refil de gás'];
+
+function normalize(s: string): string {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function isExempt(it: BudgetItem): boolean {
+  if (it.product.pdv_no_markup) return true;
+  const n = normalize(it.product.name);
+  return EXEMPT_KEYWORDS.some((k) => n.includes(normalize(k)));
+}
+
+function priceFor(it: BudgetItem, method: 'pix' | 'debit' | 'credit'): number {
+  const markup = isExempt(it) ? 0 : MARKUP[method];
+  return Number((it.unitPrice * (1 + markup)).toFixed(2));
+}
 
 async function loadImageAsDataURL(url: string): Promise<{ data: string; w: number; h: number } | null> {
   try {
@@ -59,16 +81,6 @@ async function loadImageAsDataURL(url: string): Promise<{ data: string; w: numbe
   }
 }
 
-function paymentLabel(m?: string | null): string {
-  switch (m) {
-    case 'cash': return 'Dinheiro';
-    case 'credit': return 'Cartão de Crédito';
-    case 'debit': return 'Cartão de Débito';
-    case 'pix': return 'PIX';
-    default: return '—';
-  }
-}
-
 export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -86,7 +98,6 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   doc.text(COMPANY.subtitle, margin, 16);
   doc.text(`${COMPANY.address}  ·  ${COMPANY.site}`, margin, 20);
 
-  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.text('ORÇAMENTO', pageW - margin, 13, { align: 'right' });
@@ -98,7 +109,10 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   doc.setTextColor(40, 40, 40);
   let y = 30;
   const created = new Date(data.createdAt);
-  const dateStr = created.toLocaleDateString('pt-BR') + ' ' + created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const dateStr =
+    created.toLocaleDateString('pt-BR') +
+    ' ' +
+    created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -119,7 +133,6 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
     doc.text(data.customerCPF, margin + 20, y);
     y += 6;
   }
-
   if (data.operatorName) {
     doc.setFont('helvetica', 'bold');
     doc.text('Vendedor:', margin, y);
@@ -128,52 +141,62 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
     y += 6;
   }
 
-  // === Pré-carregar imagens (com cache) ===
+  // === Cache de imagens ===
   const imageCache = new Map<string, { data: string; w: number; h: number } | null>();
-  const imageUrls = data.items.map(it => it.variation?.image_url || it.product.image_url || '').filter(Boolean) as string[];
+  const urls = data.items
+    .map((it) => it.variation?.image_url || it.product.image_url || '')
+    .filter(Boolean) as string[];
   await Promise.all(
-    Array.from(new Set(imageUrls)).map(async (url) => {
-      imageCache.set(url, await loadImageAsDataURL(url));
-    })
+    Array.from(new Set(urls)).map(async (u) => imageCache.set(u, await loadImageAsDataURL(u))),
   );
 
-  // === Tabela de itens ===
-  const rowH = 18; // mm — espaço para imagem
+  // === Tabela de itens com 3 preços ===
+  const rowH = 18;
   autoTable(doc, {
     startY: y + 4,
     margin: { left: margin, right: margin },
-    head: [['Foto', 'Cód.', 'Produto', 'Qtd', 'Unit.', 'Total']],
+    head: [
+      [
+        { content: 'Foto', rowSpan: 2 },
+        { content: 'Cód.', rowSpan: 2 },
+        { content: 'Produto', rowSpan: 2 },
+        { content: 'Qtd', rowSpan: 2 },
+        { content: 'Preço unitário', colSpan: 3, styles: { halign: 'center' } },
+        { content: 'Total à vista', rowSpan: 2, styles: { halign: 'right' } },
+      ],
+      [
+        { content: 'PIX/Dinheiro', styles: { halign: 'right' } },
+        { content: 'Débito', styles: { halign: 'right' } },
+        { content: 'Crédito', styles: { halign: 'right' } },
+      ],
+    ],
     body: data.items.map((it, idx) => {
-      const desc = it.variation
-        ? `${it.product.name}\n${it.variation.name}`
-        : it.product.name;
+      const desc = it.variation ? `${it.product.name}\n${it.variation.name}` : it.product.name;
+      const pPix = priceFor(it, 'pix');
+      const pDeb = priceFor(it, 'debit');
+      const pCre = priceFor(it, 'credit');
       return [
-        '', // imagem desenhada manualmente
+        '',
         it.product.sku || String(idx + 1),
         desc,
         it.quantity.toString(),
-        `R$ ${it.unitPrice.toFixed(2)}`,
-        `R$ ${(it.unitPrice * it.quantity).toFixed(2)}`,
+        `R$ ${pPix.toFixed(2)}`,
+        `R$ ${pDeb.toFixed(2)}`,
+        `R$ ${pCre.toFixed(2)}`,
+        `R$ ${(pPix * it.quantity).toFixed(2)}`,
       ];
     }),
-    headStyles: {
-      fillColor: [40, 40, 40],
-      textColor: 255,
-      fontSize: 9,
-      halign: 'left',
-    },
-    bodyStyles: {
-      fontSize: 9,
-      minCellHeight: rowH,
-      valign: 'middle',
-    },
+    headStyles: { fillColor: [40, 40, 40], textColor: 255, fontSize: 9, halign: 'left', valign: 'middle' },
+    bodyStyles: { fontSize: 9, minCellHeight: rowH, valign: 'middle' },
     columnStyles: {
-      0: { cellWidth: 20, halign: 'center' },
-      1: { cellWidth: 18 },
+      0: { cellWidth: 18, halign: 'center' },
+      1: { cellWidth: 16 },
       2: { cellWidth: 'auto' },
-      3: { cellWidth: 14, halign: 'center' },
-      4: { cellWidth: 25, halign: 'right' },
-      5: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+      3: { cellWidth: 12, halign: 'center' },
+      4: { cellWidth: 22, halign: 'right' },
+      5: { cellWidth: 18, halign: 'right' },
+      6: { cellWidth: 18, halign: 'right' },
+      7: { cellWidth: 22, halign: 'right', fontStyle: 'bold' },
     },
     didDrawCell: (cellData) => {
       if (cellData.section === 'body' && cellData.column.index === 0) {
@@ -183,7 +206,7 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
         const img = imageCache.get(url);
         if (!img) return;
 
-        const maxSize = 14; // mm
+        const maxSize = 14;
         const ratio = img.w / img.h;
         let drawW = maxSize, drawH = maxSize;
         if (ratio > 1) drawH = maxSize / ratio;
@@ -193,55 +216,82 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
         const cy = cellData.cell.y + cellData.cell.height / 2;
         try {
           doc.addImage(img.data, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
-        } catch (e) {
-          // ignora imagens com formato não suportado
+        } catch {
+          /* ignore */
         }
       }
     },
   });
 
-  // === Totais ===
+  // === Totais por forma de pagamento ===
   const finalY = (doc as any).lastAutoTable.finalY || y + 50;
-  let ty = finalY + 6;
+  let ty = finalY + 8;
+
   const totalQty = data.items.reduce((s, it) => s + it.quantity, 0);
+  const subPix = data.items.reduce((s, it) => s + priceFor(it, 'pix') * it.quantity, 0);
+  const subDeb = data.items.reduce((s, it) => s + priceFor(it, 'debit') * it.quantity, 0);
+  const subCre = data.items.reduce((s, it) => s + priceFor(it, 'credit') * it.quantity, 0);
+
+  // Aplica desconto proporcionalmente (subtrai valor fixo de cada total)
+  const totPix = Math.max(0, subPix - data.discount);
+  const totDeb = Math.max(0, subDeb - data.discount);
+  const totCre = Math.max(0, subCre - data.discount);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
   doc.text(`Quantidade total de itens: ${totalQty}`, margin, ty);
-
-  const rightX = pageW - margin;
-  doc.text('Subtotal:', rightX - 35, ty);
-  doc.text(`R$ ${data.subtotal.toFixed(2)}`, rightX, ty, { align: 'right' });
-  ty += 6;
-
   if (data.discount > 0) {
-    doc.text('Desconto:', rightX - 35, ty);
-    doc.text(`− R$ ${data.discount.toFixed(2)}`, rightX, ty, { align: 'right' });
-    ty += 6;
+    doc.text(`Desconto aplicado: − R$ ${data.discount.toFixed(2)}`, margin, ty + 5);
   }
 
-  // Caixa do total
-  doc.setFillColor(255, 102, 0);
-  doc.rect(rightX - 60, ty - 1, 60, 10, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('TOTAL:', rightX - 56, ty + 6);
-  doc.text(`R$ ${data.total.toFixed(2)}`, rightX - 3, ty + 6, { align: 'right' });
-  ty += 14;
+  // Três caixas de total lado a lado, alinhadas à direita
+  const boxW = 56;
+  const boxH = 18;
+  const gap = 3;
+  const totalsW = boxW * 3 + gap * 2;
+  const startX = pageW - margin - totalsW;
 
-  // === Forma de pagamento / observações ===
-  doc.setTextColor(40, 40, 40);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Forma de Pagamento:', margin, ty);
-  doc.setFont('helvetica', 'normal');
-  doc.text(paymentLabel(data.paymentMethod), margin + 42, ty);
-  ty += 6;
-
-  if (data.notes) {
+  const drawTotal = (
+    x: number,
+    label: string,
+    value: number,
+    fill: [number, number, number],
+    highlight = false,
+  ) => {
+    doc.setFillColor(...fill);
+    doc.rect(x, ty, boxW, boxH, 'F');
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(label, x + boxW / 2, ty + 6, { align: 'center' });
+    doc.setFontSize(highlight ? 14 : 12);
+    doc.text(`R$ ${value.toFixed(2)}`, x + boxW / 2, ty + 14, { align: 'center' });
+  };
+
+  drawTotal(startX, 'PIX / DINHEIRO', totPix, [22, 163, 74], true); // verde — destaque
+  drawTotal(startX + boxW + gap, 'DÉBITO', totDeb, [59, 130, 246]); // azul
+  drawTotal(startX + (boxW + gap) * 2, 'CRÉDITO', totCre, [255, 102, 0]); // laranja
+
+  ty += boxH + 6;
+
+  // Aviso de parcelamento no crédito
+  doc.setTextColor(120, 120, 120);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text(
+    'Valores no crédito podem ser parcelados — consulte condições no atendimento.',
+    pageW - margin,
+    ty,
+    { align: 'right' },
+  );
+  ty += 8;
+
+  // === Observações ===
+  if (data.notes) {
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
     doc.text('Observações:', margin, ty);
     ty += 5;
     doc.setFont('helvetica', 'normal');
