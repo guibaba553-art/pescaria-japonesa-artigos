@@ -116,6 +116,7 @@ export default function PDV() {
   const [customerCPF, setCustomerCPF] = useState('');
   const [installments, setInstallments] = useState(1);
   const [discountInput, setDiscountInput] = useState(''); // desconto em R$ (valor direto)
+  const [saleNotes, setSaleNotes] = useState(''); // anotação livre da venda
   
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
