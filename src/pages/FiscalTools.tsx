@@ -219,10 +219,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="precos">
+              <DollarSign className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Formação de Preço</span>
             </TabsTrigger>
             <TabsTrigger value="gastos">
               <Wallet className="w-4 h-4 mr-2" />
@@ -249,6 +253,12 @@ export default function FiscalTools() {
               <span className="hidden sm:inline">Sistema Fiscal</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="precos">
+            <Suspense fallback={<FiscalTabFallback />}>
+              <PriceFormation />
+            </Suspense>
+          </TabsContent>
 
           <TabsContent value="taxes">
             <Suspense fallback={<FiscalTabFallback />}>
