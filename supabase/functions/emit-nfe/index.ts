@@ -219,7 +219,7 @@ serve(async (req) => {
     if (order.customer_id) {
       const { data: cust } = await supabase
         .from('customers')
-        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood')
+        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood, municipio, uf, complemento')
         .eq('id', order.customer_id)
         .maybeSingle();
       if (cust) {
@@ -230,6 +230,9 @@ serve(async (req) => {
         if (cust.number) addr.numero = cust.number;
         if (cust.neighborhood) addr.bairro = cust.neighborhood;
         if (cust.cep) addr.cep = cleanDoc(cust.cep);
+        if (cust.municipio) addr.municipio = cust.municipio;
+        if (cust.uf) addr.uf = cust.uf;
+        if (cust.complemento) addr.complemento = cust.complemento;
       }
     }
 
