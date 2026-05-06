@@ -382,17 +382,21 @@ export default function AdminSalesAnalysis() {
     if (row.kind === 'saved') {
       if (itemsByOrder[key]) return;
       const cart = (row.raw?.cart_data as any[]) || [];
-      const items: OrderItem[] = cart.map((c: any, i: number) => ({
-        id: `${key}-${i}`,
-        product_id: c.id || c.product_id || '',
-        variation_id: c.variation_id || null,
-        quantity: Number(c.quantity || c.qty || 1),
-        price_at_purchase: Number(c.price || c.unit_price || 0),
-        product_name: c.name || c.product_name || 'Produto',
-        variation_name: c.variation_name || null,
-        sku: c.sku || null,
-        image_url: c.image_url || c.image || (Array.isArray(c.images) ? c.images[0] : null) || null,
-      }));
+      const items: OrderItem[] = cart.map((c: any, i: number) => {
+        const p = c.product || {};
+        const v = c.variation || null;
+        return {
+          id: `${key}-${i}`,
+          product_id: p.id || c.id || c.product_id || '',
+          variation_id: v?.id || c.variation_id || null,
+          quantity: Number(c.quantity || c.qty || 1),
+          price_at_purchase: Number(c.customPrice ?? p.price ?? c.price ?? c.unit_price ?? 0),
+          product_name: p.name || c.name || c.product_name || 'Produto',
+          variation_name: v?.name || c.variation_name || null,
+          sku: p.sku || c.sku || null,
+          image_url: v?.image_url || p.image_url || c.image_url || (Array.isArray(p.images) ? p.images[0] : null) || null,
+        };
+      });
       setItemsByOrder((prev) => ({ ...prev, [key]: items }));
       return;
     }
@@ -751,13 +755,16 @@ export default function AdminSalesAnalysis() {
             .single();
           if (orderErr) throw orderErr;
 
-          const itemsPayload = cart.map((it: any) => ({
-            order_id: newOrder.id,
-            product_id: it.id || it.product_id,
-            quantity: Number(it.quantity || 1),
-            price_at_purchase: Number(it.price ?? it.unit_price ?? 0),
-            variation_id: it.variation_id || null,
-          }));
+          const itemsPayload = cart.map((it: any) => {
+            const p = it.product || {};
+            return {
+              order_id: newOrder.id,
+              product_id: p.id || it.id || it.product_id,
+              quantity: Number(it.quantity || 1),
+              price_at_purchase: Number(it.customPrice ?? p.price ?? it.price ?? it.unit_price ?? 0),
+              variation_id: it.variation?.id || it.variation_id || null,
+            };
+          });
           const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
           if (itemsErr) throw itemsErr;
 
@@ -787,7 +794,7 @@ export default function AdminSalesAnalysis() {
         // Caminho 3.B: NFC-e (modelo 65) -> monta payload direto
 
         // Buscar dados fiscais dos produtos
-        const productIds = Array.from(new Set(cart.map((it: any) => it.id || it.product_id).filter(Boolean)));
+        const productIds = Array.from(new Set(cart.map((it: any) => it.product?.id || it.id || it.product_id).filter(Boolean)));
         const { data: prods } = await supabase
           .from('products')
           .select('id, name, ncm, cfop, csosn, origem, unidade_comercial, cest')
@@ -805,19 +812,20 @@ export default function AdminSalesAnalysis() {
             nome: cd.full_name || cd.company_name || cd.name || undefined,
           } : undefined,
           items: cart.map((it: any) => {
-            const pid = it.id || it.product_id;
-            const p: any = prodMap.get(pid) || {};
+            const cartProd = it.product || {};
+            const pid = cartProd.id || it.id || it.product_id;
+            const p: any = prodMap.get(pid) || cartProd || {};
             return {
               product_id: pid,
-              name: it.name || p.name || 'Produto',
+              name: cartProd.name || it.name || p.name || 'Produto',
               quantity: Number(it.quantity || 1),
-              unit_price: Number(it.price ?? it.unit_price ?? 0),
-              ncm: p.ncm || undefined,
-              cfop: p.cfop || undefined,
-              csosn: p.csosn || undefined,
-              origem: p.origem || undefined,
-              unidade: p.unidade_comercial || undefined,
-              cest: p.cest || undefined,
+              unit_price: Number(it.customPrice ?? cartProd.price ?? it.price ?? it.unit_price ?? 0),
+              ncm: p.ncm || cartProd.ncm || undefined,
+              cfop: p.cfop || cartProd.cfop || undefined,
+              csosn: p.csosn || cartProd.csosn || undefined,
+              origem: p.origem ?? cartProd.origem ?? undefined,
+              unidade: p.unidade_comercial || cartProd.unidade_comercial || undefined,
+              cest: p.cest || cartProd.cest || undefined,
             };
           }),
         };
