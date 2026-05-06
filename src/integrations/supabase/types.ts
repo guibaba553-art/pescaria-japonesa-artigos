@@ -1058,11 +1058,15 @@ export type Database = {
       }
       orders: {
         Row: {
+          authorization_code: string | null
+          card_brand: string | null
+          card_last_digits: string | null
           created_at: string
           customer_id: string | null
           delivery_type: string
           id: string
           idempotency_key: string | null
+          nsu: string | null
           payment_id: string | null
           payment_method: string | null
           pix_expiration: string | null
@@ -1073,6 +1077,7 @@ export type Database = {
           shipping_cost: number
           source: string
           status: Database["public"]["Enums"]["order_status"]
+          tef_transaction_id: string | null
           ticket_url: string | null
           total_amount: number
           tracking_code: string | null
@@ -1080,11 +1085,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last_digits?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
           pix_expiration?: string | null
@@ -1095,6 +1104,7 @@ export type Database = {
           shipping_cost?: number
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
+          tef_transaction_id?: string | null
           ticket_url?: string | null
           total_amount: number
           tracking_code?: string | null
@@ -1102,11 +1112,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last_digits?: string | null
           created_at?: string
           customer_id?: string | null
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
           pix_expiration?: string | null
@@ -1117,6 +1131,7 @@ export type Database = {
           shipping_cost?: number
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
+          tef_transaction_id?: string | null
           ticket_url?: string | null
           total_amount?: number
           tracking_code?: string | null
@@ -1129,6 +1144,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_tef_transaction_id_fkey"
+            columns: ["tef_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "tef_transactions"
             referencedColumns: ["id"]
           },
         ]
