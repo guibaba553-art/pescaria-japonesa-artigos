@@ -599,68 +599,41 @@ export default function PDV() {
     try {
       console.log('🔍 Buscando por código:', code);
 
-      // Buscar variação E produto em paralelo (consultas diretas, sem RPC pesada)
-      const [varRes, prodRes] = await Promise.all([
-        supabase
-          .from('product_variations')
-          .select('*, product:products(*)')
-          .eq('sku', code)
-          .gt('stock', 0)
-          .limit(1),
-        supabase
-          .from('products')
-          .select('*')
-          .eq('sku', code)
-          .gt('stock', 0)
-          .limit(1),
-      ]);
+      const productWithVariation = products.find((product) =>
+        (product.variations || []).some(
+          (variation) => variation.sku === code && Number(variation.stock || 0) > 0,
+        ),
+      );
+      const variation = productWithVariation?.variations?.find(
+        (item) => item.sku === code && Number(item.stock || 0) > 0,
+      );
 
-      if (varRes.error) throw varRes.error;
-      if (prodRes.error) throw prodRes.error;
-
-      const variation = varRes.data && varRes.data.length > 0 ? varRes.data[0] : null;
-
-      if (variation) {
+      if (productWithVariation && variation) {
         console.log('✅ Variação encontrada:', variation.name);
-        const product = variation.product as unknown as Product;
 
-        // Carrega outras variações em background (não bloqueia o add)
-        product.variations = [];
-        supabase
-          .from('product_variations')
-          .select('*')
-          .eq('product_id', product.id)
-          .then(({ data }) => { product.variations = data || []; });
-
-        if (product.sold_by_weight) {
-          setSelectedProduct(product);
+        if (productWithVariation.sold_by_weight) {
+          setSelectedProduct(productWithVariation);
           setWeightInput('');
           setShowWeightDialog(true);
         } else {
-          addToCart(product, variation, 1);
+          addToCart(productWithVariation, variation, 1);
         }
         setBarcodeInput('');
         playBeep();
         return;
       }
 
-      const matched = prodRes.data && prodRes.data.length > 0 ? prodRes.data[0] : null;
+      const matched = products.find(
+        (product) => product.sku === code && Number(product.stock || 0) > 0,
+      );
       if (matched) {
-        const product: any = { ...matched, variations: [] };
-        // Carrega variações em background
-        supabase
-          .from('product_variations')
-          .select('*')
-          .eq('product_id', matched.id)
-          .then(({ data }) => { product.variations = data || []; });
-
-        console.log('✅ Produto encontrado:', product.name);
-        if (product.sold_by_weight) {
-          setSelectedProduct(product);
+        console.log('✅ Produto encontrado:', matched.name);
+        if (matched.sold_by_weight) {
+          setSelectedProduct(matched);
           setWeightInput('');
           setShowWeightDialog(true);
         } else {
-          addToCart(product, undefined, 1);
+          addToCart(matched, undefined, 1);
         }
         setBarcodeInput('');
         playBeep();
