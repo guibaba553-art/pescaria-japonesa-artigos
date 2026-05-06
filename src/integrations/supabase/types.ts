@@ -2247,6 +2247,13 @@ export type Database = {
         Args: { p_has_st?: boolean; p_uf_destino: string }
         Returns: string
       }
+      get_my_reviewed_products: {
+        Args: never
+        Returns: {
+          order_id: string
+          product_id: string
+        }[]
+      }
       get_product_admin: {
         Args: { p_id: string }
         Returns: {
