@@ -141,6 +141,38 @@ export default function PDV() {
     number: '',
     neighborhood: ''
   });
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+
+  const lookupCnpj = async (digits: string) => {
+    if (digits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'Informe os 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    setCnpjLoading(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+      if (!res.ok) throw new Error('CNPJ não encontrado');
+      const d = await res.json();
+      const fmtCnpj = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      const fmtCep = (d.cep || '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+      setCustomerForm((prev) => ({
+        ...prev,
+        cnpj: fmtCnpj,
+        company_name: d.nome_fantasia || d.razao_social || prev.company_name,
+        full_name: prev.full_name || d.razao_social || '',
+        cep: fmtCep || prev.cep,
+        street: d.logradouro || prev.street,
+        number: d.numero || prev.number,
+        neighborhood: d.bairro || prev.neighborhood,
+      }));
+      toast({ title: 'Dados preenchidos', description: d.razao_social });
+    } catch (e: any) {
+      toast({ title: 'Erro ao buscar CNPJ', description: e?.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
+
   
   // Vendas salvas
   const [showSavedSalesDialog, setShowSavedSalesDialog] = useState(false);
