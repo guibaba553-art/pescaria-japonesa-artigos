@@ -1253,7 +1253,8 @@ export default function AdminSalesAnalysis() {
                 {(() => {
                   const isSitePedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv';
                   const isPdvPedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source === 'pdv';
-                  const allowChoice = isPdvPedido; // só PDV permite escolher modelo
+                  const isSaved = invoiceTarget?.kind === 'saved';
+                  const allowChoice = isPdvPedido || isSaved; // PDV e orçamento permitem escolher modelo
                   const effectiveModel = isSitePedido ? 'nfe' : (allowChoice ? invoiceModel : 'nfce');
                   return (
                     <>
