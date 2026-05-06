@@ -42,7 +42,9 @@ import {
 import { toast } from "sonner";
 
 interface Product {
-  id: string;
+  id: string; // row id (product id or variation id)
+  product_id: string; // always the parent product id (used to update products.* fields)
+  variation_id: string | null;
   name: string;
   price: number;
   cost: number | null;
