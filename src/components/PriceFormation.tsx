@@ -29,10 +29,13 @@ export function PriceFormation() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("products")
         .select("id,name,price,cost,sale_price,on_sale,category,image_url,sku")
-        .order("name");
+        .order("name")
+        .limit(2000);
+      if (error) console.error("PriceFormation load error:", error);
+      console.log("PriceFormation loaded:", data?.length);
       setProducts((data as Product[]) || []);
       setLoading(false);
     })();
