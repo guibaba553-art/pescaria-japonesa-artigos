@@ -353,9 +353,11 @@ serve(async (req) => {
       inscricao_estadual_emitente: company.inscricao_estadual,
       regime_tributario_emitente: company.regime_tributario === 'simples_nacional' ? 1 : 3,
 
-      // Destinatário (pessoa física)
-      nome_destinatario: profile?.full_name || 'CONSUMIDOR',
-      cpf_destinatario: cpf,
+      // Destinatário
+      nome_destinatario: destNome,
+      ...(hasCnpj
+        ? { cnpj_destinatario: destCnpj }
+        : { cpf_destinatario: destCpf }),
       logradouro_destinatario: addr.logradouro,
       numero_destinatario: addr.numero,
       bairro_destinatario: addr.bairro,
@@ -363,6 +365,7 @@ serve(async (req) => {
       uf_destinatario: addr.uf,
       cep_destinatario: addr.cep,
       indicador_inscricao_estadual_destinatario: 9, // não contribuinte
+
 
       presenca_comprador: 2,    // operação não presencial — internet
       modalidade_frete: 0,      // por conta do emitente
