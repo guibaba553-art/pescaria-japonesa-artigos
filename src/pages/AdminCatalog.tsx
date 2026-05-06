@@ -107,6 +107,9 @@ export default function AdminCatalog() {
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques
             </TabsTrigger>
+            <Link to="/admin/auditoria-estoque" className="ml-auto inline-flex items-center gap-2 px-3 h-8 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+              <ShieldCheck className="w-4 h-4" /> Auditoria
+            </Link>
           </TabsList>
         </div>
 
