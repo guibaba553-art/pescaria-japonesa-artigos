@@ -2018,7 +2018,7 @@ export default function PDV() {
 
       {/* Diálogo de cadastro de cliente */}
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Cadastrar Cliente</DialogTitle>
             <DialogDescription>
