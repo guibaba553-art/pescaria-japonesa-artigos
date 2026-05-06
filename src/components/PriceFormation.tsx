@@ -260,19 +260,30 @@ export function PriceFormation() {
     setSaving(true);
     try {
       const newGroupId = editGroupId === "none" ? null : editGroupId;
-      const { error } = await supabase
-        .from("products")
-        .update({
-          cost: liveCost,
-          price: livePrice,
-          cost_group_id: newGroupId,
-        })
-        .eq("id", selected.id);
-      if (error) throw error;
+      if (selected.variation_id) {
+        const { error } = await supabase
+          .from("product_variations")
+          .update({
+            cost: liveCost,
+            price: livePrice,
+            cost_group_id: newGroupId,
+          })
+          .eq("id", selected.variation_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("products")
+          .update({
+            cost: liveCost,
+            price: livePrice,
+            cost_group_id: newGroupId,
+          })
+          .eq("id", selected.product_id);
+        if (error) throw error;
+      }
 
-      toast.success("Produto atualizado");
+      toast.success(selected.variation_id ? "Variação atualizada" : "Produto atualizado");
 
-      // Atualiza apenas o produto editado em memória (sem desmontar a lista)
       const newCost = newGroupId
         ? groups.find((g) => g.id === newGroupId)?.cost ?? liveCost
         : liveCost;
@@ -290,7 +301,6 @@ export function PriceFormation() {
         cost_group_id: newGroupId,
       });
 
-      // Refresh em background (não bloqueia a UI nem oculta a lista)
       loadAll({ silent: true });
     } catch (e: any) {
       console.error(e);
