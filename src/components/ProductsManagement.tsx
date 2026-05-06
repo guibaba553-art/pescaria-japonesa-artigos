@@ -26,6 +26,7 @@ import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
+import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 
 interface Product {
   id: string;
@@ -260,10 +261,10 @@ export function ProductsManagement() {
           price_pix_percent: 0,
           price_debit_percent: 5,
           price_credit_percent: 10.25,
-          weight_grams: weightGrams ? parseInt(weightGrams) : null,
-          length_cm: lengthCm ? parseFloat(lengthCm) : null,
-          width_cm: widthCm ? parseFloat(widthCm) : null,
-          height_cm: heightCm ? parseFloat(heightCm) : null,
+          weight_grams: parseOptionalMeasurementInput(weightGrams, 'int'),
+          length_cm: parseOptionalMeasurementInput(lengthCm, 'float'),
+          width_cm: parseOptionalMeasurementInput(widthCm, 'float'),
+          height_cm: parseOptionalMeasurementInput(heightCm, 'float'),
         }])
         .select('id')
         .single();
