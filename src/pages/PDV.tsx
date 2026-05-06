@@ -28,7 +28,8 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
-  Users
+  Users,
+  Printer
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -50,6 +51,7 @@ import {
 } from '@/components/ui/select';
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
+import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 
 interface ProductVariation {
   id: string;
@@ -2315,6 +2317,53 @@ export default function PDV() {
                                       >
                                         <FolderOpen className="w-3.5 h-3.5 mr-1" />
                                         {currentSaleId === sale.id ? 'Carregada' : 'Abrir'}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={async () => {
+                                          try {
+                                            const items = (sale.cart_data as any[]) || [];
+                                            const subtotal = items.reduce(
+                                              (s: number, it: any) => s + (it.customPrice ?? it.product?.price ?? 0) * (it.quantity || 0),
+                                              0
+                                            );
+                                            const discount = Math.max(0, subtotal - Number(sale.total_amount));
+                                            await generateBudgetPdf({
+                                              saleId: sale.id,
+                                              createdAt: sale.created_at,
+                                              operatorName: sale.operator_name,
+                                              customerName: sale.customer_data?.full_name,
+                                              customerCPF: sale.customer_data?.cpf,
+                                              paymentMethod: sale.payment_method,
+                                              items: items.map((it: any) => ({
+                                                product: {
+                                                  id: it.product?.id,
+                                                  name: it.product?.name ?? 'Produto',
+                                                  sku: it.product?.sku,
+                                                  image_url: it.product?.image_url,
+                                                },
+                                                variation: it.variation
+                                                  ? { name: it.variation.name, image_url: it.variation.image_url }
+                                                  : undefined,
+                                                quantity: it.quantity || 0,
+                                                unitPrice: it.customPrice ?? it.product?.price ?? 0,
+                                              })),
+                                              subtotal,
+                                              discount,
+                                              total: Number(sale.total_amount),
+                                            });
+                                          } catch (err: any) {
+                                            toast({
+                                              title: 'Erro ao gerar orçamento',
+                                              description: err?.message ?? String(err),
+                                              variant: 'destructive',
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <Printer className="w-3.5 h-3.5 mr-1" />
+                                        Orçamento
                                       </Button>
                                       <Button
                                         size="sm"
