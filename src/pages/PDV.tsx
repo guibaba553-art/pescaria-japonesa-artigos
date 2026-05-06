@@ -36,6 +36,7 @@ import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Dialog, 
   DialogContent, 
@@ -116,6 +117,7 @@ export default function PDV() {
   const [customerCPF, setCustomerCPF] = useState('');
   const [installments, setInstallments] = useState(1);
   const [discountInput, setDiscountInput] = useState(''); // desconto em R$ (valor direto)
+  const [saleNotes, setSaleNotes] = useState(''); // anotação livre da venda
   
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -373,7 +375,7 @@ export default function PDV() {
         customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
         payment_method: paymentMethod,
         total_amount: calculateTotal(),
-        notes: ''
+        notes: saleNotes || ''
       };
 
       if (currentSaleId) {
@@ -421,6 +423,7 @@ export default function PDV() {
     setSelectedCustomer(sale.customer_data);
     setPaymentMethod(sale.payment_method || 'cash');
     setCurrentSaleId(sale.id);
+    setSaleNotes(sale.notes || '');
     setShowSavedSalesDialog(false);
     
     toast({
@@ -464,6 +467,7 @@ export default function PDV() {
     setPaymentMethod('credit');
     setInstallments(1);
     setDiscountInput('');
+    setSaleNotes('');
     setCurrentSaleId(null);
     idempotencyKeyRef.current = null;
     tefResultRef.current = null;
@@ -495,7 +499,7 @@ export default function PDV() {
           customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
           payment_method: paymentMethod,
           total_amount: calculateTotal(),
-          notes: ''
+          notes: saleNotes || ''
         };
 
         if (currentSaleId) {
@@ -1238,6 +1242,7 @@ export default function PDV() {
           card_last_digits: tefData?.card_last_digits ?? null,
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
+          notes: saleNotes || null,
         }])
         .select()
         .single();
@@ -1739,6 +1744,22 @@ export default function PDV() {
                 </div>
               </CardContent>
             </Card>
+
+            {cart.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Anotação da Venda</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Escreva aqui qualquer observação desta venda (ex.: cor escolhida, prazo, troco, instruções)..."
+                    value={saleNotes}
+                    onChange={(e) => setSaleNotes(e.target.value)}
+                    rows={3}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
             {cart.length > 0 && (
               <Card>
@@ -2606,6 +2627,11 @@ export default function PDV() {
                                            sale.payment_method === 'pix' ? '📱 PIX' : '—'}
                                         </div>
                                       </div>
+                                      {sale.notes && (
+                                        <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-2 py-1.5 rounded text-foreground whitespace-pre-wrap">
+                                          📝 {sale.notes}
+                                        </div>
+                                      )}
                                     </div>
 
                                     <div className="flex flex-col gap-1.5 shrink-0">

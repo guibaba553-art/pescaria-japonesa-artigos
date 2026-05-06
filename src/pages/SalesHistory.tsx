@@ -266,9 +266,21 @@ export default function SalesHistory() {
                           </h4>
                           <div className="space-y-2">
                             {order.items.map((item: any) => (
-                              <div key={item.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{item.product.name}</p>
+                              <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/30 rounded">
+                                {item.product?.image_url ? (
+                                  <img
+                                    src={item.product.image_url}
+                                    alt={item.product?.name || 'Produto'}
+                                    className="w-12 h-12 object-cover rounded border"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded border bg-muted flex items-center justify-center">
+                                    <Package className="w-5 h-5 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{item.product?.name}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {item.quantity}x R$ {item.price_at_purchase.toFixed(2)}
                                   </p>
@@ -280,6 +292,13 @@ export default function SalesHistory() {
                             ))}
                           </div>
                         </div>
+
+                        {order.notes && (
+                          <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border-l-4 border-amber-400 px-3 py-2 rounded whitespace-pre-wrap">
+                            <span className="font-semibold">📝 Anotação: </span>
+                            {order.notes}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

@@ -1120,6 +1120,7 @@ export type Database = {
           delivery_type: string
           id: string
           idempotency_key: string | null
+          notes: string | null
           nsu: string | null
           payment_id: string | null
           payment_method: string | null
@@ -1147,6 +1148,7 @@ export type Database = {
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          notes?: string | null
           nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
@@ -1174,6 +1176,7 @@ export type Database = {
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          notes?: string | null
           nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
