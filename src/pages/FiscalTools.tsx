@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet } from "lucide-react";
 
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
@@ -27,6 +27,9 @@ const AccountantReport = lazy(() =>
 );
 const EmitNFeManual = lazy(() =>
   import("@/components/EmitNFeManual").then((m) => ({ default: m.EmitNFeManual }))
+);
+const ExpenseTracker = lazy(() =>
+  import("@/components/ExpenseTracker").then((m) => ({ default: m.ExpenseTracker }))
 );
 
 const FiscalTabFallback = () => (
@@ -213,10 +216,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="gastos">
+              <Wallet className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Gastos</span>
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
@@ -244,6 +251,24 @@ export default function FiscalTools() {
             <Suspense fallback={<FiscalTabFallback />}>
               <TaxProjection />
             </Suspense>
+          </TabsContent>
+
+          <TabsContent value="gastos">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" /> Controle de Gastos
+                </CardTitle>
+                <CardDescription>
+                  Cadastre custos fixos (recorrentes mês a mês) e variáveis (pontuais). Navegue pelos meses para ver o histórico completo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <ExpenseTracker />
+                </Suspense>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="nfe">
