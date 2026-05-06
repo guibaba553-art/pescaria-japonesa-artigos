@@ -2083,6 +2083,95 @@ export default function PDV() {
               </div>
             </div>
 
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="municipio">Município {customerForm.doc_type === 'cnpj' && '*'}</Label>
+                <Input
+                  id="municipio"
+                  placeholder="Cidade"
+                  value={customerForm.municipio}
+                  onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="uf">UF {customerForm.doc_type === 'cnpj' && '*'}</Label>
+                <Input
+                  id="uf"
+                  placeholder="SP"
+                  maxLength={2}
+                  value={customerForm.uf}
+                  onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
+                />
+              </div>
+            </div>
+
+            {customerForm.doc_type === 'cnpj' && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
+                <p className="text-xs font-semibold text-orange-900">
+                  Dados obrigatórios para emissão de NF-e
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="codigo_municipio_ibge">Código IBGE do município *</Label>
+                  <Input
+                    id="codigo_municipio_ibge"
+                    placeholder="Ex: 3550308"
+                    value={customerForm.codigo_municipio_ibge}
+                    onChange={(e) =>
+                      setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
+                    }
+                    maxLength={7}
+                  />
+                  <p className="text-xs text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ie_indicador">Indicador de Inscrição Estadual *</Label>
+                  <Select
+                    value={customerForm.ie_indicador}
+                    onValueChange={(v) =>
+                      setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
+                    }
+                  >
+                    <SelectTrigger id="ie_indicador">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
+                      <SelectItem value="2">2 - Contribuinte isento</SelectItem>
+                      <SelectItem value="9">9 - Não contribuinte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {customerForm.ie_indicador === '1' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="inscricao_estadual">Inscrição Estadual *</Label>
+                    <Input
+                      id="inscricao_estadual"
+                      placeholder="Somente números"
+                      value={customerForm.inscricao_estadual}
+                      onChange={(e) =>
+                        setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="customer_email">E-mail (recomendado)</Label>
+                  <Input
+                    id="customer_email"
+                    type="email"
+                    placeholder="contato@empresa.com.br"
+                    value={customerForm.email}
+                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Para envio automático do XML/DANFE da NF-e.</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button
                 onClick={() => setShowCustomerDialog(false)}
