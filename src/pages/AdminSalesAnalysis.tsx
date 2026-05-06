@@ -1160,19 +1160,61 @@ export default function AdminSalesAnalysis() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div>
-                {invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv'
-                  ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
-                  : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
-                {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
-                {invoiceTarget && (
-                  <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
-                    <div><strong>Tipo:</strong> {invoiceTarget.kind === 'saved' ? 'Orçamento' : 'Pedido'} {invoiceTarget.source === 'pdv' ? '(PDV)' : invoiceTarget.kind === 'order' ? '(Site)' : ''}</div>
-                    <div><strong>ID:</strong> #{invoiceTarget.id.slice(0, 8)}</div>
-                    <div><strong>Data:</strong> {format(new Date(invoiceTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
-                    <div><strong>Total:</strong> {formatCurrency(invoiceTarget.total_amount)}</div>
-                    <div><strong>Documento a emitir:</strong> {invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
-                  </div>
-                )}
+                {(() => {
+                  const isSitePedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv';
+                  const isPdvPedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source === 'pdv';
+                  const allowChoice = isPdvPedido; // só PDV permite escolher modelo
+                  const effectiveModel = isSitePedido ? 'nfe' : (allowChoice ? invoiceModel : 'nfce');
+                  return (
+                    <>
+                      {isSitePedido
+                        ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
+                        : effectiveModel === 'nfe'
+                          ? 'Será emitida uma NF-e (modelo 55) para esta venda.'
+                          : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
+                      {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
+                      {invoiceTarget && (
+                        <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
+                          <div><strong>Tipo:</strong> {invoiceTarget.kind === 'saved' ? 'Orçamento' : 'Pedido'} {invoiceTarget.source === 'pdv' ? '(PDV)' : invoiceTarget.kind === 'order' ? '(Site)' : ''}</div>
+                          <div><strong>ID:</strong> #{invoiceTarget.id.slice(0, 8)}</div>
+                          <div><strong>Data:</strong> {format(new Date(invoiceTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                          <div><strong>Total:</strong> {formatCurrency(invoiceTarget.total_amount)}</div>
+                          <div><strong>Documento:</strong> {effectiveModel === 'nfe' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
+                        </div>
+                      )}
+                      {allowChoice && (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-sm font-medium text-foreground">Escolha o modelo:</div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant={invoiceModel === 'nfce' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setInvoiceModel('nfce')}
+                              className="flex-1"
+                            >
+                              NFC-e (65)
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={invoiceModel === 'nfe' ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setInvoiceModel('nfe')}
+                              className="flex-1"
+                            >
+                              NF-e (55)
+                            </Button>
+                          </div>
+                          {invoiceModel === 'nfe' && (
+                            <p className="text-xs text-muted-foreground">
+                              NF-e exige cliente com CPF ou CNPJ vinculado ao pedido.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
