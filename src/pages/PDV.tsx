@@ -404,6 +404,7 @@ export default function PDV() {
     setDiscountInput('');
     setCurrentSaleId(null);
     idempotencyKeyRef.current = null;
+    tefResultRef.current = null;
   };
 
   const getLiveAvailableStock = (item: CartItem) => {
@@ -2388,6 +2389,25 @@ export default function PDV() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {tefEnabled && (
+        <TefChargeDialog
+          open={showTefDialog}
+          amount={calculateTotal()}
+          paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
+          installments={installments}
+          onCancel={() => {
+            setShowTefDialog(false);
+            tefResultRef.current = null;
+          }}
+          onApproved={(result) => {
+            tefResultRef.current = result;
+            setShowTefDialog(false);
+            // Re-dispara finalização agora com aprovação registrada
+            setTimeout(() => { finalizeSale(); }, 50);
+          }}
+        />
+      )}
     </div>
   );
 }
