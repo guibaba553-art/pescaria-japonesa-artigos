@@ -74,6 +74,7 @@ export function PriceFormation() {
   const [products, setProducts] = useState<Product[]>([]);
   const [groups, setGroups] = useState<CostGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
