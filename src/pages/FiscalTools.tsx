@@ -28,6 +28,9 @@ const AccountantReport = lazy(() =>
 const EmitNFeManual = lazy(() =>
   import("@/components/EmitNFeManual").then((m) => ({ default: m.EmitNFeManual }))
 );
+const ExpenseTracker = lazy(() =>
+  import("@/components/ExpenseTracker").then((m) => ({ default: m.ExpenseTracker }))
+);
 
 const FiscalTabFallback = () => (
   <div className="flex items-center justify-center py-16 text-muted-foreground">
