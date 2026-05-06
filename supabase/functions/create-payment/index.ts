@@ -190,43 +190,47 @@ serve(async (req) => {
       let dbPrice: number;
       
       if (item.variationId) {
-        // Verify variation price - need to check parent product's sale status
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select('on_sale, sale_price, price')
-          .eq('id', item.id)
-          .single();
-          
-        if (productError || !product) {
-          console.error('Invalid product:', item.id);
-          return new Response(
-            JSON.stringify({ error: 'Invalid product', success: false }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
-          );
-        }
-        
+        // Buscar variação SEM amarrar ao item.id (carrinhos podem ter id de
+        // produto desatualizado). Usamos o product_id real da variação para
+        // aplicar regras de promoção corretamente.
         const { data: variation, error } = await supabase
           .from('product_variations')
-          .select('price')
+          .select('price, product_id')
           .eq('id', item.variationId)
-          .eq('product_id', item.id)
-          .single();
-        
+          .maybeSingle();
+
         if (error || !variation) {
           console.error('Invalid variation:', item.variationId);
           return new Response(
-            JSON.stringify({ error: 'Invalid product variation', success: false }),
+            JSON.stringify({
+              error: `Item "${item.name}" não está mais disponível. Remova-o do carrinho e adicione novamente.`,
+              code: 'INVALID_VARIATION',
+              success: false,
+            }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
           );
         }
-        
-        // If parent product has sale, apply discount to variation price
+
+        const { data: product, error: productError } = await supabase
+          .from('products')
+          .select('on_sale, sale_price, price')
+          .eq('id', variation.product_id)
+          .single();
+
+        if (productError || !product) {
+          console.error('Invalid parent product for variation:', item.variationId);
+          return new Response(
+            JSON.stringify({ error: 'Produto não encontrado', success: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+          );
+        }
+
         let variationPrice = Number(variation.price);
-        if (product.on_sale && product.sale_price !== null) {
+        if (product.on_sale && product.sale_price !== null && Number(product.price) > 0) {
           const discountPercent = 1 - (Number(product.sale_price) / Number(product.price));
           variationPrice = variationPrice * (1 - discountPercent);
         }
-        
+
         dbPrice = variationPrice;
       } else {
         // Verify product price
