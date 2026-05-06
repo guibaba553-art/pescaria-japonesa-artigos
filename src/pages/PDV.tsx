@@ -1747,6 +1747,22 @@ export default function PDV() {
 
             {cart.length > 0 && (
               <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Anotação da Venda</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Escreva aqui qualquer observação desta venda (ex.: cor escolhida, prazo, troco, instruções)..."
+                    value={saleNotes}
+                    onChange={(e) => setSaleNotes(e.target.value)}
+                    rows={3}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
+            {cart.length > 0 && (
+              <Card>
                 <CardHeader>
                   <CardTitle>Pagamento</CardTitle>
                 </CardHeader>
