@@ -93,9 +93,9 @@ export function PriceFormation() {
   const [newGroupDesc, setNewGroupDesc] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  const loadAll = async () => {
-    setLoading(true);
-    try {
+  const loadAll = async (opts: { silent?: boolean } = {}) => {
+    if (opts.silent) setRefreshing(true);
+    else setLoading(true);
       const [pRes, gRes] = await Promise.all([
         supabase.rpc("get_products_admin"),
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
