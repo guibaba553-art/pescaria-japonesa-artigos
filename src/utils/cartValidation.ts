@@ -1,174 +1,229 @@
-import { supabase } from '@/integrations/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export interface CartItemLike {
-  id: string;
-  name: string;
-  price: number;
+export interface CartItemForValidation {
+  product: { id: string; stock?: number | null; name?: string };
+  variation?: {
+    id: string;
+    sku?: string | null;
+    name?: string | null;
+    price?: number | null;
+    stock?: number | null;
+  } | null;
   quantity: number;
-  variationId?: string;
-  cartItemKey: string;
 }
 
-export interface CartValidationIssue {
-  cartItemKey: string;
-  name: string;
-  reason: 'product_not_found' | 'variation_not_found' | 'out_of_stock' | 'price_changed';
-  details?: string;
-  newPrice?: number;
-  availableStock?: number;
+export interface ValidationResult {
+  validVariationIds: Set<string>;
+  missing: string[];
 }
 
-export interface CartValidationResult {
-  valid: boolean;
-  issues: CartValidationIssue[];
-  /** Itens que devem ser removidos imediatamente do carrinho (não existem mais). */
-  removeKeys: string[];
+export interface ResolvedCartInventoryItem {
+  resolvedVariationId: string | null;
+  availableStock: number;
+  wasReconciled: boolean;
+  usedProductFallback: boolean;
 }
 
-/**
- * Valida cada item do carrinho contra o banco. Detecta produtos/variações
- * apagados, sem estoque ou com preço alterado.
- */
-export async function validateCart(items: CartItemLike[]): Promise<CartValidationResult> {
-  const issues: CartValidationIssue[] = [];
-  const removeKeys: string[] = [];
+export interface ResolvedCartInventory {
+  validVariationIds: Set<string>;
+  missing: string[];
+  reconciledVariationIds: Map<string, string>;
+  resolvedItems: ResolvedCartInventoryItem[];
+}
 
-  for (const item of items) {
-    if (item.variationId) {
-      const { data: variation } = await supabase
-        .from('product_variations')
-        .select('id, price, stock, name, product_id')
-        .eq('id', item.variationId)
-        .maybeSingle();
+interface LiveVariationRow {
+  id: string;
+  product_id: string;
+  stock: number | string | null;
+  sku?: string | null;
+  name?: string | null;
+  price?: number | string | null;
+}
 
-      if (!variation) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'variation_not_found',
-          details: 'Esta variação não está mais disponível.',
-        });
-        removeKeys.push(item.cartItemKey);
-        continue;
-      }
+function normalizeText(value?: string | null) {
+  return (value || '').trim().toLowerCase();
+}
 
-      // Verificar produto pai existe
-      const { data: product } = await supabase
-        .from('products')
-        .select('id, on_sale, sale_price, price')
-        .eq('id', variation.product_id)
-        .maybeSingle();
+function toNumber(value: number | string | null | undefined) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
-      if (!product) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'product_not_found',
-          details: 'Produto não está mais disponível.',
-        });
-        removeKeys.push(item.cartItemKey);
-        continue;
-      }
+function matchReplacementVariation(
+  originalVariation: NonNullable<CartItemForValidation['variation']>,
+  candidates: LiveVariationRow[]
+) {
+  if (candidates.length === 0) return null;
 
-      if (variation.stock < item.quantity) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'out_of_stock',
-          details: `Apenas ${variation.stock} em estoque.`,
-          availableStock: variation.stock,
-        });
-      }
+  const originalSku = normalizeText(originalVariation.sku);
+  if (originalSku) {
+    const skuMatch = candidates.find(v => normalizeText(v.sku) === originalSku);
+    if (skuMatch) return skuMatch;
+  }
 
-      // Preço calculado igual ao backend
-      let expectedPrice = Number(variation.price);
-      if (product.on_sale && product.sale_price !== null && Number(product.price) > 0) {
-        const discount = 1 - (Number(product.sale_price) / Number(product.price));
-        expectedPrice = expectedPrice * (1 - discount);
-      }
-      if (Math.abs(expectedPrice - item.price) > 0.01) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'price_changed',
-          details: 'O preço foi atualizado.',
-          newPrice: Number(expectedPrice.toFixed(2)),
-        });
-      }
-    } else {
-      const { data: product } = await supabase
-        .from('products')
-        .select('id, price, sale_price, on_sale, stock')
-        .eq('id', item.id)
-        .maybeSingle();
+  const originalName = normalizeText(originalVariation.name);
+  if (originalName) {
+    const nameMatches = candidates.filter(v => normalizeText(v.name) === originalName);
+    if (nameMatches.length === 1) return nameMatches[0];
 
-      if (!product) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'product_not_found',
-          details: 'Produto não está mais disponível.',
-        });
-        removeKeys.push(item.cartItemKey);
-        continue;
-      }
-
-      if (product.stock < item.quantity) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'out_of_stock',
-          details: `Apenas ${product.stock} em estoque.`,
-          availableStock: product.stock,
-        });
-      }
-
-      const expectedPrice = product.on_sale && product.sale_price
-        ? Number(product.sale_price)
-        : Number(product.price);
-      if (Math.abs(expectedPrice - item.price) > 0.01) {
-        issues.push({
-          cartItemKey: item.cartItemKey,
-          name: item.name,
-          reason: 'price_changed',
-          details: 'O preço foi atualizado.',
-          newPrice: expectedPrice,
-        });
-      }
+    if (nameMatches.length > 1 && originalVariation.price != null) {
+      const originalPrice = toNumber(originalVariation.price);
+      const priceMatch = nameMatches.find(v => toNumber(v.price) === originalPrice);
+      if (priceMatch) return priceMatch;
     }
   }
 
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
+
+  return null;
+}
+
+/**
+ * Verifica no banco se todos os variation_id presentes no carrinho ainda existem.
+ * Usado para evitar violação de FK em order_items quando uma variação foi
+ * removida/recriada entre o carregamento da tela e o fechamento da venda.
+ */
+export async function validateCartVariations(
+  supabase: Pick<SupabaseClient, 'from'>,
+  cart: CartItemForValidation[]
+): Promise<ValidationResult> {
+  const variationIds = Array.from(new Set(
+    cart.map(i => i.variation?.id).filter((v): v is string => !!v)
+  ));
+
+  if (variationIds.length === 0) {
+    return { validVariationIds: new Set(), missing: [] };
+  }
+
+  const { data, error } = await supabase
+    .from('product_variations')
+    .select('id')
+    .in('id', variationIds);
+
+  if (error) throw error;
+
+  const validVariationIds = new Set((data || []).map((v: { id: string }) => v.id));
+  const missing = variationIds.filter(id => !validVariationIds.has(id));
+  return { validVariationIds, missing };
+}
+
+/**
+ * Recarrega o estoque real dos produtos/variações do carrinho e tenta reconciliar
+ * variações recriadas (mesmo SKU/nome) antes de registrar a venda.
+ */
+export async function resolveCartInventory(
+  supabase: Pick<SupabaseClient, 'from'>,
+  cart: CartItemForValidation[]
+): Promise<ResolvedCartInventory> {
+  const productIds = Array.from(new Set(cart.map(item => item.product.id).filter(Boolean)));
+  const variationProductIds = Array.from(new Set(
+    cart.filter(item => !!item.variation).map(item => item.product.id)
+  ));
+
+  const [productsResult, variationsResult] = await Promise.all([
+    productIds.length > 0
+      ? supabase.from('products').select('id, stock').in('id', productIds)
+      : Promise.resolve({ data: [], error: null }),
+    variationProductIds.length > 0
+      ? supabase
+          .from('product_variations')
+          .select('id, product_id, stock, sku, name, price')
+          .in('product_id', variationProductIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (productsResult.error) throw productsResult.error;
+  if (variationsResult.error) throw variationsResult.error;
+
+  const productsById = new Map(
+    ((productsResult.data || []) as Array<{ id: string; stock: number | string | null }>).map(product => [
+      product.id,
+      toNumber(product.stock),
+    ])
+  );
+
+  const liveVariations = (variationsResult.data || []) as LiveVariationRow[];
+  const validVariationIds = new Set(liveVariations.map(variation => variation.id));
+  const variationsById = new Map(liveVariations.map(variation => [variation.id, variation]));
+  const variationsByProduct = new Map<string, LiveVariationRow[]>();
+
+  liveVariations.forEach(variation => {
+    const existing = variationsByProduct.get(variation.product_id) || [];
+    existing.push(variation);
+    variationsByProduct.set(variation.product_id, existing);
+  });
+
+  const missing = Array.from(new Set(
+    cart.map(item => item.variation?.id)
+      .filter((id): id is string => !!id && !validVariationIds.has(id))
+  ));
+
+  const reconciledVariationIds = new Map<string, string>();
+  const resolvedItems = cart.map(item => {
+    const productStock = productsById.get(item.product.id) ?? toNumber(item.product.stock);
+
+    if (!item.variation) {
+      return {
+        resolvedVariationId: null,
+        availableStock: productStock,
+        wasReconciled: false,
+        usedProductFallback: false,
+      };
+    }
+
+    const liveVariation = variationsById.get(item.variation.id);
+    if (liveVariation) {
+      return {
+        resolvedVariationId: liveVariation.id,
+        availableStock: toNumber(liveVariation.stock),
+        wasReconciled: false,
+        usedProductFallback: false,
+      };
+    }
+
+    const replacement = matchReplacementVariation(
+      item.variation,
+      variationsByProduct.get(item.product.id) || []
+    );
+
+    if (replacement) {
+      reconciledVariationIds.set(item.variation.id, replacement.id);
+      return {
+        resolvedVariationId: replacement.id,
+        availableStock: toNumber(replacement.stock),
+        wasReconciled: true,
+        usedProductFallback: false,
+      };
+    }
+
+    return {
+      resolvedVariationId: null,
+      availableStock: productStock,
+      wasReconciled: false,
+      usedProductFallback: true,
+    };
+  });
+
   return {
-    valid: issues.length === 0,
-    issues,
-    removeKeys,
+    validVariationIds,
+    missing,
+    reconciledVariationIds,
+    resolvedItems,
   };
 }
 
 /**
- * Tenta extrair a mensagem de erro vinda do body de uma resposta de edge
- * function que retornou status não-2xx (supabase.functions.invoke devolve apenas
- * "Edge Function returned a non-2xx status code").
+ * Resolve o variation_id que será inserido em order_items: mantém o id original
+ * apenas se ele consta no conjunto de variações válidas; caso contrário, null.
  */
-export async function extractEdgeError(error: unknown): Promise<string | null> {
-  try {
-    const ctx = (error as any)?.context;
-    if (!ctx) return null;
-    if (typeof ctx.json === 'function') {
-      const body = await ctx.json();
-      return body?.error || body?.message || null;
-    }
-    if (typeof ctx.text === 'function') {
-      const text = await ctx.text();
-      try {
-        const body = JSON.parse(text);
-        return body?.error || body?.message || text;
-      } catch {
-        return text;
-      }
-    }
-  } catch {
-    /* ignore */
+export function resolveVariationIdForOrderItem(
+  item: CartItemForValidation,
+  validVariationIds: Set<string>
+): string | null {
+  if (item.variation && validVariationIds.has(item.variation.id)) {
+    return item.variation.id;
   }
   return null;
 }
