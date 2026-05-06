@@ -161,7 +161,24 @@ export default function PDV() {
       if (!res.ok) throw new Error('CNPJ não encontrado');
       const d = await res.json();
       const fmtCnpj = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-      const fmtCep = (d.cep || '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+      const fmtCep = (d.cep ? String(d.cep).padStart(8, '0') : '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+
+      // BrasilAPI /cnpj retorna `codigo_municipio` (IBGE 7 dígitos em alguns casos) — quando não vier,
+      // buscamos via /ibge/municipios/v1/{uf} pelo nome do município.
+      let ibge = d.codigo_municipio ? String(d.codigo_municipio) : '';
+      if ((!ibge || ibge.length !== 7) && d.uf && d.municipio) {
+        try {
+          const ibgeRes = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${d.uf}?providers=dados-abertos-br,gov,wikipedia`);
+          if (ibgeRes.ok) {
+            const cidades: any[] = await ibgeRes.json();
+            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+            const alvo = norm(d.municipio);
+            const match = cidades.find(c => norm(c.nome) === alvo);
+            if (match?.codigo_ibge) ibge = String(match.codigo_ibge);
+          }
+        } catch {}
+      }
+
       setCustomerForm((prev) => ({
         ...prev,
         cnpj: fmtCnpj,
@@ -174,7 +191,7 @@ export default function PDV() {
         complemento: d.complemento || prev.complemento,
         municipio: d.municipio || prev.municipio,
         uf: d.uf || prev.uf,
-        codigo_municipio_ibge: d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : prev.codigo_municipio_ibge,
+        codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
         email: d.email || prev.email,
       }));
       toast({ title: 'Dados preenchidos', description: d.razao_social });
@@ -2001,7 +2018,7 @@ export default function PDV() {
 
       {/* Diálogo de cadastro de cliente */}
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Cadastrar Cliente</DialogTitle>
             <DialogDescription>
