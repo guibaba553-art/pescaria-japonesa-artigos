@@ -12,6 +12,11 @@ interface ChargeRequest {
   order_id?: string | null;
 }
 
+// Stone Open API base URLs - serão usadas quando STONE_CLIENT_ID/SECRET forem configurados
+const STONE_API_BASE = Deno.env.get('STONE_ENVIRONMENT') === 'production'
+  ? 'https://api.openbank.stone.com.br'
+  : 'https://sandbox-api.openbank.stone.com.br';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -38,7 +43,6 @@ Deno.serve(async (req) => {
       return json({ error: 'Método de pagamento inválido' }, 400);
     }
 
-    // Carrega configurações
     const { data: settings } = await supabase
       .from('tef_settings')
       .select('*')
@@ -66,7 +70,6 @@ Deno.serve(async (req) => {
     if (txErr || !tx) return json({ error: txErr?.message ?? 'Falha ao criar transação' }, 500);
 
     // === MODO CONNECT (agente local) ===
-    // Retorna instruções para o front chamar localhost:9999
     if (settings.mode === 'connect') {
       return json({
         mode: 'connect',
@@ -74,7 +77,7 @@ Deno.serve(async (req) => {
         agent_url: settings.agent_url || 'http://localhost:9999',
         stone_code: settings.stone_code,
         payload: {
-          amount: Math.round(body.amount * 100), // em centavos
+          amount: Math.round(body.amount * 100),
           installments: body.installments ?? 1,
           method: body.payment_method,
           reference: tx.id,
@@ -82,13 +85,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // === MODO API (cloud / Stone Open API) ===
-    // TODO: substituir por chamada real à Stone quando credenciais estiverem disponíveis
+    // === MODO API (Stone Open API) ===
     const stoneClientId = Deno.env.get('STONE_CLIENT_ID');
     const stoneClientSecret = Deno.env.get('STONE_CLIENT_SECRET');
+    const stoneStoneCode = settings.stone_code || Deno.env.get('STONE_MERCHANT_ID');
 
+    // Sem credenciais → MOCK (para você testar enquanto aguarda a Stone)
     if (!stoneClientId || !stoneClientSecret) {
-      // MOCK temporário: aprova após simulação
       const mockResp = {
         status: 'approved' as const,
         nsu: String(Date.now()).slice(-9),
@@ -114,13 +117,102 @@ Deno.serve(async (req) => {
       });
     }
 
-    // (espaço para integração real futura com Stone Open API)
-    return json({ error: 'Integração Stone API ainda não implementada' }, 501);
+    // === Integração real Stone Open API ===
+    try {
+      // 1) OAuth client_credentials → access token
+      const tokenResp = await fetch(`${STONE_API_BASE}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: stoneClientId,
+          client_secret: stoneClientSecret,
+        }),
+      });
+
+      if (!tokenResp.ok) {
+        const errText = await tokenResp.text();
+        await markTxError(supabase, tx.id, `OAuth Stone falhou: ${errText}`);
+        return json({ error: 'Falha ao autenticar na Stone', detail: errText }, 502);
+      }
+
+      const tokenData = await tokenResp.json();
+      const accessToken = tokenData.access_token;
+
+      // 2) Criar charge na Stone
+      const chargePayload: Record<string, unknown> = {
+        amount: Math.round(body.amount * 100),
+        currency: 'BRL',
+        payment_method: body.payment_method === 'credit' ? 'credit_card' : 'debit_card',
+        installments: body.installments ?? 1,
+        reference_id: tx.id,
+        merchant_id: stoneStoneCode,
+      };
+
+      const chargeResp = await fetch(`${STONE_API_BASE}/api/v1/charges`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Idempotency-Key': tx.id,
+        },
+        body: JSON.stringify(chargePayload),
+      });
+
+      const chargeData = await chargeResp.json();
+
+      if (!chargeResp.ok) {
+        await markTxError(supabase, tx.id, chargeData?.message || 'Stone recusou cobrança');
+        return json({
+          mode: 'api',
+          transaction_id: tx.id,
+          status: 'declined',
+          error: chargeData?.message || 'Cobrança recusada',
+        });
+      }
+
+      const stoneStatus = chargeData?.status || 'pending';
+      const approved = stoneStatus === 'approved' || stoneStatus === 'paid' || stoneStatus === 'succeeded';
+
+      const result = {
+        status: approved ? 'approved' : 'declined',
+        nsu: chargeData?.nsu ?? chargeData?.acquirer?.nsu ?? null,
+        authorization_code: chargeData?.authorization_code ?? chargeData?.acquirer?.authorization_code ?? null,
+        card_brand: chargeData?.card?.brand ?? null,
+        card_last_digits: chargeData?.card?.last_digits ?? chargeData?.card?.last4 ?? null,
+      };
+
+      await supabase.from('tef_transactions').update({
+        status: result.status,
+        nsu: result.nsu,
+        authorization_code: result.authorization_code,
+        card_brand: result.card_brand,
+        card_last_digits: result.card_last_digits,
+        raw_response: chargeData,
+      }).eq('id', tx.id);
+
+      return json({
+        mode: 'api',
+        transaction_id: tx.id,
+        ...result,
+      });
+    } catch (apiErr) {
+      const msg = (apiErr as Error).message;
+      await markTxError(supabase, tx.id, msg);
+      return json({ error: `Erro ao chamar Stone: ${msg}` }, 502);
+    }
   } catch (err) {
     console.error('[tef-stone-charge] erro', err);
     return json({ error: (err as Error).message }, 500);
   }
 });
+
+async function markTxError(supabase: ReturnType<typeof createClient>, txId: string, message: string) {
+  await supabase.from('tef_transactions').update({
+    status: 'error',
+    error_message: message,
+  }).eq('id', txId);
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
