@@ -404,6 +404,7 @@ export default function PDV() {
     setDiscountInput('');
     setCurrentSaleId(null);
     idempotencyKeyRef.current = null;
+    tefResultRef.current = null;
   };
 
   const getLiveAvailableStock = (item: CartItem) => {
