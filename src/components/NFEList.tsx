@@ -20,6 +20,7 @@ interface NFE {
   emitted_at: string | null;
   created_at: string;
   tipo: string;
+  modelo: string | null;
   fornecedor_nome: string | null;
   fornecedor_cnpj: string | null;
 }
