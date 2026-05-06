@@ -481,20 +481,27 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
-      // Validar estoque ANTES de criar o pedido
-      for (const item of items) {
-        const { data: productData, error: stockError } = await supabase
-          .from(item.variationId ? 'product_variations' : 'products')
-          .select('stock, name')
-          .eq('id', item.variationId || item.id)
-          .single();
-
-        if (stockError || !productData) {
-          throw new Error(`Erro ao verificar estoque de ${item.name}`);
+      // Validar carrinho ANTES de criar o pedido (produto/variação removidos, sem estoque, preço alterado)
+      const { validateSiteCart } = await import('@/utils/siteCartValidation');
+      const validation = await validateSiteCart(items);
+      if (!validation.valid) {
+        const orphan = validation.issues.find(
+          (i) => i.reason === 'product_not_found' || i.reason === 'variation_not_found',
+        );
+        if (orphan) {
+          throw new Error(
+            `${orphan.name}: ${orphan.details} Remova-o do carrinho e tente novamente.`,
+          );
         }
-
-        if (productData.stock < item.quantity) {
-          throw new Error(`Estoque insuficiente para ${item.name}. Disponível: ${productData.stock}, solicitado: ${item.quantity}`);
+        const oos = validation.issues.find((i) => i.reason === 'out_of_stock');
+        if (oos) {
+          throw new Error(`${oos.name}: ${oos.details}`);
+        }
+        const price = validation.issues.find((i) => i.reason === 'price_changed');
+        if (price) {
+          throw new Error(
+            `O preço de "${price.name}" foi atualizado. Atualize a página para ver o novo valor.`,
+          );
         }
       }
 
@@ -556,7 +563,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         if (prefError || !prefData?.success || !prefData?.initPoint) {
           await supabase.from('order_items').delete().eq('order_id', orderData.id);
           await supabase.from('orders').delete().eq('id', orderData.id);
-          throw new Error(prefData?.error || prefError?.message || 'Erro ao criar checkout');
+          const { extractEdgeError } = await import('@/utils/siteCartValidation');
+          const friendly = prefError ? await extractEdgeError(prefError) : null;
+          throw new Error(friendly || prefData?.error || prefError?.message || 'Erro ao criar checkout');
         }
 
         toast({
@@ -608,8 +617,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         // Se falhar, deletar o pedido criado
         await supabase.from('order_items').delete().eq('order_id', orderData.id);
         await supabase.from('orders').delete().eq('id', orderData.id);
-        console.error('Edge function error:', error);
-        throw new Error(`Erro ao processar pagamento: ${error.message}`);
+        const { extractEdgeError } = await import('@/utils/siteCartValidation');
+        const friendly = await extractEdgeError(error);
+        console.error('Edge function error:', friendly || error);
+        throw new Error(friendly || `Erro ao processar pagamento: ${error.message}`);
       }
 
       if (data.success) {

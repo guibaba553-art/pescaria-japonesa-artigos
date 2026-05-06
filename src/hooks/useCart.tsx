@@ -28,28 +28,55 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const { toast } = useToast();
 
-  // Carregar carrinho do localStorage
+  // Carregar carrinho do localStorage e VALIDAR contra o banco
+  // (remove itens cujo produto/variação não existem mais; atualiza preços que mudaram).
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        // Migrar itens antigos que não têm cartItemKey
-        const migratedCart = parsedCart.map((item: CartItem) => {
-          if (!item.cartItemKey) {
-            return {
-              ...item,
-              cartItemKey: item.variationId ? `${item.id}-${item.variationId}` : item.id
-            };
-          }
-          return item;
-        });
-        setItems(migratedCart);
-      } catch (error) {
-        console.error('Error loading cart:', error);
-        setItems([]);
-      }
+    if (!savedCart) return;
+    let parsedCart: CartItem[] = [];
+    try {
+      parsedCart = JSON.parse(savedCart);
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      setItems([]);
+      return;
     }
+
+    const migrated = parsedCart.map((item) => ({
+      ...item,
+      cartItemKey:
+        item.cartItemKey ||
+        (item.variationId ? `${item.id}-${item.variationId}` : item.id),
+    }));
+    setItems(migrated);
+
+    (async () => {
+      try {
+        const { validateSiteCart } = await import('@/utils/siteCartValidation');
+        const result = await validateSiteCart(migrated);
+        if (result.removeKeys.length > 0) {
+          setItems((curr) => curr.filter((i) => !result.removeKeys.includes(i.cartItemKey)));
+          toast({
+            title: 'Carrinho atualizado',
+            description: `${result.removeKeys.length} item(ns) indisponível(eis) foram removidos do seu carrinho.`,
+          });
+        }
+        const priceChanges = result.issues.filter(
+          (i) => i.reason === 'price_changed' && i.newPrice != null,
+        );
+        if (priceChanges.length > 0) {
+          setItems((curr) =>
+            curr.map((i) => {
+              const change = priceChanges.find((p) => p.cartItemKey === i.cartItemKey);
+              return change && change.newPrice != null ? { ...i, price: change.newPrice } : i;
+            }),
+          );
+        }
+      } catch (e) {
+        console.error('Cart validation failed:', e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Salvar carrinho no localStorage
@@ -92,7 +119,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .from(product.variationId ? 'product_variations' : 'products')
         .select('stock')
         .eq('id', product.variationId || product.id)
-        .single();
+        .maybeSingle();
 
       if (error || !stockData) {
         toast({
