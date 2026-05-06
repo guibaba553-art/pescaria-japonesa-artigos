@@ -104,6 +104,11 @@ export function ProductsManagement() {
   const [generatingSummary, setGeneratingSummary] = useState(false);
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState('');
+  // Overrides manuais por método (vazio = usa fórmula automática)
+  const [pricePdvPix, setPricePdvPix] = useState('');
+  const [pricePdvCash, setPricePdvCash] = useState('');
+  const [pricePdvDebit, setPricePdvDebit] = useState('');
+  const [pricePdvCredit, setPricePdvCredit] = useState('');
   // Peso e dimensões para cálculo de frete (Melhor Envio)
   const [weightGrams, setWeightGrams] = useState('');
   const [lengthCm, setLengthCm] = useState('');
