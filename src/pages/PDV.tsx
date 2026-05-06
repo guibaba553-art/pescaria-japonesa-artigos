@@ -905,7 +905,7 @@ export default function PDV() {
     const isCnpj = customerForm.doc_type === 'cnpj';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
 
-    // Validar campos
+    // Validar campos básicos
     if (!customerForm.full_name.trim() || !docValue.trim() ||
         !customerForm.cep.trim() || !customerForm.street.trim() ||
         !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
@@ -917,6 +917,36 @@ export default function PDV() {
       return;
     }
 
+    // Validações extras para CNPJ (necessárias para emissão de NF-e)
+    if (isCnpj) {
+      const cnpjDigits = customerForm.cnpj.replace(/\D/g, '');
+      if (cnpjDigits.length !== 14) {
+        toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.company_name.trim()) {
+        toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.municipio.trim() || !customerForm.uf.trim() || !customerForm.codigo_municipio_ibge.trim()) {
+        toast({ title: 'Município incompleto', description: 'Informe município, UF e código IBGE (busque pelo CNPJ).', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.ie_indicador) {
+        toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
+        return;
+      }
+      // Se for contribuinte (1), exige IE; se isento (2) ou não contribuinte (9), grava ISENTO
+      if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
+        toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
+        return;
+      }
+      if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
+        toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         full_name: customerForm.full_name,
@@ -926,7 +956,14 @@ export default function PDV() {
         neighborhood: customerForm.neighborhood,
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
-        company_name: isCnpj ? (customerForm.company_name || null) : null,
+        company_name: isCnpj ? customerForm.company_name : null,
+        complemento: customerForm.complemento || null,
+        municipio: customerForm.municipio || null,
+        uf: customerForm.uf || null,
+        codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
+        inscricao_estadual: isCnpj ? (customerForm.ie_indicador === '1' ? customerForm.inscricao_estadual : 'ISENTO') : null,
+        ie_indicador: isCnpj ? customerForm.ie_indicador : null,
+        email: customerForm.email || null,
         created_by: user!.id
       };
 
@@ -949,7 +986,14 @@ export default function PDV() {
         cep: '',
         street: '',
         number: '',
-        neighborhood: ''
+        neighborhood: '',
+        complemento: '',
+        municipio: '',
+        uf: '',
+        codigo_municipio_ibge: '',
+        inscricao_estadual: '',
+        ie_indicador: '9',
+        email: '',
       });
 
       toast({
