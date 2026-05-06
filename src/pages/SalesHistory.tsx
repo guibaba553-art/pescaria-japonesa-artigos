@@ -17,9 +17,11 @@ import {
   MapPin,
   CreditCard,
   FolderOpen,
-  ShoppingBag
+  ShoppingBag,
+  FileDown
 } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 
 export default function SalesHistory() {
   const navigate = useNavigate();
@@ -88,6 +90,45 @@ export default function SalesHistory() {
       });
     } finally {
       setLoadingSaved(false);
+    }
+  };
+
+  const handleGeneratePdf = async (order: any) => {
+    try {
+      const items = (order.items || []).map((it: any) => ({
+        product: {
+          id: it.product?.id,
+          name: it.product?.name ?? 'Produto',
+          sku: it.product?.sku,
+          image_url: it.product?.image_url,
+          pdv_no_markup: it.product?.pdv_no_markup,
+        },
+        quantity: it.quantity || 0,
+        unitPrice: Number(it.price_at_purchase || 0),
+      }));
+      const subtotal = items.reduce(
+        (s: number, it: any) => s + it.unitPrice * it.quantity,
+        0,
+      );
+      const discount = Math.max(0, subtotal - Number(order.total_amount));
+      await generateBudgetPdf({
+        saleId: order.id,
+        createdAt: order.created_at,
+        customerName: order.customer?.full_name,
+        customerCPF: order.customer?.cpf,
+        paymentMethod: order.payment_method,
+        items,
+        subtotal,
+        discount,
+        total: Number(order.total_amount),
+        finalized: true,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: err?.message ?? String(err),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -186,10 +227,18 @@ export default function SalesHistory() {
                               </Badge>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end gap-2">
                             <p className="text-2xl font-bold text-primary">
                               R$ {order.total_amount.toFixed(2)}
                             </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleGeneratePdf(order)}
+                            >
+                              <FileDown className="w-3.5 h-3.5 mr-1" />
+                              PDF
+                            </Button>
                           </div>
                         </div>
                       </CardHeader>
