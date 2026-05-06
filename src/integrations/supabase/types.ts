@@ -1783,6 +1783,104 @@ export type Database = {
         }
         Relationships: []
       }
+      tef_settings: {
+        Row: {
+          agent_url: string | null
+          auto_print_receipt: boolean
+          created_at: string
+          enabled: boolean
+          environment: string
+          id: string
+          mode: string
+          stone_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_url?: string | null
+          auto_print_receipt?: boolean
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          mode?: string
+          stone_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_url?: string | null
+          auto_print_receipt?: boolean
+          created_at?: string
+          enabled?: boolean
+          environment?: string
+          id?: string
+          mode?: string
+          stone_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tef_transactions: {
+        Row: {
+          amount: number
+          authorization_code: string | null
+          card_brand: string | null
+          card_last_digits: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          installments: number
+          nsu: string | null
+          order_id: string | null
+          payment_method: string
+          performed_by: string | null
+          raw_response: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last_digits?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          installments?: number
+          nsu?: string | null
+          order_id?: string | null
+          payment_method: string
+          performed_by?: string | null
+          raw_response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          authorization_code?: string | null
+          card_brand?: string | null
+          card_last_digits?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          installments?: number
+          nsu?: string | null
+          order_id?: string | null
+          payment_method?: string
+          performed_by?: string | null
+          raw_response?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tef_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tga_sync_log: {
         Row: {
           created_at: string
