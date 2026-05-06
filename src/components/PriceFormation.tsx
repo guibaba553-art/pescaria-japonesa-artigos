@@ -5,9 +5,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Search, TrendingUp, DollarSign, Tag, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Loader2,
+  Search,
+  TrendingUp,
+  DollarSign,
+  Tag,
+  Save,
+  Plus,
+  Trash2,
+  Layers,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -20,6 +51,14 @@ interface Product {
   category: string;
   image_url: string | null;
   sku: string | null;
+  cost_group_id: string | null;
+}
+
+interface CostGroup {
+  id: string;
+  name: string;
+  cost: number;
+  description: string | null;
 }
 
 const fmt = (v: number | null | undefined) =>
@@ -33,55 +72,83 @@ const parseNum = (s: string): number => {
 
 export function PriceFormation() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [groups, setGroups] = useState<CostGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
 
-  // Editable form state
+  // Edit form
   const [editCost, setEditCost] = useState("");
   const [editPrice, setEditPrice] = useState("");
-  const [editSalePrice, setEditSalePrice] = useState("");
-  const [editOnSale, setEditOnSale] = useState(false);
+  const [editMargin, setEditMargin] = useState("");
+  const [editGroupId, setEditGroupId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  // Group manager
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupCost, setNewGroupCost] = useState("");
+  const [newGroupDesc, setNewGroupDesc] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
+  const loadAll = async () => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_products_admin");
-      if (error) throw error;
-      const normalized = ((data as Product[] | null) || []).map((product) => ({
-        id: product.id,
-        name: product.name,
-        price: Number(product.price || 0),
-        cost: product.cost !== null ? Number(product.cost) : null,
-        sale_price: product.sale_price !== null ? Number(product.sale_price) : null,
-        on_sale: !!product.on_sale,
-        category: product.category || "Sem categoria",
-        image_url: product.image_url || null,
-        sku: product.sku || null,
-      }));
+      const [pRes, gRes] = await Promise.all([
+        supabase.rpc("get_products_admin"),
+        supabase.from("cost_groups").select("id, name, cost, description").order("name"),
+      ]);
+
+      if (pRes.error) throw pRes.error;
+      if (gRes.error) throw gRes.error;
+
+      const normalized = ((pRes.data as any[] | null) || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: Number(p.price || 0),
+        cost: p.cost !== null ? Number(p.cost) : null,
+        sale_price: p.sale_price !== null ? Number(p.sale_price) : null,
+        on_sale: !!p.on_sale,
+        category: p.category || "Sem categoria",
+        image_url: p.image_url || null,
+        sku: p.sku || null,
+        cost_group_id: p.cost_group_id || null,
+      })) as Product[];
+
       setProducts(normalized);
+      setGroups(
+        ((gRes.data as any[] | null) || []).map((g) => ({
+          id: g.id,
+          name: g.name,
+          cost: Number(g.cost || 0),
+          description: g.description,
+        }))
+      );
       setLoadError(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("PriceFormation load error:", error);
       setProducts([]);
-      setLoadError("Não foi possível carregar os produtos desta tela.");
+      setLoadError("Não foi possível carregar os dados.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    loadAll();
   }, []);
 
-  // Sync form when selected changes
+  // Sync form when product selected
   useEffect(() => {
     if (selected) {
-      setEditCost(String(selected.cost ?? 0));
-      setEditPrice(String(selected.price ?? 0));
-      setEditSalePrice(String(selected.sale_price ?? 0));
-      setEditOnSale(selected.on_sale);
+      const cost = Number(selected.cost ?? 0);
+      const price = Number(selected.price ?? 0);
+      const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+      setEditCost(String(cost));
+      setEditPrice(String(price));
+      setEditMargin(margin.toFixed(2));
+      setEditGroupId(selected.cost_group_id || "none");
     }
   }, [selected]);
 
@@ -105,14 +172,43 @@ export function PriceFormation() {
     return { cost, price, profit, marginPct, markupPct };
   };
 
-  // Live preview values from form
+  // Live values
   const liveCost = parseNum(editCost);
   const livePrice = parseNum(editPrice);
-  const liveSale = parseNum(editSalePrice);
-  const liveCurrent = editOnSale && liveSale > 0 ? liveSale : livePrice;
-  const liveProfit = liveCurrent - liveCost;
-  const liveMargin = liveCurrent > 0 ? (liveProfit / liveCurrent) * 100 : 0;
+  const liveMargin = parseNum(editMargin);
+  const liveProfit = livePrice - liveCost;
   const liveMarkup = liveCost > 0 ? (liveProfit / liveCost) * 100 : 0;
+
+  // Margin → recompute price
+  const handleMarginChange = (v: string) => {
+    setEditMargin(v);
+    const m = parseNum(v);
+    if (m >= 100 || m < 0) return;
+    const newPrice = liveCost / (1 - m / 100);
+    if (isFinite(newPrice) && newPrice > 0) {
+      setEditPrice(newPrice.toFixed(2));
+    }
+  };
+
+  // Price → recompute margin
+  const handlePriceChange = (v: string) => {
+    setEditPrice(v);
+    const p = parseNum(v);
+    if (p > 0) {
+      const m = ((p - liveCost) / p) * 100;
+      setEditMargin(m.toFixed(2));
+    }
+  };
+
+  // Cost → recompute margin (price fixed)
+  const handleCostChange = (v: string) => {
+    setEditCost(v);
+    const c = parseNum(v);
+    if (livePrice > 0) {
+      const m = ((livePrice - c) / livePrice) * 100;
+      setEditMargin(m.toFixed(2));
+    }
+  };
 
   const handleSave = async () => {
     if (!selected) return;
@@ -122,32 +218,85 @@ export function PriceFormation() {
     }
     setSaving(true);
     try {
+      const newGroupId = editGroupId === "none" ? null : editGroupId;
       const { error } = await supabase
         .from("products")
         .update({
           cost: liveCost,
           price: livePrice,
-          sale_price: liveSale > 0 ? liveSale : null,
-          on_sale: editOnSale && liveSale > 0,
+          cost_group_id: newGroupId,
         })
         .eq("id", selected.id);
       if (error) throw error;
 
-      const updated: Product = {
-        ...selected,
-        cost: liveCost,
-        price: livePrice,
-        sale_price: liveSale > 0 ? liveSale : null,
-        on_sale: editOnSale && liveSale > 0,
-      };
-      setProducts((prev) => prev.map((p) => (p.id === selected.id ? updated : p)));
-      setSelected(updated);
       toast.success("Produto atualizado");
+      await loadAll();
+      const updated = (await supabase.rpc("get_products_admin")).data as any[];
+      const refreshed = (updated || []).find((p: any) => p.id === selected.id);
+      if (refreshed) {
+        setSelected({
+          ...selected,
+          cost: Number(refreshed.cost ?? 0),
+          price: Number(refreshed.price ?? 0),
+          cost_group_id: refreshed.cost_group_id || null,
+        });
+      }
     } catch (e: any) {
-      console.error("save error:", e);
+      console.error(e);
       toast.error(e?.message || "Erro ao salvar");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) {
+      toast.error("Informe o nome do grupo");
+      return;
+    }
+    setCreatingGroup(true);
+    try {
+      const { error } = await supabase.from("cost_groups").insert({
+        name: newGroupName.trim(),
+        cost: parseNum(newGroupCost),
+        description: newGroupDesc.trim() || null,
+      });
+      if (error) throw error;
+      toast.success("Grupo criado");
+      setNewGroupName("");
+      setNewGroupCost("");
+      setNewGroupDesc("");
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao criar grupo");
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const handleUpdateGroupCost = async (groupId: string, cost: number) => {
+    try {
+      const { error } = await supabase
+        .from("cost_groups")
+        .update({ cost })
+        .eq("id", groupId);
+      if (error) throw error;
+      toast.success("Custo do grupo atualizado — propagado aos produtos");
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao atualizar grupo");
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!confirm("Excluir este grupo? Os produtos vinculados ficarão sem grupo (mantêm o custo atual).")) return;
+    try {
+      const { error } = await supabase.from("cost_groups").delete().eq("id", groupId);
+      if (error) throw error;
+      toast.success("Grupo excluído");
+      await loadAll();
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao excluir grupo");
     }
   };
 
@@ -162,13 +311,97 @@ export function PriceFormation() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5" /> Formação de Preço de Venda
-        </CardTitle>
-        <CardDescription>
-          Clique em um produto para visualizar e editar custo, preço e promoção.
-        </CardDescription>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Formação de Preço de Venda
+            </CardTitle>
+            <CardDescription>
+              Edite custo, preço e margem. Use grupos para compartilhar o mesmo custo entre vários produtos.
+            </CardDescription>
+          </div>
+          <Dialog open={groupsOpen} onOpenChange={setGroupsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Layers className="w-4 h-4 mr-2" />
+                Grupos de custo ({groups.length})
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Grupos de custo</DialogTitle>
+                <DialogDescription>
+                  Crie grupos com um custo compartilhado. Ao alterar o custo do grupo, todos os produtos vinculados são atualizados.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+                <div className="font-medium text-sm flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Novo grupo
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="g-name">Nome</Label>
+                    <Input
+                      id="g-name"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="Ex: Anzóis genéricos"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="g-cost">Custo (R$)</Label>
+                    <Input
+                      id="g-cost"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={newGroupCost}
+                      onChange={(e) => setNewGroupCost(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="g-desc">Descrição (opcional)</Label>
+                  <Textarea
+                    id="g-desc"
+                    rows={2}
+                    value={newGroupDesc}
+                    onChange={(e) => setNewGroupDesc(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleCreateGroup} disabled={creatingGroup} size="sm">
+                  {creatingGroup ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Criar grupo
+                </Button>
+              </div>
+
+              <div className="space-y-2 mt-2">
+                <div className="text-sm font-medium">Grupos existentes</div>
+                {groups.length === 0 && (
+                  <div className="text-sm text-muted-foreground py-4 text-center">
+                    Nenhum grupo criado ainda.
+                  </div>
+                )}
+                {groups.map((g) => {
+                  const count = products.filter((p) => p.cost_group_id === g.id).length;
+                  return (
+                    <GroupRow
+                      key={g.id}
+                      group={g}
+                      productCount={count}
+                      onUpdateCost={(c) => handleUpdateGroupCost(g.id, c)}
+                      onDelete={() => handleDeleteGroup(g.id)}
+                    />
+                  );
+                })}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
+
       <CardContent className="space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -193,6 +426,9 @@ export function PriceFormation() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[65vh] overflow-y-auto pr-1">
           {filtered.map((p) => {
             const { cost, price, marginPct } = calc(p);
+            const groupName = p.cost_group_id
+              ? groups.find((g) => g.id === p.cost_group_id)?.name
+              : null;
             return (
               <button
                 key={p.id}
@@ -215,7 +451,7 @@ export function PriceFormation() {
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm truncate">{p.name}</div>
                     <div className="text-xs text-muted-foreground truncate">{p.category}</div>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-sm font-bold">{fmt(price)}</span>
                       {cost > 0 && (
                         <Badge
@@ -229,6 +465,12 @@ export function PriceFormation() {
                           }
                         >
                           {marginPct.toFixed(1)}%
+                        </Badge>
+                      )}
+                      {groupName && (
+                        <Badge variant="outline" className="text-[10px]">
+                          <Layers className="w-3 h-3 mr-1" />
+                          {groupName}
                         </Badge>
                       )}
                     </div>
@@ -278,11 +520,19 @@ export function PriceFormation() {
                       min="0"
                       inputMode="decimal"
                       value={editPrice}
-                      onChange={(e) => setEditPrice(e.target.value)}
+                      onChange={(e) => handlePriceChange(e.target.value)}
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="pf-cost">Custo (R$)</Label>
+                    <Label htmlFor="pf-cost">
+                      Custo (R$){" "}
+                      {editGroupId !== "none" && (
+                        <span className="text-xs text-muted-foreground">
+                          (vem do grupo)
+                        </span>
+                      )}
+                    </Label>
                     <Input
                       id="pf-cost"
                       type="number"
@@ -290,41 +540,46 @@ export function PriceFormation() {
                       min="0"
                       inputMode="decimal"
                       value={editCost}
-                      onChange={(e) => setEditCost(e.target.value)}
+                      onChange={(e) => handleCostChange(e.target.value)}
+                      disabled={editGroupId !== "none"}
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="pf-sale">Preço promocional (R$)</Label>
+                    <Label htmlFor="pf-margin">Margem de lucro (%)</Label>
                     <Input
-                      id="pf-sale"
+                      id="pf-margin"
                       type="number"
                       step="0.01"
-                      min="0"
                       inputMode="decimal"
-                      value={editSalePrice}
-                      onChange={(e) => setEditSalePrice(e.target.value)}
+                      value={editMargin}
+                      onChange={(e) => handleMarginChange(e.target.value)}
                     />
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Editar a margem recalcula o preço de venda automaticamente.
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="pf-onsale" className="cursor-pointer">
-                      Em promoção
-                    </Label>
-                    <Switch
-                      id="pf-onsale"
-                      checked={editOnSale}
-                      onCheckedChange={setEditOnSale}
-                    />
+
+                  <div>
+                    <Label htmlFor="pf-group">Grupo de custo</Label>
+                    <Select value={editGroupId} onValueChange={setEditGroupId}>
+                      <SelectTrigger id="pf-group">
+                        <SelectValue placeholder="Sem grupo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem grupo</SelectItem>
+                        {groups.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name} — {fmt(g.cost)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
                 <div className="border-t pt-3 space-y-3">
-                  <Row label="Preço de venda atual" value={fmt(liveCurrent)} bold />
-                  <Row
-                    label="Lucro por unidade"
-                    value={fmt(liveProfit)}
-                    accent={liveProfit >= 0 ? "text-green-600" : "text-red-600"}
-                    bold
-                  />
+                  <Row label="Lucro por unidade" value={fmt(liveProfit)} accent={liveProfit >= 0 ? "text-green-600" : "text-red-600"} bold />
                   <Row
                     label="Margem de lucro"
                     value={`${liveMargin.toFixed(2)}%`}
@@ -377,6 +632,63 @@ function Row({ label, value, bold, accent }: { label: string; value: string; bol
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className={`${bold ? "font-bold" : ""} ${accent || ""}`}>{value}</span>
+    </div>
+  );
+}
+
+function GroupRow({
+  group,
+  productCount,
+  onUpdateCost,
+  onDelete,
+}: {
+  group: CostGroup;
+  productCount: number;
+  onUpdateCost: (cost: number) => void;
+  onDelete: () => void;
+}) {
+  const [cost, setCost] = useState(String(group.cost));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setCost(String(group.cost));
+  }, [group.cost]);
+
+  const dirty = parseNum(cost) !== group.cost;
+
+  return (
+    <div className="border rounded-md p-3 flex items-center gap-3 flex-wrap">
+      <div className="flex-1 min-w-[150px]">
+        <div className="font-medium text-sm">{group.name}</div>
+        <div className="text-xs text-muted-foreground">
+          {productCount} produto(s){group.description ? ` • ${group.description}` : ""}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          inputMode="decimal"
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+          className="w-28"
+        />
+        <Button
+          size="sm"
+          disabled={!dirty || saving}
+          onClick={async () => {
+            setSaving(true);
+            await onUpdateCost(parseNum(cost));
+            setSaving(false);
+          }}
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDelete}>
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </Button>
+      </div>
     </div>
   );
 }
