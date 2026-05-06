@@ -684,7 +684,7 @@ export default function PDV() {
   const scannerLastKeyAtRef = useRef<number>(0);
   useEffect(() => {
     const SCAN_TIMEOUT_MS = 50; // intervalo máximo entre teclas do scanner
-    const MIN_SCAN_LENGTH = 4;
+    const MIN_SCAN_LENGTH = 3;
 
     const isTypingTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
