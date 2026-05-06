@@ -24,20 +24,38 @@ const fmt = (v: number | null | undefined) =>
 export function PriceFormation() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name,price,cost,sale_price,on_sale,category,image_url,sku")
-        .order("name")
-        .limit(2000);
-      if (error) console.error("PriceFormation load error:", error);
-      console.log("PriceFormation loaded:", data?.length);
-      setProducts((data as Product[]) || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase.rpc("get_products_admin");
+
+        if (error) throw error;
+
+        const normalized = ((data as Product[] | null) || []).map((product) => ({
+          id: product.id,
+          name: product.name,
+          price: Number(product.price || 0),
+          cost: product.cost !== null ? Number(product.cost) : null,
+          sale_price: product.sale_price !== null ? Number(product.sale_price) : null,
+          on_sale: !!product.on_sale,
+          category: product.category || "Sem categoria",
+          image_url: product.image_url || null,
+          sku: product.sku || null,
+        }));
+
+        setProducts(normalized);
+        setLoadError(null);
+      } catch (error) {
+        console.error("PriceFormation load error:", error);
+        setProducts([]);
+        setLoadError("Não foi possível carregar os produtos desta tela.");
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -93,6 +111,12 @@ export function PriceFormation() {
         <div className="text-xs text-muted-foreground">
           {filtered.length} de {products.length} produtos
         </div>
+
+        {loadError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {loadError}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[65vh] overflow-y-auto pr-1">
           {filtered.map((p) => {
