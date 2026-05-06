@@ -79,14 +79,14 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
     }
   };
 
-  const renderNFEGrid = (tipo: 'entrada' | 'saida') => {
-    const filtered = nfes.filter((nfe) => nfe.tipo === tipo);
+  const renderNFEGrid = (filterFn: (nfe: NFE) => boolean, emptyLabel: string, isEntrada = false, labelPrefix = 'NF-e') => {
+    const filtered = nfes.filter(filterFn);
 
     if (filtered.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
           <FileText className="w-14 h-14 mb-3 opacity-40" />
-          <p className="text-sm font-medium">Nenhuma nota fiscal de {tipo} registrada</p>
+          <p className="text-sm font-medium">Nenhuma {emptyLabel} registrada</p>
         </div>
       );
     }
@@ -103,7 +103,7 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
               <div className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    {tipo === 'entrada' ? (
+                    {isEntrada ? (
                       <>
                         <p className="font-semibold truncate">
                           {nfe.fornecedor_nome || 'Fornecedor não informado'}
@@ -115,7 +115,7 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                     ) : (
                       <>
                         <p className="font-semibold">
-                          NF-e {nfe.nfe_number || '—'}
+                          {labelPrefix} {nfe.nfe_number || '—'}
                         </p>
                         <p className="text-xs text-muted-foreground font-mono truncate">
                           Pedido #{nfe.order_id.slice(0, 8)}
@@ -198,26 +198,37 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
     return <div className="text-center py-12 text-muted-foreground">Carregando notas fiscais...</div>;
   }
 
-  const nfesEntrada = nfes.filter((nfe) => nfe.tipo === 'entrada').length;
-  const nfesSaida = nfes.filter((nfe) => nfe.tipo === 'saida').length;
+  const isNfe = (n: NFE) => n.tipo === 'saida' && (n.modelo === '55' || !n.modelo);
+  const isNfce = (n: NFE) => n.tipo === 'saida' && n.modelo === '65';
+  const isEntrada = (n: NFE) => n.tipo === 'entrada';
+
+  const countNfe = nfes.filter(isNfe).length;
+  const countNfce = nfes.filter(isNfce).length;
+  const countEntrada = nfes.filter(isEntrada).length;
 
   return (
-    <Tabs defaultValue="saida" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-2 h-11">
-        <TabsTrigger value="saida" className="gap-2">
+    <Tabs defaultValue="nfe" className="space-y-4">
+      <TabsList className="grid w-full grid-cols-3 h-11">
+        <TabsTrigger value="nfe" className="gap-2">
           <ArrowUp className="w-4 h-4" />
-          Notas de Saída
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{nfesSaida}</Badge>
+          NF-e
+          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfe}</Badge>
+        </TabsTrigger>
+        <TabsTrigger value="nfce" className="gap-2">
+          <ArrowUp className="w-4 h-4" />
+          NFC-e
+          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfce}</Badge>
         </TabsTrigger>
         <TabsTrigger value="entrada" className="gap-2">
           <ArrowDown className="w-4 h-4" />
-          Notas de Entrada
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{nfesEntrada}</Badge>
+          Entrada
+          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countEntrada}</Badge>
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="saida">{renderNFEGrid('saida')}</TabsContent>
-      <TabsContent value="entrada">{renderNFEGrid('entrada')}</TabsContent>
+      <TabsContent value="nfe">{renderNFEGrid(isNfe, 'NF-e de saída', false, 'NF-e')}</TabsContent>
+      <TabsContent value="nfce">{renderNFEGrid(isNfce, 'NFC-e', false, 'NFC-e')}</TabsContent>
+      <TabsContent value="entrada">{renderNFEGrid(isEntrada, 'nota de entrada', true)}</TabsContent>
     </Tabs>
   );
 }
