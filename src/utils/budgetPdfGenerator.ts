@@ -30,7 +30,16 @@ interface BudgetData {
   discount: number;
   total: number;
   notes?: string | null;
+  /** Quando true, mostra apenas o método de pagamento utilizado (venda finalizada) */
+  finalized?: boolean;
 }
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Dinheiro',
+  pix: 'PIX',
+  debit: 'Débito',
+  credit: 'Crédito',
+};
 
 const COMPANY = {
   name: 'JAPA SPESCA',
