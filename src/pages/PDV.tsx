@@ -647,8 +647,19 @@ export default function PDV() {
     return weightUnit === 'g' ? inputValue / 1000 : inputValue;
   };
 
+  const normalizeBarcode = (value: string) => {
+    const cleaned = value
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+      .replace(/\s+/g, '')
+      .trim()
+      .toUpperCase();
+
+    const digitsOnly = cleaned.replace(/\D/g, '');
+    return digitsOnly.length >= 8 ? digitsOnly : cleaned;
+  };
+
   const handleBarcodeSearch = async (barcode: string) => {
-    const code = barcode.trim();
+    const code = normalizeBarcode(barcode);
     if (!code) return;
 
     // Beep imediato (não bloqueia a busca)
@@ -663,10 +674,10 @@ export default function PDV() {
       console.log('🔍 Buscando por código:', code);
 
       const productWithVariation = products.find((product) =>
-        (product.variations || []).some((variation) => variation.sku === code),
+        (product.variations || []).some((variation) => normalizeBarcode(variation.sku || '') === code),
       );
       const variation = productWithVariation?.variations?.find(
-        (item) => item.sku === code,
+        (item) => normalizeBarcode(item.sku || '') === code,
       );
 
       if (productWithVariation && variation) {
@@ -684,9 +695,7 @@ export default function PDV() {
         return;
       }
 
-      const matched = products.find(
-        (product) => product.sku === code,
-      );
+      const matched = products.find((product) => normalizeBarcode(product.sku || '') === code);
       if (matched) {
         console.log('✅ Produto encontrado:', matched.name);
         if (matched.sold_by_weight) {
@@ -706,7 +715,11 @@ export default function PDV() {
 
       const fetchProductWithVariations = async (productId: string) => {
         const [{ data: prod }, { data: vars }] = await Promise.all([
-          supabase.from('products').select('*').eq('id', productId).maybeSingle(),
+          supabase
+            .from('products')
+            .select('id, name, price, stock, image_url, category, sku, minimum_quantity, sold_by_weight')
+            .eq('id', productId)
+            .maybeSingle(),
           supabase.from('product_variations').select('*').eq('product_id', productId),
         ]);
         if (!prod) return null;
