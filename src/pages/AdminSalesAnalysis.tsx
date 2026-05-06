@@ -438,6 +438,85 @@ export default function AdminSalesAnalysis() {
     }
   };
 
+  const handleGenerateSalePdf = async (row: Row) => {
+    try {
+      let items: Array<{ product: any; variation?: any; quantity: number; unitPrice: number }> = [];
+      let customerName: string | null = null;
+      let customerCPF: string | null = null;
+
+      if (row.kind === 'order') {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('quantity, price_at_purchase, products(name, sku, image_url, images, pdv_no_markup), product_variations(name, image_url)')
+          .eq('order_id', row.id);
+        if (error) throw error;
+        items = (data || []).map((it: any) => ({
+          product: {
+            id: '',
+            name: it.products?.name || 'Produto',
+            sku: it.products?.sku,
+            image_url: it.products?.image_url || (Array.isArray(it.products?.images) ? it.products.images[0] : null),
+            pdv_no_markup: it.products?.pdv_no_markup,
+          },
+          variation: it.product_variations
+            ? { name: it.product_variations.name, image_url: it.product_variations.image_url }
+            : undefined,
+          quantity: it.quantity || 0,
+          unitPrice: Number(it.price_at_purchase || 0),
+        }));
+        if (row.raw?.customer_id) {
+          const { data: c } = await supabase
+            .from('customers')
+            .select('full_name, cpf')
+            .eq('id', row.raw.customer_id)
+            .maybeSingle();
+          customerName = c?.full_name ?? null;
+          customerCPF = c?.cpf ?? null;
+        }
+      } else if (row.kind === 'saved') {
+        const cart = (row.raw?.cart_data as any[]) || [];
+        items = cart.map((it: any) => ({
+          product: {
+            id: it.product?.id,
+            name: it.product?.name ?? 'Produto',
+            sku: it.product?.sku,
+            image_url: it.product?.image_url,
+            pdv_no_markup: it.product?.pdv_no_markup,
+          },
+          variation: it.variation
+            ? { name: it.variation.name, image_url: it.variation.image_url }
+            : undefined,
+          quantity: it.quantity || 0,
+          unitPrice: Number(it.customPrice ?? it.product?.price ?? 0),
+        }));
+        const cd: any = row.raw?.customer_data || null;
+        customerName = cd?.full_name ?? null;
+        customerCPF = cd?.cpf ?? null;
+      } else {
+        toast.error('PDF não disponível para este tipo');
+        return;
+      }
+
+      const subtotal = items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+      const discount = Math.max(0, subtotal - Number(row.total_amount));
+
+      await generateBudgetPdf({
+        saleId: row.id,
+        createdAt: row.created_at,
+        customerName,
+        customerCPF,
+        paymentMethod: row.raw?.payment_method,
+        items,
+        subtotal,
+        discount,
+        total: Number(row.total_amount),
+        finalized: row.kind === 'order',
+      });
+    } catch (e: any) {
+      toast.error('Erro ao gerar PDF: ' + (e?.message ?? String(e)));
+    }
+  };
+
   const exportCSV = () => {
     if (filteredRows.length === 0) {
       toast.error('Nada para exportar');
