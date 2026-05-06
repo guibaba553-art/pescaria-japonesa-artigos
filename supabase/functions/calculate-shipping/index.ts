@@ -11,9 +11,9 @@ const USER_AGENT = 'JAPAS Pesca (robertobaba2@gmail.com)';
 
 const productSchema = z.object({
   id: z.string().optional(),
-  width: z.number().min(11).max(105),
-  height: z.number().min(2).max(105),
-  length: z.number().min(11).max(105),
+  width: z.number().min(11).max(200),
+  height: z.number().min(2).max(200),
+  length: z.number().min(11).max(200),
   weight: z.number().min(0.01).max(30),
   insurance_value: z.number().min(0).default(0),
   quantity: z.number().int().min(1).default(1),
