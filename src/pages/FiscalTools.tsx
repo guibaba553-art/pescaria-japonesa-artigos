@@ -216,10 +216,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="gastos">
+              <Wallet className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Gastos</span>
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
@@ -247,6 +251,24 @@ export default function FiscalTools() {
             <Suspense fallback={<FiscalTabFallback />}>
               <TaxProjection />
             </Suspense>
+          </TabsContent>
+
+          <TabsContent value="gastos">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" /> Controle de Gastos
+                </CardTitle>
+                <CardDescription>
+                  Cadastre custos fixos (recorrentes mês a mês) e variáveis (pontuais). Navegue pelos meses para ver o histórico completo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Suspense fallback={<FiscalTabFallback />}>
+                  <ExpenseTracker />
+                </Suspense>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="nfe">
