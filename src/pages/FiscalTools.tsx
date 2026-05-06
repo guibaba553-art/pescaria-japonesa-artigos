@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet, DollarSign } from "lucide-react";
 
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
@@ -30,6 +30,9 @@ const EmitNFeManual = lazy(() =>
 );
 const ExpenseTracker = lazy(() =>
   import("@/components/ExpenseTracker").then((m) => ({ default: m.ExpenseTracker }))
+);
+const PriceFormation = lazy(() =>
+  import("@/components/PriceFormation").then((m) => ({ default: m.PriceFormation }))
 );
 
 const FiscalTabFallback = () => (
@@ -216,10 +219,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="precos">
+              <DollarSign className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Formação de Preço</span>
             </TabsTrigger>
             <TabsTrigger value="gastos">
               <Wallet className="w-4 h-4 mr-2" />
@@ -246,6 +253,12 @@ export default function FiscalTools() {
               <span className="hidden sm:inline">Sistema Fiscal</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="precos">
+            <Suspense fallback={<FiscalTabFallback />}>
+              <PriceFormation />
+            </Suspense>
+          </TabsContent>
 
           <TabsContent value="taxes">
             <Suspense fallback={<FiscalTabFallback />}>
