@@ -23,9 +23,9 @@ const shippingRequestSchema = z.object({
   cepDestino: z.string().regex(/^\d{8}$/, 'CEP must be exactly 8 digits'),
   // Backwards-compatible single-product fields
   peso: z.number().min(1).max(30000).optional(),
-  comprimento: z.number().min(11).max(105).optional(),
-  altura: z.number().min(2).max(105).optional(),
-  largura: z.number().min(11).max(105).optional(),
+  comprimento: z.number().min(11).max(200).optional(),
+  altura: z.number().min(2).max(200).optional(),
+  largura: z.number().min(11).max(200).optional(),
   formato: z.number().int().min(1).max(3).optional(),
   diametro: z.number().optional(),
   // New: list of products (preferred)
