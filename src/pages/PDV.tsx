@@ -1080,6 +1080,14 @@ export default function PDV() {
 
       createdOrderId = order.id;
 
+      // Vincula a transação TEF ao pedido criado
+      if (tefData?.transaction_id) {
+        await supabase
+          .from('tef_transactions')
+          .update({ order_id: order.id })
+          .eq('id', tefData.transaction_id);
+      }
+
       const orderItems = cart.map((item, index) => {
         const resolved = inventory.resolvedItems[index];
         const unit = getItemUnitPrice(item);
