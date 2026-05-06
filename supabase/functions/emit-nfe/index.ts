@@ -476,6 +476,12 @@ serve(async (req) => {
         .eq('id', emission.id);
     }
 
+    // Incrementa o contador local de NF-e (a Focus aceitou o envio).
+    await supabase
+      .from('focus_nfe_settings')
+      .update({ proximo_numero_nfe: nfeNumero + 1 })
+      .eq('id', focusSettings.id);
+
     return new Response(
       JSON.stringify({
         success: true,
