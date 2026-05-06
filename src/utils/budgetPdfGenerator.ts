@@ -140,7 +140,7 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   doc.setTextColor(...C.white);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('ORÇAMENTO', pageW - margin, 14, { align: 'right' });
+  doc.text(data.finalized ? 'COMPROVANTE DE VENDA' : 'ORÇAMENTO', pageW - margin, 14, { align: 'right' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
