@@ -139,7 +139,14 @@ export default function PDV() {
     cep: '',
     street: '',
     number: '',
-    neighborhood: ''
+    neighborhood: '',
+    complemento: '',
+    municipio: '',
+    uf: '',
+    codigo_municipio_ibge: '',
+    inscricao_estadual: '',
+    ie_indicador: '9' as '1' | '2' | '9', // 1=contribuinte, 2=isento, 9=não contribuinte
+    email: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
 
@@ -158,12 +165,17 @@ export default function PDV() {
       setCustomerForm((prev) => ({
         ...prev,
         cnpj: fmtCnpj,
-        company_name: d.nome_fantasia || d.razao_social || prev.company_name,
-        full_name: prev.full_name || d.razao_social || '',
+        company_name: d.razao_social || prev.company_name,
+        full_name: prev.full_name || d.nome_fantasia || d.razao_social || '',
         cep: fmtCep || prev.cep,
         street: d.logradouro || prev.street,
         number: d.numero || prev.number,
         neighborhood: d.bairro || prev.neighborhood,
+        complemento: d.complemento || prev.complemento,
+        municipio: d.municipio || prev.municipio,
+        uf: d.uf || prev.uf,
+        codigo_municipio_ibge: d.codigo_municipio_ibge ? String(d.codigo_municipio_ibge) : prev.codigo_municipio_ibge,
+        email: d.email || prev.email,
       }));
       toast({ title: 'Dados preenchidos', description: d.razao_social });
     } catch (e: any) {
@@ -893,7 +905,7 @@ export default function PDV() {
     const isCnpj = customerForm.doc_type === 'cnpj';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
 
-    // Validar campos
+    // Validar campos básicos
     if (!customerForm.full_name.trim() || !docValue.trim() ||
         !customerForm.cep.trim() || !customerForm.street.trim() ||
         !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
@@ -905,6 +917,36 @@ export default function PDV() {
       return;
     }
 
+    // Validações extras para CNPJ (necessárias para emissão de NF-e)
+    if (isCnpj) {
+      const cnpjDigits = customerForm.cnpj.replace(/\D/g, '');
+      if (cnpjDigits.length !== 14) {
+        toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.company_name.trim()) {
+        toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.municipio.trim() || !customerForm.uf.trim() || !customerForm.codigo_municipio_ibge.trim()) {
+        toast({ title: 'Município incompleto', description: 'Informe município, UF e código IBGE (busque pelo CNPJ).', variant: 'destructive' });
+        return;
+      }
+      if (!customerForm.ie_indicador) {
+        toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
+        return;
+      }
+      // Se for contribuinte (1), exige IE; se isento (2) ou não contribuinte (9), grava ISENTO
+      if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
+        toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
+        return;
+      }
+      if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
+        toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         full_name: customerForm.full_name,
@@ -914,7 +956,14 @@ export default function PDV() {
         neighborhood: customerForm.neighborhood,
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
-        company_name: isCnpj ? (customerForm.company_name || null) : null,
+        company_name: isCnpj ? customerForm.company_name : null,
+        complemento: customerForm.complemento || null,
+        municipio: customerForm.municipio || null,
+        uf: customerForm.uf || null,
+        codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
+        inscricao_estadual: isCnpj ? (customerForm.ie_indicador === '1' ? customerForm.inscricao_estadual : 'ISENTO') : null,
+        ie_indicador: isCnpj ? customerForm.ie_indicador : null,
+        email: customerForm.email || null,
         created_by: user!.id
       };
 
@@ -937,7 +986,14 @@ export default function PDV() {
         cep: '',
         street: '',
         number: '',
-        neighborhood: ''
+        neighborhood: '',
+        complemento: '',
+        municipio: '',
+        uf: '',
+        codigo_municipio_ibge: '',
+        inscricao_estadual: '',
+        ie_indicador: '9',
+        email: '',
       });
 
       toast({
@@ -2026,6 +2082,95 @@ export default function PDV() {
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="municipio">Município {customerForm.doc_type === 'cnpj' && '*'}</Label>
+                <Input
+                  id="municipio"
+                  placeholder="Cidade"
+                  value={customerForm.municipio}
+                  onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="uf">UF {customerForm.doc_type === 'cnpj' && '*'}</Label>
+                <Input
+                  id="uf"
+                  placeholder="SP"
+                  maxLength={2}
+                  value={customerForm.uf}
+                  onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
+                />
+              </div>
+            </div>
+
+            {customerForm.doc_type === 'cnpj' && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
+                <p className="text-xs font-semibold text-orange-900">
+                  Dados obrigatórios para emissão de NF-e
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="codigo_municipio_ibge">Código IBGE do município *</Label>
+                  <Input
+                    id="codigo_municipio_ibge"
+                    placeholder="Ex: 3550308"
+                    value={customerForm.codigo_municipio_ibge}
+                    onChange={(e) =>
+                      setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
+                    }
+                    maxLength={7}
+                  />
+                  <p className="text-xs text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ie_indicador">Indicador de Inscrição Estadual *</Label>
+                  <Select
+                    value={customerForm.ie_indicador}
+                    onValueChange={(v) =>
+                      setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
+                    }
+                  >
+                    <SelectTrigger id="ie_indicador">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
+                      <SelectItem value="2">2 - Contribuinte isento</SelectItem>
+                      <SelectItem value="9">9 - Não contribuinte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {customerForm.ie_indicador === '1' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="inscricao_estadual">Inscrição Estadual *</Label>
+                    <Input
+                      id="inscricao_estadual"
+                      placeholder="Somente números"
+                      value={customerForm.inscricao_estadual}
+                      onChange={(e) =>
+                        setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="customer_email">E-mail (recomendado)</Label>
+                  <Input
+                    id="customer_email"
+                    type="email"
+                    placeholder="contato@empresa.com.br"
+                    value={customerForm.email}
+                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Para envio automático do XML/DANFE da NF-e.</p>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button
