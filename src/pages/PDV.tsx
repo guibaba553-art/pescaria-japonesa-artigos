@@ -687,26 +687,32 @@ export default function PDV() {
       // Fallback: buscar direto no banco caso não esteja no cache local
       console.log('🔎 Não encontrado no cache, consultando banco...');
 
-      const { data: dbVar } = await supabase
+      const fetchProductWithVariations = async (productId: string) => {
+        const [{ data: prod }, { data: vars }] = await Promise.all([
+          supabase.from('products').select('*').eq('id', productId).maybeSingle(),
+          supabase.from('product_variations').select('*').eq('product_id', productId),
+        ]);
+        if (!prod) return null;
+        return { ...prod, variations: vars || [] } as any;
+      };
+
+      const { data: dbVar, error: varErr } = await supabase
         .from('product_variations')
         .select('id, product_id')
         .eq('sku', code)
         .maybeSingle();
+      if (varErr) console.error('Erro busca variação:', varErr);
 
       if (dbVar?.product_id) {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('*, variations:product_variations(*)')
-          .eq('id', dbVar.product_id)
-          .maybeSingle();
+        const prod = await fetchProductWithVariations(dbVar.product_id);
         if (prod) {
           const v = (prod.variations || []).find((x: any) => x.id === dbVar.id);
           if (prod.sold_by_weight) {
-            setSelectedProduct(prod as any);
+            setSelectedProduct(prod);
             setWeightInput('');
             setShowWeightDialog(true);
           } else {
-            addToCart(prod as any, v as any, 1);
+            addToCart(prod, v, 1);
           }
           setBarcodeInput('');
           playBeep();
@@ -714,23 +720,27 @@ export default function PDV() {
         }
       }
 
-      const { data: dbProd } = await supabase
+      const { data: dbProd, error: prodErr } = await supabase
         .from('products')
-        .select('*, variations:product_variations(*)')
+        .select('id')
         .eq('sku', code)
         .maybeSingle();
+      if (prodErr) console.error('Erro busca produto:', prodErr);
 
-      if (dbProd) {
-        if (dbProd.sold_by_weight) {
-          setSelectedProduct(dbProd as any);
-          setWeightInput('');
-          setShowWeightDialog(true);
-        } else {
-          addToCart(dbProd as any, undefined, 1);
+      if (dbProd?.id) {
+        const prod = await fetchProductWithVariations(dbProd.id);
+        if (prod) {
+          if (prod.sold_by_weight) {
+            setSelectedProduct(prod);
+            setWeightInput('');
+            setShowWeightDialog(true);
+          } else {
+            addToCart(prod, undefined, 1);
+          }
+          setBarcodeInput('');
+          playBeep();
+          return;
         }
-        setBarcodeInput('');
-        playBeep();
-        return;
       }
 
       console.log('❌ Nenhum produto ou variação encontrado');
