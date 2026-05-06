@@ -76,6 +76,7 @@ export function FocusNFeSettings() {
     serie_nfce: 1,
     serie_nfe: 1,
     proximo_numero_nfce: 1,
+    proximo_numero_nfe: 1,
     cfop_padrao: '5102',
     cfop_interestadual: '6102',
     csosn_padrao: '102',
