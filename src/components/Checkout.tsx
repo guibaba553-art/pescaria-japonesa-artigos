@@ -615,8 +615,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         // Se falhar, deletar o pedido criado
         await supabase.from('order_items').delete().eq('order_id', orderData.id);
         await supabase.from('orders').delete().eq('id', orderData.id);
-        console.error('Edge function error:', error);
-        throw new Error(`Erro ao processar pagamento: ${error.message}`);
+        const { extractEdgeError } = await import('@/utils/siteCartValidation');
+        const friendly = await extractEdgeError(error);
+        console.error('Edge function error:', friendly || error);
+        throw new Error(friendly || `Erro ao processar pagamento: ${error.message}`);
       }
 
       if (data.success) {
