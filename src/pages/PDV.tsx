@@ -684,6 +684,55 @@ export default function PDV() {
         return;
       }
 
+      // Fallback: buscar direto no banco caso não esteja no cache local
+      console.log('🔎 Não encontrado no cache, consultando banco...');
+
+      const { data: dbVar } = await supabase
+        .from('product_variations')
+        .select('id, product_id')
+        .eq('sku', code)
+        .maybeSingle();
+
+      if (dbVar?.product_id) {
+        const { data: prod } = await supabase
+          .from('products')
+          .select('*, variations:product_variations(*)')
+          .eq('id', dbVar.product_id)
+          .maybeSingle();
+        if (prod) {
+          const v = (prod.variations || []).find((x: any) => x.id === dbVar.id);
+          if (prod.sold_by_weight) {
+            setSelectedProduct(prod as any);
+            setWeightInput('');
+            setShowWeightDialog(true);
+          } else {
+            addToCart(prod as any, v as any, 1);
+          }
+          setBarcodeInput('');
+          playBeep();
+          return;
+        }
+      }
+
+      const { data: dbProd } = await supabase
+        .from('products')
+        .select('*, variations:product_variations(*)')
+        .eq('sku', code)
+        .maybeSingle();
+
+      if (dbProd) {
+        if (dbProd.sold_by_weight) {
+          setSelectedProduct(dbProd as any);
+          setWeightInput('');
+          setShowWeightDialog(true);
+        } else {
+          addToCart(dbProd as any, undefined, 1);
+        }
+        setBarcodeInput('');
+        playBeep();
+        return;
+      }
+
       console.log('❌ Nenhum produto ou variação encontrado');
       toast({
         title: 'Produto não encontrado',
