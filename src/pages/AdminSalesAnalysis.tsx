@@ -794,7 +794,7 @@ export default function AdminSalesAnalysis() {
         // Caminho 3.B: NFC-e (modelo 65) -> monta payload direto
 
         // Buscar dados fiscais dos produtos
-        const productIds = Array.from(new Set(cart.map((it: any) => it.id || it.product_id).filter(Boolean)));
+        const productIds = Array.from(new Set(cart.map((it: any) => it.product?.id || it.id || it.product_id).filter(Boolean)));
         const { data: prods } = await supabase
           .from('products')
           .select('id, name, ncm, cfop, csosn, origem, unidade_comercial, cest')
@@ -812,19 +812,20 @@ export default function AdminSalesAnalysis() {
             nome: cd.full_name || cd.company_name || cd.name || undefined,
           } : undefined,
           items: cart.map((it: any) => {
-            const pid = it.id || it.product_id;
-            const p: any = prodMap.get(pid) || {};
+            const cartProd = it.product || {};
+            const pid = cartProd.id || it.id || it.product_id;
+            const p: any = prodMap.get(pid) || cartProd || {};
             return {
               product_id: pid,
-              name: it.name || p.name || 'Produto',
+              name: cartProd.name || it.name || p.name || 'Produto',
               quantity: Number(it.quantity || 1),
-              unit_price: Number(it.price ?? it.unit_price ?? 0),
-              ncm: p.ncm || undefined,
-              cfop: p.cfop || undefined,
-              csosn: p.csosn || undefined,
-              origem: p.origem || undefined,
-              unidade: p.unidade_comercial || undefined,
-              cest: p.cest || undefined,
+              unit_price: Number(it.customPrice ?? cartProd.price ?? it.price ?? it.unit_price ?? 0),
+              ncm: p.ncm || cartProd.ncm || undefined,
+              cfop: p.cfop || cartProd.cfop || undefined,
+              csosn: p.csosn || cartProd.csosn || undefined,
+              origem: p.origem ?? cartProd.origem ?? undefined,
+              unidade: p.unidade_comercial || cartProd.unidade_comercial || undefined,
+              cest: p.cest || cartProd.cest || undefined,
             };
           }),
         };
