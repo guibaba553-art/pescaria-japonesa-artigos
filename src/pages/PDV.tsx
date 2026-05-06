@@ -28,7 +28,8 @@ import {
   ChevronDown,
   ChevronRight,
   Calendar,
-  Users
+  Users,
+  Printer
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
