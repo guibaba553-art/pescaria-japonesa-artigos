@@ -518,13 +518,7 @@ export function ProductsManagement() {
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                       )}
                       <div className="absolute top-1 right-1 flex flex-col gap-1 items-end">
-                        {stockDiscrepancies[product.id] > 0 && (
-                          <Link to="/admin/auditoria-estoque" title={`${stockDiscrepancies[product.id]} divergência(s) de estoque detectada(s) — clique para auditoria`}>
-                            <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0 gap-1 hover:bg-red-700">
-                              <AlertTriangle className="w-2.5 h-2.5" /> Estoque
-                            </Badge>
-                          </Link>
-                        )}
+                        {/* Badge de divergência de estoque desativado temporariamente */}
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
                         {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
