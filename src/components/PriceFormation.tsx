@@ -270,6 +270,18 @@ export function PriceFormation() {
 
                 <div className="space-y-3">
                   <div>
+                    <Label htmlFor="pf-price">Valor de compra (R$)</Label>
+                    <Input
+                      id="pf-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="pf-cost">Custo (R$)</Label>
                     <Input
                       id="pf-cost"
@@ -279,18 +291,6 @@ export function PriceFormation() {
                       inputMode="decimal"
                       value={editCost}
                       onChange={(e) => setEditCost(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="pf-price">Valor original do produto (R$)</Label>
-                    <Input
-                      id="pf-price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={editPrice}
-                      onChange={(e) => setEditPrice(e.target.value)}
                     />
                   </div>
                   <div>
