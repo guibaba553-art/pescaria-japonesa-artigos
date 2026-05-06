@@ -73,6 +73,10 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
 
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
+  const [pricePdvPix, setPricePdvPix] = useState((product as any).price_pdv_pix?.toString() || '');
+  const [pricePdvCash, setPricePdvCash] = useState((product as any).price_pdv_cash?.toString() || '');
+  const [pricePdvDebit, setPricePdvDebit] = useState((product as any).price_pdv_debit?.toString() || '');
+  const [pricePdvCredit, setPricePdvCredit] = useState((product as any).price_pdv_credit?.toString() || '');
 
   // Peso e dimensões para cálculo de frete (Melhor Envio)
   const [weightGrams, setWeightGrams] = useState((product as any).weight_grams?.toString() || '');
@@ -322,6 +326,10 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
         price_cash_percent: 0,
         price_debit_percent: 5,
         price_credit_percent: 10.25,
+        price_pdv_pix: pricePdvPix ? parseFloat(pricePdvPix) : null,
+        price_pdv_cash: pricePdvCash ? parseFloat(pricePdvCash) : null,
+        price_pdv_debit: pricePdvDebit ? parseFloat(pricePdvDebit) : null,
+        price_pdv_credit: pricePdvCredit ? parseFloat(pricePdvCredit) : null,
         weight_grams: resolveOptionalMeasurementUpdate(weightGrams, (product as any).weight_grams, 'int'),
         length_cm: resolveOptionalMeasurementUpdate(lengthCm, (product as any).length_cm, 'float'),
         width_cm: resolveOptionalMeasurementUpdate(widthCm, (product as any).width_cm, 'float'),
@@ -537,23 +545,36 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
               {(() => {
                 const base = pricePdv ? parseFloat(pricePdv) : (price ? parseFloat(price) : 0);
                 const fmt = (v: number) => v.toFixed(2);
+                const auto = { pix: base, cash: base, debit: base * 1.03, credit: base * 1.04 };
+                const cell = (
+                  label: string,
+                  value: string,
+                  setValue: (v: string) => void,
+                  autoVal: number,
+                ) => (
+                  <div className="rounded-md bg-background p-2 border space-y-1">
+                    <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      placeholder={fmt(autoVal)}
+                      className="h-8 text-center text-sm font-bold"
+                    />
+                    <p className="text-[10px] text-muted-foreground">auto: R$ {fmt(autoVal)}</p>
+                  </div>
+                );
                 return (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                    <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">PIX</p>
-                      <p className="text-sm font-bold">R$ {fmt(base)}</p>
-                    </div>
-                    <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">Dinheiro</p>
-                      <p className="text-sm font-bold">R$ {fmt(base)}</p>
-                    </div>
-                    <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">Débito (+3%)</p>
-                      <p className="text-sm font-bold">R$ {fmt(base * 1.03)}</p>
-                    </div>
-                    <div className="rounded-md bg-background p-2 border">
-                      <p className="text-[10px] uppercase text-muted-foreground">Crédito (+4%)</p>
-                      <p className="text-sm font-bold">R$ {fmt(base * 1.04)}</p>
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-muted-foreground">
+                      Deixe em branco para usar o cálculo automático. Preencha para travar um valor manual.
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                      {cell('PIX', pricePdvPix, setPricePdvPix, auto.pix)}
+                      {cell('Dinheiro', pricePdvCash, setPricePdvCash, auto.cash)}
+                      {cell('Débito (+3%)', pricePdvDebit, setPricePdvDebit, auto.debit)}
+                      {cell('Crédito (+4%)', pricePdvCredit, setPricePdvCredit, auto.credit)}
                     </div>
                   </div>
                 );

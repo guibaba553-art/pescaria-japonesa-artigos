@@ -1335,6 +1335,10 @@ export type Database = {
           price_credit_percent: number
           price_debit_percent: number
           price_pdv: number | null
+          price_pdv_cash: number | null
+          price_pdv_credit: number | null
+          price_pdv_debit: number | null
+          price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
           sale_ends_at: string | null
@@ -1382,6 +1386,10 @@ export type Database = {
           price_credit_percent?: number
           price_debit_percent?: number
           price_pdv?: number | null
+          price_pdv_cash?: number | null
+          price_pdv_credit?: number | null
+          price_pdv_debit?: number | null
+          price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
           sale_ends_at?: string | null
@@ -1429,6 +1437,10 @@ export type Database = {
           price_credit_percent?: number
           price_debit_percent?: number
           price_pdv?: number | null
+          price_pdv_cash?: number | null
+          price_pdv_credit?: number | null
+          price_pdv_debit?: number | null
+          price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
           sale_ends_at?: string | null
@@ -2268,6 +2280,10 @@ export type Database = {
           price_credit_percent: number
           price_debit_percent: number
           price_pdv: number | null
+          price_pdv_cash: number | null
+          price_pdv_credit: number | null
+          price_pdv_debit: number | null
+          price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
           sale_ends_at: string | null
@@ -2324,6 +2340,10 @@ export type Database = {
           price_credit_percent: number
           price_debit_percent: number
           price_pdv: number | null
+          price_pdv_cash: number | null
+          price_pdv_credit: number | null
+          price_pdv_debit: number | null
+          price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
           sale_ends_at: string | null
