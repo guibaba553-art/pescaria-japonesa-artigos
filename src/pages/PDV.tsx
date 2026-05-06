@@ -1241,6 +1241,7 @@ export default function PDV() {
           card_last_digits: tefData?.card_last_digits ?? null,
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
+          notes: saleNotes || null,
         }])
         .select()
         .single();
