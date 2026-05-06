@@ -1,0 +1,1 @@
+ALTER TABLE public.product_variations ADD COLUMN IF NOT EXISTS cost numeric, ADD COLUMN IF NOT EXISTS cost_group_id uuid REFERENCES public.cost_groups(id) ON DELETE SET NULL;
