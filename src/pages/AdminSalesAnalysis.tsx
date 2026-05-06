@@ -753,12 +753,12 @@ export default function AdminSalesAnalysis() {
 
           const { data: customer } = await supabase
             .from('customers')
-            .select('cep, street, number, neighborhood, city, state, complement')
+            .select('cep, street, number, neighborhood, municipio, uf, complemento')
             .eq('id', cd.id)
             .maybeSingle();
 
           const addrStr = customer
-            ? `${customer.street || 'NAO INFORMADO'}, ${customer.number || 'S/N'} - ${customer.neighborhood || 'CENTRO'}, ${customer.city || 'CUIABA'} - ${customer.state || 'MT'}, ${customer.cep || '00000000'}`
+            ? `${customer.street || 'NAO INFORMADO'}, ${customer.number || 'S/N'} - ${customer.neighborhood || 'CENTRO'}, ${customer.municipio || 'CUIABA'} - ${customer.uf || 'MT'}, ${customer.cep || '00000000'}`
             : 'Venda Presencial';
 
           const { data: newOrder, error: orderErr } = await supabase
