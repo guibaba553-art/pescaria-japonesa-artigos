@@ -269,13 +269,10 @@ serve(async (req) => {
     verifiedAmount += data.shippingCost;
     console.log('After adding shipping - Verified amount:', verifiedAmount);
     
-    // Apply 5% discount for PIX payments (same as frontend)
-    if (data.paymentMethod === 'pix') {
-      verifiedAmount = verifiedAmount * 0.95;
-      console.log('PIX discount applied - New verified amount:', verifiedAmount);
-    }
+    // Sem desconto especial por método de pagamento — total final = subtotal + frete
+    // (mantém alinhado com o frontend em src/components/Checkout.tsx)
     
-    // Verify total amount matches verified prices (with discount if applicable)
+    // Verify total amount matches verified prices
     if (Math.abs(data.amount - verifiedAmount) > 0.01) {
       console.error('Total amount mismatch after discount - Client:', data.amount, 'Verified:', verifiedAmount);
       return new Response(
