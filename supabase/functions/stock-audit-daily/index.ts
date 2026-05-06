@@ -28,6 +28,41 @@ function inferCause(diff: number, mvSummary: any): string {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Auth: requires CRON_SECRET (cron job) or admin/employee JWT
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const authHeader = req.headers.get("authorization") || "";
+  let authorized = false;
+
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    authorized = true;
+  } else if (authHeader.startsWith("Bearer ")) {
+    try {
+      const userClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const token = authHeader.replace("Bearer ", "");
+      const { data: claimsData } = await userClient.auth.getClaims(token);
+      const userId = claimsData?.claims?.sub;
+      if (userId) {
+        const adminClient = createClient(SUPABASE_URL, SERVICE_KEY);
+        const { data: roles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId);
+        if (roles?.some((r: any) => r.role === "admin" || r.role === "employee")) {
+          authorized = true;
+        }
+      }
+    } catch (_e) { /* fall through */ }
+  }
+
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   const runRes = await supabase.from("stock_audit_runs").insert({ status: "running" }).select().single();
   if (runRes.error) {
