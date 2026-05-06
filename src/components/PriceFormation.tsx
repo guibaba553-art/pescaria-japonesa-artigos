@@ -130,10 +130,11 @@ export function PriceFormation() {
       setLoadError(null);
     } catch (error: any) {
       console.error("PriceFormation load error:", error);
-      setProducts([]);
+      if (!opts.silent) setProducts([]);
       setLoadError("Não foi possível carregar os dados.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
