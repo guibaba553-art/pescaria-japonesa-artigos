@@ -1354,7 +1354,7 @@ export default function PDV() {
                           <div key={item.cartItemKey} className="flex flex-col gap-2 p-2 border rounded">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm line-clamp-1">
+                                <p className="font-medium text-sm break-words">
                                   {itemName}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
