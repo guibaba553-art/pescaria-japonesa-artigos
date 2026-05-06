@@ -93,12 +93,14 @@ function packagingWeight(type: PackedBox['packaging'], lengthCm = 0): number {
   }
 }
 
-// Mínimos exigidos pelo Melhor Envio
+// Apenas mínimos exigidos pelo Melhor Envio. Sem teto: deixamos a API
+// filtrar naturalmente quais transportadoras aceitam o tamanho real
+// (ex: Azul Cargo aceita até 150cm; Correios até 105cm).
 function clampMin(box: { w: number; h: number; l: number }) {
   return {
-    width: Math.min(105, Math.max(11, box.w)),
-    height: Math.min(105, Math.max(2, box.h)),
-    length: Math.min(105, Math.max(11, box.l)),
+    width: Math.max(11, Math.round(box.w)),
+    height: Math.max(2, Math.round(box.h)),
+    length: Math.max(11, Math.round(box.l)),
   };
 }
 
