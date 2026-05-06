@@ -1,0 +1,1 @@
+UPDATE public.focus_nfe_settings SET proximo_numero_nfe = 12 WHERE proximo_numero_nfe < 12;
