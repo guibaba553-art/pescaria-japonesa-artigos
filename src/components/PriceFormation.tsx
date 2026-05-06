@@ -74,6 +74,7 @@ export function PriceFormation() {
   const [products, setProducts] = useState<Product[]>([]);
   const [groups, setGroups] = useState<CostGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Product | null>(null);
@@ -92,8 +93,9 @@ export function PriceFormation() {
   const [newGroupDesc, setNewGroupDesc] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  const loadAll = async () => {
-    setLoading(true);
+  const loadAll = async (opts: { silent?: boolean } = {}) => {
+    if (opts.silent) setRefreshing(true);
+    else setLoading(true);
     try {
       const [pRes, gRes] = await Promise.all([
         supabase.rpc("get_products_admin"),
@@ -128,10 +130,11 @@ export function PriceFormation() {
       setLoadError(null);
     } catch (error: any) {
       console.error("PriceFormation load error:", error);
-      setProducts([]);
+      if (!opts.silent) setProducts([]);
       setLoadError("Não foi possível carregar os dados.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -230,17 +233,27 @@ export function PriceFormation() {
       if (error) throw error;
 
       toast.success("Produto atualizado");
-      await loadAll();
-      const updated = (await supabase.rpc("get_products_admin")).data as any[];
-      const refreshed = (updated || []).find((p: any) => p.id === selected.id);
-      if (refreshed) {
-        setSelected({
-          ...selected,
-          cost: Number(refreshed.cost ?? 0),
-          price: Number(refreshed.price ?? 0),
-          cost_group_id: refreshed.cost_group_id || null,
-        });
-      }
+
+      // Atualiza apenas o produto editado em memória (sem desmontar a lista)
+      const newCost = newGroupId
+        ? groups.find((g) => g.id === newGroupId)?.cost ?? liveCost
+        : liveCost;
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === selected.id
+            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId }
+            : p
+        )
+      );
+      setSelected({
+        ...selected,
+        cost: newCost,
+        price: livePrice,
+        cost_group_id: newGroupId,
+      });
+
+      // Refresh em background (não bloqueia a UI nem oculta a lista)
+      loadAll({ silent: true });
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Erro ao salvar");
@@ -266,7 +279,7 @@ export function PriceFormation() {
       setNewGroupName("");
       setNewGroupCost("");
       setNewGroupDesc("");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao criar grupo");
     } finally {
@@ -282,7 +295,7 @@ export function PriceFormation() {
         .eq("id", groupId);
       if (error) throw error;
       toast.success("Custo do grupo atualizado — propagado aos produtos");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao atualizar grupo");
     }
@@ -294,7 +307,7 @@ export function PriceFormation() {
       const { error } = await supabase.from("cost_groups").delete().eq("id", groupId);
       if (error) throw error;
       toast.success("Grupo excluído");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao excluir grupo");
     }
