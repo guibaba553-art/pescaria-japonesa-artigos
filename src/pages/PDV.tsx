@@ -1923,13 +1923,31 @@ export default function PDV() {
             ) : (
               <div className="space-y-2">
                 <Label htmlFor="cnpj">CNPJ *</Label>
-                <Input
-                  id="cnpj"
-                  placeholder="00.000.000/0000-00"
-                  value={customerForm.cnpj}
-                  onChange={(e) => setCustomerForm({ ...customerForm, cnpj: e.target.value })}
-                  maxLength={18}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="cnpj"
+                    placeholder="00.000.000/0000-00"
+                    value={customerForm.cnpj}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setCustomerForm({ ...customerForm, cnpj: v });
+                      const digits = v.replace(/\D/g, '');
+                      if (digits.length === 14) lookupCnpj(digits);
+                    }}
+                    maxLength={18}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={cnpjLoading}
+                    onClick={() => lookupCnpj(customerForm.cnpj.replace(/\D/g, ''))}
+                  >
+                    {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Preenche automaticamente os dados via Receita Federal (BrasilAPI).
+                </p>
               </div>
             )}
 
