@@ -214,7 +214,7 @@ export function ProductsManagement() {
     setName(''); setDescription(''); setShortDescription(''); setPrice(''); setCategory('');
     setSubcategory(''); setStock(''); setMinStock(''); setSku(''); setMinimumQuantity('1'); setSoldByWeight(false); setPdvOnly(false); setPdvNoMarkup(false);
     setBrand(''); setPoundTest(''); setSize(''); setImages([]); setNewProductVariations([]);
-    setPricePdv('');
+    setPricePdv(''); setPricePdvPix(''); setPricePdvCash(''); setPricePdvDebit(''); setPricePdvCredit('');
     setWeightGrams(''); setLengthCm(''); setWidthCm(''); setHeightCm('');
   };
 
