@@ -385,7 +385,7 @@ serve(async (req) => {
       ],
     });
 
-    const userPrefix = user.id.substring(0, 8);
+    const userPrefix = (userIdForRateLimit || 'service0').substring(0, 8);
     const ref = `nfe-${userPrefix}-${orderId.substring(0, 8)}-${Date.now()}`;
     const dataEmissao = buildDataEmissao(0);
     const payload = buildPayload(dataEmissao);
