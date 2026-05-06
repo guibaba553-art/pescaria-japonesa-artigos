@@ -496,7 +496,7 @@ export default function PDV() {
           customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
           payment_method: paymentMethod,
           total_amount: calculateTotal(),
-          notes: ''
+          notes: saleNotes || ''
         };
 
         if (currentSaleId) {
