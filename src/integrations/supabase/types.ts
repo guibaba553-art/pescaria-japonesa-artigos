@@ -643,6 +643,95 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_overrides: {
+        Row: {
+          amount: number | null
+          created_at: string
+          expense_id: string
+          id: string
+          notes: string | null
+          skipped: boolean
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          expense_id: string
+          id?: string
+          notes?: string | null
+          skipped?: boolean
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          expense_id?: string
+          id?: string
+          notes?: string | null
+          skipped?: boolean
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_overrides_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          end_date: string | null
+          expense_date: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          supplier: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          end_date?: string | null
+          expense_date: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          supplier?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          end_date?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          supplier?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fiscal_rate_limits: {
         Row: {
           function_name: string
