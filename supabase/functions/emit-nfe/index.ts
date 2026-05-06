@@ -48,52 +48,64 @@ serve(async (req) => {
     );
 
     // ---------- AUTENTICAÇÃO ----------
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Aceita: (1) Bearer de admin/employee OU (2) service_role (chamada interna,
+    // ex. payment-webhook para emissão automática após pagamento aprovado).
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const isServiceRole = !!token && token === serviceRoleKey;
+
+    let userIdForRateLimit: string | null = null;
+
+    if (!isServiceRole) {
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Verificar role admin/employee
+      const { data: roleCheck } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'employee']);
+
+      if (!roleCheck || roleCheck.length === 0) {
+        return new Response(JSON.stringify({ error: 'Acesso negado' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      userIdForRateLimit = user.id;
+
+      // ---------- RATE LIMIT (somente para usuários humanos) ----------
+      const { data: rateLimitCheck } = await supabase.rpc('check_fiscal_rate_limit', {
+        p_user_id: user.id,
+        p_function_name: 'emit-nfe',
+        p_max_requests: 20,
+        p_window_hours: 1,
       });
-    }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Verificar role admin/employee
-    const { data: roleCheck } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .in('role', ['admin', 'employee']);
-
-    if (!roleCheck || roleCheck.length === 0) {
-      return new Response(JSON.stringify({ error: 'Acesso negado' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // ---------- RATE LIMIT ----------
-    const { data: rateLimitCheck } = await supabase.rpc('check_fiscal_rate_limit', {
-      p_user_id: user.id,
-      p_function_name: 'emit-nfe',
-      p_max_requests: 20,
-      p_window_hours: 1,
-    });
-
-    if (!rateLimitCheck) {
-      return new Response(
-        JSON.stringify({ error: 'Limite de emissões excedido. Máximo 20 NF-e por hora.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (!rateLimitCheck) {
+        return new Response(
+          JSON.stringify({ error: 'Limite de emissões excedido. Máximo 20 NF-e por hora.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      console.log('[emit-nfe] Chamada interna via service_role (emissão automática)');
     }
 
     const { orderId } = await req.json();
