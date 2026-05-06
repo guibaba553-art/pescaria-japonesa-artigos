@@ -9,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Package, Plus, Search, X, ShoppingBasket } from 'lucide-react';
+import { Trash2, Package, Plus, Search, X, ShoppingBasket, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AddToPurchaseListDialog } from '@/components/AddToPurchaseListDialog';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { ProductEdit } from '@/components/ProductEdit';
@@ -76,6 +77,7 @@ export function ProductsManagement() {
   const { toast } = useToast();
   const { primaries } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockDiscrepancies, setStockDiscrepancies] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
   const [purchaseDialog, setPurchaseDialog] = useState<Product | null>(null);
   const [name, setName] = useState('');
@@ -141,7 +143,19 @@ export function ProductsManagement() {
 
   useEffect(() => {
     loadProducts();
+    loadStockDiscrepancies();
   }, []);
+
+  const loadStockDiscrepancies = async () => {
+    const { data } = await supabase.rpc('get_products_with_stock_discrepancy');
+    if (data) {
+      const map: Record<string, number> = {};
+      for (const row of data as Array<{ product_id: string; discrepancy_count: number }>) {
+        map[row.product_id] = Number(row.discrepancy_count);
+      }
+      setStockDiscrepancies(map);
+    }
+  };
 
   useProductsRealtime(() => loadProducts(), 'products-management');
 
@@ -504,6 +518,13 @@ export function ProductsManagement() {
                         <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Sem imagem</div>
                       )}
                       <div className="absolute top-1 right-1 flex flex-col gap-1 items-end">
+                        {stockDiscrepancies[product.id] > 0 && (
+                          <Link to="/admin/auditoria-estoque" title={`${stockDiscrepancies[product.id]} divergência(s) de estoque detectada(s) — clique para auditoria`}>
+                            <Badge className="bg-red-600 text-white border-0 text-[9px] px-1.5 py-0 gap-1 hover:bg-red-700">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Estoque
+                            </Badge>
+                          </Link>
+                        )}
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
                         {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
