@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const cronSecret = Deno.env.get('CRON_SECRET');
     const authHeader = req.headers.get('authorization');
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       console.error('Unauthorized cleanup attempt');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
