@@ -321,21 +321,28 @@ export function SiteAnalytics() {
               <p className="text-center text-muted-foreground py-8">Sem dados ainda.</p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={sources}
-                    dataKey="visits"
-                    nameKey="source"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    label={(e) => `${e.source}: ${e.visits}`}
-                  >
-                    {sources.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
+              <PieChart>
+                  {(() => {
+                    const total = sources.reduce((s, x) => s + x.visits, 0) || 1;
+                    return (
+                      <>
+                        <Pie
+                          data={sources}
+                          dataKey="visits"
+                          nameKey="source"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={100}
+                          label={(e: any) => `${e.source}: ${((e.visits / total) * 100).toFixed(1)}%`}
+                        >
+                          {sources.map((_, i) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => `${((value / total) * 100).toFixed(1)}% (${value})`} />
+                      </>
+                    );
+                  })()}
                 </PieChart>
               </ResponsiveContainer>
             )}
