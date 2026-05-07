@@ -349,7 +349,7 @@ serve(async (req) => {
         formas_pagamento: [
           {
             forma_pagamento: getPaymentCode(body.payment_method),
-            valor_pagamento: body.total_amount.toFixed(2),
+            valor_pagamento: totalPagamentoStr,
           },
         ],
       };
