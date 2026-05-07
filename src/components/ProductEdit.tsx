@@ -295,7 +295,9 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
 
       // Detectar mudança manual de estoque do produto pai (sem variações).
       // Se mudou, registra como ajuste manual no livro-caixa em vez de update direto.
-      const newStockValue = stock ? parseInt(stock) : 0;
+      // Com variações, o estoque é a soma das variações (calculado abaixo).
+      const sumVariationsStock = variations.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+      const newStockValue = variations.length > 0 ? sumVariationsStock : (stock ? parseInt(stock) : 0);
       const stockChanged = newStockValue !== product.stock && variations.length === 0;
       const stockDelta = newStockValue - product.stock;
 
@@ -615,19 +617,21 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-stock">
-                  Estoque {variations.length > 0 && <span className="text-xs text-muted-foreground">(opcional com variações)</span>}
+                  Estoque {variations.length > 0 && <span className="text-xs text-muted-foreground">(soma das variações)</span>}
                 </Label>
                 <Input
                   id="edit-stock"
                   type="number"
                   min="0"
-                  value={stock}
+                  value={variations.length > 0 ? variations.reduce((s, v) => s + (Number(v.stock) || 0), 0).toString() : stock}
                   onChange={(e) => setStock(e.target.value)}
                   required={variations.length === 0}
+                  readOnly={variations.length > 0}
+                  disabled={variations.length > 0}
                 />
                 {variations.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    O estoque será controlado nas variações
+                    Calculado automaticamente a partir das variações
                   </p>
                 )}
               </div>
