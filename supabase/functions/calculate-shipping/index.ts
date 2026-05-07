@@ -224,18 +224,6 @@ Deno.serve(async (req) => {
       frenet: frenetOptions.length,
     });
 
-    // Add pickup option
-    options.push({
-      codigo: 'RETIRADA',
-      nome: 'Retirar na Loja',
-      valor: 0,
-      prazoEntrega: 0,
-      company: 'Loja',
-      servico: 'Retirada',
-    });
-
-    console.log('Shipping options calculated:', options.length);
-
     return new Response(
       JSON.stringify({ success: true, options }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
