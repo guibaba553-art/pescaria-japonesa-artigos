@@ -2683,7 +2683,7 @@ export default function PDV() {
                                                   ? { name: it.variation.name, image_url: it.variation.image_url }
                                                   : undefined,
                                                 quantity: it.quantity || 0,
-                                                unitPrice: it.customPrice ?? it.product?.price ?? 0,
+                                                unitPrice: unitOf(it),
                                               })),
                                               subtotal,
                                               discount,
