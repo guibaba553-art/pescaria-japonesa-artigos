@@ -1559,6 +1559,7 @@ export default function PDV() {
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {item.product.sold_by_weight ? `${item.quantity.toFixed(3)} kg` : `${item.quantity} un`}
+                                  <span className="ml-1">• estoque: <strong>{item.variation ? item.variation.stock : item.product.stock}</strong></span>
                                   {typeof item.customPrice === 'number' && (
                                     <span className="ml-1 text-amber-600 font-medium">• preço alterado</span>
                                   )}
