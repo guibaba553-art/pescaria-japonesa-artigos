@@ -288,6 +288,16 @@ serve(async (req) => {
       };
     });
 
+    // Total recalculado a partir dos itens já arredondados (.toFixed(2))
+    // para casar exatamente com o que a SEFAZ valida no XML. Usar
+    // body.total_amount direto causa Rejeição "Ausência de troco" por
+    // diferenças de centavos.
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const totalItens = round2(
+      focusItems.reduce((sum, it) => sum + Number(it.valor_bruto), 0)
+    );
+    const totalPagamentoStr = totalItens.toFixed(2);
+
     const userPrefix = user.id.substring(0, 8);
     const buildFreshRef = () =>
       `nfce-${userPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
