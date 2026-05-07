@@ -92,52 +92,137 @@ Deno.serve(async (req) => {
       ];
     }
 
-    console.log('Calculating shipping via Melhor Envio:', {
+    console.log('Calculating shipping:', {
       cepDestino: data.cepDestino.substring(0, 5) + 'XXX',
       productsCount: products.length,
+      providers: { me: !!token, frenet: !!frenetToken },
     });
 
-    const meResponse = await fetch(`${ME_API_BASE}/me/shipment/calculate`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        'User-Agent': USER_AGENT,
-      },
-      body: JSON.stringify({
-        from: { postal_code: CEP_ORIGEM },
-        to: { postal_code: data.cepDestino },
-        products,
-      }),
-    });
+    // ---------- Melhor Envio ----------
+    const fetchMelhorEnvio = async (): Promise<any[]> => {
+      if (!token) return [];
+      try {
+        const r = await fetch(`${ME_API_BASE}/me/shipment/calculate`, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'User-Agent': USER_AGENT,
+          },
+          body: JSON.stringify({
+            from: { postal_code: CEP_ORIGEM },
+            to: { postal_code: data.cepDestino },
+            products,
+          }),
+        });
+        if (!r.ok) {
+          console.error('Melhor Envio error:', r.status, await r.text());
+          return [];
+        }
+        const arr = await r.json();
+        return (Array.isArray(arr) ? arr : [])
+          .filter((opt: any) => !opt.error && opt.price)
+          .map((opt: any) => ({
+            codigo: `me-${opt.id}`,
+            nome: `${opt.company?.name || ''} ${opt.name || ''}`.trim(),
+            valor: parseFloat(opt.price),
+            prazoEntrega: opt.delivery_time || opt.delivery_range?.max || 0,
+            company: opt.company?.name || null,
+            servico: opt.name || null,
+            provider: 'melhor_envio',
+          }));
+      } catch (e) {
+        console.error('Melhor Envio exception:', e);
+        return [];
+      }
+    };
 
-    if (!meResponse.ok) {
-      const errText = await meResponse.text();
-      console.error('Melhor Envio error:', meResponse.status, errText);
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to calculate shipping',
-          status: meResponse.status,
-          success: false,
-        }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ---------- Frenet ----------
+    const fetchFrenet = async (): Promise<any[]> => {
+      if (!frenetToken) return [];
+      try {
+        // Frenet aceita múltiplas embalagens via ShippingItemArray
+        const ShippingItemArray = products.map((p) => ({
+          Weight: Math.max(0.01, p.weight), // kg
+          Length: Math.max(11, Math.round(p.length)),
+          Height: Math.max(2, Math.round(p.height)),
+          Width: Math.max(11, Math.round(p.width)),
+          Quantity: p.quantity,
+          SKU: p.id,
+          Category: 'Pesca',
+          isFragile: false,
+        }));
+        const totalInsurance = products.reduce(
+          (s, p) => s + (p.insurance_value || 0) * (p.quantity || 1),
+          0,
+        );
+        const r = await fetch('https://api.frenet.com.br/shipping/quote', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            token: frenetToken,
+          },
+          body: JSON.stringify({
+            SellerCEP: CEP_ORIGEM,
+            RecipientCEP: data.cepDestino,
+            ShipmentInvoiceValue: totalInsurance || 100,
+            ShippingItemArray,
+            RecipientCountry: 'BR',
+          }),
+        });
+        if (!r.ok) {
+          console.error('Frenet error:', r.status, await r.text());
+          return [];
+        }
+        const json = await r.json();
+        const services: any[] = json?.ShippingSevicesArray || json?.ShippingSeviceAvailableArray || [];
+        return services
+          .filter((s: any) => !s.Error && s.ShippingPrice)
+          .map((s: any) => ({
+            codigo: `frenet-${s.ServiceCode || s.Carrier}-${s.ServiceDescription}`.replace(/\s+/g, '_'),
+            nome: `${s.Carrier || ''} ${s.ServiceDescription || ''}`.trim(),
+            valor: parseFloat(String(s.ShippingPrice).replace(',', '.')),
+            prazoEntrega: parseInt(s.DeliveryTime, 10) || 0,
+            company: s.Carrier || null,
+            servico: s.ServiceDescription || null,
+            provider: 'frenet',
+          }));
+      } catch (e) {
+        console.error('Frenet exception:', e);
+        return [];
+      }
+    };
+
+    const [meOptions, frenetOptions] = await Promise.all([fetchMelhorEnvio(), fetchFrenet()]);
+    const allOptions = [...meOptions, ...frenetOptions];
+
+    // Deduplica: para mesma transportadora+serviço, mantém o mais barato
+    const dedupMap = new Map<string, any>();
+    for (const opt of allOptions) {
+      const key = `${(opt.company || '').toLowerCase()}::${(opt.servico || '').toLowerCase()}`;
+      const existing = dedupMap.get(key);
+      if (!existing || opt.valor < existing.valor) dedupMap.set(key, opt);
     }
+    const options = Array.from(dedupMap.values()).sort((a, b) => a.valor - b.valor);
 
-    const meData = await meResponse.json();
+    // Add pickup option
+    options.push({
+      codigo: 'RETIRADA',
+      nome: 'Retirar na Loja',
+      valor: 0,
+      prazoEntrega: 0,
+      company: 'Loja',
+      servico: 'Retirada',
+      provider: 'pickup',
+    });
 
-    // Filter and normalize options
-    const options = (Array.isArray(meData) ? meData : [])
-      .filter((opt: any) => !opt.error && opt.price)
-      .map((opt: any) => ({
-        codigo: String(opt.id),
-        nome: `${opt.company?.name || ''} ${opt.name || ''}`.trim(),
-        valor: parseFloat(opt.price),
-        prazoEntrega: opt.delivery_time || opt.delivery_range?.max || 0,
-        company: opt.company?.name || null,
-        servico: opt.name || null,
-      }));
+    console.log('Shipping options calculated:', {
+      total: options.length,
+      me: meOptions.length,
+      frenet: frenetOptions.length,
+    });
 
     // Add pickup option
     options.push({
