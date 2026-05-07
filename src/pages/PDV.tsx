@@ -2658,8 +2658,10 @@ export default function PDV() {
                                         onClick={async () => {
                                           try {
                                             const items = (sale.cart_data as any[]) || [];
+                                            const unitOf = (it: any) =>
+                                              it.customPrice ?? it.variation?.price ?? it.product?.price_pdv ?? it.product?.price ?? 0;
                                             const subtotal = items.reduce(
-                                              (s: number, it: any) => s + (it.customPrice ?? it.product?.price ?? 0) * (it.quantity || 0),
+                                              (s: number, it: any) => s + unitOf(it) * (it.quantity || 0),
                                               0
                                             );
                                             const discount = Math.max(0, subtotal - Number(sale.total_amount));
@@ -2681,7 +2683,7 @@ export default function PDV() {
                                                   ? { name: it.variation.name, image_url: it.variation.image_url }
                                                   : undefined,
                                                 quantity: it.quantity || 0,
-                                                unitPrice: it.customPrice ?? it.product?.price ?? 0,
+                                                unitPrice: unitOf(it),
                                               })),
                                               subtotal,
                                               discount,
