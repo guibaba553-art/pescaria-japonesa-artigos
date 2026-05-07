@@ -347,8 +347,15 @@ serve(async (req) => {
     const nfeNumero = Number(focusSettings.proximo_numero_nfe || 1);
 
     // ---------- PAYLOAD ----------
-    const totalProdutos = focusItems.reduce((sum, it) => sum + Number(it.valor_bruto), 0);
-    const valorFrete = Number(order.shipping_cost || 0);
+    // Soma a partir das strings já arredondadas (.toFixed(2)) para casar exatamente
+    // com o que a SEFAZ recalcula a partir do XML enviado.
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const totalProdutos = round2(
+      focusItems.reduce((sum, it) => sum + Number(it.valor_bruto), 0)
+    );
+    const valorFrete = round2(Number(order.shipping_cost || 0));
+    const valorTotal = round2(totalProdutos + valorFrete);
+    const valorTotalStr = valorTotal.toFixed(2);
 
     const buildPayload = (dataEmissao: string): Record<string, unknown> => ({
       natureza_operacao: 'Venda de mercadoria',
@@ -392,13 +399,13 @@ serve(async (req) => {
 
       valor_frete: valorFrete.toFixed(2),
       valor_produtos: totalProdutos.toFixed(2),
-      valor_total: (totalProdutos + valorFrete).toFixed(2),
+      valor_total: valorTotalStr,
 
       items: focusItems,
       formas_pagamento: [
         {
           forma_pagamento: '99',
-          valor_pagamento: (totalProdutos + valorFrete).toFixed(2),
+          valor_pagamento: valorTotalStr,
         },
       ],
     });
