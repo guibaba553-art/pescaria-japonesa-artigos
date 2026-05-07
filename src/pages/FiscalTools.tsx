@@ -34,6 +34,9 @@ const ExpenseTracker = lazy(() =>
 const PriceFormation = lazy(() =>
   import("@/components/PriceFormation").then((m) => ({ default: m.PriceFormation }))
 );
+const DREReport = lazy(() =>
+  import("@/components/DREReport").then((m) => ({ default: m.DREReport }))
+);
 
 const FiscalTabFallback = () => (
   <div className="flex items-center justify-center py-16 text-muted-foreground">
