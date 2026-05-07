@@ -399,13 +399,13 @@ serve(async (req) => {
 
       valor_frete: valorFrete.toFixed(2),
       valor_produtos: totalProdutos.toFixed(2),
-      valor_total: (totalProdutos + valorFrete).toFixed(2),
+      valor_total: valorTotalStr,
 
       items: focusItems,
       formas_pagamento: [
         {
           forma_pagamento: '99',
-          valor_pagamento: (totalProdutos + valorFrete).toFixed(2),
+          valor_pagamento: valorTotalStr,
         },
       ],
     });
