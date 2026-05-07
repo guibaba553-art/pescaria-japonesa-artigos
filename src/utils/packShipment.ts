@@ -60,10 +60,22 @@ const BOXES = {
 
 const ENVELOPE = { w: 19, h: 3, l: 25, volume: 19 * 3 * 25, maxDim: 25 };
 
+function normalizeDimensionCm(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return value;
+
+  // Alguns cadastros antigos vieram misturando mm e cm (ex: 1680 para 168cm).
+  // Para não derrubar todas as cotações, normalizamos apenas valores claramente
+  // fora da realidade de cadastro em centímetros.
+  let normalized = value;
+  while (normalized > 300) normalized = normalized / 10;
+
+  return normalized;
+}
+
 function dim(d: ItemDims, key: keyof ItemDims): number {
   const v = d[key];
   if (v == null || Number(v) <= 0) return FALLBACK[key] as number;
-  return Number(v);
+  return normalizeDimensionCm(Number(v));
 }
 
 function itemVolume(d: ItemDims): number {
