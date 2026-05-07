@@ -267,6 +267,12 @@ export default function FiscalTools() {
             </Suspense>
           </TabsContent>
 
+          <TabsContent value="dre">
+            <Suspense fallback={<FiscalTabFallback />}>
+              <DREReport />
+            </Suspense>
+          </TabsContent>
+
           <TabsContent value="taxes">
             <Suspense fallback={<FiscalTabFallback />}>
               <TaxProjection />
