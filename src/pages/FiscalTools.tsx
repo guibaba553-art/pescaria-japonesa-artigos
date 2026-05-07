@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet, DollarSign } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet, DollarSign, FileBarChart } from "lucide-react";
 
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
@@ -33,6 +33,9 @@ const ExpenseTracker = lazy(() =>
 );
 const PriceFormation = lazy(() =>
   import("@/components/PriceFormation").then((m) => ({ default: m.PriceFormation }))
+);
+const DREReport = lazy(() =>
+  import("@/components/DREReport").then((m) => ({ default: m.DREReport }))
 );
 
 const FiscalTabFallback = () => (
@@ -219,10 +222,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="dre">
+              <FileBarChart className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">DRE</span>
             </TabsTrigger>
             <TabsTrigger value="precos">
               <DollarSign className="w-4 h-4 mr-2" />
@@ -257,6 +264,12 @@ export default function FiscalTools() {
           <TabsContent value="precos">
             <Suspense fallback={<FiscalTabFallback />}>
               <PriceFormation />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="dre">
+            <Suspense fallback={<FiscalTabFallback />}>
+              <DREReport />
             </Suspense>
           </TabsContent>
 
