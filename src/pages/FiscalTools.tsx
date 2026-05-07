@@ -222,10 +222,14 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
+            </TabsTrigger>
+            <TabsTrigger value="dre">
+              <FileBarChart className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">DRE</span>
             </TabsTrigger>
             <TabsTrigger value="precos">
               <DollarSign className="w-4 h-4 mr-2" />
