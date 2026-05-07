@@ -980,8 +980,10 @@ export default function PDV() {
 
   const getDiscountValue = () => {
     const v = parseFloat((discountInput || '').replace(',', '.'));
-    if (isNaN(v) || v <= 0) return 0;
-    return Math.min(v, calculateSubtotal()); // não permite desconto maior que o subtotal
+    if (isNaN(v) || v === 0) return 0;
+    // valores negativos = acréscimo (aumenta o total)
+    if (v < 0) return v;
+    return Math.min(v, calculateSubtotal()); // desconto positivo limitado ao subtotal
   };
 
   const calculateTotal = () => {
@@ -1653,8 +1655,7 @@ export default function PDV() {
                         type="number"
                         inputMode="decimal"
                         step="0.01"
-                        min="0"
-                        placeholder="0,00"
+                        placeholder="0,00 (use negativo p/ acréscimo)"
                         value={discountInput}
                         onChange={(e) => setDiscountInput(e.target.value)}
                         className="flex-1"
@@ -1672,16 +1673,23 @@ export default function PDV() {
                     </div>
                   </div>
 
-                  {getDiscountValue() > 0 && (
+                  {getDiscountValue() !== 0 && (
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal:</span>
                         <span>R$ {calculateSubtotal().toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between text-success">
-                        <span>Desconto:</span>
-                        <span>− R$ {getDiscountValue().toFixed(2)}</span>
-                      </div>
+                      {getDiscountValue() > 0 ? (
+                        <div className="flex justify-between text-success">
+                          <span>Desconto:</span>
+                          <span>− R$ {getDiscountValue().toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-destructive">
+                          <span>Acréscimo:</span>
+                          <span>+ R$ {Math.abs(getDiscountValue()).toFixed(2)}</span>
+                        </div>
+                      )}
                     </div>
                   )}
 
