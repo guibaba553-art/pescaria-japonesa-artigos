@@ -65,7 +65,46 @@ const statusBadge = (status: string) => {
 export function NFEList({ settings, onRefresh }: NFEListProps) {
   const [nfes, setNfes] = useState<NFE[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelTarget, setCancelTarget] = useState<NFE | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
   const { toast } = useToast();
+
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+    if (cancelReason.trim().length < 15) {
+      toast({
+        title: 'Justificativa muito curta',
+        description: 'A SEFAZ exige no mínimo 15 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCancelling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-nfe', {
+        body: { nfe_id: cancelTarget.id, justificativa: cancelReason.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast({
+        title: 'NF-e cancelada',
+        description: `Protocolo: ${(data as any)?.protocolo_cancelamento || 'OK'}`,
+      });
+      setCancelTarget(null);
+      setCancelReason('');
+      await loadNFEs();
+      onRefresh?.();
+    } catch (err: any) {
+      toast({
+        title: 'Falha no cancelamento',
+        description: err?.message || 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   useEffect(() => {
     loadNFEs();
