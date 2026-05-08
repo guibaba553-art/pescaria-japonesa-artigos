@@ -27,6 +27,7 @@ import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
@@ -146,6 +147,33 @@ export default function AdminSalesAnalysis() {
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
+  const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
+  const [linkingCustomer, setLinkingCustomer] = useState(false);
+
+  // Carrega o cliente vinculado ao pedido quando o diálogo de NF abre
+  useEffect(() => {
+    if (!invoiceTarget) { setInvoiceCustomer(null); return; }
+    const customerId = invoiceTarget.raw?.customer_id;
+    if (!customerId) { setInvoiceCustomer(null); return; }
+    supabase
+      .from('customers')
+      .select('id, full_name, company_name, cpf, cnpj, inscricao_estadual, ie_indicador, cep, street, number, neighborhood, municipio, uf')
+      .eq('id', customerId)
+      .maybeSingle()
+      .then(({ data }) => setInvoiceCustomer(data));
+  }, [invoiceTarget]);
+
+  const handleLinkCustomer = async (cust: any) => {
+    if (!invoiceTarget || invoiceTarget.kind !== 'order') return;
+    setLinkingCustomer(true);
+    const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
+    setLinkingCustomer(false);
+    if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
+    toast.success('Cliente vinculado ao pedido');
+    setInvoiceCustomer(cust);
+    setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
+    fetchAll(true);
+  };
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
@@ -1374,6 +1402,62 @@ export default function AdminSalesAnalysis() {
                           <div><strong>Data:</strong> {format(new Date(invoiceTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
                           <div><strong>Total:</strong> {formatCurrency(invoiceTarget.total_amount)}</div>
                           <div><strong>Documento:</strong> {effectiveModel === 'nfe' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
+                        </div>
+                      )}
+
+                      {/* Destinatário */}
+                      {invoiceTarget && invoiceTarget.kind === 'order' && (
+                        <div className={`mt-3 p-3 rounded-lg text-sm border ${
+                          invoiceCustomer
+                            ? 'bg-emerald-500/5 border-emerald-500/40'
+                            : 'bg-amber-500/5 border-amber-500/40'
+                        }`}>
+                          <div className="text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">
+                            Nota será emitida para
+                          </div>
+                          {invoiceCustomer ? (
+                            <div className="space-y-1">
+                              <div className="font-bold text-base text-foreground">
+                                {invoiceCustomer.company_name || invoiceCustomer.full_name}
+                              </div>
+                              <div className="font-mono text-sm">
+                                {invoiceCustomer.cnpj
+                                  ? <><strong>CNPJ:</strong> {invoiceCustomer.cnpj}</>
+                                  : invoiceCustomer.cpf
+                                    ? <><strong>CPF:</strong> {invoiceCustomer.cpf}</>
+                                    : <span className="text-amber-700">Sem CPF/CNPJ</span>}
+                              </div>
+                              {invoiceCustomer.inscricao_estadual && (
+                                <div className="text-xs text-muted-foreground">
+                                  IE: {invoiceCustomer.inscricao_estadual}
+                                  {invoiceCustomer.ie_indicador && ` (ind. ${invoiceCustomer.ie_indicador})`}
+                                </div>
+                              )}
+                              {(invoiceCustomer.municipio || invoiceCustomer.uf) && (
+                                <div className="text-xs text-muted-foreground">
+                                  {[invoiceCustomer.street, invoiceCustomer.number].filter(Boolean).join(', ')}
+                                  {invoiceCustomer.neighborhood && ` — ${invoiceCustomer.neighborhood}`}
+                                  {(invoiceCustomer.municipio || invoiceCustomer.uf) && ` — ${invoiceCustomer.municipio || ''}/${invoiceCustomer.uf || ''}`}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-amber-700 dark:text-amber-400 font-medium">
+                                ⚠ Nenhum cliente vinculado a este pedido.
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Selecione um cliente cadastrado para vincular antes de emitir a nota:
+                              </p>
+                              <CustomerSearchCombobox
+                                onSelect={handleLinkCustomer}
+                                placeholder="Buscar por nome, CPF ou CNPJ..."
+                              />
+                              {linkingCustomer && (
+                                <p className="text-xs text-muted-foreground">Vinculando...</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                       {allowChoice && (
