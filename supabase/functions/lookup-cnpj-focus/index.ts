@@ -63,7 +63,8 @@ serve(async (req) => {
       : 'https://homologacao.focusnfe.com.br';
 
     const auth = btoa(`${focusToken}:`);
-    const resp = await fetch(`${focusBaseUrl}/v2/cnpjs/${digits}`, {
+    // ?completo=1 traz endereço estruturado em `endereco.*`
+    const resp = await fetch(`${focusBaseUrl}/v2/cnpjs/${digits}?completo=1`, {
       headers: { Authorization: `Basic ${auth}` },
     });
     const text = await resp.text();
@@ -76,35 +77,39 @@ serve(async (req) => {
       }), { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Focus NFe retorna inscrições estaduais por estado quando disponível.
-    // Estrutura típica: inscricoes_estaduais: [{ inscricao_estadual, uf, ativo, ... }]
+    // Focus retorna IE em `inscricoes_estaduais` apenas para alguns CNPJs (NF-e ativa).
     const inscricoes: any[] = Array.isArray(d.inscricoes_estaduais) ? d.inscricoes_estaduais : [];
+    const ufResposta = (d.endereco?.uf || d.uf || '').toUpperCase();
     const ieDoEstado = inscricoes.find((i) =>
-      String(i?.uf || '').toUpperCase() === String(d.uf || '').toUpperCase() && (i?.ativo ?? true)
+      String(i?.uf || '').toUpperCase() === ufResposta && (i?.ativo ?? true)
     ) || inscricoes.find((i) => i?.ativo) || inscricoes[0];
 
     const ieValue = ieDoEstado?.inscricao_estadual || '';
     const ieAtiva = !!ieDoEstado?.ativo;
 
+    const end = d.endereco || {};
     return new Response(JSON.stringify({
       success: true,
       cnpj: digits,
-      razao_social: d.nome || d.razao_social || null,
-      nome_fantasia: d.fantasia || d.nome_fantasia || null,
-      situacao: d.situacao || d.situacao_cadastral || null,
-      logradouro: d.logradouro || null,
-      numero: d.numero || null,
-      complemento: d.complemento || null,
-      bairro: d.bairro || null,
-      municipio: d.municipio || null,
-      uf: d.uf || null,
-      cep: (d.cep || '').replace(/\D/g, '') || null,
-      codigo_municipio_ibge: d.codigo_municipio || d.cod_ibge || null,
+      razao_social: d.razao_social || d.nome || null,
+      nome_fantasia: d.nome_fantasia || d.fantasia || null,
+      situacao: d.situacao_cadastral || d.situacao || null,
+      logradouro: end.logradouro || d.logradouro || null,
+      numero: end.numero || d.numero || null,
+      complemento: end.complemento || d.complemento || null,
+      bairro: end.bairro || d.bairro || null,
+      municipio: end.nome_municipio || end.municipio || d.municipio || null,
+      uf: end.uf || d.uf || null,
+      cep: (end.cep || d.cep || '').replace(/\D/g, '') || null,
+      codigo_municipio_ibge: end.codigo_ibge || end.codigo_municipio || d.codigo_municipio || null,
       email: d.email || null,
       telefone: d.telefone || null,
       inscricao_estadual: ieValue || null,
       ie_ativa: ieAtiva,
       inscricoes_estaduais: inscricoes,
+      // Sinaliza que o Focus não tem IE pra esse CNPJ — operador precisa
+      // consultar o SINTEGRA do estado e preencher manualmente.
+      ie_disponivel: inscricoes.length > 0,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (e) {
