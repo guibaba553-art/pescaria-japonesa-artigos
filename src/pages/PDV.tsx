@@ -103,6 +103,13 @@ export default function PDV() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartAutoExpand, setCartAutoExpand] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('pdv:cartAutoExpand') === '1';
+  });
+  useEffect(() => {
+    localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
+  }, [cartAutoExpand]);
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
