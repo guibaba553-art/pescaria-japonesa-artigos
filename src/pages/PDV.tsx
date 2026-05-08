@@ -311,12 +311,32 @@ export default function PDV() {
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', loadProducts);
 
+    // Realtime: recarrega vendas salvas quando outro operador/aba salva, atualiza ou exclui
+    let savedTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleSavedReload = () => {
+      if (savedTimer) clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => loadSavedSales(), 300);
+    };
+    const savedChannel = supabase
+      .channel('pdv-saved-sales')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_sales' }, scheduleSavedReload)
+      .subscribe();
+    const onVisibleSaved = () => {
+      if (document.visibilityState === 'visible') scheduleSavedReload();
+    };
+    document.addEventListener('visibilitychange', onVisibleSaved);
+    window.addEventListener('focus', scheduleSavedReload);
+
     return () => {
       if (idleTimer) clearTimeout(idleTimer);
       if (reloadTimer) clearTimeout(reloadTimer);
+      if (savedTimer) clearTimeout(savedTimer);
       supabase.removeChannel(channel);
+      supabase.removeChannel(savedChannel);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', loadProducts);
+      document.removeEventListener('visibilitychange', onVisibleSaved);
+      window.removeEventListener('focus', scheduleSavedReload);
     };
   }, []);
 
@@ -2558,7 +2578,7 @@ export default function PDV() {
       </Dialog>
 
       {/* Diálogo de vendas salvas */}
-      <Dialog open={showSavedSalesDialog} onOpenChange={setShowSavedSalesDialog}>
+      <Dialog open={showSavedSalesDialog} onOpenChange={(open) => { setShowSavedSalesDialog(open); if (open) loadSavedSales(); }}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
