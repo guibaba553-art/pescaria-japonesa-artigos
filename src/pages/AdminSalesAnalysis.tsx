@@ -242,6 +242,8 @@ export default function AdminSalesAnalysis() {
     return null;
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
+  // Mantém o ref de fetchAll atualizado para uso pelos listeners de auto-update
+  // (declarado antes de fetchAll para evitar TDZ no closure)
   const fetchAll = async (silent = false) => {
     if (!period) {
       if (!silent) toast.error('Selecione um período no calendário primeiro.');
