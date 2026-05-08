@@ -30,7 +30,9 @@ import {
   Calendar,
   Users,
   Printer,
-  Loader2
+  Loader2,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -103,6 +105,13 @@ export default function PDV() {
   
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartAutoExpand, setCartAutoExpand] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('pdv:cartAutoExpand') === '1';
+  });
+  useEffect(() => {
+    localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
+  }, [cartAutoExpand]);
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -1530,13 +1539,26 @@ export default function PDV() {
           <div id="pdv-cart-panel" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between gap-2">
                   <span>Carrinho</span>
-                  <Badge variant="secondary">{cart.length} itens</Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={cartAutoExpand ? 'default' : 'outline'}
+                      className="h-7 px-2 text-xs gap-1"
+                      onClick={() => setCartAutoExpand((v) => !v)}
+                      title={cartAutoExpand ? 'Carrinho expande conforme adiciona itens (clique para desativar)' : 'Carrinho com altura fixa e rolagem (clique para expandir conforme adiciona itens)'}
+                    >
+                      {cartAutoExpand ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      {cartAutoExpand ? 'Auto' : 'Fixo'}
+                    </Button>
+                    <Badge variant="secondary">{cart.length} itens</Badge>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[300px] mb-4">
+                <ScrollArea className={cartAutoExpand ? 'max-h-[calc(100vh-260px)] mb-4' : 'h-[300px] mb-4'}>
                   {cart.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
