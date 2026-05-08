@@ -1142,7 +1142,11 @@ export default function PDV() {
         municipio: customerForm.municipio || null,
         uf: customerForm.uf || null,
         codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
-        inscricao_estadual: isCnpj ? (customerForm.ie_indicador === '1' ? customerForm.inscricao_estadual : 'ISENTO') : null,
+        inscricao_estadual: isCnpj
+          ? (customerForm.inscricao_estadual.trim()
+              ? customerForm.inscricao_estadual.trim()
+              : (customerForm.ie_indicador === '1' ? '' : 'ISENTO'))
+          : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
         created_by: user!.id
@@ -2345,19 +2349,23 @@ export default function PDV() {
                   </Select>
                 </div>
 
-                {customerForm.ie_indicador === '1' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="inscricao_estadual">Inscrição Estadual *</Label>
-                    <Input
-                      id="inscricao_estadual"
-                      placeholder="Somente números"
-                      value={customerForm.inscricao_estadual}
-                      onChange={(e) =>
-                        setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value })
-                      }
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="inscricao_estadual">
+                    Inscrição Estadual {customerForm.ie_indicador === '1' ? '*' : '(opcional)'}
+                  </Label>
+                  <Input
+                    id="inscricao_estadual"
+                    placeholder={customerForm.ie_indicador === '1' ? 'Somente números' : 'Deixe em branco se isento/não contribuinte'}
+                    value={customerForm.inscricao_estadual}
+                    onChange={(e) =>
+                      setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                    }
+                    inputMode="numeric"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Você pode informar a IE mesmo selecionando "Isento" ou "Não contribuinte".
+                  </p>
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="customer_email">E-mail (recomendado)</Label>
