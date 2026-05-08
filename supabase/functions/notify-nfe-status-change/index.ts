@@ -24,12 +24,17 @@ Deno.serve(async (req) => {
       authorized = true;
     } else if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.replace('Bearer ', '');
-      const { data: u } = await supabase.auth.getUser(token);
-      if (u?.user) {
-        const { data: roles } = await supabase
-          .from('user_roles').select('role')
-          .eq('user_id', u.user.id).in('role', ['admin']);
-        if (roles && roles.length > 0) authorized = true;
+      // Aceita service_role key (usada pelo trigger no banco)
+      if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+        authorized = true;
+      } else {
+        const { data: u } = await supabase.auth.getUser(token);
+        if (u?.user) {
+          const { data: roles } = await supabase
+            .from('user_roles').select('role')
+            .eq('user_id', u.user.id).in('role', ['admin']);
+          if (roles && roles.length > 0) authorized = true;
+        }
       }
     }
 
