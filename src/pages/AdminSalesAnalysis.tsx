@@ -314,7 +314,7 @@ export default function AdminSalesAnalysis() {
 
       unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(unified);
-      toast.success(`${unified.length} registro(s) carregado(s)`);
+      if (!silent) toast.success(`${unified.length} registro(s) carregado(s)`);
     } catch (e: any) {
       toast.error('Erro ao carregar: ' + e.message);
     } finally {
