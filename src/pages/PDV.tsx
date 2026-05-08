@@ -1537,13 +1537,26 @@ export default function PDV() {
           <div id="pdv-cart-panel" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between gap-2">
                   <span>Carrinho</span>
-                  <Badge variant="secondary">{cart.length} itens</Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={cartAutoExpand ? 'default' : 'outline'}
+                      className="h-7 px-2 text-xs gap-1"
+                      onClick={() => setCartAutoExpand((v) => !v)}
+                      title={cartAutoExpand ? 'Carrinho expande conforme adiciona itens (clique para desativar)' : 'Carrinho com altura fixa e rolagem (clique para expandir conforme adiciona itens)'}
+                    >
+                      {cartAutoExpand ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      {cartAutoExpand ? 'Auto' : 'Fixo'}
+                    </Button>
+                    <Badge variant="secondary">{cart.length} itens</Badge>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[300px] mb-4">
+                <ScrollArea className={cartAutoExpand ? 'max-h-[calc(100vh-260px)] mb-4' : 'h-[300px] mb-4'}>
                   {cart.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
