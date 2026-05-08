@@ -763,11 +763,9 @@ export default function PDV() {
       console.log('🔍 Buscando por código:', code);
 
       const productWithVariation = products.find((product) =>
-        (product.variations || []).some((variation) => normalizeBarcode(variation.sku || '') === code),
+        (product.variations || []).some((variation) => matchesAny(variation.sku)),
       );
-      const variation = productWithVariation?.variations?.find(
-        (item) => normalizeBarcode(item.sku || '') === code,
-      );
+      const variation = productWithVariation?.variations?.find((item) => matchesAny(item.sku));
 
       if (productWithVariation && variation) {
         console.log('✅ Variação encontrada:', variation.name);
@@ -784,7 +782,7 @@ export default function PDV() {
         return;
       }
 
-      const matched = products.find((product) => normalizeBarcode(product.sku || '') === code);
+      const matched = products.find((product) => matchesAny(product.sku));
       if (matched) {
         console.log('✅ Produto encontrado:', matched.name);
         if (matched.sold_by_weight) {
@@ -800,7 +798,7 @@ export default function PDV() {
       }
 
       // Fallback: buscar direto no banco caso não esteja no cache local
-      console.log('🔎 Não encontrado no cache, consultando banco...');
+      console.log('🔎 Não encontrado no cache, consultando banco...', candidates);
 
       const fetchProductWithVariations = async (productId: string) => {
         const [{ data: prod }, { data: vars }] = await Promise.all([
@@ -815,12 +813,13 @@ export default function PDV() {
         return { ...prod, variations: vars || [] } as any;
       };
 
-      const { data: dbVar, error: varErr } = await supabase
+      const { data: dbVars, error: varErr } = await supabase
         .from('product_variations')
         .select('id, product_id')
-        .eq('sku', code)
-        .maybeSingle();
+        .in('sku', candidates)
+        .limit(1);
       if (varErr) console.error('Erro busca variação:', varErr);
+      const dbVar = dbVars?.[0];
 
       if (dbVar?.product_id) {
         const prod = await fetchProductWithVariations(dbVar.product_id);
@@ -839,12 +838,13 @@ export default function PDV() {
         }
       }
 
-      const { data: dbProd, error: prodErr } = await supabase
+      const { data: dbProds, error: prodErr } = await supabase
         .from('products')
         .select('id')
-        .eq('sku', code)
-        .maybeSingle();
+        .in('sku', candidates)
+        .limit(1);
       if (prodErr) console.error('Erro busca produto:', prodErr);
+      const dbProd = dbProds?.[0];
 
       if (dbProd?.id) {
         const prod = await fetchProductWithVariations(dbProd.id);
@@ -861,6 +861,7 @@ export default function PDV() {
           return;
         }
       }
+
 
       console.log('❌ Nenhum produto ou variação encontrado');
       toast({
