@@ -199,13 +199,15 @@ export default function AdminSalesAnalysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, canView]);
 
+  const fetchAllRef = useRef<(silent?: boolean) => void>(() => {});
+
   // Auto-atualização: realtime em orders/nfe_emissions + polling a cada 30s
   useEffect(() => {
     if (!canView || !autoLoaded) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => fetchAll(true), 800);
+      timer = setTimeout(() => fetchAllRef.current?.(true), 800);
     };
     const channel = supabase
       .channel(`sales-analysis-${Math.random().toString(36).slice(2, 8)}`)
@@ -213,7 +215,7 @@ export default function AdminSalesAnalysis() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'nfe_emissions' }, schedule)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_sales' }, schedule)
       .subscribe();
-    const interval = setInterval(() => fetchAll(true), 30000);
+    const interval = setInterval(() => fetchAllRef.current?.(true), 30000);
     const onVisible = () => { if (document.visibilityState === 'visible') schedule(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', schedule);
@@ -224,8 +226,7 @@ export default function AdminSalesAnalysis() {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', schedule);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canView, autoLoaded, period?.from, period?.to]);
+  }, [canView, autoLoaded]);
 
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
