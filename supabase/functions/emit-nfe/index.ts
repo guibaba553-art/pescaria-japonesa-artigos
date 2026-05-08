@@ -391,7 +391,13 @@ serve(async (req) => {
       municipio_destinatario: addr.municipio,
       uf_destinatario: addr.uf,
       cep_destinatario: addr.cep,
-      indicador_inscricao_estadual_destinatario: 9, // não contribuinte
+      // Indicador IE: 1=Contribuinte (com IE), 2=Isento (PJ sem IE), 9=Não contribuinte (PF)
+      indicador_inscricao_estadual_destinatario: hasCnpj
+        ? (destIE && destIE.toUpperCase() !== 'ISENTO' && destIE.length > 0 ? 1 : 2)
+        : 9,
+      ...(hasCnpj && destIE && destIE.toUpperCase() !== 'ISENTO' && destIE.length > 0
+        ? { inscricao_estadual_destinatario: destIE }
+        : {}),
 
 
       presenca_comprador: 2,    // operação não presencial — internet
