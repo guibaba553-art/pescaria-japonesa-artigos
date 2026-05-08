@@ -55,6 +55,7 @@ import {
 } from '@/components/ui/select';
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
+import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 import { TefChargeDialog, type TefApprovedResult } from '@/components/TefChargeDialog';
 
