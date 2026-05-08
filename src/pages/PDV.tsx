@@ -2578,7 +2578,7 @@ export default function PDV() {
       </Dialog>
 
       {/* Diálogo de vendas salvas */}
-      <Dialog open={showSavedSalesDialog} onOpenChange={setShowSavedSalesDialog}>
+      <Dialog open={showSavedSalesDialog} onOpenChange={(open) => { setShowSavedSalesDialog(open); if (open) loadSavedSales(); }}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
