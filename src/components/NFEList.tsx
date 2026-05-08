@@ -194,7 +194,7 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                       : new Date(nfe.created_at).toLocaleString('pt-BR')}
                   </span>
                   {nfe.status === 'success' && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {nfe.danfe_url && (
                         <Button
                           size="sm"
@@ -215,6 +215,17 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                         >
                           <Download className="w-3.5 h-3.5" />
                           XML
+                        </Button>
+                      )}
+                      {!isEntrada && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setCancelTarget(nfe); setCancelReason(''); }}
+                          className="h-7 gap-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          Cancelar
                         </Button>
                       )}
                     </div>
