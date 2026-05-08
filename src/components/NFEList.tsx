@@ -49,6 +49,12 @@ const statusBadge = (status: string) => {
       accent: 'border-l-amber-500',
       label: 'Pendente',
     };
+  if (status === 'cancelled')
+    return {
+      cls: 'bg-muted text-muted-foreground border-muted-foreground/30',
+      accent: 'border-l-muted-foreground',
+      label: 'Cancelada',
+    };
   return {
     cls: 'bg-destructive/15 text-destructive border-destructive/30',
     accent: 'border-l-destructive',
