@@ -353,6 +353,9 @@ export default function AdminSalesAnalysis() {
     }
   };
 
+  // Mantém o ref do fetchAll sempre apontando para a versão mais recente (com período atual)
+  useEffect(() => { fetchAllRef.current = fetchAll; });
+
   const filteredRows = useMemo(() => {
     let out = rows;
 
