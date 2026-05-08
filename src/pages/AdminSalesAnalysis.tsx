@@ -1404,6 +1404,62 @@ export default function AdminSalesAnalysis() {
                           <div><strong>Documento:</strong> {effectiveModel === 'nfe' ? 'NF-e (55)' : 'NFC-e (65)'}</div>
                         </div>
                       )}
+
+                      {/* Destinatário */}
+                      {invoiceTarget && invoiceTarget.kind === 'order' && (
+                        <div className={`mt-3 p-3 rounded-lg text-sm border ${
+                          invoiceCustomer
+                            ? 'bg-emerald-500/5 border-emerald-500/40'
+                            : 'bg-amber-500/5 border-amber-500/40'
+                        }`}>
+                          <div className="text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">
+                            Nota será emitida para
+                          </div>
+                          {invoiceCustomer ? (
+                            <div className="space-y-1">
+                              <div className="font-bold text-base text-foreground">
+                                {invoiceCustomer.company_name || invoiceCustomer.full_name}
+                              </div>
+                              <div className="font-mono text-sm">
+                                {invoiceCustomer.cnpj
+                                  ? <><strong>CNPJ:</strong> {invoiceCustomer.cnpj}</>
+                                  : invoiceCustomer.cpf
+                                    ? <><strong>CPF:</strong> {invoiceCustomer.cpf}</>
+                                    : <span className="text-amber-700">Sem CPF/CNPJ</span>}
+                              </div>
+                              {invoiceCustomer.inscricao_estadual && (
+                                <div className="text-xs text-muted-foreground">
+                                  IE: {invoiceCustomer.inscricao_estadual}
+                                  {invoiceCustomer.ie_indicador && ` (ind. ${invoiceCustomer.ie_indicador})`}
+                                </div>
+                              )}
+                              {(invoiceCustomer.municipio || invoiceCustomer.uf) && (
+                                <div className="text-xs text-muted-foreground">
+                                  {[invoiceCustomer.street, invoiceCustomer.number].filter(Boolean).join(', ')}
+                                  {invoiceCustomer.neighborhood && ` — ${invoiceCustomer.neighborhood}`}
+                                  {(invoiceCustomer.municipio || invoiceCustomer.uf) && ` — ${invoiceCustomer.municipio || ''}/${invoiceCustomer.uf || ''}`}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <p className="text-amber-700 dark:text-amber-400 font-medium">
+                                ⚠ Nenhum cliente vinculado a este pedido.
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Selecione um cliente cadastrado para vincular antes de emitir a nota:
+                              </p>
+                              <CustomerSearchCombobox
+                                onSelect={handleLinkCustomer}
+                                placeholder="Buscar por nome, CPF ou CNPJ..."
+                              />
+                              {linkingCustomer && (
+                                <p className="text-xs text-muted-foreground">Vinculando...</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {allowChoice && (
                         <div className="mt-3 space-y-2">
                           <div className="text-sm font-medium text-foreground">Escolha o modelo:</div>
