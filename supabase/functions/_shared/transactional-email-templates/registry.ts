@@ -11,8 +11,10 @@ export interface TemplateEntry {
 
 import { template as orderCancelled } from './order-cancelled.tsx'
 import { template as orderConfirmation } from './order-confirmation.tsx'
+import { template as nfeErrorNotification } from './nfe-error-notification.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'order-cancelled': orderCancelled,
   'order-confirmation': orderConfirmation,
+  'nfe-error-notification': nfeErrorNotification,
 }
