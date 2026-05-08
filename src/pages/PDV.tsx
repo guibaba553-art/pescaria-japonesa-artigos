@@ -1142,7 +1142,11 @@ export default function PDV() {
         municipio: customerForm.municipio || null,
         uf: customerForm.uf || null,
         codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
-        inscricao_estadual: isCnpj ? (customerForm.ie_indicador === '1' ? customerForm.inscricao_estadual : 'ISENTO') : null,
+        inscricao_estadual: isCnpj
+          ? (customerForm.inscricao_estadual.trim()
+              ? customerForm.inscricao_estadual.trim()
+              : (customerForm.ie_indicador === '1' ? '' : 'ISENTO'))
+          : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
         created_by: user!.id
