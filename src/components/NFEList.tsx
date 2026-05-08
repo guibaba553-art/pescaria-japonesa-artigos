@@ -5,8 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye } from 'lucide-react';
+import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye, Ban, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface NFE {
   id: string;
@@ -43,6 +49,12 @@ const statusBadge = (status: string) => {
       accent: 'border-l-amber-500',
       label: 'Pendente',
     };
+  if (status === 'cancelled')
+    return {
+      cls: 'bg-muted text-muted-foreground border-muted-foreground/30',
+      accent: 'border-l-muted-foreground',
+      label: 'Cancelada',
+    };
   return {
     cls: 'bg-destructive/15 text-destructive border-destructive/30',
     accent: 'border-l-destructive',
@@ -53,7 +65,46 @@ const statusBadge = (status: string) => {
 export function NFEList({ settings, onRefresh }: NFEListProps) {
   const [nfes, setNfes] = useState<NFE[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelTarget, setCancelTarget] = useState<NFE | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
   const { toast } = useToast();
+
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+    if (cancelReason.trim().length < 15) {
+      toast({
+        title: 'Justificativa muito curta',
+        description: 'A SEFAZ exige no mínimo 15 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCancelling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-nfe', {
+        body: { nfe_id: cancelTarget.id, justificativa: cancelReason.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast({
+        title: 'NF-e cancelada',
+        description: `Protocolo: ${(data as any)?.protocolo_cancelamento || 'OK'}`,
+      });
+      setCancelTarget(null);
+      setCancelReason('');
+      await loadNFEs();
+      onRefresh?.();
+    } catch (err: any) {
+      toast({
+        title: 'Falha no cancelamento',
+        description: err?.message || 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   useEffect(() => {
     loadNFEs();
@@ -143,7 +194,7 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                       : new Date(nfe.created_at).toLocaleString('pt-BR')}
                   </span>
                   {nfe.status === 'success' && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {nfe.danfe_url && (
                         <Button
                           size="sm"
@@ -164,6 +215,17 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                         >
                           <Download className="w-3.5 h-3.5" />
                           XML
+                        </Button>
+                      )}
+                      {!isEntrada && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setCancelTarget(nfe); setCancelReason(''); }}
+                          className="h-7 gap-1 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          Cancelar
                         </Button>
                       )}
                     </div>
@@ -207,28 +269,64 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
   const countEntrada = nfes.filter(isEntrada).length;
 
   return (
-    <Tabs defaultValue="nfe" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3 h-11">
-        <TabsTrigger value="nfe" className="gap-2">
-          <ArrowUp className="w-4 h-4" />
-          NF-e
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfe}</Badge>
-        </TabsTrigger>
-        <TabsTrigger value="nfce" className="gap-2">
-          <ArrowUp className="w-4 h-4" />
-          NFC-e
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfce}</Badge>
-        </TabsTrigger>
-        <TabsTrigger value="entrada" className="gap-2">
-          <ArrowDown className="w-4 h-4" />
-          Entrada
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countEntrada}</Badge>
-        </TabsTrigger>
-      </TabsList>
+    <>
+      <Tabs defaultValue="nfe" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-11">
+          <TabsTrigger value="nfe" className="gap-2">
+            <ArrowUp className="w-4 h-4" />
+            NF-e
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfe}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="nfce" className="gap-2">
+            <ArrowUp className="w-4 h-4" />
+            NFC-e
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfce}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="entrada" className="gap-2">
+            <ArrowDown className="w-4 h-4" />
+            Entrada
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countEntrada}</Badge>
+          </TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="nfe">{renderNFEGrid(isNfe, 'NF-e de saída', false, 'NF-e')}</TabsContent>
-      <TabsContent value="nfce">{renderNFEGrid(isNfce, 'NFC-e', false, 'NFC-e')}</TabsContent>
-      <TabsContent value="entrada">{renderNFEGrid(isEntrada, 'nota de entrada', true)}</TabsContent>
-    </Tabs>
+        <TabsContent value="nfe">{renderNFEGrid(isNfe, 'NF-e de saída', false, 'NF-e')}</TabsContent>
+        <TabsContent value="nfce">{renderNFEGrid(isNfce, 'NFC-e', false, 'NFC-e')}</TabsContent>
+        <TabsContent value="entrada">{renderNFEGrid(isEntrada, 'nota de entrada', true)}</TabsContent>
+      </Tabs>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open && !cancelling) { setCancelTarget(null); setCancelReason(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar NF-e {cancelTarget?.nfe_number ? `nº ${cancelTarget.nfe_number}` : ''}</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cancelamento só é aceito pela SEFAZ até <strong>24 horas após a autorização</strong>.
+              Informe uma justificativa (mínimo 15 caracteres).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cancel-reason">Justificativa</Label>
+            <Textarea
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value.slice(0, 255))}
+              placeholder="Ex: Erro na quantidade de produtos lançados na nota fiscal"
+              rows={3}
+              disabled={cancelling}
+            />
+            <p className="text-xs text-muted-foreground text-right">{cancelReason.length}/255 (mín. 15)</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleCancel(); }}
+              disabled={cancelling || cancelReason.trim().length < 15}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelling ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Cancelando...</>) : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
