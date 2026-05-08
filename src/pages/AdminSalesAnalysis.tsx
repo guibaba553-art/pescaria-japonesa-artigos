@@ -146,6 +146,33 @@ export default function AdminSalesAnalysis() {
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
+  const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
+  const [linkingCustomer, setLinkingCustomer] = useState(false);
+
+  // Carrega o cliente vinculado ao pedido quando o diálogo de NF abre
+  useEffect(() => {
+    if (!invoiceTarget) { setInvoiceCustomer(null); return; }
+    const customerId = invoiceTarget.raw?.customer_id;
+    if (!customerId) { setInvoiceCustomer(null); return; }
+    supabase
+      .from('customers')
+      .select('id, full_name, company_name, cpf, cnpj, inscricao_estadual, ie_indicador, cep, street, number, neighborhood, municipio, uf')
+      .eq('id', customerId)
+      .maybeSingle()
+      .then(({ data }) => setInvoiceCustomer(data));
+  }, [invoiceTarget]);
+
+  const handleLinkCustomer = async (cust: any) => {
+    if (!invoiceTarget || invoiceTarget.kind !== 'order') return;
+    setLinkingCustomer(true);
+    const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
+    setLinkingCustomer(false);
+    if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
+    toast.success('Cliente vinculado ao pedido');
+    setInvoiceCustomer(cust);
+    setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
+    fetchAll(true);
+  };
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
   const [rangeFrom, setRangeFrom] = useState<Date | undefined>(() => startOfMonth(new Date()));
