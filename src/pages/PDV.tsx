@@ -169,9 +169,42 @@ export default function PDV() {
     }
     setCnpjLoading(true);
     try {
-      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
-      if (!res.ok) throw new Error('CNPJ não encontrado');
-      const d = await res.json();
+      // 1) Tenta Focus NFe primeiro (traz IE direto da SEFAZ/SINTEGRA)
+      let d: any = null;
+      let ieFromFocus = '';
+      let ieAtivaFromFocus = false;
+      try {
+        const { data: focusData, error: focusErr } = await supabase.functions.invoke('lookup-cnpj-focus', {
+          body: { cnpj: digits },
+        });
+        if (!focusErr && focusData?.success) {
+          d = {
+            razao_social: focusData.razao_social,
+            nome_fantasia: focusData.nome_fantasia,
+            cep: focusData.cep,
+            logradouro: focusData.logradouro,
+            numero: focusData.numero,
+            complemento: focusData.complemento,
+            bairro: focusData.bairro,
+            municipio: focusData.municipio,
+            uf: focusData.uf,
+            codigo_municipio: focusData.codigo_municipio_ibge,
+            email: focusData.email,
+          };
+          ieFromFocus = focusData.inscricao_estadual || '';
+          ieAtivaFromFocus = !!focusData.ie_ativa;
+        }
+      } catch (err) {
+        console.warn('Focus NFe lookup falhou, usando BrasilAPI:', err);
+      }
+
+      // 2) Fallback BrasilAPI (sem IE, mas dados da Receita)
+      if (!d) {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+        if (!res.ok) throw new Error('CNPJ não encontrado');
+        d = await res.json();
+      }
+
       const fmtCnpj = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
       const fmtCep = (d.cep ? String(d.cep).padStart(8, '0') : '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
 
