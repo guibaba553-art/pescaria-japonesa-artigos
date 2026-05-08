@@ -269,28 +269,64 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
   const countEntrada = nfes.filter(isEntrada).length;
 
   return (
-    <Tabs defaultValue="nfe" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3 h-11">
-        <TabsTrigger value="nfe" className="gap-2">
-          <ArrowUp className="w-4 h-4" />
-          NF-e
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfe}</Badge>
-        </TabsTrigger>
-        <TabsTrigger value="nfce" className="gap-2">
-          <ArrowUp className="w-4 h-4" />
-          NFC-e
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfce}</Badge>
-        </TabsTrigger>
-        <TabsTrigger value="entrada" className="gap-2">
-          <ArrowDown className="w-4 h-4" />
-          Entrada
-          <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countEntrada}</Badge>
-        </TabsTrigger>
-      </TabsList>
+    <>
+      <Tabs defaultValue="nfe" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-11">
+          <TabsTrigger value="nfe" className="gap-2">
+            <ArrowUp className="w-4 h-4" />
+            NF-e
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfe}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="nfce" className="gap-2">
+            <ArrowUp className="w-4 h-4" />
+            NFC-e
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countNfce}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="entrada" className="gap-2">
+            <ArrowDown className="w-4 h-4" />
+            Entrada
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">{countEntrada}</Badge>
+          </TabsTrigger>
+        </TabsList>
 
-      <TabsContent value="nfe">{renderNFEGrid(isNfe, 'NF-e de saída', false, 'NF-e')}</TabsContent>
-      <TabsContent value="nfce">{renderNFEGrid(isNfce, 'NFC-e', false, 'NFC-e')}</TabsContent>
-      <TabsContent value="entrada">{renderNFEGrid(isEntrada, 'nota de entrada', true)}</TabsContent>
-    </Tabs>
+        <TabsContent value="nfe">{renderNFEGrid(isNfe, 'NF-e de saída', false, 'NF-e')}</TabsContent>
+        <TabsContent value="nfce">{renderNFEGrid(isNfce, 'NFC-e', false, 'NFC-e')}</TabsContent>
+        <TabsContent value="entrada">{renderNFEGrid(isEntrada, 'nota de entrada', true)}</TabsContent>
+      </Tabs>
+
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open && !cancelling) { setCancelTarget(null); setCancelReason(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar NF-e {cancelTarget?.nfe_number ? `nº ${cancelTarget.nfe_number}` : ''}</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cancelamento só é aceito pela SEFAZ até <strong>24 horas após a autorização</strong>.
+              Informe uma justificativa (mínimo 15 caracteres).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="cancel-reason">Justificativa</Label>
+            <Textarea
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value.slice(0, 255))}
+              placeholder="Ex: Erro na quantidade de produtos lançados na nota fiscal"
+              rows={3}
+              disabled={cancelling}
+            />
+            <p className="text-xs text-muted-foreground text-right">{cancelReason.length}/255 (mín. 15)</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleCancel(); }}
+              disabled={cancelling || cancelReason.trim().length < 15}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelling ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Cancelando...</>) : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
