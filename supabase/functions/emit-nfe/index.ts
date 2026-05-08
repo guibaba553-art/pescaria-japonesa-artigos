@@ -223,18 +223,20 @@ serve(async (req) => {
     let destNome = (profile?.full_name || '').trim();
     let destCpf = cleanDoc(profile?.cpf);
     let destCnpj = '';
+    let destIE = '';
     const addr = parseAddress(order.shipping_address);
 
     if (order.customer_id) {
       const { data: cust } = await supabase
         .from('customers')
-        .select('full_name, company_name, cpf, cnpj, cep, street, number, neighborhood, municipio, uf, complemento')
+        .select('full_name, company_name, cpf, cnpj, inscricao_estadual, cep, street, number, neighborhood, municipio, uf, complemento')
         .eq('id', order.customer_id)
         .maybeSingle();
       if (cust) {
         destNome = (cust.company_name || cust.full_name || destNome || '').trim();
         destCpf = cleanDoc(cust.cpf);
         destCnpj = cleanDoc(cust.cnpj);
+        destIE = (cust.inscricao_estadual || '').replace(/\D/g, '');
         if (cust.street) addr.logradouro = cust.street;
         if (cust.number) addr.numero = cust.number;
         if (cust.neighborhood) addr.bairro = cust.neighborhood;
