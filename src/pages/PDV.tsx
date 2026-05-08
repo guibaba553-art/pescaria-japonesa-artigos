@@ -1553,6 +1553,12 @@ export default function PDV() {
                         return (
                           <div key={item.cartItemKey} className="flex flex-col gap-2 p-2 border rounded">
                             <div className="flex items-center gap-2">
+                              <img
+                                src={(item.variation?.image_url || item.product.image_url) || 'https://placehold.co/56x56?text=?'}
+                                alt={itemName}
+                                loading="lazy"
+                                className="w-12 h-12 rounded object-cover border border-border shrink-0 bg-muted"
+                              />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm break-words">
                                   {itemName}
