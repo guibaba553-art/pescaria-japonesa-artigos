@@ -804,64 +804,36 @@ export default function PDV() {
     }
   };
 
-  // Auto-disparo no campo de código de barras: quando o usuário (ou leitor)
-  // para de digitar por um curto período, busca automaticamente — sem precisar de Enter.
-  const inputFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleBarcodeKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (inputFlushTimerRef.current) {
-        clearTimeout(inputFlushTimerRef.current);
-        inputFlushTimerRef.current = null;
-      }
       handleBarcodeSearch(barcodeInput);
     }
   };
-  const handleBarcodeChange = (value: string) => {
-    setBarcodeInput(value);
-    if (inputFlushTimerRef.current) clearTimeout(inputFlushTimerRef.current);
-    const code = value.trim();
-    if (code.length >= 6) {
-      // se nada mais for digitado em 120ms, dispara busca automaticamente
-      inputFlushTimerRef.current = setTimeout(() => {
-        handleBarcodeSearch(code);
-      }, 120);
-    }
-  };
 
-  // Listener global do leitor de código de barras (quando o campo NÃO está focado).
-  // Hardware scanners "digitam" muito rápido; capturamos em qualquer lugar da página.
+  // Listener global do leitor de código de barras.
+  // Hardware scanners "digitam" muito rápido e terminam com Enter.
+  // Capturamos a sequência em qualquer lugar da página (mesmo sem foco
+  // no campo) desde que o usuário não esteja digitando em outro input/textarea.
   const scannerBufferRef = useRef<string>('');
   const scannerLastKeyAtRef = useRef<number>(0);
-  const scannerFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const SCAN_IDLE_MS = 80;
-    const SCAN_RESET_MS = 300;
-    const MIN_SCAN_LENGTH = 6;
+    const SCAN_TIMEOUT_MS = 50; // intervalo máximo entre teclas do scanner
+    const MIN_SCAN_LENGTH = 3;
 
     const isTypingTarget = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
       const tag = el.tagName;
       if (el.isContentEditable) return true;
       if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
-      // IMPORTANTE: incluir o próprio campo de barcode aqui — quando ele tem foco,
-      // o input cuida da captura sozinho (handleBarcodeChange/handleBarcodeKeyPress).
-      // Se não excluirmos, dispara duas vezes e a busca falha.
-      if (tag === 'INPUT') return true;
+      if (tag === 'INPUT') {
+        const t = (el as HTMLInputElement).type;
+        // Permite captura quando o foco está justamente no campo do leitor
+        if ((el as HTMLInputElement).id === 'barcode') return false;
+        // Outros inputs de texto: usuário está digitando, não interferimos
+        if (['text', 'search', 'number', 'tel', 'email', 'password', 'url'].includes(t)) return true;
+      }
       return false;
-    };
-
-    const flush = () => {
-      const code = scannerBufferRef.current.trim();
-      scannerBufferRef.current = '';
-      if (scannerFlushTimerRef.current) {
-        clearTimeout(scannerFlushTimerRef.current);
-        scannerFlushTimerRef.current = null;
-      }
-      if (code.length >= MIN_SCAN_LENGTH) {
-        setBarcodeInput(code);
-        handleBarcodeSearch(code);
-      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -869,32 +841,29 @@ export default function PDV() {
       if (isTypingTarget(e.target)) return;
 
       const now = Date.now();
-      if (now - scannerLastKeyAtRef.current > SCAN_RESET_MS) {
+      if (now - scannerLastKeyAtRef.current > 300) {
         scannerBufferRef.current = '';
       }
       scannerLastKeyAtRef.current = now;
 
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        if (scannerBufferRef.current.length >= MIN_SCAN_LENGTH) {
+      if (e.key === 'Enter') {
+        const code = scannerBufferRef.current.trim();
+        scannerBufferRef.current = '';
+        if (code.length >= MIN_SCAN_LENGTH) {
           e.preventDefault();
+          setBarcodeInput(code);
+          handleBarcodeSearch(code);
         }
-        flush();
         return;
       }
 
       if (e.key.length === 1) {
         scannerBufferRef.current += e.key;
-        if (scannerFlushTimerRef.current) clearTimeout(scannerFlushTimerRef.current);
-        scannerFlushTimerRef.current = setTimeout(flush, SCAN_IDLE_MS);
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      if (scannerFlushTimerRef.current) clearTimeout(scannerFlushTimerRef.current);
-      if (inputFlushTimerRef.current) clearTimeout(inputFlushTimerRef.current);
-    };
+    return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
