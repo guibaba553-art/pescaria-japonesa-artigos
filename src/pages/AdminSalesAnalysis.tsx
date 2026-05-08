@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -199,6 +199,35 @@ export default function AdminSalesAnalysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, canView]);
 
+  const fetchAllRef = useRef<(silent?: boolean) => void>(() => {});
+
+  // Auto-atualização: realtime em orders/nfe_emissions + polling a cada 30s
+  useEffect(() => {
+    if (!canView || !autoLoaded) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => fetchAllRef.current?.(true), 800);
+    };
+    const channel = supabase
+      .channel(`sales-analysis-${Math.random().toString(36).slice(2, 8)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, schedule)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'nfe_emissions' }, schedule)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_sales' }, schedule)
+      .subscribe();
+    const interval = setInterval(() => fetchAllRef.current?.(true), 30000);
+    const onVisible = () => { if (document.visibilityState === 'visible') schedule(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', schedule);
+    return () => {
+      if (timer) clearTimeout(timer);
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', schedule);
+    };
+  }, [canView, autoLoaded]);
+
   const period = useMemo(() => {
     if (dateMode === 'range' && rangeFrom) {
       return { from: startOfDay(rangeFrom), to: endOfDay(rangeTo || rangeFrom) };
@@ -213,6 +242,8 @@ export default function AdminSalesAnalysis() {
     return null;
   }, [dateMode, rangeFrom, rangeTo, multiDays, singleDay]);
 
+  // Mantém o ref de fetchAll atualizado para uso pelos listeners de auto-update
+  // (declarado antes de fetchAll para evitar TDZ no closure)
   const fetchAll = async (silent = false) => {
     if (!period) {
       if (!silent) toast.error('Selecione um período no calendário primeiro.');
@@ -314,13 +345,16 @@ export default function AdminSalesAnalysis() {
 
       unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(unified);
-      toast.success(`${unified.length} registro(s) carregado(s)`);
+      if (!silent) toast.success(`${unified.length} registro(s) carregado(s)`);
     } catch (e: any) {
       toast.error('Erro ao carregar: ' + e.message);
     } finally {
       setFetching(false);
     }
   };
+
+  // Mantém o ref do fetchAll sempre apontando para a versão mais recente (com período atual)
+  useEffect(() => { fetchAllRef.current = fetchAll; });
 
   const filteredRows = useMemo(() => {
     let out = rows;
