@@ -392,12 +392,15 @@ serve(async (req) => {
       uf_destinatario: addr.uf,
       cep_destinatario: addr.cep,
       // Indicador IE: 1=Contribuinte (com IE), 2=Isento (PJ sem IE), 9=Não contribuinte (PF)
-      indicador_inscricao_estadual_destinatario: hasCnpj
-        ? (destIE && destIE.toUpperCase() !== 'ISENTO' && destIE.length > 0 ? 1 : 2)
-        : 9,
-      ...(hasCnpj && destIE && destIE.toUpperCase() !== 'ISENTO' && destIE.length > 0
-        ? { inscricao_estadual_destinatario: destIE }
-        : {}),
+      indicador_inscricao_estadual_destinatario: (() => {
+        if (!hasCnpj) return 9;
+        const ieDigits = (destIE || '').replace(/\D/g, '');
+        return ieDigits.length > 0 ? 1 : 2;
+      })(),
+      ...((() => {
+        const ieDigits = (destIE || '').replace(/\D/g, '');
+        return hasCnpj && ieDigits.length > 0 ? { inscricao_estadual_destinatario: ieDigits } : {};
+      })()),
 
 
       presenca_comprador: 2,    // operação não presencial — internet
