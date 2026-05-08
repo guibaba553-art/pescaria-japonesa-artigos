@@ -27,6 +27,7 @@ import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
 import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
