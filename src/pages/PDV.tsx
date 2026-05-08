@@ -238,8 +238,16 @@ export default function PDV() {
         uf: d.uf || prev.uf,
         codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
         email: d.email || prev.email,
+        // Focus NFe traz IE direto da SEFAZ — preenche e marca como contribuinte
+        inscricao_estadual: ieFromFocus && ieAtivaFromFocus ? ieFromFocus : prev.inscricao_estadual,
+        ie_indicador: ieFromFocus && ieAtivaFromFocus ? '1' : prev.ie_indicador,
       }));
-      toast({ title: 'Dados preenchidos', description: d.razao_social });
+      toast({
+        title: 'Dados preenchidos',
+        description: ieFromFocus && ieAtivaFromFocus
+          ? `${d.razao_social} — IE ${ieFromFocus}`
+          : d.razao_social,
+      });
     } catch (e: any) {
       toast({ title: 'Erro ao buscar CNPJ', description: e?.message || 'Tente novamente', variant: 'destructive' });
     } finally {
