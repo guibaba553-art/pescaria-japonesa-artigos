@@ -1836,38 +1836,15 @@ export default function PDV() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <Select
-                          value={selectedCustomer?.id || ''}
-                          onValueChange={(customerId) => {
-                            const customer = customers.find(c => c.id === customerId);
-                            if (customer) {
-                              setSelectedCustomer(customer);
-                              toast({
-                                title: 'Cliente selecionado',
-                                description: customer.full_name
-                              });
-                            }
+                        <CustomerSearchCombobox
+                          onSelect={(customer) => {
+                            setSelectedCustomer(customer);
+                            toast({
+                              title: 'Cliente selecionado',
+                              description: customer.company_name || customer.full_name,
+                            });
                           }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecionar cliente cadastrado..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {customers.map((customer) => (
-                              <SelectItem key={customer.id} value={customer.id}>
-                                <div className="flex items-center gap-2">
-                                  <User className="w-4 h-4" />
-                                  <div>
-                                    <p className="font-medium">{customer.company_name || customer.full_name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {customer.cnpj ? `CNPJ: ${customer.cnpj}` : `CPF: ${customer.cpf}`}
-                                    </p>
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                         
                         <div className="grid grid-cols-2 gap-2">
                           <Button
