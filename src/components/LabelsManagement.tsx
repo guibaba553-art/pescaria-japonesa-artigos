@@ -40,6 +40,7 @@ export function LabelsManagement() {
   const [storeName, setStoreName] = useState<string>('JAPAS PESCA E CONVENIÊNCIA');
   const [generating, setGenerating] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const [skipSlots, setSkipSlots] = useState<number>(0);
   const [scanDialog, setScanDialog] = useState<PendingRow | null>(null);
 
   const load = async () => {
@@ -165,7 +166,7 @@ export function LabelsManagement() {
 
     try {
       setGenerating(true);
-      await generateLabelsPdf(items, { storeName });
+      await generateLabelsPdf(items, { storeName, skipSlots });
 
       if (markPrinted) {
         // Marca apenas os itens efetivamente impressos (com código)
@@ -314,6 +315,20 @@ export function LabelsManagement() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap" title="Quantos quadrados em branco no início da primeira folha (folha já parcialmente usada)">
+                Pular
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={64}
+                value={skipSlots}
+                onChange={(e) => setSkipSlots(Math.max(0, Math.min(64, Number(e.target.value) || 0)))}
+                className="w-20"
+                title="Deixa N etiquetas em branco no início da primeira folha (0–64)"
               />
             </div>
             <Button
