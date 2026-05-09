@@ -132,15 +132,22 @@ export async function generateLabelsPdf(
     barcodeCache.set(c, barcodeDataUrl(c));
   }
 
+  const slotsPerPage = cols * rows;
+  const skipSlots = Math.max(0, Math.min(slotsPerPage - 1, Math.floor(opts.skipSlots || 0)));
+
   let idx = 0;
+  let firstPage = true;
   while (idx < expanded.length) {
-    if (idx > 0) doc.addPage();
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (idx >= expanded.length) break;
-        const item = expanded[idx++];
-        const x = marginX + c * (cellW + gapX);
-        const y = marginY + r * (cellH + gapY);
+    if (!firstPage) doc.addPage();
+    const startSlot = firstPage ? skipSlots : 0;
+    firstPage = false;
+    for (let slot = startSlot; slot < slotsPerPage; slot++) {
+      if (idx >= expanded.length) break;
+      const r = Math.floor(slot / cols);
+      const c = slot % cols;
+      const item = expanded[idx++];
+      const x = marginX + c * (cellW + gapX);
+      const y = marginY + r * (cellH + gapY);
 
         // Deslocamento fino para alinhar com a etiqueta física
         const offX = -0.5; // esquerda
