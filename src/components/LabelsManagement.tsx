@@ -166,7 +166,7 @@ export function LabelsManagement() {
 
     try {
       setGenerating(true);
-      await generateLabelsPdf(items, { storeName });
+      await generateLabelsPdf(items, { storeName, skipSlots });
 
       if (markPrinted) {
         // Marca apenas os itens efetivamente impressos (com código)
