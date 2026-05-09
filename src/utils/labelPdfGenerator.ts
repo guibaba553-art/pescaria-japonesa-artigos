@@ -184,10 +184,9 @@ export async function generateLabelsPdf(
         // Nome da loja (rodapé)
         doc.setFontSize(4.5);
         doc.text(storeName, x + 1.5 + offX, y + cellH - 1 + offY);
-      }
-      if (idx >= expanded.length) break;
     }
   }
+
 
   doc.save(fileName);
 }
