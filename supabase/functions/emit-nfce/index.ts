@@ -261,6 +261,8 @@ serve(async (req) => {
     }
 
     // Montar itens da NFC-e
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const round4 = (n: number) => Math.round(n * 10000) / 10000;
     const focusItems = body.items.map((item, idx) => {
       const rawNcm = (item.ncm || focusSettings.ncm_padrao || '').replace(/\D/g, '');
       const ncm = rawNcm.length === 8 ? rawNcm : '';
@@ -269,6 +271,12 @@ serve(async (req) => {
           `NCM ausente ou inválido no item "${item.name}". Cadastre o NCM (8 dígitos) no produto ou defina um NCM padrão nas Configurações Focus NFe.`
         );
       }
+      // CRÍTICO: vProd da SEFAZ é validado como qCom(4 dec) × vUnCom(2 dec).
+      // Calcular valor_bruto a partir dos valores JÁ arredondados, senão dá
+      // rejeição "Valor do Produto difere... Valor Unitario × Quantidade".
+      const qty = round4(item.quantity);
+      const unit = round2(item.unit_price);
+      const bruto = round2(qty * unit);
       return {
         numero_item: idx + 1,
         codigo_produto: item.product_id.substring(0, 30),
@@ -276,12 +284,12 @@ serve(async (req) => {
         codigo_ncm: ncm,
         cfop: item.cfop || focusSettings.cfop_padrao || '5102',
         unidade_comercial: item.unidade || focusSettings.unidade_padrao || 'UN',
-        quantidade_comercial: item.quantity.toFixed(4),
-        valor_unitario_comercial: item.unit_price.toFixed(2),
-        valor_unitario_tributavel: item.unit_price.toFixed(2),
+        quantidade_comercial: qty.toFixed(4),
+        valor_unitario_comercial: unit.toFixed(2),
+        valor_unitario_tributavel: unit.toFixed(2),
         unidade_tributavel: item.unidade || focusSettings.unidade_padrao || 'UN',
-        quantidade_tributavel: item.quantity.toFixed(4),
-        valor_bruto: (item.quantity * item.unit_price).toFixed(2),
+        quantidade_tributavel: qty.toFixed(4),
+        valor_bruto: bruto.toFixed(2),
         icms_origem: item.origem || focusSettings.origem_padrao || '0',
         icms_situacao_tributaria: item.csosn || focusSettings.csosn_padrao || '102',
         ...(item.cest ? { cest: item.cest } : {}),
