@@ -300,7 +300,6 @@ serve(async (req) => {
     // para casar exatamente com o que a SEFAZ valida no XML. Usar
     // body.total_amount direto causa Rejeição "Ausência de troco" por
     // diferenças de centavos.
-    const round2 = (n: number) => Math.round(n * 100) / 100;
     const totalItens = round2(
       focusItems.reduce((sum, it) => sum + Number(it.valor_bruto), 0)
     );
