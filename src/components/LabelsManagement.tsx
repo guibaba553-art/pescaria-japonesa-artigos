@@ -40,6 +40,7 @@ export function LabelsManagement() {
   const [storeName, setStoreName] = useState<string>('JAPAS PESCA E CONVENIÊNCIA');
   const [generating, setGenerating] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const [skipSlots, setSkipSlots] = useState<number>(0);
   const [scanDialog, setScanDialog] = useState<PendingRow | null>(null);
 
   const load = async () => {
