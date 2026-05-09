@@ -25,6 +25,12 @@ export interface LabelPdfOptions {
   storeName?: string;
   /** Filename ao baixar. */
   fileName?: string;
+  /**
+   * Quantos quadrados (etiquetas) pular no início da PRIMEIRA folha,
+   * deixando-os em branco. Útil quando a folha já foi parcialmente usada.
+   * Ex.: skipSlots=3 começa a imprimir no 4º quadrado.
+   */
+  skipSlots?: number;
 }
 
 /** Gera código de barras Code39 (com asteriscos) como dataURL PNG. */
