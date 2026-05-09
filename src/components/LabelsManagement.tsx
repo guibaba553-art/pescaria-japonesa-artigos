@@ -317,6 +317,20 @@ export function LabelsManagement() {
                 className="pl-9"
               />
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap" title="Quantos quadrados em branco no início da primeira folha (folha já parcialmente usada)">
+                Pular
+              </label>
+              <Input
+                type="number"
+                min={0}
+                max={64}
+                value={skipSlots}
+                onChange={(e) => setSkipSlots(Math.max(0, Math.min(64, Number(e.target.value) || 0)))}
+                className="w-20"
+                title="Deixa N etiquetas em branco no início da primeira folha (0–64)"
+              />
+            </div>
             <Button
               onClick={() => handlePrint(printableRows, true)}
               disabled={generating || printableRows.length === 0}
