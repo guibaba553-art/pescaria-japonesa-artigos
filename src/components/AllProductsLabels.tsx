@@ -34,6 +34,7 @@ export function AllProductsLabels({ storeName }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [qty, setQty] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
+  const [skipSlots, setSkipSlots] = useState<number>(0);
   const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
   const [stockEdit, setStockEdit] = useState<Record<string, string>>({});
   const [savingStockFor, setSavingStockFor] = useState<string | null>(null);
