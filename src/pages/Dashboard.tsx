@@ -169,11 +169,22 @@ export default function Dashboard() {
         }))
       );
 
-      // Stock alerts
+      // Stock alerts: apenas produtos mais vendidos (últimos 60 dias) que estão acabando
+      const since60 = Date.now() - 60 * 24 * 60 * 60 * 1000;
+      const soldByProduct = new Map<string, number>();
+      (orderItems || []).forEach((it: any) => {
+        const status = it.orders?.status;
+        if (!status || status === 'cancelado') return;
+        const created = it.orders?.created_at ? new Date(it.orders.created_at).getTime() : 0;
+        if (created < since60) return;
+        if (!it.product_id) return;
+        soldByProduct.set(it.product_id, (soldByProduct.get(it.product_id) || 0) + Number(it.quantity || 0));
+      });
+
       const low = (products || [])
-        .filter((p: any) => p.stock > 0 && p.stock <= 5)
-        .map((p: any) => ({ id: p.id, name: p.name, stock: p.stock }))
-        .sort((a, b) => a.stock - b.stock)
+        .filter((p: any) => p.stock > 0 && p.stock <= 5 && (soldByProduct.get(p.id) || 0) > 0)
+        .map((p: any) => ({ id: p.id, name: p.name, stock: p.stock, sold: soldByProduct.get(p.id) || 0 }))
+        .sort((a, b) => b.sold - a.sold)
         .slice(0, 10);
       setLowStock(low);
       setOutOfStock((products || []).filter((p: any) => p.stock === 0).length);
