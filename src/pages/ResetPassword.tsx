@@ -11,21 +11,59 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const { updatePassword } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verificar se há um token de recuperação válido
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    let cancelled = false;
+
+    // 1) Verificar erro explícito no hash (link expirado / inválido)
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const params = new URLSearchParams(
+      hash.startsWith('#') ? hash.substring(1) : (search.startsWith('?') ? search.substring(1) : '')
+    );
+    const errorDescription = params.get('error_description') || params.get('error');
+    if (errorDescription) {
+      toast({
+        title: "Link inválido ou expirado",
+        description: decodeURIComponent(errorDescription).replace(/\+/g, ' '),
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    // 2) Escutar evento PASSWORD_RECOVERY (disparado quando o Supabase processa o hash)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setReady(true);
+      }
+    });
+
+    // 3) Fallback: aguardar processamento do hash e checar sessão
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setReady(true);
+      } else {
         toast({
           title: "Link inválido",
-          description: "Este link de recuperação é inválido ou expirou.",
+          description: "Este link de recuperação é inválido ou expirou. Solicite um novo.",
           variant: "destructive",
         });
         navigate("/auth");
       }
-    });
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,7 +118,7 @@ const ResetPassword = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                disabled={loading}
+                disabled={loading || !ready}
                 minLength={6}
               />
             </div>
@@ -91,16 +129,16 @@ const ResetPassword = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                disabled={loading}
+                disabled={loading || !ready}
                 minLength={6}
               />
             </div>
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || !ready}
             >
-              {loading ? "Atualizando..." : "Atualizar senha"}
+              {loading ? "Atualizando..." : !ready ? "Validando link..." : "Atualizar senha"}
             </Button>
           </form>
         </CardContent>
