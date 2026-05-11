@@ -347,10 +347,31 @@ export default function PDV() {
       if (error) throw error;
 
       // Carrega variações e junta no objeto produto, mantendo apenas em estoque
+      // IMPORTANTE: buscar TODAS as variações em chunks (evita URL muito grande com .in())
+      // e paginar para ultrapassar o limite default de 1000 linhas do PostgREST.
       const ids = (prods || []).map((p: any) => p.id);
-      const { data: vars } = ids.length
-        ? await supabase.from('product_variations').select('*').in('product_id', ids)
-        : { data: [] as any[] } as any;
+      const vars: any[] = [];
+      const CHUNK = 100;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
+        let from = 0;
+        const PAGE = 1000;
+        // paginar dentro de cada chunk
+        // (raramente passa de 1 página, mas garante robustez)
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: page, error: vErr } = await supabase
+            .from('product_variations')
+            .select('*')
+            .in('product_id', slice)
+            .range(from, from + PAGE - 1);
+          if (vErr) { console.error('Erro variações:', vErr); break; }
+          if (!page || page.length === 0) break;
+          vars.push(...page);
+          if (page.length < PAGE) break;
+          from += PAGE;
+        }
+      }
       const byProduct = new Map<string, any[]>();
       (vars || []).forEach((v: any) => {
         if (!byProduct.has(v.product_id)) byProduct.set(v.product_id, []);
