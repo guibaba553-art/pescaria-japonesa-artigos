@@ -330,6 +330,18 @@ export function AllProductsLabels({ storeName }: Props) {
         <Button variant="outline" onClick={load} disabled={loading}>
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted-foreground whitespace-nowrap">Pular</label>
+          <Input
+            type="number"
+            min={0}
+            max={64}
+            value={skipSlots}
+            onChange={(e) => setSkipSlots(Math.max(0, Math.min(64, parseInt(e.target.value) || 0)))}
+            className="h-10 w-20 text-right"
+            title="Quantos quadrados deixar em branco no início da primeira folha"
+          />
+        </div>
         <Button onClick={handlePrint} disabled={generating || selectedRows.length === 0}>
           {generating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
           Imprimir selecionados ({totalLabels})
