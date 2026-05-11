@@ -139,7 +139,7 @@ export default function Dashboard() {
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, product_id, products(name), orders(source, status, created_at)'),
       ]);
 
       const days = PERIODS[period].days;
