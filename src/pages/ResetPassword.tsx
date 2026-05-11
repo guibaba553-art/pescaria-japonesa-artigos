@@ -50,7 +50,21 @@ const ResetPassword = () => {
       url.searchParams.delete("token_hash");
       url.searchParams.delete("error");
       url.searchParams.delete("error_description");
+      url.hash = "";
       window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+    };
+
+    const ensureValidRecoverySession = async () => {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (error || !data.user) {
+        await supabase.auth.signOut({ scope: "local" });
+        redirectToAuthWithError("Este link de recuperação é inválido ou expirou. Solicite um novo.");
+        return false;
+      }
+
+      setReady(true);
+      return true;
     };
 
     const bootstrapRecovery = async () => {
@@ -102,7 +116,29 @@ const ResetPassword = () => {
       const hasImplicitTokens = hashParams.has("access_token") && hashParams.has("refresh_token");
 
       if (hasImplicitTokens) {
-        setReady(true);
+        const access_token = hashParams.get("access_token");
+        const refresh_token = hashParams.get("refresh_token");
+
+        if (!access_token || !refresh_token) {
+          redirectToAuthWithError("Este link de recuperação é inválido ou expirou. Solicite um novo.");
+          return;
+        }
+
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (cancelled) return;
+
+        if (sessionError) {
+          await supabase.auth.signOut({ scope: "local" });
+          redirectToAuthWithError(sessionError.message);
+          return;
+        }
+
+        cleanRecoveryParamsFromUrl();
+        await ensureValidRecoverySession();
         return;
       }
 
@@ -111,7 +147,7 @@ const ResetPassword = () => {
       if (cancelled) return;
 
       if (session) {
-        setReady(true);
+        await ensureValidRecoverySession();
         return;
       }
 
