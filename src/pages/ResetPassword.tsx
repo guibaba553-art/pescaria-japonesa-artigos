@@ -18,24 +18,106 @@ const ResetPassword = () => {
   useEffect(() => {
     let cancelled = false;
 
-    // 1) Verificar erro explícito no hash (link expirado / inválido)
-    const hash = window.location.hash || '';
-    const search = window.location.search || '';
-    const params = new URLSearchParams(
-      hash.startsWith('#') ? hash.substring(1) : (search.startsWith('?') ? search.substring(1) : '')
-    );
-    const errorDescription = params.get('error_description') || params.get('error');
-    if (errorDescription) {
+    const redirectToAuthWithError = (description: string) => {
       toast({
         title: "Link inválido ou expirado",
-        description: decodeURIComponent(errorDescription).replace(/\+/g, ' '),
+        description,
         variant: "destructive",
       });
-      navigate("/auth");
-      return;
-    }
+      navigate("/auth", { replace: true });
+    };
 
-    // 2) Escutar evento PASSWORD_RECOVERY (disparado quando o Supabase processa o hash)
+    const getParams = () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(
+        window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
+      );
+
+      return {
+        error: searchParams.get("error") || hashParams.get("error"),
+        errorDescription:
+          searchParams.get("error_description") || hashParams.get("error_description"),
+        code: searchParams.get("code") || hashParams.get("code"),
+        tokenHash: searchParams.get("token_hash") || hashParams.get("token_hash"),
+        type: searchParams.get("type") || hashParams.get("type"),
+      };
+    };
+
+    const cleanRecoveryParamsFromUrl = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("type");
+      url.searchParams.delete("token_hash");
+      url.searchParams.delete("error");
+      url.searchParams.delete("error_description");
+      window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+    };
+
+    const bootstrapRecovery = async () => {
+      const { error, errorDescription, code, tokenHash, type } = getParams();
+
+      if (error || errorDescription) {
+        redirectToAuthWithError(
+          decodeURIComponent(errorDescription || error || "Este link não é mais válido.").replace(/\+/g, " "),
+        );
+        return;
+      }
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (cancelled) return;
+
+        if (exchangeError) {
+          redirectToAuthWithError(exchangeError.message);
+          return;
+        }
+
+        cleanRecoveryParamsFromUrl();
+        setReady(true);
+        return;
+      }
+
+      if (tokenHash && type === "recovery") {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+
+        if (cancelled) return;
+
+        if (verifyError) {
+          redirectToAuthWithError(verifyError.message);
+          return;
+        }
+
+        cleanRecoveryParamsFromUrl();
+        setReady(true);
+        return;
+      }
+
+      const hashParams = new URLSearchParams(
+        window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
+      );
+      const hasImplicitTokens = hashParams.has("access_token") && hashParams.has("refresh_token");
+
+      if (hasImplicitTokens) {
+        setReady(true);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
+      if (session) {
+        setReady(true);
+        return;
+      }
+
+      redirectToAuthWithError("Este link de recuperação é inválido ou expirou. Solicite um novo.");
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (cancelled) return;
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
@@ -43,25 +125,10 @@ const ResetPassword = () => {
       }
     });
 
-    // 3) Fallback: aguardar processamento do hash e checar sessão
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setReady(true);
-      } else {
-        toast({
-          title: "Link inválido",
-          description: "Este link de recuperação é inválido ou expirou. Solicite um novo.",
-          variant: "destructive",
-        });
-        navigate("/auth");
-      }
-    }, 1500);
+    void bootstrapRecovery();
 
     return () => {
       cancelled = true;
-      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, [navigate]);
