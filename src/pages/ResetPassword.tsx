@@ -118,7 +118,7 @@ const ResetPassword = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                disabled={loading}
+                disabled={loading || !ready}
                 minLength={6}
               />
             </div>
@@ -129,16 +129,16 @@ const ResetPassword = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                disabled={loading}
+                disabled={loading || !ready}
                 minLength={6}
               />
             </div>
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || !ready}
             >
-              {loading ? "Atualizando..." : "Atualizar senha"}
+              {loading ? "Atualizando..." : !ready ? "Validando link..." : "Atualizar senha"}
             </Button>
           </form>
         </CardContent>
