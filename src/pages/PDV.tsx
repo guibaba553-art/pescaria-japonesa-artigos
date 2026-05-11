@@ -873,7 +873,11 @@ export default function PDV() {
       if (dbProd?.id) {
         const prod = await fetchProductWithVariations(dbProd.id);
         if (prod) {
-          if (prod.sold_by_weight) {
+          if (prod.variations && prod.variations.length > 0) {
+            // Produto tem variações — abrir seletor em vez de adicionar direto
+            setSelectedProduct(prod);
+            setShowVariationsDialog(true);
+          } else if (prod.sold_by_weight) {
             setSelectedProduct(prod);
             setWeightInput('');
             setShowWeightDialog(true);
