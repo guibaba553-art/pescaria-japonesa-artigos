@@ -805,7 +805,11 @@ export default function PDV() {
       const matched = products.find((product) => matchesAny(product.sku));
       if (matched) {
         console.log('✅ Produto encontrado:', matched.name);
-        if (matched.sold_by_weight) {
+        if (matched.variations && matched.variations.length > 0) {
+          // Produto tem variações — abrir seletor em vez de adicionar direto (evita preço 0)
+          setSelectedProduct(matched);
+          setShowVariationsDialog(true);
+        } else if (matched.sold_by_weight) {
           setSelectedProduct(matched);
           setWeightInput('');
           setShowWeightDialog(true);
