@@ -45,6 +45,7 @@ interface LowStockProduct {
   id: string;
   name: string;
   stock: number;
+  sold?: number;
 }
 
 const formatBRL = (v: number) =>
