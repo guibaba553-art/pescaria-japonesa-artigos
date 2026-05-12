@@ -341,8 +341,17 @@ export default function AdminCustomers() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filtered.map((c) => (
-              <Card key={c.id} className="hover:shadow-md transition-shadow">
+            {filtered.map((c) => {
+              const v = validations.get(c.id) || { ok: true, missing: [] };
+              return (
+              <Card
+                key={c.id}
+                className={
+                  v.ok
+                    ? 'hover:shadow-md transition-shadow'
+                    : 'hover:shadow-md transition-shadow border-destructive/50 bg-destructive/5'
+                }
+              >
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -356,9 +365,20 @@ export default function AdminCustomers() {
                         {c.cnpj ? `CNPJ ${c.cnpj}` : c.cpf ? `CPF ${c.cpf}` : '—'}
                       </div>
                     </div>
-                    <Badge variant={c.cnpj ? 'default' : 'secondary'} className="shrink-0">
-                      {c.cnpj ? 'PJ' : 'PF'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant={c.cnpj ? 'default' : 'secondary'}>
+                        {c.cnpj ? 'PJ' : 'PF'}
+                      </Badge>
+                      {v.ok ? (
+                        <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> NF-e OK
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="w-3 h-3" /> NF-e bloqueada
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {c.email && (
@@ -377,6 +397,21 @@ export default function AdminCustomers() {
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <FileText className="w-3 h-3 shrink-0" />
                       IE: {c.inscricao_estadual || '—'} (ind. {c.ie_indicador || '—'})
+                    </div>
+                  )}
+
+                  {!v.ok && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs">
+                      <div className="font-semibold text-destructive flex items-center gap-1 mb-1">
+                        <AlertTriangle className="w-3 h-3" /> Pendências para NF-e:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {v.missing.map((m) => (
+                          <Badge key={m} variant="outline" className="border-destructive/40 text-destructive font-normal">
+                            {m}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                   )}
 
