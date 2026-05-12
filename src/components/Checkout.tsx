@@ -537,6 +537,22 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
       await supabase.from('order_items').insert(orderItems);
 
+      // Reserva estoque por 30 min para evitar oversell entre PIX/cartão e confirmação
+      const { data: resvData, error: resvError } = await supabase.rpc('reserve_stock_for_order', {
+        p_order_id: orderData.id,
+        p_items: items.map(item => ({
+          product_id: item.id,
+          variation_id: item.variationId || null,
+          quantity: item.quantity,
+        })),
+        p_ttl_minutes: 30,
+      });
+      if (resvError) {
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
+      }
+
       // Para Google Pay (via Mercado Pago Checkout Pro), redirecionamos
       if (paymentMethod === 'google_pay') {
         const { data: prefData, error: prefError } = await supabase.functions.invoke(
