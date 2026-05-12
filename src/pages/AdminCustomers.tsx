@@ -16,7 +16,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
@@ -103,6 +103,56 @@ export default function AdminCustomers() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [autoFixing, setAutoFixing] = useState(false);
+
+  // Tenta corrigir automaticamente dados de endereço/IBGE/IE via ViaCEP
+  const autoFix = async () => {
+    setAutoFixing(true);
+    let fixed = 0;
+    let skipped = 0;
+    const cache = new Map<string, any>();
+    try {
+      for (const c of list) {
+        const v = validateNfe(c);
+        if (v.ok) continue;
+        const cep = (c.cep || '').replace(/\D/g, '');
+        if (cep.length !== 8) { skipped++; continue; }
+
+        let d = cache.get(cep);
+        if (!d) {
+          try {
+            const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            d = await r.json();
+            cache.set(cep, d);
+          } catch { skipped++; continue; }
+        }
+        if (!d || d.erro) { skipped++; continue; }
+
+        const patch: Record<string, any> = {};
+        if (!c.municipio?.trim() && d.localidade) patch.municipio = d.localidade;
+        if ((!c.uf?.trim() || c.uf.length !== 2) && d.uf) patch.uf = d.uf;
+        if (((c.codigo_municipio_ibge || '').replace(/\D/g, '').length !== 7) && d.ibge) {
+          patch.codigo_municipio_ibge = d.ibge;
+        }
+        if (!c.neighborhood?.trim() && d.bairro) patch.neighborhood = d.bairro;
+        if (!c.street?.trim() && d.logradouro) patch.street = d.logradouro;
+        // PJ sem indicador de IE → assume "9" (não contribuinte)
+        if (c.cnpj && !c.ie_indicador) patch.ie_indicador = '9';
+
+        if (Object.keys(patch).length === 0) { skipped++; continue; }
+
+        const { error } = await supabase.from('customers').update(patch).eq('id', c.id);
+        if (!error) fixed++; else skipped++;
+      }
+      toast({
+        title: 'Correção automática concluída',
+        description: `${fixed} cliente(s) atualizado(s)${skipped ? `, ${skipped} sem dados suficientes` : ''}.`,
+      });
+      await load();
+    } finally {
+      setAutoFixing(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !isAdmin) navigate('/admin');
@@ -327,6 +377,21 @@ export default function AdminCustomers() {
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={autoFix}
+              disabled={autoFixing || invalidCount === 0}
+              className="border-primary/40 text-primary hover:text-primary"
+            >
+              {autoFixing ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4 mr-1.5" />
+              )}
+              Corrigir automaticamente
+            </Button>
             <Button
               type="button"
               size="sm"
