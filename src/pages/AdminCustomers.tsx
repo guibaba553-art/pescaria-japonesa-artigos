@@ -16,8 +16,41 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
+function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
+  const missing: string[] = [];
+  const isCnpj = !!c.cnpj;
+  const doc = (isCnpj ? c.cnpj : c.cpf) || '';
+  const docDigits = doc.replace(/\D/g, '');
+
+  if (!c.full_name?.trim()) missing.push('Nome');
+  if (!docDigits) missing.push(isCnpj ? 'CNPJ' : 'CPF');
+  else if (isCnpj && docDigits.length !== 14) missing.push('CNPJ inválido');
+  else if (!isCnpj && docDigits.length !== 11) missing.push('CPF inválido');
+
+  if (isCnpj && !c.company_name?.trim()) missing.push('Razão social');
+
+  const cepDigits = (c.cep || '').replace(/\D/g, '');
+  if (cepDigits.length !== 8) missing.push('CEP');
+  if (!c.street?.trim()) missing.push('Rua');
+  if (!c.number?.trim()) missing.push('Número');
+  if (!c.neighborhood?.trim()) missing.push('Bairro');
+  if (!c.municipio?.trim()) missing.push('Município');
+  if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
+
+  const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
+  if (ibge.length !== 7) missing.push('Código IBGE');
+
+  if (isCnpj) {
+    if (!c.ie_indicador) missing.push('Indicador de IE');
+    else if ((c.ie_indicador === '1') && !c.inscricao_estadual?.trim()) missing.push('Inscrição Estadual');
+  }
+
+  return { ok: missing.length === 0, missing };
+}
 
 interface Customer {
   id: string;
@@ -64,6 +97,7 @@ export default function AdminCustomers() {
   const [list, setList] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [onlyInvalid, setOnlyInvalid] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -92,20 +126,35 @@ export default function AdminCustomers() {
     load();
   }, []);
 
+  const validations = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof validateNfe>>();
+    list.forEach((c) => m.set(c.id, validateNfe(c)));
+    return m;
+  }, [list]);
+
+  const invalidCount = useMemo(
+    () => list.filter((c) => !(validations.get(c.id)?.ok)).length,
+    [list, validations]
+  );
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    if (!s) return list;
-    return list.filter((c) => {
-      const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
-      return (
-        c.full_name.toLowerCase().includes(s) ||
-        (c.company_name || '').toLowerCase().includes(s) ||
-        (c.email || '').toLowerCase().includes(s) ||
-        doc.includes(s.replace(/\D/g, '')) ||
-        (c.municipio || '').toLowerCase().includes(s)
-      );
-    });
-  }, [list, search]);
+    let arr = list;
+    if (s) {
+      arr = arr.filter((c) => {
+        const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
+        return (
+          c.full_name.toLowerCase().includes(s) ||
+          (c.company_name || '').toLowerCase().includes(s) ||
+          (c.email || '').toLowerCase().includes(s) ||
+          doc.includes(s.replace(/\D/g, '')) ||
+          (c.municipio || '').toLowerCase().includes(s)
+        );
+      });
+    }
+    if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
+    return arr;
+  }, [list, search, onlyInvalid, validations]);
 
   const openNew = () => {
     setEditingId(null);
@@ -246,7 +295,18 @@ export default function AdminCustomers() {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant={onlyInvalid ? 'default' : 'outline'}
+              onClick={() => setOnlyInvalid((v) => !v)}
+              className={onlyInvalid ? '' : 'border-destructive/40 text-destructive hover:text-destructive'}
+            >
+              <AlertTriangle className="w-4 h-4 mr-1.5" />
+              {onlyInvalid ? 'Mostrando incompletos' : 'Só incompletos'}
+              <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
+            </Button>
             <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
             <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />
@@ -254,6 +314,18 @@ export default function AdminCustomers() {
             </Button>
           </div>
         </div>
+
+        {!loading && invalidCount > 0 && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2 text-sm">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-destructive">{invalidCount}</span>{' '}
+              {invalidCount === 1 ? 'cliente possui dados' : 'clientes possuem dados'} incompletos e{' '}
+              <span className="font-semibold">não serão aprovados em uma emissão de NF-e</span>.
+              Edite os cadastros marcados com o aviso vermelho.
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -269,8 +341,17 @@ export default function AdminCustomers() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filtered.map((c) => (
-              <Card key={c.id} className="hover:shadow-md transition-shadow">
+            {filtered.map((c) => {
+              const v = validations.get(c.id) || { ok: true, missing: [] };
+              return (
+              <Card
+                key={c.id}
+                className={
+                  v.ok
+                    ? 'hover:shadow-md transition-shadow'
+                    : 'hover:shadow-md transition-shadow border-destructive/50 bg-destructive/5'
+                }
+              >
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -284,9 +365,20 @@ export default function AdminCustomers() {
                         {c.cnpj ? `CNPJ ${c.cnpj}` : c.cpf ? `CPF ${c.cpf}` : '—'}
                       </div>
                     </div>
-                    <Badge variant={c.cnpj ? 'default' : 'secondary'} className="shrink-0">
-                      {c.cnpj ? 'PJ' : 'PF'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <Badge variant={c.cnpj ? 'default' : 'secondary'}>
+                        {c.cnpj ? 'PJ' : 'PF'}
+                      </Badge>
+                      {v.ok ? (
+                        <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> NF-e OK
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1">
+                          <AlertTriangle className="w-3 h-3" /> NF-e bloqueada
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   {c.email && (
@@ -308,6 +400,21 @@ export default function AdminCustomers() {
                     </div>
                   )}
 
+                  {!v.ok && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs">
+                      <div className="font-semibold text-destructive flex items-center gap-1 mb-1">
+                        <AlertTriangle className="w-3 h-3" /> Pendências para NF-e:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {v.missing.map((m) => (
+                          <Badge key={m} variant="outline" className="border-destructive/40 text-destructive font-normal">
+                            {m}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 pt-2">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
                       <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
@@ -318,7 +425,8 @@ export default function AdminCustomers() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
