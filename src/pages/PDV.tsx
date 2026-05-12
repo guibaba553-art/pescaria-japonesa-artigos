@@ -1179,7 +1179,28 @@ export default function PDV() {
       }
     }
 
+    setSavingCustomer(true);
     try {
+      // Verifica se já existe cliente com mesmo CNPJ/CPF
+      const docDigits = (isCnpj ? customerForm.cnpj : customerForm.cpf).replace(/\D/g, '');
+      if (docDigits) {
+        const { data: existing } = await supabase
+          .from('customers')
+          .select('*')
+          .eq(isCnpj ? 'cnpj' : 'cpf', isCnpj ? customerForm.cnpj : customerForm.cpf)
+          .maybeSingle();
+        if (existing) {
+          toast({
+            title: 'Cliente já cadastrado',
+            description: `${existing.full_name} (${isCnpj ? 'CNPJ' : 'CPF'} ${docDigits}) — selecionado automaticamente.`,
+          });
+          setSelectedCustomer(existing);
+          setShowCustomerDialog(false);
+          setSavingCustomer(false);
+          return;
+        }
+      }
+
       const payload: any = {
         full_name: customerForm.full_name,
         cep: customerForm.cep,
