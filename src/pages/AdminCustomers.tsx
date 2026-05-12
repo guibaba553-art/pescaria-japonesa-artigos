@@ -156,6 +156,21 @@ export default function AdminCustomers() {
     return arr;
   }, [list, search, onlyInvalid, validations]);
 
+  // Identifica documentos duplicados já existentes no banco
+  const duplicateDocs = useMemo(() => {
+    const counts = new Map<string, number>();
+    list.forEach((c) => {
+      const d = ((c.cnpj || c.cpf) || '').replace(/\D/g, '');
+      if (d) counts.set(d, (counts.get(d) || 0) + 1);
+    });
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([d]) => d));
+  }, [list]);
+
+  const isDuplicate = (c: Customer) => {
+    const d = ((c.cnpj || c.cpf) || '').replace(/\D/g, '');
+    return !!d && duplicateDocs.has(d);
+  };
+
   const openNew = () => {
     setEditingId(null);
     setForm({ ...emptyForm });
@@ -222,6 +237,22 @@ export default function AdminCustomers() {
     }
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       toast({ title: 'E-mail inválido', variant: 'destructive' });
+      return;
+    }
+
+    // Bloqueia duplicatas pelo documento (CPF/CNPJ)
+    const docDigits = docValue.replace(/\D/g, '');
+    const dup = list.find((c) => {
+      if (editingId && c.id === editingId) return false;
+      const other = ((isCnpj ? c.cnpj : c.cpf) || '').replace(/\D/g, '');
+      return other && other === docDigits;
+    });
+    if (dup) {
+      toast({
+        title: 'Documento já cadastrado',
+        description: `Já existe um cliente com este ${isCnpj ? 'CNPJ' : 'CPF'}: ${dup.company_name || dup.full_name}.`,
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -343,11 +374,14 @@ export default function AdminCustomers() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filtered.map((c) => {
               const v = validations.get(c.id) || { ok: true, missing: [] };
+              const dup = isDuplicate(c);
               return (
               <Card
                 key={c.id}
                 className={
-                  v.ok
+                  dup
+                    ? 'hover:shadow-md transition-shadow border-amber-500/60 bg-amber-50 dark:bg-amber-950/20'
+                    : v.ok
                     ? 'hover:shadow-md transition-shadow'
                     : 'hover:shadow-md transition-shadow border-destructive/50 bg-destructive/5'
                 }
@@ -369,6 +403,11 @@ export default function AdminCustomers() {
                       <Badge variant={c.cnpj ? 'default' : 'secondary'}>
                         {c.cnpj ? 'PJ' : 'PF'}
                       </Badge>
+                      {dup && (
+                        <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white">
+                          <AlertTriangle className="w-3 h-3" /> Duplicado
+                        </Badge>
+                      )}
                       {v.ok ? (
                         <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1">
                           <CheckCircle2 className="w-3 h-3" /> NF-e OK
