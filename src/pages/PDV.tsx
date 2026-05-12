@@ -1131,7 +1131,9 @@ export default function PDV() {
     return Math.max(0, received - calculateTotal());
   };
 
+  const [savingCustomer, setSavingCustomer] = useState(false);
   const handleSaveCustomer = async () => {
+    if (savingCustomer) return; // trava duplo clique
     const isCnpj = customerForm.doc_type === 'cnpj';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
 
@@ -1177,7 +1179,28 @@ export default function PDV() {
       }
     }
 
+    setSavingCustomer(true);
     try {
+      // Verifica se já existe cliente com mesmo CNPJ/CPF
+      const docDigits = (isCnpj ? customerForm.cnpj : customerForm.cpf).replace(/\D/g, '');
+      if (docDigits) {
+        const { data: existing } = await supabase
+          .from('customers')
+          .select('*')
+          .eq(isCnpj ? 'cnpj' : 'cpf', isCnpj ? customerForm.cnpj : customerForm.cpf)
+          .maybeSingle();
+        if (existing) {
+          toast({
+            title: 'Cliente já cadastrado',
+            description: `${existing.full_name} (${isCnpj ? 'CNPJ' : 'CPF'} ${docDigits}) — selecionado automaticamente.`,
+          });
+          setSelectedCustomer(existing);
+          setShowCustomerDialog(false);
+          setSavingCustomer(false);
+          return;
+        }
+      }
+
       const payload: any = {
         full_name: customerForm.full_name,
         cep: customerForm.cep,
@@ -1243,6 +1266,8 @@ export default function PDV() {
         description: error.message,
         variant: 'destructive'
       });
+    } finally {
+      setSavingCustomer(false);
     }
   };
 
@@ -2440,10 +2465,11 @@ export default function PDV() {
               </Button>
               <Button
                 onClick={handleSaveCustomer}
+                disabled={savingCustomer}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"
               >
-                <Check className="w-4 h-4 mr-2" />
-                Salvar Cliente
+                {savingCustomer ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
               </Button>
             </div>
           </div>
