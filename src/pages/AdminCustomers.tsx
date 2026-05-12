@@ -1,0 +1,525 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+
+interface Customer {
+  id: string;
+  full_name: string;
+  cpf: string | null;
+  cnpj: string | null;
+  company_name: string | null;
+  email: string | null;
+  cep: string;
+  street: string;
+  number: string;
+  neighborhood: string;
+  complemento: string | null;
+  municipio: string | null;
+  uf: string | null;
+  codigo_municipio_ibge: string | null;
+  inscricao_estadual: string | null;
+  ie_indicador: string | null;
+  created_at: string;
+}
+
+const emptyForm = {
+  doc_type: 'cpf' as 'cpf' | 'cnpj',
+  full_name: '',
+  cpf: '',
+  cnpj: '',
+  company_name: '',
+  email: '',
+  cep: '',
+  street: '',
+  number: '',
+  neighborhood: '',
+  complemento: '',
+  municipio: '',
+  uf: '',
+  codigo_municipio_ibge: '',
+  inscricao_estadual: '',
+  ie_indicador: '9' as '1' | '2' | '9',
+};
+
+export default function AdminCustomers() {
+  const navigate = useNavigate();
+  const { isAdmin, loading: authLoading } = useAuth();
+  const [list, setList] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !isAdmin) navigate('/admin');
+  }, [authLoading, isAdmin, navigate]);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      toast({ title: 'Erro ao carregar clientes', description: error.message, variant: 'destructive' });
+    } else {
+      setList((data || []) as Customer[]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    if (!s) return list;
+    return list.filter((c) => {
+      const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
+      return (
+        c.full_name.toLowerCase().includes(s) ||
+        (c.company_name || '').toLowerCase().includes(s) ||
+        (c.email || '').toLowerCase().includes(s) ||
+        doc.includes(s.replace(/\D/g, '')) ||
+        (c.municipio || '').toLowerCase().includes(s)
+      );
+    });
+  }, [list, search]);
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (c: Customer) => {
+    setEditingId(c.id);
+    setForm({
+      doc_type: c.cnpj ? 'cnpj' : 'cpf',
+      full_name: c.full_name || '',
+      cpf: c.cpf || '',
+      cnpj: c.cnpj || '',
+      company_name: c.company_name || '',
+      email: c.email || '',
+      cep: c.cep || '',
+      street: c.street || '',
+      number: c.number || '',
+      neighborhood: c.neighborhood || '',
+      complemento: c.complemento || '',
+      municipio: c.municipio || '',
+      uf: c.uf || '',
+      codigo_municipio_ibge: c.codigo_municipio_ibge || '',
+      inscricao_estadual: c.inscricao_estadual || '',
+      ie_indicador: (c.ie_indicador as '1' | '2' | '9') || '9',
+    });
+    setDialogOpen(true);
+  };
+
+  const buscarCep = async () => {
+    const cep = form.cep.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (d.erro) {
+        toast({ title: 'CEP não encontrado', variant: 'destructive' });
+        return;
+      }
+      setForm((p) => ({
+        ...p,
+        street: d.logradouro || p.street,
+        neighborhood: d.bairro || p.neighborhood,
+        municipio: d.localidade || p.municipio,
+        uf: d.uf || p.uf,
+        codigo_municipio_ibge: d.ibge || p.codigo_municipio_ibge,
+      }));
+    } catch {
+      toast({ title: 'Erro ao buscar CEP', variant: 'destructive' });
+    }
+  };
+
+  const save = async () => {
+    const isCnpj = form.doc_type === 'cnpj';
+    const docValue = isCnpj ? form.cnpj : form.cpf;
+    if (!form.full_name.trim() || !docValue.trim() || !form.cep.trim() ||
+        !form.street.trim() || !form.number.trim() || !form.neighborhood.trim()) {
+      toast({ title: 'Preencha todos os campos obrigatórios', variant: 'destructive' });
+      return;
+    }
+    if (isCnpj && !form.company_name.trim()) {
+      toast({ title: 'Razão social obrigatória para CNPJ', variant: 'destructive' });
+      return;
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      toast({ title: 'E-mail inválido', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        full_name: form.full_name,
+        cpf: isCnpj ? null : form.cpf,
+        cnpj: isCnpj ? form.cnpj : null,
+        company_name: isCnpj ? form.company_name : null,
+        email: form.email || null,
+        cep: form.cep,
+        street: form.street,
+        number: form.number,
+        neighborhood: form.neighborhood,
+        complemento: form.complemento || null,
+        municipio: form.municipio || null,
+        uf: form.uf || null,
+        codigo_municipio_ibge: isCnpj ? form.codigo_municipio_ibge || null : null,
+        inscricao_estadual: form.inscricao_estadual.trim()
+          ? form.inscricao_estadual.trim()
+          : (isCnpj && form.ie_indicador !== '1' ? 'ISENTO' : null),
+        ie_indicador: isCnpj ? form.ie_indicador : null,
+      };
+
+      if (editingId) {
+        const { error } = await supabase.from('customers').update(payload).eq('id', editingId);
+        if (error) throw error;
+        toast({ title: 'Cliente atualizado' });
+      } else {
+        const { error } = await supabase.from('customers').insert(payload);
+        if (error) throw error;
+        toast({ title: 'Cliente cadastrado' });
+      }
+      setDialogOpen(false);
+      load();
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from('customers').delete().eq('id', deleteId);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Cliente excluído' });
+      load();
+    }
+    setDeleteId(null);
+  };
+
+  return (
+    <AdminPageLayout
+      icon={Users}
+      eyebrow="Clientes"
+      title="Gestão de Clientes"
+      description="Cadastre, edite e gerencie clientes (PF e PJ) usados no PDV e em emissões de NF-e."
+    >
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, documento, e-mail, cidade..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
+            <Button onClick={openNew}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo cliente
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            Carregando...
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p>{search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {filtered.map((c) => (
+              <Card key={c.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">
+                        {c.cnpj && c.company_name ? c.company_name : c.full_name}
+                      </div>
+                      {c.cnpj && c.company_name && (
+                        <div className="text-xs text-muted-foreground truncate">Resp.: {c.full_name}</div>
+                      )}
+                      <div className="text-xs font-mono text-muted-foreground mt-0.5">
+                        {c.cnpj ? `CNPJ ${c.cnpj}` : c.cpf ? `CPF ${c.cpf}` : '—'}
+                      </div>
+                    </div>
+                    <Badge variant={c.cnpj ? 'default' : 'secondary'} className="shrink-0">
+                      {c.cnpj ? 'PJ' : 'PF'}
+                    </Badge>
+                  </div>
+
+                  {c.email && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                      <Mail className="w-3 h-3 shrink-0" /> {c.email}
+                    </div>
+                  )}
+                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span className="truncate">
+                      {c.street}, {c.number} — {c.neighborhood}
+                      {c.municipio && ` · ${c.municipio}/${c.uf}`} · {c.cep}
+                    </span>
+                  </div>
+                  {c.cnpj && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <FileText className="w-3 h-3 shrink-0" />
+                      IE: {c.inscricao_estadual || '—'} (ind. {c.ie_indicador || '—'})
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
+                      <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Dialog cadastrar/editar */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Editar cliente' : 'Novo cliente'}</DialogTitle>
+            <DialogDescription>
+              Preencha os dados do cliente. Para emissão de NF-e em CNPJ, informe IE e código IBGE.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={form.doc_type === 'cpf' ? 'default' : 'outline'}
+                onClick={() => setForm({ ...form, doc_type: 'cpf' })}
+                className="flex-1"
+              >
+                Pessoa Física (CPF)
+              </Button>
+              <Button
+                type="button"
+                variant={form.doc_type === 'cnpj' ? 'default' : 'outline'}
+                onClick={() => setForm({ ...form, doc_type: 'cnpj' })}
+                className="flex-1"
+              >
+                Pessoa Jurídica (CNPJ)
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{form.doc_type === 'cnpj' ? 'Nome do responsável *' : 'Nome completo *'}</Label>
+              <Input
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              />
+            </div>
+
+            {form.doc_type === 'cnpj' ? (
+              <>
+                <div className="space-y-2">
+                  <Label>CNPJ *</Label>
+                  <Input
+                    value={form.cnpj}
+                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                    placeholder="00.000.000/0000-00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Razão Social *</Label>
+                  <Input
+                    value={form.company_name}
+                    onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>CPF *</Label>
+                <Input
+                  value={form.cpf}
+                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-2 col-span-2">
+                <Label>CEP *</Label>
+                <Input
+                  value={form.cep}
+                  onChange={(e) => setForm({ ...form, cep: e.target.value })}
+                  onBlur={buscarCep}
+                  placeholder="00000-000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>UF</Label>
+                <Input
+                  value={form.uf}
+                  onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase() })}
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-2 col-span-2">
+                <Label>Rua *</Label>
+                <Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Número *</Label>
+                <Input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label>Bairro *</Label>
+                <Input value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Complemento</Label>
+                <Input value={form.complemento} onChange={(e) => setForm({ ...form, complemento: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Município</Label>
+              <Input value={form.municipio} onChange={(e) => setForm({ ...form, municipio: e.target.value })} />
+            </div>
+
+            {form.doc_type === 'cnpj' && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
+                <p className="text-xs font-semibold text-orange-900">Dados para NF-e</p>
+                <div className="space-y-2">
+                  <Label>Código IBGE do município *</Label>
+                  <Input
+                    value={form.codigo_municipio_ibge}
+                    onChange={(e) => setForm({ ...form, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })}
+                    maxLength={7}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Indicador de IE *</Label>
+                  <Select
+                    value={form.ie_indicador}
+                    onValueChange={(v) => setForm({ ...form, ie_indicador: v as '1' | '2' | '9' })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
+                      <SelectItem value="2">2 - Contribuinte isento</SelectItem>
+                      <SelectItem value="9">9 - Não contribuinte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Inscrição Estadual {form.ie_indicador === '1' ? '*' : '(opcional)'}</Label>
+                  <Input
+                    value={form.inscricao_estadual}
+                    onChange={(e) => setForm({ ...form, inscricao_estadual: e.target.value.replace(/\D/g, '') })}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
+
+            {form.doc_type === 'cpf' && (
+              <div className="space-y-2">
+                <Label>Inscrição Estadual (opcional — produtor rural)</Label>
+                <Input
+                  value={form.inscricao_estadual}
+                  onChange={(e) => setForm({ ...form, inscricao_estadual: e.target.value.replace(/\D/g, '') })}
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancelar</Button>
+            <Button onClick={save} disabled={saving}>
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingId ? 'Salvar alterações' : 'Cadastrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. O cliente será removido permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminPageLayout>
+  );
+}

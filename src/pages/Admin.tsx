@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
   Package, ClipboardList, Users, ShieldCheck, CalendarRange, ScanBarcode,
-  FileUp,
+  FileUp, UserSquare2,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -93,6 +93,13 @@ export default function Admin() {
       icon: ScanBarcode,
       path: '/admin/triagem',
       perm: 'triagem',
+    },
+    {
+      title: 'Clientes',
+      desc: 'Cadastro de clientes (PF/PJ) para PDV e NF-e',
+      icon: UserSquare2,
+      path: '/admin/clientes',
+      adminOnly: true,
     },
     {
       title: 'Funcionários',
