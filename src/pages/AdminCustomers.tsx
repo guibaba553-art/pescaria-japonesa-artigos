@@ -156,6 +156,21 @@ export default function AdminCustomers() {
     return arr;
   }, [list, search, onlyInvalid, validations]);
 
+  // Identifica documentos duplicados já existentes no banco
+  const duplicateDocs = useMemo(() => {
+    const counts = new Map<string, number>();
+    list.forEach((c) => {
+      const d = ((c.cnpj || c.cpf) || '').replace(/\D/g, '');
+      if (d) counts.set(d, (counts.get(d) || 0) + 1);
+    });
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([d]) => d));
+  }, [list]);
+
+  const isDuplicate = (c: Customer) => {
+    const d = ((c.cnpj || c.cpf) || '').replace(/\D/g, '');
+    return !!d && duplicateDocs.has(d);
+  };
+
   const openNew = () => {
     setEditingId(null);
     setForm({ ...emptyForm });
