@@ -380,6 +380,21 @@ export default function AdminCustomers() {
             <Button
               type="button"
               size="sm"
+              variant="outline"
+              onClick={autoFix}
+              disabled={autoFixing || invalidCount === 0}
+              className="border-primary/40 text-primary hover:text-primary"
+            >
+              {autoFixing ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4 mr-1.5" />
+              )}
+              Corrigir automaticamente
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               variant={onlyInvalid ? 'default' : 'outline'}
               onClick={() => setOnlyInvalid((v) => !v)}
               className={onlyInvalid ? '' : 'border-destructive/40 text-destructive hover:text-destructive'}
