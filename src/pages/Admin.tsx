@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
   Package, ClipboardList, Users, ShieldCheck, CalendarRange, ScanBarcode,
-  FileUp,
+  FileUp, UserSquare2,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
