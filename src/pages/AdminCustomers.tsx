@@ -295,7 +295,18 @@ export default function AdminCustomers() {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant={onlyInvalid ? 'default' : 'outline'}
+              onClick={() => setOnlyInvalid((v) => !v)}
+              className={onlyInvalid ? '' : 'border-destructive/40 text-destructive hover:text-destructive'}
+            >
+              <AlertTriangle className="w-4 h-4 mr-1.5" />
+              {onlyInvalid ? 'Mostrando incompletos' : 'Só incompletos'}
+              <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
+            </Button>
             <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
             <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />
@@ -303,6 +314,18 @@ export default function AdminCustomers() {
             </Button>
           </div>
         </div>
+
+        {!loading && invalidCount > 0 && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2 text-sm">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-destructive">{invalidCount}</span>{' '}
+              {invalidCount === 1 ? 'cliente possui dados' : 'clientes possuem dados'} incompletos e{' '}
+              <span className="font-semibold">não serão aprovados em uma emissão de NF-e</span>.
+              Edite os cadastros marcados com o aviso vermelho.
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
