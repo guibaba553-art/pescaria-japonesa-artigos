@@ -73,6 +73,9 @@ serve(async (req) => {
           throw new Error(`update status: ${updateErr.message}`);
         }
 
+        // 1.5) Liberar reservas de estoque do pedido expirado
+        await supabase.rpc('release_stock_reservation', { p_order_id: orderId });
+
         // 2) Restore stock for each item (sale_revert, only if a sale movement exists)
         const { data: items } = await supabase
           .from("order_items")
