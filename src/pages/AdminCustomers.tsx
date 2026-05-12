@@ -425,7 +425,8 @@ export default function AdminCustomers() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
