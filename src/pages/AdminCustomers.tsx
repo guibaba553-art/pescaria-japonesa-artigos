@@ -225,6 +225,22 @@ export default function AdminCustomers() {
       return;
     }
 
+    // Bloqueia duplicatas pelo documento (CPF/CNPJ)
+    const docDigits = docValue.replace(/\D/g, '');
+    const dup = list.find((c) => {
+      if (editingId && c.id === editingId) return false;
+      const other = ((isCnpj ? c.cnpj : c.cpf) || '').replace(/\D/g, '');
+      return other && other === docDigits;
+    });
+    if (dup) {
+      toast({
+        title: 'Documento já cadastrado',
+        description: `Já existe um cliente com este ${isCnpj ? 'CNPJ' : 'CPF'}: ${dup.company_name || dup.full_name}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
