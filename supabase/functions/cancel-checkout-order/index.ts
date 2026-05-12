@@ -66,6 +66,9 @@ serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Liberar reservas de estoque
+    await supabase.rpc('release_stock_reservation', { p_order_id: orderId });
+
     // Delete order_items first (FK), then order
     await supabase.from('order_items').delete().eq('order_id', orderId);
     const { error: delErr } = await supabase.from('orders').delete().eq('id', orderId);
