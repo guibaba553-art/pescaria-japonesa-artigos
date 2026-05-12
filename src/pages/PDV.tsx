@@ -2465,10 +2465,11 @@ export default function PDV() {
               </Button>
               <Button
                 onClick={handleSaveCustomer}
+                disabled={savingCustomer}
                 className="flex-1 bg-orange-500 hover:bg-orange-600"
               >
-                <Check className="w-4 h-4 mr-2" />
-                Salvar Cliente
+                {savingCustomer ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
               </Button>
             </div>
           </div>
