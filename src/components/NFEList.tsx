@@ -108,6 +108,31 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
 
   useEffect(() => {
     loadNFEs();
+
+    // Realtime: atualiza a lista assim que qualquer NF-e mudar (status, cancelamento, etc.)
+    const channel = supabase
+      .channel('nfe-emissions-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'nfe_emissions' },
+        () => loadNFEs(),
+      )
+      .subscribe();
+
+    // Fallback: refetch a cada 30s e quando a aba volta ao foco
+    const interval = setInterval(loadNFEs, 30000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadNFEs();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', loadNFEs);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', loadNFEs);
+    };
   }, []);
 
   const loadNFEs = async () => {
