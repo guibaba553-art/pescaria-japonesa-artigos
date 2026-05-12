@@ -1266,6 +1266,8 @@ export default function PDV() {
         description: error.message,
         variant: 'destructive'
       });
+    } finally {
+      setSavingCustomer(false);
     }
   };
 
