@@ -2384,6 +2384,26 @@ export default function PDV() {
               </div>
             </div>
 
+            {customerForm.doc_type === 'cpf' && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                <Label htmlFor="inscricao_estadual_cpf" className="text-xs font-semibold">
+                  Inscrição Estadual (opcional — produtor rural)
+                </Label>
+                <Input
+                  id="inscricao_estadual_cpf"
+                  placeholder="Somente números (deixe em branco se não tiver)"
+                  value={customerForm.inscricao_estadual}
+                  onChange={(e) =>
+                    setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                  }
+                  inputMode="numeric"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Preencha apenas se o cliente PF tiver IE (ex.: produtor rural).
+                </p>
+              </div>
+            )}
+
             {customerForm.doc_type === 'cnpj' && (
               <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
                 <p className="text-xs font-semibold text-orange-900">
