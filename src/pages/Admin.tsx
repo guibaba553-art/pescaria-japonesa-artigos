@@ -95,6 +95,13 @@ export default function Admin() {
       perm: 'triagem',
     },
     {
+      title: 'Clientes',
+      desc: 'Cadastro de clientes (PF/PJ) para PDV e NF-e',
+      icon: UserSquare2,
+      path: '/admin/clientes',
+      adminOnly: true,
+    },
+    {
       title: 'Funcionários',
       desc: 'Permissões e acessos da equipe',
       icon: Users,
