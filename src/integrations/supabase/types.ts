@@ -1997,6 +1997,39 @@ export type Database = {
           },
         ]
       }
+      stock_reservations: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          order_id: string
+          product_id: string
+          quantity: number
+          released_at: string | null
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          order_id: string
+          product_id: string
+          quantity: number
+          released_at?: string | null
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          order_id?: string
+          product_id?: string
+          quantity?: number
+          released_at?: string | null
+          variation_id?: string | null
+        }
+        Relationships: []
+      }
       suppliers: {
         Row: {
           bairro: string | null
@@ -2345,6 +2378,10 @@ export type Database = {
         Returns: number
       }
       extract_uf_from_address: { Args: { p_address: string }; Returns: string }
+      get_available_stock: {
+        Args: { p_product_id: string; p_variation_id?: string }
+        Returns: number
+      }
       get_cfop_by_uf: {
         Args: { p_has_st?: boolean; p_uf_destino: string }
         Returns: string
@@ -2527,6 +2564,11 @@ export type Database = {
       }
       reconcile_stock: {
         Args: { p_product_id: string; p_variation_id?: string }
+        Returns: Json
+      }
+      release_stock_reservation: { Args: { p_order_id: string }; Returns: Json }
+      reserve_stock_for_order: {
+        Args: { p_items: Json; p_order_id: string; p_ttl_minutes?: number }
         Returns: Json
       }
       revert_order_stock: { Args: { p_order_id: string }; Returns: Json }
