@@ -1131,7 +1131,9 @@ export default function PDV() {
     return Math.max(0, received - calculateTotal());
   };
 
+  const [savingCustomer, setSavingCustomer] = useState(false);
   const handleSaveCustomer = async () => {
+    if (savingCustomer) return; // trava duplo clique
     const isCnpj = customerForm.doc_type === 'cnpj';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
 
