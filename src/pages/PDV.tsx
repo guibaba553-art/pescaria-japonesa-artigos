@@ -1713,7 +1713,7 @@ export default function PDV() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className={cartAutoExpand ? 'max-h-[calc(100vh-260px)] mb-4' : 'h-[300px] mb-4'}>
+                <div className={cartAutoExpand ? 'mb-4' : 'h-[300px] overflow-y-auto mb-4'}>
                   {cart.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
