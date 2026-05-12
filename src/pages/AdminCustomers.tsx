@@ -16,8 +16,41 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+// Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
+function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
+  const missing: string[] = [];
+  const isCnpj = !!c.cnpj;
+  const doc = (isCnpj ? c.cnpj : c.cpf) || '';
+  const docDigits = doc.replace(/\D/g, '');
+
+  if (!c.full_name?.trim()) missing.push('Nome');
+  if (!docDigits) missing.push(isCnpj ? 'CNPJ' : 'CPF');
+  else if (isCnpj && docDigits.length !== 14) missing.push('CNPJ inválido');
+  else if (!isCnpj && docDigits.length !== 11) missing.push('CPF inválido');
+
+  if (isCnpj && !c.company_name?.trim()) missing.push('Razão social');
+
+  const cepDigits = (c.cep || '').replace(/\D/g, '');
+  if (cepDigits.length !== 8) missing.push('CEP');
+  if (!c.street?.trim()) missing.push('Rua');
+  if (!c.number?.trim()) missing.push('Número');
+  if (!c.neighborhood?.trim()) missing.push('Bairro');
+  if (!c.municipio?.trim()) missing.push('Município');
+  if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
+
+  const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
+  if (ibge.length !== 7) missing.push('Código IBGE');
+
+  if (isCnpj) {
+    if (!c.ie_indicador) missing.push('Indicador de IE');
+    else if ((c.ie_indicador === '1') && !c.inscricao_estadual?.trim()) missing.push('Inscrição Estadual');
+  }
+
+  return { ok: missing.length === 0, missing };
+}
 
 interface Customer {
   id: string;
