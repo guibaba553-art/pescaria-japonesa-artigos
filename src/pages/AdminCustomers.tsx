@@ -126,20 +126,35 @@ export default function AdminCustomers() {
     load();
   }, []);
 
+  const validations = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof validateNfe>>();
+    list.forEach((c) => m.set(c.id, validateNfe(c)));
+    return m;
+  }, [list]);
+
+  const invalidCount = useMemo(
+    () => list.filter((c) => !(validations.get(c.id)?.ok)).length,
+    [list, validations]
+  );
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    if (!s) return list;
-    return list.filter((c) => {
-      const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
-      return (
-        c.full_name.toLowerCase().includes(s) ||
-        (c.company_name || '').toLowerCase().includes(s) ||
-        (c.email || '').toLowerCase().includes(s) ||
-        doc.includes(s.replace(/\D/g, '')) ||
-        (c.municipio || '').toLowerCase().includes(s)
-      );
-    });
-  }, [list, search]);
+    let arr = list;
+    if (s) {
+      arr = arr.filter((c) => {
+        const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
+        return (
+          c.full_name.toLowerCase().includes(s) ||
+          (c.company_name || '').toLowerCase().includes(s) ||
+          (c.email || '').toLowerCase().includes(s) ||
+          doc.includes(s.replace(/\D/g, '')) ||
+          (c.municipio || '').toLowerCase().includes(s)
+        );
+      });
+    }
+    if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
+    return arr;
+  }, [list, search, onlyInvalid, validations]);
 
   const openNew = () => {
     setEditingId(null);
