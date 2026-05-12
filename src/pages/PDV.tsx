@@ -1823,7 +1823,7 @@ export default function PDV() {
                       })}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
 
                 <Separator className="my-4" />
 
