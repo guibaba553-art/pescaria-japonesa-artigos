@@ -19,6 +19,7 @@ const AdminOrders = lazy(() => import("./pages/AdminOrders"));
 const AdminEmployees = lazy(() => import("./pages/AdminEmployees"));
 const AdminSalesAnalysis = lazy(() => import("./pages/AdminSalesAnalysis"));
 const AdminTriagem = lazy(() => import("./pages/AdminTriagem"));
+const AdminCustomers = lazy(() => import("./pages/AdminCustomers"));
 const Account = lazy(() => import("./pages/Account"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
