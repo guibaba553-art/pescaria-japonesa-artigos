@@ -103,54 +103,54 @@ export default function AdminCustomers() {
   const [form, setForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [autoFixing, setAutoFixing] = useState(false);
+  const [fixingId, setFixingId] = useState<string | null>(null);
 
-  // Tenta corrigir automaticamente dados de endereço/IBGE/IE via ViaCEP
-  const autoFix = async () => {
-    setAutoFixing(true);
-    let fixed = 0;
-    let skipped = 0;
-    const cache = new Map<string, any>();
+  // Tenta corrigir automaticamente UM cliente via ViaCEP
+  const autoFixOne = async (c: Customer) => {
+    const cep = (c.cep || '').replace(/\D/g, '');
+    if (cep.length !== 8) {
+      toast({ title: 'CEP inválido', description: 'Edite o cliente e informe um CEP válido.', variant: 'destructive' });
+      return;
+    }
+    setFixingId(c.id);
     try {
-      for (const c of list) {
-        const v = validateNfe(c);
-        if (v.ok) continue;
-        const cep = (c.cep || '').replace(/\D/g, '');
-        if (cep.length !== 8) { skipped++; continue; }
-
-        let d = cache.get(cep);
-        if (!d) {
-          try {
-            const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            d = await r.json();
-            cache.set(cep, d);
-          } catch { skipped++; continue; }
-        }
-        if (!d || d.erro) { skipped++; continue; }
-
-        const patch: Record<string, any> = {};
-        if (!c.municipio?.trim() && d.localidade) patch.municipio = d.localidade;
-        if ((!c.uf?.trim() || c.uf.length !== 2) && d.uf) patch.uf = d.uf;
-        if (((c.codigo_municipio_ibge || '').replace(/\D/g, '').length !== 7) && d.ibge) {
-          patch.codigo_municipio_ibge = d.ibge;
-        }
-        if (!c.neighborhood?.trim() && d.bairro) patch.neighborhood = d.bairro;
-        if (!c.street?.trim() && d.logradouro) patch.street = d.logradouro;
-        // PJ sem indicador de IE → assume "9" (não contribuinte)
-        if (c.cnpj && !c.ie_indicador) patch.ie_indicador = '9';
-
-        if (Object.keys(patch).length === 0) { skipped++; continue; }
-
-        const { error } = await supabase.from('customers').update(patch).eq('id', c.id);
-        if (!error) fixed++; else skipped++;
+      let d: any = null;
+      try {
+        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        d = await r.json();
+      } catch {
+        toast({ title: 'Erro ao consultar CEP', variant: 'destructive' });
+        return;
       }
-      toast({
-        title: 'Correção automática concluída',
-        description: `${fixed} cliente(s) atualizado(s)${skipped ? `, ${skipped} sem dados suficientes` : ''}.`,
-      });
+      if (!d || d.erro) {
+        toast({ title: 'CEP não encontrado no ViaCEP', variant: 'destructive' });
+        return;
+      }
+
+      const patch: Record<string, any> = {};
+      if (!c.municipio?.trim() && d.localidade) patch.municipio = d.localidade;
+      if ((!c.uf?.trim() || c.uf.length !== 2) && d.uf) patch.uf = d.uf;
+      if (((c.codigo_municipio_ibge || '').replace(/\D/g, '').length !== 7) && d.ibge) {
+        patch.codigo_municipio_ibge = d.ibge;
+      }
+      if (!c.neighborhood?.trim() && d.bairro) patch.neighborhood = d.bairro;
+      if (!c.street?.trim() && d.logradouro) patch.street = d.logradouro;
+      if (c.cnpj && !c.ie_indicador) patch.ie_indicador = '9';
+
+      if (Object.keys(patch).length === 0) {
+        toast({ title: 'Nada para corrigir automaticamente', description: 'As pendências exigem edição manual.' });
+        return;
+      }
+
+      const { error } = await supabase.from('customers').update(patch).eq('id', c.id);
+      if (error) {
+        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Cliente corrigido', description: `${Object.keys(patch).length} campo(s) preenchido(s).` });
       await load();
     } finally {
-      setAutoFixing(false);
+      setFixingId(null);
     }
   };
 
@@ -377,21 +377,7 @@ export default function AdminCustomers() {
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={autoFix}
-              disabled={autoFixing || invalidCount === 0}
-              className="border-primary/40 text-primary hover:text-primary"
-            >
-              {autoFixing ? (
-                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-              ) : (
-                <Wand2 className="w-4 h-4 mr-1.5" />
-              )}
-              Corrigir automaticamente
-            </Button>
+            
             <Button
               type="button"
               size="sm"
@@ -516,6 +502,21 @@ export default function AdminCustomers() {
                           </Badge>
                         ))}
                       </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full h-8 border-primary/40 text-primary hover:text-primary"
+                        onClick={() => autoFixOne(c)}
+                        disabled={fixingId === c.id}
+                      >
+                        {fixingId === c.id ? (
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Corrigir automaticamente
+                      </Button>
                     </div>
                   )}
 
