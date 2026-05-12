@@ -502,6 +502,21 @@ export default function AdminCustomers() {
                           </Badge>
                         ))}
                       </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full h-8 border-primary/40 text-primary hover:text-primary"
+                        onClick={() => autoFixOne(c)}
+                        disabled={fixingId === c.id}
+                      >
+                        {fixingId === c.id ? (
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Corrigir automaticamente
+                      </Button>
                     </div>
                   )}
 
