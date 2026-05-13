@@ -276,7 +276,7 @@ export default function MobileHome() {
       {/* Flash deals */}
       {flashDeals.length > 0 && (
         <section className="mt-6 bg-gradient-to-b from-primary/10 to-transparent py-4 border-y border-primary/20">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary fill-primary" />
               <h3 className="font-display font-black text-foreground text-sm uppercase italic tracking-tight">
@@ -342,7 +342,7 @@ export default function MobileHome() {
       {/* Featured */}
       {featured.length > 0 && (
         <section className="mt-6">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-tight border-l-4 border-primary pl-2">
               Em destaque
             </h3>
@@ -366,7 +366,7 @@ export default function MobileHome() {
       {/* Best sellers */}
       {bestSellers.length > 0 && (
         <section className="mt-6">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-tight border-l-4 border-primary pl-2">
               Mais vendidos em Sinop
             </h3>
