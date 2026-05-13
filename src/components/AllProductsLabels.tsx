@@ -306,6 +306,7 @@ export function AllProductsLabels({ storeName }: Props) {
     }));
     try {
       setGenerating(true);
+      const { generateLabelsPdf } = await import('@/utils/labelPdfGenerator');
       await generateLabelsPdf(items, { storeName, skipSlots });
       toast({ title: 'PDF gerado', description: `${items.reduce((a, i) => a + i.quantity, 0)} etiqueta(s).` });
     } catch (err: any) {
