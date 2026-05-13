@@ -87,7 +87,7 @@ export function PriceFormation() {
   const [editMargin, setEditMargin] = useState("");
   const [editGroupId, setEditGroupId] = useState<string>("none");
   const [editFreightPct, setEditFreightPct] = useState("");
-  const [editOpCost, setEditOpCost] = useState("");
+  const [editOpCostPct, setEditOpCostPct] = useState("");
   const [editMinSale, setEditMinSale] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -194,7 +194,7 @@ export function PriceFormation() {
       setEditMargin(margin.toFixed(2));
       setEditGroupId(selected.cost_group_id || "none");
       setEditFreightPct("");
-      setEditOpCost("");
+      setEditOpCostPct("");
       setEditMinSale("");
     }
   }, [selected]);
@@ -232,9 +232,10 @@ export function PriceFormation() {
   const livePrice = parseNum(editPrice);
   const liveMargin = parseNum(editMargin);
   const liveFreightPct = parseNum(editFreightPct);
-  const liveOpCost = parseNum(editOpCost);
+  const liveOpCostPct = parseNum(editOpCostPct);
   const liveMinSale = parseNum(editMinSale);
   const liveFreight = liveCost * (liveFreightPct / 100);
+  const liveOpCost = liveCost * (liveOpCostPct / 100);
   const liveTotalCost = liveCost + liveFreight + liveOpCost;
   const liveProfit = livePrice - liveTotalCost;
   const liveMarkup = liveTotalCost > 0 ? (liveProfit / liveTotalCost) * 100 : 0;
@@ -596,7 +597,7 @@ export function PriceFormation() {
 
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="pf-price">Valor de compra (R$)</Label>
+                    <Label htmlFor="pf-price">Valor de venda (R$)</Label>
                     <Input
                       id="pf-price"
                       type="number"
@@ -647,17 +648,20 @@ export function PriceFormation() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="pf-opcost">Custos operacionais (R$)</Label>
+                      <Label htmlFor="pf-opcost">Custos operacionais (%)</Label>
                       <Input
                         id="pf-opcost"
                         type="number"
                         step="0.01"
                         min="0"
                         inputMode="decimal"
-                        value={editOpCost}
-                        onChange={(e) => setEditOpCost(e.target.value)}
+                        value={editOpCostPct}
+                        onChange={(e) => setEditOpCostPct(e.target.value)}
                         placeholder="0,00"
                       />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        % sobre o custo · {fmt(liveOpCost)}
+                      </div>
                     </div>
                   </div>
 
