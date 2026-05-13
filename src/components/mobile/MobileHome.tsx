@@ -93,23 +93,23 @@ const ProductMiniCard = ({
           </span>
         )}
       </div>
-      <div className="p-2">
+      <div className="p-2 flex flex-col">
         <p className="text-[11px] text-foreground font-medium leading-tight line-clamp-2 h-8 mb-1">
           {product.name}
         </p>
-        {onSale && (
-          <p className="text-[10px] text-muted-foreground line-through leading-none">
-            {formatPrice(product.price)}
-          </p>
-        )}
+        {/* Slot fixo p/ preço riscado — mantém altura uniforme entre cards */}
+        <p className="text-[10px] text-muted-foreground line-through leading-none h-3">
+          {onSale ? formatPrice(product.price) : "\u00A0"}
+        </p>
         <p className="text-sm font-bold text-primary leading-tight">
           {formatPrice(finalPrice)}
         </p>
-        {installment > 0 && (
-          <p className="text-[9px] text-muted-foreground mt-0.5">
-            {installment}x de {formatPrice(finalPrice / installment)}
-          </p>
-        )}
+        {/* Slot fixo p/ parcelamento — mantém altura uniforme entre cards */}
+        <p className="text-[9px] text-muted-foreground mt-0.5 h-3">
+          {installment > 0
+            ? `${installment}x de ${formatPrice(finalPrice / installment)}`
+            : "\u00A0"}
+        </p>
       </div>
     </button>
   );
