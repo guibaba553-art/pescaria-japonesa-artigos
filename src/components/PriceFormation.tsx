@@ -648,17 +648,20 @@ export function PriceFormation() {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="pf-opcost">Custos operacionais (R$)</Label>
+                      <Label htmlFor="pf-opcost">Custos operacionais (%)</Label>
                       <Input
                         id="pf-opcost"
                         type="number"
                         step="0.01"
                         min="0"
                         inputMode="decimal"
-                        value={editOpCost}
-                        onChange={(e) => setEditOpCost(e.target.value)}
+                        value={editOpCostPct}
+                        onChange={(e) => setEditOpCostPct(e.target.value)}
                         placeholder="0,00"
                       />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        % sobre o custo · {fmt(liveOpCost)}
+                      </div>
                     </div>
                   </div>
 
