@@ -194,7 +194,7 @@ export function PriceFormation() {
       setEditMargin(margin.toFixed(2));
       setEditGroupId(selected.cost_group_id || "none");
       setEditFreightPct("");
-      setEditOpCost("");
+      setEditOpCostPct("");
       setEditMinSale("");
     }
   }, [selected]);
