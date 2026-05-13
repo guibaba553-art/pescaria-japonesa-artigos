@@ -23,7 +23,7 @@ import {
   ShoppingBag, Store, Globe, X, FileText, Clock, Ban, CheckCircle2,
   ChevronRight, ChevronDown, Loader2, Package, Receipt, FileDown,
 } from 'lucide-react';
-import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
+// generateBudgetPdf é carregado sob demanda (jsPDF é pesado)
 import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -565,6 +565,7 @@ export default function AdminSalesAnalysis() {
       const subtotal = items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
       const discount = Math.max(0, subtotal - Number(row.total_amount));
 
+      const { generateBudgetPdf } = await import('@/utils/budgetPdfGenerator');
       await generateBudgetPdf({
         saleId: row.id,
         createdAt: row.created_at,

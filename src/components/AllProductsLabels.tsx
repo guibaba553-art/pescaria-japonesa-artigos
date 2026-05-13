@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Printer, Search, RefreshCw, Wand2 } from 'lucide-react';
-import { generateLabelsPdf, type LabelItem } from '@/utils/labelPdfGenerator';
+import type { LabelItem } from '@/utils/labelPdfGenerator';
 import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
 
 interface Row {
@@ -306,6 +306,7 @@ export function AllProductsLabels({ storeName }: Props) {
     }));
     try {
       setGenerating(true);
+      const { generateLabelsPdf } = await import('@/utils/labelPdfGenerator');
       await generateLabelsPdf(items, { storeName, skipSlots });
       toast({ title: 'PDF gerado', description: `${items.reduce((a, i) => a + i.quantity, 0)} etiqueta(s).` });
     } catch (err: any) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,8 +56,11 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
-import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
-import { TefChargeDialog, type TefApprovedResult } from '@/components/TefChargeDialog';
+// Heavy modules — carregados sob demanda para acelerar a abertura do PDV
+import type { TefApprovedResult } from '@/components/TefChargeDialog';
+const TefChargeDialog = lazy(() =>
+  import('@/components/TefChargeDialog').then((m) => ({ default: m.TefChargeDialog }))
+);
 
 interface ProductVariation {
   id: string;
@@ -2850,6 +2853,7 @@ export default function PDV() {
                                               0
                                             );
                                             const discount = Math.max(0, subtotal - Number(sale.total_amount));
+                                            const { generateBudgetPdf } = await import('@/utils/budgetPdfGenerator');
                                             await generateBudgetPdf({
                                               saleId: sale.id,
                                               createdAt: sale.created_at,
@@ -2911,23 +2915,24 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {tefEnabled && (
-        <TefChargeDialog
-          open={showTefDialog}
-          amount={calculateTotal()}
-          paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-          installments={installments}
-          onCancel={() => {
-            setShowTefDialog(false);
-            tefResultRef.current = null;
-          }}
-          onApproved={(result) => {
-            tefResultRef.current = result;
-            setShowTefDialog(false);
-            // Re-dispara finalização agora com aprovação registrada
-            setTimeout(() => { finalizeSale(); }, 50);
-          }}
-        />
+      {tefEnabled && showTefDialog && (
+        <Suspense fallback={null}>
+          <TefChargeDialog
+            open={showTefDialog}
+            amount={calculateTotal()}
+            paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
+            installments={installments}
+            onCancel={() => {
+              setShowTefDialog(false);
+              tefResultRef.current = null;
+            }}
+            onApproved={(result) => {
+              tefResultRef.current = result;
+              setShowTefDialog(false);
+              setTimeout(() => { finalizeSale(); }, 50);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

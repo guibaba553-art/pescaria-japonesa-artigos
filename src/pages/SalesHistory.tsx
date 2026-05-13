@@ -21,7 +21,7 @@ import {
   FileDown
 } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
+// generateBudgetPdf é carregado sob demanda (jsPDF é pesado)
 
 export default function SalesHistory() {
   const navigate = useNavigate();
@@ -111,6 +111,7 @@ export default function SalesHistory() {
         0,
       );
       const discount = Math.max(0, subtotal - Number(order.total_amount));
+      const { generateBudgetPdf } = await import('@/utils/budgetPdfGenerator');
       await generateBudgetPdf({
         saleId: order.id,
         createdAt: order.created_at,
