@@ -210,6 +210,14 @@ export function PriceFormation() {
     );
   }, [products, search]);
 
+  const VISIBLE_LIMIT = 80;
+  const visible = useMemo(() => filtered.slice(0, VISIBLE_LIMIT), [filtered]);
+  const groupsById = useMemo(() => {
+    const m = new Map<string, CostGroup>();
+    groups.forEach((g) => m.set(g.id, g));
+    return m;
+  }, [groups]);
+
   const calc = (p: Product) => {
     const cost = Number(p.cost || 0);
     const price = Number(p.on_sale && p.sale_price ? p.sale_price : p.price || 0);
