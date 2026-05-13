@@ -239,6 +239,22 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                       ? new Date(nfe.emitted_at).toLocaleString('pt-BR')
                       : new Date(nfe.created_at).toLocaleString('pt-BR')}
                   </span>
+                  {nfe.status === 'pending' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCheckStatus(nfe)}
+                      disabled={checkingId === nfe.id}
+                      className="h-7 gap-1"
+                    >
+                      {checkingId === nfe.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                      Verificar status
+                    </Button>
+                  )}
                   {nfe.status === 'success' && (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {nfe.danfe_url && (
