@@ -2915,23 +2915,24 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {tefEnabled && (
-        <TefChargeDialog
-          open={showTefDialog}
-          amount={calculateTotal()}
-          paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-          installments={installments}
-          onCancel={() => {
-            setShowTefDialog(false);
-            tefResultRef.current = null;
-          }}
-          onApproved={(result) => {
-            tefResultRef.current = result;
-            setShowTefDialog(false);
-            // Re-dispara finalização agora com aprovação registrada
-            setTimeout(() => { finalizeSale(); }, 50);
-          }}
-        />
+      {tefEnabled && showTefDialog && (
+        <Suspense fallback={null}>
+          <TefChargeDialog
+            open={showTefDialog}
+            amount={calculateTotal()}
+            paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
+            installments={installments}
+            onCancel={() => {
+              setShowTefDialog(false);
+              tefResultRef.current = null;
+            }}
+            onApproved={(result) => {
+              tefResultRef.current = result;
+              setShowTefDialog(false);
+              setTimeout(() => { finalizeSale(); }, 50);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
