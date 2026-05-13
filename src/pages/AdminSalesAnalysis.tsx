@@ -1458,7 +1458,7 @@ export default function AdminSalesAnalysis() {
                       )}
 
                       {/* Destinatário */}
-                      {invoiceTarget && invoiceTarget.kind === 'order' && (
+                      {invoiceTarget && (invoiceTarget.kind === 'order' || invoiceTarget.kind === 'saved') && (
                         <div className={`mt-3 p-3 rounded-lg text-sm border ${
                           invoiceCustomer
                             ? 'bg-emerald-500/5 border-emerald-500/40'
