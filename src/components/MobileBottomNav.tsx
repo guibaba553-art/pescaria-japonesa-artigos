@@ -133,8 +133,7 @@ export function MobileBottomNav() {
 
       {/* Bottom nav bar */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="mobile-bottom-nav md:hidden z-40 bg-background border-t border-border"
         aria-label="Navegação principal"
       >
         <div className="flex h-14 items-stretch">
