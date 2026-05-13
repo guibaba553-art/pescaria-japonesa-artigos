@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import { lazy, Suspense, useEffect, useState } from "react";
 import Categories from "@/components/Categories";
 import Footer from "@/components/Footer";
+import MobileHome from "@/components/mobile/MobileHome";
 
 const FlashDealsCountdown = lazy(() => import("@/components/FlashDealsCountdown"));
 const FeaturedProducts = lazy(() => import("@/components/FeaturedProducts"));
@@ -43,27 +44,37 @@ const Index = () => {
           Mobile: 64px (main bar only)
           Desktop (lg+): 64px main + 44px categories = 108px */}
       <div aria-hidden className="h-16 lg:h-[108px]" />
-      <TopBenefitsBar />
-      <main>
-        <Hero />
-        <Categories />
-        {showDeferredSections && (
-          <>
-            <Suspense fallback={<SectionFallback />}>
-              <FlashDealsCountdown />
-            </Suspense>
-            <Suspense fallback={<SectionFallback />}>
-              <FeaturedProducts />
-            </Suspense>
-            <Suspense fallback={<SectionFallback />}>
-              <PromoBanner />
-            </Suspense>
-            <Suspense fallback={<SectionFallback />}>
-              <Benefits />
-            </Suspense>
-          </>
-        )}
+
+      {/* Mobile-first home (shown below lg) */}
+      <main className="lg:hidden">
+        <MobileHome />
       </main>
+
+      {/* Desktop layout (lg and up) */}
+      <div className="hidden lg:block">
+        <TopBenefitsBar />
+        <main>
+          <Hero />
+          <Categories />
+          {showDeferredSections && (
+            <>
+              <Suspense fallback={<SectionFallback />}>
+                <FlashDealsCountdown />
+              </Suspense>
+              <Suspense fallback={<SectionFallback />}>
+                <FeaturedProducts />
+              </Suspense>
+              <Suspense fallback={<SectionFallback />}>
+                <PromoBanner />
+              </Suspense>
+              <Suspense fallback={<SectionFallback />}>
+                <Benefits />
+              </Suspense>
+            </>
+          )}
+        </main>
+      </div>
+
       <Footer />
     </div>
   );
