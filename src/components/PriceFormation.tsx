@@ -232,9 +232,10 @@ export function PriceFormation() {
   const livePrice = parseNum(editPrice);
   const liveMargin = parseNum(editMargin);
   const liveFreightPct = parseNum(editFreightPct);
-  const liveOpCost = parseNum(editOpCost);
+  const liveOpCostPct = parseNum(editOpCostPct);
   const liveMinSale = parseNum(editMinSale);
   const liveFreight = liveCost * (liveFreightPct / 100);
+  const liveOpCost = liveCost * (liveOpCostPct / 100);
   const liveTotalCost = liveCost + liveFreight + liveOpCost;
   const liveProfit = livePrice - liveTotalCost;
   const liveMarkup = liveTotalCost > 0 ? (liveProfit / liveTotalCost) * 100 : 0;
