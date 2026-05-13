@@ -597,7 +597,7 @@ export function PriceFormation() {
 
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="pf-price">Valor de compra (R$)</Label>
+                    <Label htmlFor="pf-price">Valor de venda (R$)</Label>
                     <Input
                       id="pf-price"
                       type="number"
