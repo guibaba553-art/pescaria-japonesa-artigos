@@ -56,8 +56,11 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
-import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
-import { TefChargeDialog, type TefApprovedResult } from '@/components/TefChargeDialog';
+// Heavy modules — carregados sob demanda para acelerar a abertura do PDV
+import type { TefApprovedResult } from '@/components/TefChargeDialog';
+const TefChargeDialog = lazy(() =>
+  import('@/components/TefChargeDialog').then((m) => ({ default: m.TefChargeDialog }))
+);
 
 interface ProductVariation {
   id: string;
