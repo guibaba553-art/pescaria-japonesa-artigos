@@ -1,0 +1,2 @@
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS freight_pct numeric NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS op_cost_pct numeric NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS min_sale_price numeric;
+ALTER TABLE public.product_variations ADD COLUMN IF NOT EXISTS freight_pct numeric NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS op_cost_pct numeric NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS min_sale_price numeric;
