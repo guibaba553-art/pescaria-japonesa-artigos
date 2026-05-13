@@ -1326,12 +1326,15 @@ export type Database = {
           cost_group_id: string | null
           created_at: string
           description: string | null
+          freight_pct: number
           height_cm: number | null
           id: string
           image_url: string | null
           length_cm: number | null
+          min_sale_price: number | null
           min_stock: number
           name: string
+          op_cost_pct: number
           price: number
           product_id: string
           sku: string | null
@@ -1345,12 +1348,15 @@ export type Database = {
           cost_group_id?: string | null
           created_at?: string
           description?: string | null
+          freight_pct?: number
           height_cm?: number | null
           id?: string
           image_url?: string | null
           length_cm?: number | null
+          min_sale_price?: number | null
           min_stock?: number
           name: string
+          op_cost_pct?: number
           price?: number
           product_id: string
           sku?: string | null
@@ -1364,12 +1370,15 @@ export type Database = {
           cost_group_id?: string | null
           created_at?: string
           description?: string | null
+          freight_pct?: number
           height_cm?: number | null
           id?: string
           image_url?: string | null
           length_cm?: number | null
+          min_sale_price?: number | null
           min_stock?: number
           name?: string
+          op_cost_pct?: number
           price?: number
           product_id?: string
           sku?: string | null
@@ -1408,17 +1417,20 @@ export type Database = {
           csosn: string | null
           description: string
           featured: boolean
+          freight_pct: number
           height_cm: number | null
           id: string
           image_url: string | null
           images: string[] | null
           include_in_nfe: boolean
           length_cm: number | null
+          min_sale_price: number | null
           min_stock: number
           minimum_quantity: number
           name: string
           ncm: string | null
           on_sale: boolean
+          op_cost_pct: number
           origem: string | null
           pdv_no_markup: boolean
           pdv_only: boolean
@@ -1460,17 +1472,20 @@ export type Database = {
           csosn?: string | null
           description: string
           featured?: boolean
+          freight_pct?: number
           height_cm?: number | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
           length_cm?: number | null
+          min_sale_price?: number | null
           min_stock?: number
           minimum_quantity?: number
           name: string
           ncm?: string | null
           on_sale?: boolean
+          op_cost_pct?: number
           origem?: string | null
           pdv_no_markup?: boolean
           pdv_only?: boolean
@@ -1512,17 +1527,20 @@ export type Database = {
           csosn?: string | null
           description?: string
           featured?: boolean
+          freight_pct?: number
           height_cm?: number | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           include_in_nfe?: boolean
           length_cm?: number | null
+          min_sale_price?: number | null
           min_stock?: number
           minimum_quantity?: number
           name?: string
           ncm?: string | null
           on_sale?: boolean
+          op_cost_pct?: number
           origem?: string | null
           pdv_no_markup?: boolean
           pdv_only?: boolean
@@ -2407,17 +2425,20 @@ export type Database = {
           csosn: string | null
           description: string
           featured: boolean
+          freight_pct: number
           height_cm: number | null
           id: string
           image_url: string | null
           images: string[] | null
           include_in_nfe: boolean
           length_cm: number | null
+          min_sale_price: number | null
           min_stock: number
           minimum_quantity: number
           name: string
           ncm: string | null
           on_sale: boolean
+          op_cost_pct: number
           origem: string | null
           pdv_no_markup: boolean
           pdv_only: boolean
@@ -2468,17 +2489,20 @@ export type Database = {
           csosn: string | null
           description: string
           featured: boolean
+          freight_pct: number
           height_cm: number | null
           id: string
           image_url: string | null
           images: string[] | null
           include_in_nfe: boolean
           length_cm: number | null
+          min_sale_price: number | null
           min_stock: number
           minimum_quantity: number
           name: string
           ncm: string | null
           on_sale: boolean
+          op_cost_pct: number
           origem: string | null
           pdv_no_markup: boolean
           pdv_only: boolean

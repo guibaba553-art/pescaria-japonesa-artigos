@@ -54,6 +54,9 @@ interface Product {
   image_url: string | null;
   sku: string | null;
   cost_group_id: string | null;
+  freight_pct: number;
+  op_cost_pct: number;
+  min_sale_price: number | null;
 }
 
 interface CostGroup {
@@ -107,7 +110,7 @@ export function PriceFormation() {
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
         supabase
           .from("product_variations")
-          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id")
+          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id, freight_pct, op_cost_pct, min_sale_price")
           .order("name"),
       ]);
 
@@ -134,6 +137,9 @@ export function PriceFormation() {
           image_url: p.image_url || null,
           sku: p.sku || null,
           cost_group_id: p.cost_group_id || null,
+          freight_pct: Number(p.freight_pct ?? 0),
+          op_cost_pct: Number(p.op_cost_pct ?? 0),
+          min_sale_price: p.min_sale_price !== null && p.min_sale_price !== undefined ? Number(p.min_sale_price) : null,
         }));
 
       const productById = new Map(rawProducts.map((p) => [p.id, p]));
@@ -152,6 +158,9 @@ export function PriceFormation() {
           image_url: v.image_url || parent.image_url || null,
           sku: v.sku || null,
           cost_group_id: v.cost_group_id || null,
+          freight_pct: Number(v.freight_pct ?? 0),
+          op_cost_pct: Number(v.op_cost_pct ?? 0),
+          min_sale_price: v.min_sale_price !== null && v.min_sale_price !== undefined ? Number(v.min_sale_price) : null,
         };
       });
 
@@ -193,9 +202,9 @@ export function PriceFormation() {
       setEditPrice(String(price));
       setEditMargin(margin.toFixed(2));
       setEditGroupId(selected.cost_group_id || "none");
-      setEditFreightPct("");
-      setEditOpCostPct("");
-      setEditMinSale("");
+      setEditFreightPct(selected.freight_pct ? String(selected.freight_pct) : "");
+      setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
+      setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
     }
   }, [selected]);
 
@@ -281,6 +290,11 @@ export function PriceFormation() {
     setSaving(true);
     try {
       const newGroupId = editGroupId === "none" ? null : editGroupId;
+      const extraFields = {
+        freight_pct: liveFreightPct,
+        op_cost_pct: liveOpCostPct,
+        min_sale_price: editMinSale ? liveMinSale : null,
+      };
       if (selected.variation_id) {
         const { error } = await supabase
           .from("product_variations")
@@ -288,6 +302,7 @@ export function PriceFormation() {
             cost: liveCost,
             price: livePrice,
             cost_group_id: newGroupId,
+            ...extraFields,
           })
           .eq("id", selected.variation_id);
         if (error) throw error;
@@ -298,6 +313,7 @@ export function PriceFormation() {
             cost: liveCost,
             price: livePrice,
             cost_group_id: newGroupId,
+            ...extraFields,
           })
           .eq("id", selected.product_id);
         if (error) throw error;
@@ -311,7 +327,7 @@ export function PriceFormation() {
       setProducts((prev) =>
         prev.map((p) =>
           p.id === selected.id
-            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId }
+            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId, ...extraFields }
             : p
         )
       );
@@ -320,6 +336,7 @@ export function PriceFormation() {
         cost: newCost,
         price: livePrice,
         cost_group_id: newGroupId,
+        ...extraFields,
       });
 
       loadAll({ silent: true });
