@@ -137,6 +137,9 @@ export function PriceFormation() {
           image_url: p.image_url || null,
           sku: p.sku || null,
           cost_group_id: p.cost_group_id || null,
+          freight_pct: Number(p.freight_pct ?? 0),
+          op_cost_pct: Number(p.op_cost_pct ?? 0),
+          min_sale_price: p.min_sale_price !== null && p.min_sale_price !== undefined ? Number(p.min_sale_price) : null,
         }));
 
       const productById = new Map(rawProducts.map((p) => [p.id, p]));
