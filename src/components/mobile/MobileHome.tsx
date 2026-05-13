@@ -116,7 +116,7 @@ const ProductMiniCard = ({
 };
 
 const HorizontalScroller = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex gap-3 px-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+  <div className="flex gap-3 px-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
     {children}
   </div>
 );
