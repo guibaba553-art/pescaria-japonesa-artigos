@@ -667,11 +667,30 @@ export default function AdminCustomers() {
               <>
                 <div className="space-y-2">
                   <Label>CNPJ *</Label>
-                  <Input
-                    value={form.cnpj}
-                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                    placeholder="00.000.000/0000-00"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={form.cnpj}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm({ ...form, cnpj: v });
+                        const digits = v.replace(/\D/g, '');
+                        if (digits.length === 14) lookupCnpj(digits);
+                      }}
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={cnpjLoading}
+                      onClick={() => lookupCnpj(form.cnpj.replace(/\D/g, ''))}
+                    >
+                      {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Preenche automaticamente Razão Social, endereço, município, IBGE e IE (quando disponível).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Razão Social *</Label>
