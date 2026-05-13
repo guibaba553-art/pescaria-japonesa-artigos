@@ -192,6 +192,8 @@ export function PriceFormation() {
       setEditPrice(String(price));
       setEditMargin(margin.toFixed(2));
       setEditGroupId(selected.cost_group_id || "none");
+      setEditFreight("");
+      setEditOpCost("");
     }
   }, [selected]);
 
