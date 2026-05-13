@@ -620,17 +620,20 @@ export function PriceFormation() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label htmlFor="pf-freight">Frete (R$)</Label>
+                      <Label htmlFor="pf-freight">Frete (%)</Label>
                       <Input
                         id="pf-freight"
                         type="number"
                         step="0.01"
                         min="0"
                         inputMode="decimal"
-                        value={editFreight}
-                        onChange={(e) => setEditFreight(e.target.value)}
+                        value={editFreightPct}
+                        onChange={(e) => setEditFreightPct(e.target.value)}
                         placeholder="0,00"
                       />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        % sobre o custo · {fmt(liveFreight)}
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="pf-opcost">Custos operacionais (R$)</Label>
@@ -652,6 +655,28 @@ export function PriceFormation() {
                       Custo total (custo + frete + operacionais)
                     </span>
                     <span className="font-bold">{fmt(liveTotalCost)}</span>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="pf-min-sale">Valor mínimo de venda (R$)</Label>
+                    <Input
+                      id="pf-min-sale"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editMinSale}
+                      onChange={(e) => setEditMinSale(e.target.value)}
+                      placeholder="0,00"
+                    />
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      Apenas nesta tela por enquanto. Será aplicado ao PDV e demais campos no futuro.
+                    </div>
+                    {belowMin && (
+                      <div className="mt-2 text-xs rounded-md bg-red-50 text-red-700 px-2 py-1.5 border border-red-200">
+                        ⚠️ Preço de venda ({fmt(livePrice)}) está abaixo do mínimo definido ({fmt(liveMinSale)}).
+                      </div>
+                    )}
                   </div>
 
                   <div>
