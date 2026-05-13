@@ -210,6 +210,14 @@ export function PriceFormation() {
     );
   }, [products, search]);
 
+  const VISIBLE_LIMIT = 80;
+  const visible = useMemo(() => filtered.slice(0, VISIBLE_LIMIT), [filtered]);
+  const groupsById = useMemo(() => {
+    const m = new Map<string, CostGroup>();
+    groups.forEach((g) => m.set(g.id, g));
+    return m;
+  }, [groups]);
+
   const calc = (p: Product) => {
     const cost = Number(p.cost || 0);
     const price = Number(p.on_sale && p.sale_price ? p.sale_price : p.price || 0);
@@ -487,7 +495,9 @@ export function PriceFormation() {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          {filtered.length} de {products.length} produtos
+          Mostrando {visible.length} de {filtered.length}
+          {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
+          {filtered.length > VISIBLE_LIMIT && " — refine a busca para ver mais"}
         </div>
 
         {loadError && (
@@ -497,10 +507,10 @@ export function PriceFormation() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[65vh] overflow-y-auto pr-1">
-          {filtered.map((p) => {
+          {visible.map((p) => {
             const { cost, price, marginPct } = calc(p);
             const groupName = p.cost_group_id
-              ? groups.find((g) => g.id === p.cost_group_id)?.name
+              ? groupsById.get(p.cost_group_id)?.name
               : null;
             return (
               <button
@@ -515,6 +525,7 @@ export function PriceFormation() {
                       alt={p.name}
                       className="w-14 h-14 object-cover rounded-md flex-shrink-0"
                       loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="w-14 h-14 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
