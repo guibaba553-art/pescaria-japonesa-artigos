@@ -249,4 +249,21 @@
       padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
     }
   }
+
+  /* Bottom nav mobile à prova de bug: ancorada à viewport mesmo se algum
+     ancestral tiver transform/filter/will-change (que normalmente quebram
+     position: fixed). Também evita "saltos" durante o colapso da barra de
+     URL no iOS Safari / webviews (WhatsApp, Instagram). */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    /* Fallbacks progressivos para viewport em webviews iOS */
+  }
+  @supports (bottom: env(safe-area-inset-bottom)) {
+    .mobile-bottom-nav {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  }
 }
