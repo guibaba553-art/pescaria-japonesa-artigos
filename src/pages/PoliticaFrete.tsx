@@ -1,9 +1,58 @@
+import { Helmet } from "react-helmet-async";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Para quais regiões a JAPAS Pesca entrega?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Entregamos para todo o território nacional, partindo de Sinop/MT, via Correios (PAC e SEDEX) e Melhor Envio (Jadlog, Buslog, Loggi e parceiras). Também há retirada gratuita na loja em Sinop/MT.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Como o frete é calculado?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "O valor e o prazo são calculados automaticamente no carrinho a partir do CEP de destino, peso e dimensões dos produtos. O cliente escolhe entre as opções disponíveis.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Qual o prazo de entrega?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "O prazo total inclui até 2 dias úteis de preparação após a confirmação do pagamento mais o tempo de transporte da transportadora escolhida.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Como rastrear meu pedido?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Após a postagem você recebe o código de rastreio por e-mail e pode acompanhar em Minha Conta > Pedidos.",
+      },
+    },
+  ],
+};
 
 export default function PoliticaFrete() {
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>Política de Frete — JAPAS Pesca</title>
+        <meta name="description" content="Frete para todo o Brasil via Correios e Melhor Envio. Veja prazos, cálculo, rastreio e retirada na loja em Sinop/MT." />
+        <link rel="canonical" href="https://japaspesca.com.br/politica-de-frete" />
+        <meta property="og:title" content="Política de Frete — JAPAS Pesca" />
+        <meta property="og:description" content="Prazos, transportadoras, cálculo e rastreio dos pedidos da JAPAS Pesca." />
+        <meta property="og:url" content="https://japaspesca.com.br/politica-de-frete" />
+        <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
+      </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl pt-24">
         <h1 className="text-4xl font-bold mb-2">Política de Frete</h1>
