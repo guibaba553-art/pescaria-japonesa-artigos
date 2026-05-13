@@ -150,10 +150,12 @@ export default function AdminSalesAnalysis() {
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
 
-  // Carrega o cliente vinculado ao pedido quando o diálogo de NF abre
+  // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
   useEffect(() => {
     if (!invoiceTarget) { setInvoiceCustomer(null); return; }
-    const customerId = invoiceTarget.raw?.customer_id;
+    const customerId = invoiceTarget.kind === 'saved'
+      ? (invoiceTarget.raw?.customer_data?.id || null)
+      : (invoiceTarget.raw?.customer_id || null);
     if (!customerId) { setInvoiceCustomer(null); return; }
     supabase
       .from('customers')
@@ -164,14 +166,29 @@ export default function AdminSalesAnalysis() {
   }, [invoiceTarget]);
 
   const handleLinkCustomer = async (cust: any) => {
-    if (!invoiceTarget || invoiceTarget.kind !== 'order') return;
+    if (!invoiceTarget) return;
     setLinkingCustomer(true);
-    const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
-    setLinkingCustomer(false);
-    if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
-    toast.success('Cliente vinculado ao pedido');
+    if (invoiceTarget.kind === 'order') {
+      const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
+    } else {
+      // saved (orçamento) — grava em customer_data
+      const newCd = {
+        id: cust.id,
+        full_name: cust.full_name,
+        company_name: cust.company_name,
+        cpf: cust.cpf,
+        cnpj: cust.cnpj,
+      };
+      const { error } = await supabase.from('saved_sales').update({ customer_data: newCd }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: newCd } });
+    }
+    toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
-    setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
     fetchAll(true);
   };
 
@@ -1441,7 +1458,7 @@ export default function AdminSalesAnalysis() {
                       )}
 
                       {/* Destinatário */}
-                      {invoiceTarget && invoiceTarget.kind === 'order' && (
+                      {invoiceTarget && (invoiceTarget.kind === 'order' || invoiceTarget.kind === 'saved') && (
                         <div className={`mt-3 p-3 rounded-lg text-sm border ${
                           invoiceCustomer
                             ? 'bg-emerald-500/5 border-emerald-500/40'
