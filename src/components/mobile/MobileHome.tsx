@@ -93,30 +93,30 @@ const ProductMiniCard = ({
           </span>
         )}
       </div>
-      <div className="p-2">
+      <div className="p-2 flex flex-col">
         <p className="text-[11px] text-foreground font-medium leading-tight line-clamp-2 h-8 mb-1">
           {product.name}
         </p>
-        {onSale && (
-          <p className="text-[10px] text-muted-foreground line-through leading-none">
-            {formatPrice(product.price)}
-          </p>
-        )}
+        {/* Slot fixo p/ preço riscado — mantém altura uniforme entre cards */}
+        <p className="text-[10px] text-muted-foreground line-through leading-none h-3">
+          {onSale ? formatPrice(product.price) : "\u00A0"}
+        </p>
         <p className="text-sm font-bold text-primary leading-tight">
           {formatPrice(finalPrice)}
         </p>
-        {installment > 0 && (
-          <p className="text-[9px] text-muted-foreground mt-0.5">
-            {installment}x de {formatPrice(finalPrice / installment)}
-          </p>
-        )}
+        {/* Slot fixo p/ parcelamento — mantém altura uniforme entre cards */}
+        <p className="text-[9px] text-muted-foreground mt-0.5 h-3">
+          {installment > 0
+            ? `${installment}x de ${formatPrice(finalPrice / installment)}`
+            : "\u00A0"}
+        </p>
       </div>
     </button>
   );
 };
 
 const HorizontalScroller = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex gap-3 px-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+  <div className="flex gap-3 px-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
     {children}
   </div>
 );
@@ -276,7 +276,7 @@ export default function MobileHome() {
       {/* Flash deals */}
       {flashDeals.length > 0 && (
         <section className="mt-6 bg-gradient-to-b from-primary/10 to-transparent py-4 border-y border-primary/20">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary fill-primary" />
               <h3 className="font-display font-black text-foreground text-sm uppercase italic tracking-tight">
@@ -342,7 +342,7 @@ export default function MobileHome() {
       {/* Featured */}
       {featured.length > 0 && (
         <section className="mt-6">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-tight border-l-4 border-primary pl-2">
               Em destaque
             </h3>
@@ -366,7 +366,7 @@ export default function MobileHome() {
       {/* Best sellers */}
       {bestSellers.length > 0 && (
         <section className="mt-6">
-          <div className="flex items-center justify-between px-4 mb-3">
+          <div className="flex items-center justify-between px-3 mb-3">
             <h3 className="font-display font-bold text-foreground text-sm uppercase tracking-tight border-l-4 border-primary pl-2">
               Mais vendidos em Sinop
             </h3>
@@ -388,7 +388,7 @@ export default function MobileHome() {
       )}
 
       {/* Bottom CTA */}
-      <div className="px-4 pt-8">
+      <div className="px-3 pt-8">
         <button
           onClick={() => navigate("/produtos")}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl shadow-lg active:scale-[0.99] transition-transform"
