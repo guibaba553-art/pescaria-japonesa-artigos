@@ -21,7 +21,7 @@ import {
   FileDown
 } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { generateBudgetPdf } from '@/utils/budgetPdfGenerator';
+// generateBudgetPdf é carregado sob demanda (jsPDF é pesado)
 
 export default function SalesHistory() {
   const navigate = useNavigate();
