@@ -388,7 +388,7 @@ export default function MobileHome() {
       )}
 
       {/* Bottom CTA */}
-      <div className="px-4 pt-8">
+      <div className="px-3 pt-8">
         <button
           onClick={() => navigate("/produtos")}
           className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-xl shadow-lg active:scale-[0.99] transition-transform"
