@@ -166,6 +166,7 @@ export function LabelsManagement() {
 
     try {
       setGenerating(true);
+      const { generateLabelsPdf } = await import('@/utils/labelPdfGenerator');
       await generateLabelsPdf(items, { storeName, skipSlots });
 
       if (markPrinted) {
