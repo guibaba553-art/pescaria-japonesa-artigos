@@ -54,6 +54,9 @@ interface Product {
   image_url: string | null;
   sku: string | null;
   cost_group_id: string | null;
+  freight_pct: number;
+  op_cost_pct: number;
+  min_sale_price: number | null;
 }
 
 interface CostGroup {
