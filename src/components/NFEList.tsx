@@ -68,7 +68,28 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
   const [cancelTarget, setCancelTarget] = useState<NFE | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleCheckStatus = async (nfe: NFE) => {
+    setCheckingId(nfe.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-nfe-status');
+      if (error) throw error;
+      const result = (data as any)?.results?.find((r: any) => r.id === nfe.id);
+      await loadNFEs();
+      if (result?.focusStatus === 'autorizado' || result?.updated) {
+        toast({ title: 'Status atualizado', description: `SEFAZ: ${result.focusStatus || 'atualizado'}` });
+      } else {
+        toast({ title: 'Ainda em processamento', description: 'A SEFAZ ainda não retornou autorização. Tente novamente em alguns segundos.' });
+      }
+      onRefresh?.();
+    } catch (err: any) {
+      toast({ title: 'Erro ao verificar', description: err?.message || 'Erro desconhecido', variant: 'destructive' });
+    } finally {
+      setCheckingId(null);
+    }
+  };
 
   const handleCancel = async () => {
     if (!cancelTarget) return;
