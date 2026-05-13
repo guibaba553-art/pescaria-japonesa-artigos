@@ -2853,6 +2853,7 @@ export default function PDV() {
                                               0
                                             );
                                             const discount = Math.max(0, subtotal - Number(sale.total_amount));
+                                            const { generateBudgetPdf } = await import('@/utils/budgetPdfGenerator');
                                             await generateBudgetPdf({
                                               saleId: sale.id,
                                               createdAt: sale.created_at,
