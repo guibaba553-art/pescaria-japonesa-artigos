@@ -86,6 +86,8 @@ export function PriceFormation() {
   const [editPrice, setEditPrice] = useState("");
   const [editMargin, setEditMargin] = useState("");
   const [editGroupId, setEditGroupId] = useState<string>("none");
+  const [editFreight, setEditFreight] = useState("");
+  const [editOpCost, setEditOpCost] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Group manager
@@ -190,6 +192,8 @@ export function PriceFormation() {
       setEditPrice(String(price));
       setEditMargin(margin.toFixed(2));
       setEditGroupId(selected.cost_group_id || "none");
+      setEditFreight("");
+      setEditOpCost("");
     }
   }, [selected]);
 
@@ -217,8 +221,11 @@ export function PriceFormation() {
   const liveCost = parseNum(editCost);
   const livePrice = parseNum(editPrice);
   const liveMargin = parseNum(editMargin);
-  const liveProfit = livePrice - liveCost;
-  const liveMarkup = liveCost > 0 ? (liveProfit / liveCost) * 100 : 0;
+  const liveFreight = parseNum(editFreight);
+  const liveOpCost = parseNum(editOpCost);
+  const liveTotalCost = liveCost + liveFreight + liveOpCost;
+  const liveProfit = livePrice - liveTotalCost;
+  const liveMarkup = liveTotalCost > 0 ? (liveProfit / liveTotalCost) * 100 : 0;
 
   // Margin → recompute price
   const handleMarginChange = (v: string) => {
@@ -604,6 +611,42 @@ export function PriceFormation() {
                       onChange={(e) => handleCostChange(e.target.value)}
                       disabled={editGroupId !== "none"}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="pf-freight">Frete (R$)</Label>
+                      <Input
+                        id="pf-freight"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editFreight}
+                        onChange={(e) => setEditFreight(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="pf-opcost">Custos operacionais (R$)</Label>
+                      <Input
+                        id="pf-opcost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editOpCost}
+                        onChange={(e) => setEditOpCost(e.target.value)}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Custo total (custo + frete + operacionais)
+                    </span>
+                    <span className="font-bold">{fmt(liveTotalCost)}</span>
                   </div>
 
                   <div>
