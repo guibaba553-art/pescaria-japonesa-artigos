@@ -1,9 +1,18 @@
+import { Helmet } from "react-helmet-async";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export default function TermosUso() {
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>Termos de Uso — JAPAS Pesca</title>
+        <meta name="description" content="Regras de cadastro, compras, pagamento, entrega e responsabilidades ao usar o site da JAPAS Pesca." />
+        <link rel="canonical" href="https://japaspesca.com.br/termos-de-uso" />
+        <meta property="og:title" content="Termos de Uso — JAPAS Pesca" />
+        <meta property="og:description" content="Termos que regem o uso do site e a relação de consumo com a JAPAS Pesca." />
+        <meta property="og:url" content="https://japaspesca.com.br/termos-de-uso" />
+      </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-bold mb-2">Termos de Uso</h1>

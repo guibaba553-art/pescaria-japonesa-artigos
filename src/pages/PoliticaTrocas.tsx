@@ -1,9 +1,58 @@
+import { Helmet } from "react-helmet-async";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Posso desistir da compra após receber o produto?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Sim. Conforme o Art. 49 do Código de Defesa do Consumidor, você tem 7 dias corridos após o recebimento para desistir, com reembolso integral incluindo frete.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Qual o prazo para troca por defeito de fabricação?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Você tem até 90 dias (CDC Art. 26) para solicitar troca ou reparo de produtos com defeito de fabricação.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Como solicito uma troca ou devolução?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Entre em contato pelo WhatsApp (66) 99211-1712 informando o número do pedido e motivo, envie fotos do produto e da embalagem, aguarde a autorização e envie o produto pelos Correios ou transportadora indicada.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Em quanto tempo recebo o reembolso?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Até 10 dias úteis após o recebimento e análise do produto, pela mesma forma de pagamento utilizada na compra.",
+      },
+    },
+  ],
+};
 
 export default function PoliticaTrocas() {
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>Política de Trocas e Devoluções — JAPAS Pesca</title>
+        <meta name="description" content="Direito de arrependimento em 7 dias, troca por defeito em 90 dias e como solicitar reembolso na JAPAS Pesca." />
+        <link rel="canonical" href="https://japaspesca.com.br/politica-de-trocas" />
+        <meta property="og:title" content="Política de Trocas e Devoluções — JAPAS Pesca" />
+        <meta property="og:description" content="Saiba como trocar ou devolver produtos comprados na JAPAS Pesca." />
+        <meta property="og:url" content="https://japaspesca.com.br/politica-de-trocas" />
+        <script type="application/ld+json">{JSON.stringify(faqJsonLd)}</script>
+      </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-bold mb-8">Política de Trocas e Devoluções</h1>

@@ -1,9 +1,18 @@
+import { Helmet } from "react-helmet-async";
 import { Header } from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export default function PoliticaPrivacidade() {
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>Política de Privacidade — JAPAS Pesca</title>
+        <meta name="description" content="Como a JAPAS Pesca coleta, usa e protege seus dados pessoais conforme a LGPD (Lei 13.709/2018)." />
+        <link rel="canonical" href="https://japaspesca.com.br/politica-privacidade" />
+        <meta property="og:title" content="Política de Privacidade — JAPAS Pesca" />
+        <meta property="og:description" content="Tratamento de dados pessoais conforme a LGPD." />
+        <meta property="og:url" content="https://japaspesca.com.br/politica-privacidade" />
+      </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-bold mb-2">Política de Privacidade</h1>

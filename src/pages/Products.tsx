@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
@@ -260,6 +261,37 @@ export default function Products() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{categoryParam ? `${categoryParam} — JAPAS Pesca` : 'Catálogo de Produtos — JAPAS Pesca'}</title>
+        <meta
+          name="description"
+          content={
+            categoryParam
+              ? `${categoryParam} na JAPAS Pesca: confira preços, marcas e especificações com entrega para todo o Brasil.`
+              : 'Catálogo completo de artigos de pesca: varas, molinetes, iscas, anzóis, linhas e acessórios. Filtre por categoria, marca e preço.'
+          }
+        />
+        <link
+          rel="canonical"
+          href={
+            categoryParam
+              ? `https://japaspesca.com.br/produtos?category=${encodeURIComponent(categoryParam)}`
+              : 'https://japaspesca.com.br/produtos'
+          }
+        />
+        <meta property="og:title" content={categoryParam ? `${categoryParam} — JAPAS Pesca` : 'Catálogo de Produtos — JAPAS Pesca'} />
+        <meta property="og:description" content="Artigos de pesca com entrega para todo o Brasil." />
+        <meta property="og:url" content="https://japaspesca.com.br/produtos" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: categoryParam || 'Catálogo de Produtos',
+          url: categoryParam
+            ? `https://japaspesca.com.br/produtos?category=${encodeURIComponent(categoryParam)}`
+            : 'https://japaspesca.com.br/produtos',
+          isPartOf: { "@type": "WebSite", name: 'JAPAS Pesca', url: 'https://japaspesca.com.br' },
+        })}</script>
+      </Helmet>
       <Header />
       {/* Spacer to compensate fixed Header height */}
       <div aria-hidden className="h-16 lg:h-[108px]" />

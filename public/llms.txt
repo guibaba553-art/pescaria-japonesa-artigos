@@ -1,0 +1,16 @@
+# JAPAS Pesca
+
+> Loja de artigos de pesca em Sinop/MT — varas, molinetes, iscas, anzóis, linhas e acessórios, com atendimento especializado e entrega para todo o Brasil.
+
+## Pages
+
+- [Home](/): Apresentação da loja, destaques e categorias.
+- [Produtos](/produtos): Catálogo completo com filtros por categoria, marca, preço e tamanho.
+- [Política de Trocas e Devoluções](/politica-de-trocas): Direito de arrependimento (7 dias), trocas por defeito e como solicitar.
+- [Política de Frete](/politica-de-frete): Áreas de entrega, transportadoras (Correios, Melhor Envio), prazos e rastreio.
+- [Política de Privacidade](/politica-privacidade): Tratamento de dados pessoais conforme a LGPD.
+- [Termos de Uso](/termos-de-uso): Regras de cadastro, compras, pagamento e responsabilidades.
+
+## Optional
+
+- [Entrar / Cadastrar](/auth): Acesso à conta do cliente.
