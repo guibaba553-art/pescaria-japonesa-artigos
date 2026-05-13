@@ -104,6 +104,95 @@ export default function AdminCustomers() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [fixingId, setFixingId] = useState<string | null>(null);
+  const [cnpjLoading, setCnpjLoading] = useState(false);
+
+  const lookupCnpj = async (digits: string) => {
+    if (digits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'Informe os 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    setCnpjLoading(true);
+    try {
+      let d: any = null;
+      let ieFromFocus = '';
+      let ieAtivaFromFocus = false;
+      try {
+        const { data: focusData, error: focusErr } = await supabase.functions.invoke('lookup-cnpj-focus', {
+          body: { cnpj: digits },
+        });
+        if (!focusErr && focusData?.success) {
+          d = {
+            razao_social: focusData.razao_social,
+            nome_fantasia: focusData.nome_fantasia,
+            cep: focusData.cep,
+            logradouro: focusData.logradouro,
+            numero: focusData.numero,
+            complemento: focusData.complemento,
+            bairro: focusData.bairro,
+            municipio: focusData.municipio,
+            uf: focusData.uf,
+            codigo_municipio: focusData.codigo_municipio_ibge,
+            email: focusData.email,
+          };
+          ieFromFocus = focusData.inscricao_estadual || '';
+          ieAtivaFromFocus = !!focusData.ie_ativa;
+        }
+      } catch (err) {
+        console.warn('Focus NFe lookup falhou, usando BrasilAPI:', err);
+      }
+
+      if (!d) {
+        const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
+        if (!res.ok) throw new Error('CNPJ não encontrado');
+        d = await res.json();
+      }
+
+      const fmtCnpj = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+      const fmtCep = (d.cep ? String(d.cep).padStart(8, '0') : '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+
+      let ibge = d.codigo_municipio ? String(d.codigo_municipio) : '';
+      if ((!ibge || ibge.length !== 7) && d.uf && d.municipio) {
+        try {
+          const ibgeRes = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${d.uf}?providers=dados-abertos-br,gov,wikipedia`);
+          if (ibgeRes.ok) {
+            const cidades: any[] = await ibgeRes.json();
+            const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+            const alvo = norm(d.municipio);
+            const match = cidades.find((c) => norm(c.nome) === alvo);
+            if (match?.codigo_ibge) ibge = String(match.codigo_ibge);
+          }
+        } catch {}
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        cnpj: fmtCnpj,
+        company_name: d.razao_social || prev.company_name,
+        full_name: prev.full_name || d.nome_fantasia || d.razao_social || '',
+        email: d.email || prev.email,
+        cep: fmtCep || prev.cep,
+        street: d.logradouro || prev.street,
+        number: d.numero || prev.number,
+        neighborhood: d.bairro || prev.neighborhood,
+        complemento: d.complemento || prev.complemento,
+        municipio: d.municipio || prev.municipio,
+        uf: d.uf || prev.uf,
+        codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
+        inscricao_estadual: ieFromFocus && ieAtivaFromFocus ? ieFromFocus : prev.inscricao_estadual,
+        ie_indicador: ieFromFocus && ieAtivaFromFocus ? '1' : prev.ie_indicador,
+      }));
+      toast({
+        title: 'Dados preenchidos',
+        description: ieFromFocus && ieAtivaFromFocus
+          ? `${d.razao_social} — IE ${ieFromFocus}`
+          : d.razao_social || 'Dados carregados',
+      });
+    } catch (e: any) {
+      toast({ title: 'Erro ao buscar CNPJ', description: e?.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setCnpjLoading(false);
+    }
+  };
 
   // Tenta corrigir automaticamente UM cliente via ViaCEP
   const autoFixOne = async (c: Customer) => {
@@ -578,11 +667,30 @@ export default function AdminCustomers() {
               <>
                 <div className="space-y-2">
                   <Label>CNPJ *</Label>
-                  <Input
-                    value={form.cnpj}
-                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                    placeholder="00.000.000/0000-00"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={form.cnpj}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm({ ...form, cnpj: v });
+                        const digits = v.replace(/\D/g, '');
+                        if (digits.length === 14) lookupCnpj(digits);
+                      }}
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={cnpjLoading}
+                      onClick={() => lookupCnpj(form.cnpj.replace(/\D/g, ''))}
+                    >
+                      {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Preenche automaticamente Razão Social, endereço, município, IBGE e IE (quando disponível).
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Razão Social *</Label>
