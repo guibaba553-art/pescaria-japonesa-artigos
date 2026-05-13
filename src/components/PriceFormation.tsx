@@ -290,6 +290,11 @@ export function PriceFormation() {
     setSaving(true);
     try {
       const newGroupId = editGroupId === "none" ? null : editGroupId;
+      const extraFields = {
+        freight_pct: liveFreightPct,
+        op_cost_pct: liveOpCostPct,
+        min_sale_price: editMinSale ? liveMinSale : null,
+      };
       if (selected.variation_id) {
         const { error } = await supabase
           .from("product_variations")
@@ -297,6 +302,7 @@ export function PriceFormation() {
             cost: liveCost,
             price: livePrice,
             cost_group_id: newGroupId,
+            ...extraFields,
           })
           .eq("id", selected.variation_id);
         if (error) throw error;
@@ -307,6 +313,7 @@ export function PriceFormation() {
             cost: liveCost,
             price: livePrice,
             cost_group_id: newGroupId,
+            ...extraFields,
           })
           .eq("id", selected.product_id);
         if (error) throw error;
@@ -320,7 +327,7 @@ export function PriceFormation() {
       setProducts((prev) =>
         prev.map((p) =>
           p.id === selected.id
-            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId }
+            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId, ...extraFields }
             : p
         )
       );
@@ -329,6 +336,7 @@ export function PriceFormation() {
         cost: newCost,
         price: livePrice,
         cost_group_id: newGroupId,
+        ...extraFields,
       });
 
       loadAll({ silent: true });
