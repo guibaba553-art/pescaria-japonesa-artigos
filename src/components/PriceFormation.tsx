@@ -221,8 +221,11 @@ export function PriceFormation() {
   const liveCost = parseNum(editCost);
   const livePrice = parseNum(editPrice);
   const liveMargin = parseNum(editMargin);
-  const liveProfit = livePrice - liveCost;
-  const liveMarkup = liveCost > 0 ? (liveProfit / liveCost) * 100 : 0;
+  const liveFreight = parseNum(editFreight);
+  const liveOpCost = parseNum(editOpCost);
+  const liveTotalCost = liveCost + liveFreight + liveOpCost;
+  const liveProfit = livePrice - liveTotalCost;
+  const liveMarkup = liveTotalCost > 0 ? (liveProfit / liveTotalCost) * 100 : 0;
 
   // Margin → recompute price
   const handleMarginChange = (v: string) => {
