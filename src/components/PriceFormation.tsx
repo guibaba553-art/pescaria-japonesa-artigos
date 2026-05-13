@@ -158,6 +158,9 @@ export function PriceFormation() {
           image_url: v.image_url || parent.image_url || null,
           sku: v.sku || null,
           cost_group_id: v.cost_group_id || null,
+          freight_pct: Number(v.freight_pct ?? 0),
+          op_cost_pct: Number(v.op_cost_pct ?? 0),
+          min_sale_price: v.min_sale_price !== null && v.min_sale_price !== undefined ? Number(v.min_sale_price) : null,
         };
       });
 
