@@ -565,6 +565,7 @@ export default function AdminSalesAnalysis() {
       const subtotal = items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
       const discount = Math.max(0, subtotal - Number(row.total_amount));
 
+      const { generateBudgetPdf } = await import('@/utils/budgetPdfGenerator');
       await generateBudgetPdf({
         saleId: row.id,
         createdAt: row.created_at,
