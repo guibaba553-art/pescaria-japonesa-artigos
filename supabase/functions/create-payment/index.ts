@@ -28,9 +28,9 @@ const paymentRequestSchema = z.object({
     securityCode: z.string().min(3).max(4).regex(/^\d+$/, 'CVV must be 3-4 digits'),
   }).nullable().optional(),
   installments: z.union([z.string(), z.number()]).optional(),
-  userEmail: z.string().email('Invalid email').optional(),
-  userCpf: z.string().optional(),
-  userName: z.string().optional(),
+  userEmail: z.string().email('Invalid email').nullable().optional(),
+  userCpf: z.string().nullable().optional(),
+  userName: z.string().nullable().optional(),
   orderId: z.string().uuid('Invalid order ID').optional(),
 });
 
