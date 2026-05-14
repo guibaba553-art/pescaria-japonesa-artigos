@@ -2150,7 +2150,7 @@ export default function PDV() {
       </div>
 
       {/* Sticky bottom bar — mobile: total + ir para carrinho/finalizar */}
-      {cart.length > 0 && (
+      {cart.length > 0 && !mobileCartOpen && (
         <div
           className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
