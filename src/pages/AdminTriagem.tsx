@@ -46,7 +46,7 @@ export default function AdminTriagem() {
       const { data: rows, error } = await supabase
         .from('orders')
         .select(
-          `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code,
+          `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code, shipping_label_url, shipping_label_order_id,
            order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku), product_variations(name, sku)),
            nfe_emissions(id, nfe_number, danfe_url, status)`,
         )
@@ -147,7 +147,7 @@ export default function AdminTriagem() {
       const { data, error } = await supabase
         .from('orders')
         .select(
-          `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code,
+          `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code, shipping_label_url, shipping_label_order_id,
            order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku), product_variations(name, sku)),
            nfe_emissions(id, nfe_number, danfe_url, status)`,
         )

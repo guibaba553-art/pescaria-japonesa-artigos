@@ -95,6 +95,9 @@ interface OrderInfo {
   id: string;
   shipping_cep: string;
   total_amount: number;
+  tracking_code?: string | null;
+  shipping_label_url?: string | null;
+  shipping_label_order_id?: string | null;
   order_items: Array<{ quantity: number; product_id: string }>;
 }
 
@@ -115,6 +118,44 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
 
   useEffect(() => {
     if (open && order) {
+      if (order.shipping_label_order_id || order.shipping_label_url) {
+        setSelected('');
+        setOptions([]);
+        setLoadingQuotes(false);
+        setResult({
+          trackingCode: order.tracking_code || null,
+          labelUrl: order.shipping_label_url || null,
+        });
+
+        if (order.shipping_label_order_id && !order.shipping_label_url) {
+          setGenerating(true);
+          supabase.functions.invoke('melhor-envio-label', {
+            body: {
+              action: 'print',
+              orderId: order.id,
+            },
+          }).then(({ data, error }) => {
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            setResult({
+              trackingCode: data.trackingCode || order.tracking_code || null,
+              labelUrl: data.labelUrl || null,
+            });
+          }).catch((err: any) => {
+            toast({
+              title: 'Erro ao recuperar etiqueta',
+              description: err.message || 'Não foi possível abrir o PDF da etiqueta.',
+              variant: 'destructive',
+            });
+          }).finally(() => {
+            setGenerating(false);
+          });
+        }
+
+        return;
+      }
+
       setResult(null);
       setSelected('');
       loadQuotes();
@@ -224,7 +265,7 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
       });
 
       toast({
-        title: 'Etiqueta gerada com sucesso! 🎉',
+        title: data?.reused ? 'Etiqueta pronta para impressão' : 'Etiqueta gerada com sucesso! 🎉',
         description: data.trackingCode
           ? `Rastreio: ${data.trackingCode}`
           : 'Etiqueta comprada — abra o PDF para imprimir.',
@@ -280,17 +321,22 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
                   </Button>
                 </div>
               )}
-              {result.labelUrl && (
-                <Button asChild className="w-full" size="lg">
+              {result.labelUrl ? (
+                  <Button asChild className="w-full" size="lg">
                   <a href={result.labelUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Imprimir Etiqueta (PDF)
                   </a>
                 </Button>
-              )}
+              ) : generating ? (
+                <div className="flex items-center justify-center gap-2 rounded-md border bg-background p-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Recuperando PDF da etiqueta...
+                </div>
+              ) : null}
             </div>
 
-            {(() => {
+            {selected && (() => {
               const opt = options.find((o) => o.codigo === selected);
               const dispatch = getDispatchInfo(opt?.company || null);
               return (

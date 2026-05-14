@@ -54,6 +54,8 @@ interface Order {
   delivery_type: 'delivery' | 'pickup';
   source?: 'site' | 'pdv';
   tracking_code?: string;
+  shipping_label_url?: string | null;
+  shipping_label_order_id?: string | null;
   payment_id?: string | null;
   order_items: OrderItem[];
   nfe_emissions?: NFEEmission[];
@@ -390,7 +392,7 @@ const OrdersTable = ({
                     className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
                   >
                     <Truck className="h-3.5 w-3.5" />
-                    {order.tracking_code ? 'Nova Etiqueta' : 'Gerar Etiqueta'}
+                    {order.shipping_label_order_id ? 'Imprimir Etiqueta' : order.tracking_code ? 'Nova Etiqueta' : 'Gerar Etiqueta'}
                   </Button>
                 )}
 
