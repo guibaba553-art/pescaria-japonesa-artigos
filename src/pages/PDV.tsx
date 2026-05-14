@@ -32,8 +32,10 @@ import {
   Printer,
   Loader2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  X
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -116,6 +118,12 @@ export default function PDV() {
   useEffect(() => {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = mobileCartOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileCartOpen]);
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -1624,7 +1632,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[700px]">
+                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
@@ -1694,7 +1702,29 @@ export default function PDV() {
           </div>
 
           {/* Carrinho e Pagamento */}
-          <div id="pdv-cart-panel" className="space-y-4">
+          <div
+            id="pdv-cart-panel"
+            className={cn(
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4',
+              mobileCartOpen
+                ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
+                : 'hidden'
+            )}
+          >
+            <div className="lg:hidden flex items-center justify-between sticky top-0 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border z-10">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-primary" />
+                <span className="font-bold text-sm">Carrinho ({cart.length})</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setMobileCartOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
@@ -2120,7 +2150,7 @@ export default function PDV() {
       </div>
 
       {/* Sticky bottom bar — mobile: total + ir para carrinho/finalizar */}
-      {cart.length > 0 && (
+      {cart.length > 0 && !mobileCartOpen && (
         <div
           className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.1)]"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -2136,11 +2166,7 @@ export default function PDV() {
             </div>
             <Button
               size="lg"
-              onClick={() => {
-                document
-                  .getElementById('pdv-cart-panel')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              onClick={() => setMobileCartOpen(true)}
               className="rounded-full font-bold shadow-md"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
