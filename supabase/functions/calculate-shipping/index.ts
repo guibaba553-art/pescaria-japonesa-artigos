@@ -198,9 +198,23 @@ Deno.serve(async (req) => {
     const [meOptions, frenetOptions] = await Promise.all([fetchMelhorEnvio(), fetchFrenet()]);
     const allOptions = [...meOptions, ...frenetOptions];
 
+    // Filtra Correios quando o pacote excede limites oficiais (lado maior 105cm,
+    // soma C+L+A 200cm). Sem isso, a API devolve preço mas a postagem é recusada.
+    const maxLength = Math.max(...products.map((p) => p.length));
+    const maxSumDims = Math.max(
+      ...products.map((p) => p.length + p.width + p.height),
+    );
+    const correiosBlocked = maxLength > 105 || maxSumDims > 200;
+    const filteredOptions = correiosBlocked
+      ? allOptions.filter((opt) => {
+          const company = (opt.company || '').toLowerCase();
+          return !company.includes('correio');
+        })
+      : allOptions;
+
     // Deduplica: para mesma transportadora+serviço, mantém o mais barato
     const dedupMap = new Map<string, any>();
-    for (const opt of allOptions) {
+    for (const opt of filteredOptions) {
       const key = `${(opt.company || '').toLowerCase()}::${(opt.servico || '').toLowerCase()}`;
       const existing = dedupMap.get(key);
       if (!existing || opt.valor < existing.valor) dedupMap.set(key, opt);
