@@ -118,6 +118,12 @@ export default function PDV() {
   useEffect(() => {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = mobileCartOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileCartOpen]);
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [loadingProducts, setLoadingProducts] = useState(true);
