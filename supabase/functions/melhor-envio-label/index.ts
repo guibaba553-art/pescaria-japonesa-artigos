@@ -14,7 +14,7 @@ const FROM_ADDRESS = {
   name: 'JAPAS Pesca',
   phone: '5566996579671',
   email: 'robertobaba2@gmail.com',
-  document: '', // CPF/CNPJ deve ser preenchido nas configurações da conta Melhor Envio
+  document: '33169502000108', // CNPJ da loja — usado como fallback se cliente não tiver CPF
   address: 'Endereço da loja', // Será sobrescrito pelo perfil ME
   complement: '',
   number: 'S/N',
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
             profile?.phone ||
             FROM_ADDRESS.phone,
           email: customerEmail || FROM_ADDRESS.email,
-          document: profile?.cpf || '',
+          document: profile?.cpf || FROM_ADDRESS.document,
           address: matchedAddress?.street || addressParts[0] || order.shipping_address,
           complement: matchedAddress?.complement || '',
           number: matchedAddress?.number || addressParts[1] || 'S/N',
