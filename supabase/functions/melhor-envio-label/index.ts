@@ -10,12 +10,16 @@ const ME_API_BASE = 'https://melhorenvio.com.br/api/v2';
 const USER_AGENT = 'JAPAS Pesca (robertobaba2@gmail.com)';
 
 // Origem fixa - dados da loja
+// Melhor Envio separa CPF (document) de CNPJ (company_document) — para empresa,
+// `document` deve ficar vazio e o CNPJ vai em `company_document`.
 const FROM_ADDRESS = {
   name: 'JAPAS Pesca',
   phone: '5566996579671',
   email: 'robertobaba2@gmail.com',
-  document: '33169502000108', // CNPJ da loja — usado como fallback se cliente não tiver CPF
-  address: 'Endereço da loja', // Será sobrescrito pelo perfil ME
+  document: '',
+  company_document: '33169502000108',
+  state_register: 'ISENTO',
+  address: 'Endereço da loja',
   complement: '',
   number: 'S/N',
   district: 'Centro',
@@ -24,6 +28,10 @@ const FROM_ADDRESS = {
   postal_code: '78556100',
   country_id: 'BR',
 };
+
+// CPF válido fictício usado apenas em testes quando o cliente não tem CPF
+// cadastrado (Melhor Envio rejeita sem um CPF válido pelo algoritmo).
+const FALLBACK_TEST_CPF = '11144477735';
 
 const labelRequestSchema = z.object({
   action: z.enum(['create_cart', 'checkout', 'generate', 'print', 'full_flow']),
@@ -171,7 +179,7 @@ Deno.serve(async (req) => {
             profile?.phone ||
             FROM_ADDRESS.phone,
           email: customerEmail || FROM_ADDRESS.email,
-          document: profile?.cpf || FROM_ADDRESS.document,
+          document: profile?.cpf || FALLBACK_TEST_CPF,
           address: matchedAddress?.street || addressParts[0] || order.shipping_address,
           complement: matchedAddress?.complement || '',
           number: matchedAddress?.number || addressParts[1] || 'S/N',
