@@ -200,6 +200,39 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
     }
   };
 
+  const handleMarkAsEnviado = async () => {
+    if (!order || !allScanned) return;
+    setConfirming(true);
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status: 'enviado' as any })
+        .eq('id', order.id)
+        .select('id, status');
+
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Sem permissão para atualizar o pedido.');
+      }
+
+      toast({
+        title: '✅ Pedido enviado',
+        description: `Pedido #${order.id.slice(0, 8)} marcado como enviado. Acompanhe o rastreamento na aba de pedidos.`,
+      });
+      onCompleted();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error('[TriagemScanDialog] enviado error:', err);
+      toast({
+        title: 'Erro ao marcar como enviado',
+        description: err?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setConfirming(false);
+    }
+  };
+
   const emitNfe = async () => {
     if (!order) return;
     setEmittingNfe(true);
@@ -450,13 +483,29 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             <div className="flex-1 text-xs text-muted-foreground self-center">
               Total do pedido: <strong>{fmt(order.total_amount)}</strong>
             </div>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
+
+            {mode === 'pack' && hasNfeAuth && order.shipping_label_order_id && allScanned && (
+              <Button
+                onClick={handleMarkAsEnviado}
+                disabled={confirming}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {confirming ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Truck className="w-4 h-4 mr-2" />
+                )}
+                Marcar como enviado
+              </Button>
+            )}
+
             <Button
               onClick={handleConfirm}
               disabled={!allScanned || confirming}
