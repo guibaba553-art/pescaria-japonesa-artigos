@@ -85,6 +85,51 @@ export function ImageThumbWithBgRemoval({
     }
   };
 
+  const handleUpscale = async () => {
+    setProcessing(true);
+    try {
+      toast({
+        title: 'Aplicando upscale...',
+        description: 'Removendo serrilhado da imagem.',
+      });
+
+      // Para URLs já salvas, baixa como File primeiro
+      let inputFile: File;
+      if (typeof source === 'string') {
+        const res = await fetch(source);
+        const blob = await res.blob();
+        const name = source.split('/').pop() || 'image.jpg';
+        inputFile = new File([blob], name, { type: blob.type || 'image/jpeg' });
+      } else {
+        inputFile = source;
+      }
+
+      const upscaled = await upscaleImage(inputFile, 2);
+
+      if (typeof source === 'string') {
+        // Imagens salvas: devolve data URL para o pai re-uploadar
+        const dataUrl = await blobToDataUrl(upscaled);
+        setPreviewUrl(dataUrl);
+        onBackgroundRemoved(dataUrl);
+      } else {
+        // Novo upload: devolve File diretamente
+        setPreviewUrl(URL.createObjectURL(upscaled));
+        onBackgroundRemoved(upscaled);
+      }
+
+      toast({ title: 'Upscale concluído!' });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Erro ao aplicar upscale',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <div className={`relative group rounded overflow-hidden bg-muted ${className ?? ''}`}>
       <img src={src} alt={alt} className="w-full h-20 object-contain bg-checker" />
@@ -98,18 +143,32 @@ export function ImageThumbWithBgRemoval({
 
       {/* Botões */}
       <div className="absolute top-1 left-1 right-1 flex justify-between gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="h-6 px-1.5 text-[10px] gap-1"
-          onClick={handleRemoveBg}
-          disabled={processing}
-          title="Remover fundo da imagem"
-        >
-          <Scissors className="w-3 h-3" />
-          Sem fundo
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] gap-1"
+            onClick={handleRemoveBg}
+            disabled={processing}
+            title="Remover fundo da imagem"
+          >
+            <Scissors className="w-3 h-3" />
+            Sem fundo
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-6 px-1.5 text-[10px] gap-1"
+            onClick={handleUpscale}
+            disabled={processing}
+            title="Upscale 2x — remove serrilhado"
+          >
+            <Sparkles className="w-3 h-3" />
+            Upscale
+          </Button>
+        </div>
         <Button
           type="button"
           variant="destructive"
