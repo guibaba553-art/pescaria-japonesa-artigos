@@ -150,6 +150,13 @@ export default function AdminSalesAnalysis() {
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
 
+  // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
+  useEffect(() => {
+    if (!invoiceTarget) return;
+    const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
+    setInvoiceModel(isSite ? 'nfe' : 'nfce');
+  }, [invoiceTarget]);
+
   // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
   useEffect(() => {
     if (!invoiceTarget) { setInvoiceCustomer(null); return; }
@@ -682,34 +689,9 @@ export default function AdminSalesAnalysis() {
     });
 
     try {
-      // Caminho 1: pedido do SITE -> NF-e (modelo 55)
-      if (row.kind === 'order' && row.source !== 'pdv') {
-        const { data, error } = await supabase.functions.invoke('emit-nfe', {
-          body: { orderId: row.id },
-        });
-        if (error) {
-          let msg: string | null = null;
-          try {
-            const ctx: any = (error as any).context;
-            if (ctx?.clone && ctx?.json) {
-              const parsed = await ctx.clone().json().catch(() => null);
-              msg = parsed?.error || parsed?.message || null;
-            }
-          } catch { /* ignore */ }
-          throw new Error(msg || error.message || 'Falha ao emitir NF-e');
-        }
-        if (data?.error) throw new Error(data.error);
-        toast.success('NF-e emitida com sucesso! ✅', {
-          id: loadingToastId,
-          description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
-        });
-        await fetchAll(true);
-        return;
-      }
-
-      // Caminho 2: pedido PDV -> NFC-e (modelo 65) OU NF-e (modelo 55) conforme escolha
+      // Pedido (site ou PDV): respeita o modelo escolhido (NF-e 55 ou NFC-e 65)
       if (row.kind === 'order') {
-        // Se admin escolheu NF-e (modelo 55) para PDV, usa a edge function emit-nfe
+        // NF-e (modelo 55) — usa edge function emit-nfe
         if (invoiceModel === 'nfe') {
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
             body: { orderId: row.id },
@@ -1437,15 +1419,17 @@ export default function AdminSalesAnalysis() {
                   const isSitePedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv';
                   const isPdvPedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source === 'pdv';
                   const isSaved = invoiceTarget?.kind === 'saved';
-                  const allowChoice = isPdvPedido || isSaved; // PDV e orçamento permitem escolher modelo
-                  const effectiveModel = isSitePedido ? 'nfe' : (allowChoice ? invoiceModel : 'nfce');
+                  const allowChoice = isSitePedido || isPdvPedido || isSaved; // todos permitem escolher
+                  const effectiveModel = invoiceModel;
                   return (
                     <>
-                      {isSitePedido
-                        ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
-                        : effectiveModel === 'nfe'
-                          ? 'Será emitida uma NF-e (modelo 55) para esta venda.'
-                          : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
+                      {effectiveModel === 'nfe'
+                        ? (isSitePedido
+                            ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
+                            : 'Será emitida uma NF-e (modelo 55) para esta venda.')
+                        : (isSitePedido
+                            ? 'Será emitida uma NFC-e (modelo 65) para este pedido do site.'
+                            : 'Será emitida uma NFC-e (modelo 65) para esta venda.')}
                       {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
                       {invoiceTarget && (
                         <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
