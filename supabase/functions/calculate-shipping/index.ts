@@ -205,12 +205,19 @@ Deno.serve(async (req) => {
       ...products.map((p) => p.length + p.width + p.height),
     );
     const correiosBlocked = maxLength > 105 || maxSumDims > 200;
-    const filteredOptions = correiosBlocked
-      ? allOptions.filter((opt) => {
-          const company = (opt.company || '').toLowerCase();
-          return !company.includes('correio');
-        })
-      : allOptions;
+
+    // Transportadoras sem agência/coleta em Sinop-MT — não exibir para
+    // funcionários nem clientes para evitar etiquetas que não dá pra postar.
+    const NO_AGENCY_IN_SINOP = ['j&t', 'jt express', 'j t express', 'jt-express'];
+
+    const filteredOptions = allOptions.filter((opt) => {
+      const company = (opt.company || '').toLowerCase();
+      const nome = (opt.nome || '').toLowerCase();
+      if (correiosBlocked && company.includes('correio')) return false;
+      if (NO_AGENCY_IN_SINOP.some((c) => company.includes(c) || nome.includes(c))) return false;
+      return true;
+    });
+
 
     // Deduplica: para mesma transportadora+serviço, mantém o mais barato
     const dedupMap = new Map<string, any>();
