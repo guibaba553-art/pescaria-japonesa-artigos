@@ -219,9 +219,26 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     const chosen = fitsSmall ? 'caixa_pequena' : 'caixa_grande';
     const dims = BOXES[chosen];
     const insurancePerPkg = insuranceValue * (boxItems.length / units.length);
+
+    // Se for UM único item pequeno, usa dimensões do item + folga (evita peso cubado inflado).
+    // Caso contrário, usa a caixa padrão (consolida vários itens).
+    let pkgDims: { w: number; h: number; l: number } = { w: dims.w, h: dims.h, l: dims.l };
+    if (boxItems.length === 1) {
+      const it = boxItems[0].item;
+      const iw = dim(it, 'width_cm');
+      const ih = dim(it, 'height_cm');
+      const il = dim(it, 'length_cm');
+      // +2cm de folga em cada dimensão pra acomodar embalagem/proteção
+      pkgDims = {
+        w: Math.min(dims.w, iw + 2),
+        h: Math.min(dims.h, ih + 2),
+        l: Math.min(dims.l, il + 2),
+      };
+    }
+
     packages.push({
       id: nextId(),
-      ...clampMin({ w: dims.w, h: dims.h, l: dims.l }),
+      ...clampMin(pkgDims),
       weight: (boxWeight + packagingWeight(chosen)) / 1000,
       insurance_value: insurancePerPkg,
       quantity: 1,
