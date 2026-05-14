@@ -24,6 +24,7 @@ import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
+import { upscaleImage } from '@/utils/upscaleImage';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { resolveOptionalMeasurementUpdate } from '@/utils/productMeasurements';
 
