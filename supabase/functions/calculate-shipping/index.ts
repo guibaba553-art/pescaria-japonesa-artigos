@@ -230,12 +230,24 @@ Deno.serve(async (req) => {
     });
 
 
-    // Deduplica: para mesma transportadora+serviço, mantém o mais barato
+    // Deduplica: para mesma transportadora+serviço, prefere Melhor Envio
+    // (única origem que conseguimos comprar etiqueta automaticamente). Se ambos
+    // forem do mesmo provedor, mantém o mais barato.
     const dedupMap = new Map<string, any>();
     for (const opt of filteredOptions) {
       const key = `${(opt.company || '').toLowerCase()}::${(opt.servico || '').toLowerCase()}`;
       const existing = dedupMap.get(key);
-      if (!existing || opt.valor < existing.valor) dedupMap.set(key, opt);
+      if (!existing) {
+        dedupMap.set(key, opt);
+        continue;
+      }
+      const existingIsMe = existing.provider === 'melhor_envio';
+      const newIsMe = opt.provider === 'melhor_envio';
+      if (newIsMe && !existingIsMe) {
+        dedupMap.set(key, opt);
+      } else if (newIsMe === existingIsMe && opt.valor < existing.valor) {
+        dedupMap.set(key, opt);
+      }
     }
     const options = Array.from(dedupMap.values()).sort((a, b) => a.valor - b.valor);
 
