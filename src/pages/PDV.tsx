@@ -33,7 +33,8 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
@@ -143,6 +144,57 @@ export default function PDV() {
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
+
+  // Edição de estoque (admin/funcionário)
+  const [stockEditTarget, setStockEditTarget] = useState<{
+    product: Product;
+    variation?: ProductVariation | null;
+  } | null>(null);
+  const [stockEditValue, setStockEditValue] = useState('');
+  const [stockEditReason, setStockEditReason] = useState('');
+  const [stockEditSaving, setStockEditSaving] = useState(false);
+
+  const openStockEdit = (product: Product, variation?: ProductVariation | null) => {
+    const current = variation ? variation.stock : product.stock;
+    setStockEditTarget({ product, variation: variation ?? null });
+    setStockEditValue(String(current ?? 0));
+    setStockEditReason('');
+  };
+
+  const handleSaveStockEdit = async () => {
+    if (!stockEditTarget) return;
+    const newStockNum = Number(stockEditValue.replace(',', '.'));
+    if (!Number.isFinite(newStockNum) || newStockNum < 0) {
+      toast({ title: 'Estoque inválido', description: 'Informe um número maior ou igual a zero.', variant: 'destructive' });
+      return;
+    }
+    const current = stockEditTarget.variation ? stockEditTarget.variation.stock : stockEditTarget.product.stock;
+    const delta = newStockNum - Number(current ?? 0);
+    if (delta === 0) {
+      setStockEditTarget(null);
+      return;
+    }
+    setStockEditSaving(true);
+    try {
+      const { error } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: stockEditTarget.product.id,
+        p_variation_id: stockEditTarget.variation?.id ?? null,
+        p_quantity_delta: delta,
+        p_movement_type: 'manual_adjust',
+        p_order_id: null,
+        p_reason: stockEditReason.trim() || `Ajuste manual via PDV (${stockEditTarget.product.name}${stockEditTarget.variation ? ' - ' + stockEditTarget.variation.name : ''})`,
+      });
+      if (error) throw error;
+      toast({ title: 'Estoque atualizado', description: `Novo estoque: ${newStockNum}` });
+      setStockEditTarget(null);
+      await loadProducts();
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar estoque', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setStockEditSaving(false);
+    }
+  };
+
   
   // Peso
   const [showWeightDialog, setShowWeightDialog] = useState(false);
@@ -1649,6 +1701,21 @@ export default function PDV() {
                             {product.variations.length}
                           </Badge>
                         )}
+                        {(!product.variations || product.variations.length === 0) && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="secondary"
+                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                            title="Ajustar estoque"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openStockEdit(product, null);
+                            }}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
                             <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
@@ -2194,7 +2261,7 @@ export default function PDV() {
               return (
                 <Card
                   key={variation.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow relative"
                   onClick={() => {
                     if (variation.stock > 0) {
                       addToCart(selectedProduct, variation);
@@ -2202,6 +2269,19 @@ export default function PDV() {
                     }
                   }}
                 >
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute top-2 right-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                    title="Ajustar estoque"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (selectedProduct) openStockEdit(selectedProduct, variation);
+                    }}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
                   <CardContent className="p-3 space-y-2">
                     <div className="w-full h-24 bg-muted rounded overflow-hidden flex items-center justify-center">
                       {imageUrl ? (
@@ -2248,7 +2328,63 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de cadastro de cliente */}
+      {/* Diálogo de ajuste de estoque */}
+      <Dialog open={!!stockEditTarget} onOpenChange={(open) => !open && setStockEditTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajustar estoque</DialogTitle>
+            <DialogDescription>
+              {stockEditTarget?.product.name}
+              {stockEditTarget?.variation ? ` — ${stockEditTarget.variation.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Estoque atual</Label>
+              <p className="text-2xl font-bold">
+                {stockEditTarget?.variation
+                  ? stockEditTarget.variation.stock
+                  : stockEditTarget?.product.stock}
+                {stockEditTarget?.product.sold_by_weight ? ' kg' : ' un'}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="new-stock">Novo estoque</Label>
+              <Input
+                id="new-stock"
+                type="number"
+                inputMode="decimal"
+                step={stockEditTarget?.product.sold_by_weight ? '0.001' : '1'}
+                min="0"
+                value={stockEditValue}
+                onChange={(e) => setStockEditValue(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label htmlFor="stock-reason">Motivo (opcional)</Label>
+              <Input
+                id="stock-reason"
+                placeholder="Ex.: contagem, perda, recebimento..."
+                value={stockEditReason}
+                onChange={(e) => setStockEditReason(e.target.value)}
+                maxLength={200}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setStockEditTarget(null)} disabled={stockEditSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveStockEdit} disabled={stockEditSaving}>
+              {stockEditSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
