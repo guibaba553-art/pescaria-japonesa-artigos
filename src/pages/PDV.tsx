@@ -1701,6 +1701,21 @@ export default function PDV() {
                             {product.variations.length}
                           </Badge>
                         )}
+                        {(!product.variations || product.variations.length === 0) && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="secondary"
+                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                            title="Ajustar estoque"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openStockEdit(product, null);
+                            }}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                         <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
                             <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
