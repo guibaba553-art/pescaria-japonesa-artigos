@@ -148,13 +148,13 @@ export default function PDV() {
   // Edição de estoque (admin/funcionário)
   const [stockEditTarget, setStockEditTarget] = useState<{
     product: Product;
-    variation?: Variation | null;
+    variation?: ProductVariation | null;
   } | null>(null);
   const [stockEditValue, setStockEditValue] = useState('');
   const [stockEditReason, setStockEditReason] = useState('');
   const [stockEditSaving, setStockEditSaving] = useState(false);
 
-  const openStockEdit = (product: Product, variation?: Variation | null) => {
+  const openStockEdit = (product: Product, variation?: ProductVariation | null) => {
     const current = variation ? variation.stock : product.stock;
     setStockEditTarget({ product, variation: variation ?? null });
     setStockEditValue(String(current ?? 0));
