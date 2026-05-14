@@ -1,19 +1,34 @@
 import { Header } from "@/components/Header";
-import TopBenefitsBar from "@/components/TopBenefitsBar";
-import Hero from "@/components/Hero";
 import { lazy, Suspense, useEffect, useState } from "react";
-import Categories from "@/components/Categories";
-import Footer from "@/components/Footer";
-import MobileHome from "@/components/mobile/MobileHome";
 
+// Componentes desktop só baixam quando lg+ — economiza ~80% do JS no mobile
+const TopBenefitsBar = lazy(() => import("@/components/TopBenefitsBar"));
+const Hero = lazy(() => import("@/components/Hero"));
+const Categories = lazy(() => import("@/components/Categories"));
 const FlashDealsCountdown = lazy(() => import("@/components/FlashDealsCountdown"));
 const FeaturedProducts = lazy(() => import("@/components/FeaturedProducts"));
 const PromoBanner = lazy(() => import("@/components/PromoBanner"));
 const Benefits = lazy(() => import("@/components/Benefits"));
+const Footer = lazy(() => import("@/components/Footer"));
+const MobileHome = lazy(() => import("@/components/mobile/MobileHome"));
 
 const SectionFallback = () => <div className="h-16 sm:h-24" aria-hidden />;
 
+const useIsDesktop = () => {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false
+  );
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
+};
+
 const Index = () => {
+  const isDesktop = useIsDesktop();
   const [showDeferredSections, setShowDeferredSections] = useState(false);
 
   useEffect(() => {
@@ -40,42 +55,51 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      {/* Spacer to compensate fixed Header height
-          Mobile: 64px (main bar only)
-          Desktop (lg+): 64px main + 44px categories = 108px */}
       <div aria-hidden className="h-16 lg:h-[108px]" />
 
-      {/* Mobile-first home (shown below lg) */}
-      <main className="lg:hidden">
-        <MobileHome />
-      </main>
-
-      {/* Desktop layout (lg and up) */}
-      <div className="hidden lg:block">
-        <TopBenefitsBar />
+      {!isDesktop && (
         <main>
-          <Hero />
-          <Categories />
-          {showDeferredSections && (
-            <>
-              <Suspense fallback={<SectionFallback />}>
-                <FlashDealsCountdown />
-              </Suspense>
-              <Suspense fallback={<SectionFallback />}>
-                <FeaturedProducts />
-              </Suspense>
-              <Suspense fallback={<SectionFallback />}>
-                <PromoBanner />
-              </Suspense>
-              <Suspense fallback={<SectionFallback />}>
-                <Benefits />
-              </Suspense>
-            </>
-          )}
+          <Suspense fallback={<SectionFallback />}>
+            <MobileHome />
+          </Suspense>
         </main>
-      </div>
+      )}
 
-      <Footer />
+      {isDesktop && (
+        <div>
+          <Suspense fallback={null}>
+            <TopBenefitsBar />
+          </Suspense>
+          <main>
+            <Suspense fallback={<SectionFallback />}>
+              <Hero />
+            </Suspense>
+            <Suspense fallback={<SectionFallback />}>
+              <Categories />
+            </Suspense>
+            {showDeferredSections && (
+              <>
+                <Suspense fallback={<SectionFallback />}>
+                  <FlashDealsCountdown />
+                </Suspense>
+                <Suspense fallback={<SectionFallback />}>
+                  <FeaturedProducts />
+                </Suspense>
+                <Suspense fallback={<SectionFallback />}>
+                  <PromoBanner />
+                </Suspense>
+                <Suspense fallback={<SectionFallback />}>
+                  <Benefits />
+                </Suspense>
+              </>
+            )}
+          </main>
+        </div>
+      )}
+
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
     </div>
   );
 };
