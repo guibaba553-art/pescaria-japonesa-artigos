@@ -32,7 +32,7 @@ export const CookieBanner = () => {
       role="dialog"
       aria-live="polite"
       aria-label="Aviso de cookies"
-      className="fixed bottom-0 inset-x-0 z-50 p-4 md:p-6"
+      className="cookie-banner-mobile-offset fixed bottom-0 inset-x-0 z-50 p-4 md:bottom-0 md:p-6"
     >
       <div className="max-w-5xl mx-auto bg-card border border-border shadow-2xl rounded-2xl p-5 md:p-6">
         <div className="flex flex-col md:flex-row md:items-center gap-4">
