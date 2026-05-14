@@ -911,6 +911,22 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
                 </div>
               )}
 
+              <div className="flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="upscale-images" className="text-emerald-700 dark:text-emerald-400">
+                    Remover serrilhado (upscale)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Dobra a resolução e aplica sharpening leve — ideal para imagens pequenas ou com compressão ruim
+                  </p>
+                </div>
+                <Switch
+                  id="upscale-images"
+                  checked={upscaleImages}
+                  onCheckedChange={setUpscaleImages}
+                />
+              </div>
+
               <Input
                 id="edit-images"
                 type="file"
