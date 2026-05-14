@@ -301,11 +301,14 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedAddresses, user?.id, hasItemsWithoutDims]);
 
-  // Remove a opção "Retirar na Loja" das listas por endereço (ela já aparece embaixo)
+  // Remove a opção "Retirar na Loja" e qualquer transportadora que a loja não consiga
+  // gerar etiqueta (hoje só compramos etiqueta pelo Melhor Envio — opções "frenet-..."
+  // não são oferecidas ao cliente para evitar pedido sem como despachar).
   const filterDeliveryOnly = (opts: ShippingOption[]) =>
     opts.filter(
       (o) =>
         o.codigo !== 'RETIRADA' &&
+        !o.codigo.startsWith('frenet-') &&
         !/retir/i.test(o.nome) &&
         !/retir/i.test(o.servico || '')
     );
