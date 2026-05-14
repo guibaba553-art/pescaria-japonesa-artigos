@@ -135,26 +135,56 @@ Deno.serve(async (req) => {
         .eq('id', order.user_id)
         .single();
 
-      // Parse endereço (formato livre — assume "rua, numero, bairro, cidade/UF")
+      // Buscar e-mail do cliente em auth.users
+      let customerEmail = '';
+      try {
+        const { data: authUser } = await supabase.auth.admin.getUserById(order.user_id);
+        customerEmail = authUser?.user?.email || '';
+      } catch (_) {
+        // ignore — usaremos fallback
+      }
+
+      // Buscar endereço estruturado em user_addresses pelo CEP do pedido
+      // (e cair no padrão se não encontrar)
+      const cepDigits = (order.shipping_cep || '').replace(/\D/g, '');
+      const { data: addressRows } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', order.user_id);
+      const matchedAddress =
+        addressRows?.find((a: any) => (a.cep || '').replace(/\D/g, '') === cepDigits) ||
+        addressRows?.find((a: any) => a.is_default) ||
+        addressRows?.[0] ||
+        null;
+
+      // Fallback: parse do endereço em texto livre salvo no pedido
       const addressParts = (order.shipping_address || '').split(',').map((s: string) => s.trim());
 
       const cartPayload = {
         service: meServiceId,
         from: FROM_ADDRESS,
         to: {
-          name: profile?.full_name || 'Cliente',
+          name: matchedAddress?.recipient_name || profile?.full_name || 'Cliente',
           // Melhor Envio exige phone/email para vários serviços (ex.: Correios PAC = 33).
-          // Fallback para o contato da loja garante que o checkout não seja rejeitado.
-          phone: profile?.phone || FROM_ADDRESS.phone,
-          email: profile?.email || FROM_ADDRESS.email,
+          phone:
+            matchedAddress?.recipient_phone ||
+            profile?.phone ||
+            FROM_ADDRESS.phone,
+          email: customerEmail || FROM_ADDRESS.email,
           document: profile?.cpf || '',
-          address: addressParts[0] || order.shipping_address,
-          complement: '',
-          number: addressParts[1] || 'S/N',
-          district: addressParts[2] || 'Centro',
-          city: addressParts[3]?.split('/')[0]?.trim() || 'Cidade',
-          state_abbr: addressParts[3]?.split('/')[1]?.trim() || 'MT',
-          postal_code: order.shipping_cep,
+          address: matchedAddress?.street || addressParts[0] || order.shipping_address,
+          complement: matchedAddress?.complement || '',
+          number: matchedAddress?.number || addressParts[1] || 'S/N',
+          district: matchedAddress?.neighborhood || addressParts[2] || 'Centro',
+          city:
+            matchedAddress?.city ||
+            addressParts[3]?.split('/')[0]?.trim() ||
+            'Cidade',
+          state_abbr:
+            matchedAddress?.state ||
+            addressParts[3]?.split('/')[1]?.trim() ||
+            'MT',
+          postal_code: cepDigits || order.shipping_cep,
           country_id: 'BR',
         },
         products: order.order_items.map((item: any) => ({
