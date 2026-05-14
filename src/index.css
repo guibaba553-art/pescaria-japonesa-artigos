@@ -9,6 +9,8 @@
 
 @layer base {
   :root {
+    --mobile-bottom-nav-height: 56px;
+
     --background: 0 0% 100%;
     --foreground: 210 14% 12%;
 
@@ -246,7 +248,11 @@
      Desktop ignora pois a bottom nav é md:hidden. */
   @media (max-width: 767px) {
     body {
-      padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    }
+
+    .cookie-banner-mobile-offset {
+      bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 0.75rem);
     }
   }
 
