@@ -483,13 +483,29 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             <div className="flex-1 text-xs text-muted-foreground self-center">
               Total do pedido: <strong>{fmt(order.total_amount)}</strong>
             </div>
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
+
+            {mode === 'pack' && hasNfeAuth && order.shipping_label_order_id && allScanned && (
+              <Button
+                onClick={handleMarkAsEnviado}
+                disabled={confirming}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {confirming ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Truck className="w-4 h-4 mr-2" />
+                )}
+                Marcar como enviado
+              </Button>
+            )}
+
             <Button
               onClick={handleConfirm}
               disabled={!allScanned || confirming}
