@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, Store, Plus, MapPin, Check } from 'lucide-react';
+import { Loader2, Truck, Store, Plus, MapPin, Check, Package } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
