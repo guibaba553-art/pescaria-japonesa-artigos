@@ -2166,11 +2166,7 @@ export default function PDV() {
             </div>
             <Button
               size="lg"
-              onClick={() => {
-                document
-                  .getElementById('pdv-cart-panel')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              onClick={() => setMobileCartOpen(true)}
               className="rounded-full font-bold shadow-md"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
