@@ -1419,15 +1419,17 @@ export default function AdminSalesAnalysis() {
                   const isSitePedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source !== 'pdv';
                   const isPdvPedido = invoiceTarget?.kind === 'order' && invoiceTarget?.source === 'pdv';
                   const isSaved = invoiceTarget?.kind === 'saved';
-                  const allowChoice = isPdvPedido || isSaved; // PDV e orçamento permitem escolher modelo
-                  const effectiveModel = isSitePedido ? 'nfe' : (allowChoice ? invoiceModel : 'nfce');
+                  const allowChoice = isSitePedido || isPdvPedido || isSaved; // todos permitem escolher
+                  const effectiveModel = invoiceModel;
                   return (
                     <>
-                      {isSitePedido
-                        ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
-                        : effectiveModel === 'nfe'
-                          ? 'Será emitida uma NF-e (modelo 55) para esta venda.'
-                          : 'Será emitida uma NFC-e (modelo 65) para esta venda.'}
+                      {effectiveModel === 'nfe'
+                        ? (isSitePedido
+                            ? 'Será emitida uma NF-e (modelo 55) para este pedido do site.'
+                            : 'Será emitida uma NF-e (modelo 55) para esta venda.')
+                        : (isSitePedido
+                            ? 'Será emitida uma NFC-e (modelo 65) para este pedido do site.'
+                            : 'Será emitida uma NFC-e (modelo 65) para esta venda.')}
                       {' '}A operação envia os dados à SEFAZ — pode levar alguns segundos.
                       {invoiceTarget && (
                         <div className="mt-3 p-3 bg-muted rounded-lg text-sm space-y-1">
