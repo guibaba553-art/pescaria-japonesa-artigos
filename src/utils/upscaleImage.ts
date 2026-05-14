@@ -40,6 +40,23 @@ export async function upscaleImage(file: File, scale = 3): Promise<File> {
   const outW = Math.round(srcW * scale);
   const outH = Math.round(srcH * scale);
 
+  // --- Passo 1: Anti-aliasing leve na imagem original ---
+  // Um leve blur de 0.5px suaviza o serrilhado ANTES do upscale,
+  // evitando que artefatos de compressão sejam amplificados 3x.
+  const aaCanvas = document.createElement('canvas');
+  aaCanvas.width = srcW;
+  aaCanvas.height = srcH;
+  const aaCtx = aaCanvas.getContext('2d');
+  if (!aaCtx) return file;
+
+  aaCtx.imageSmoothingEnabled = true;
+  aaCtx.imageSmoothingQuality = 'high';
+  // blur de 0.5px remove serrilhado sem perder bordas importantes
+  aaCtx.filter = 'blur(0.5px)';
+  aaCtx.drawImage(img, 0, 0, srcW, srcH);
+  aaCtx.filter = 'none'; // reseta para próximos draws
+
+  // --- Passo 2: Upscale 3x a partir da imagem suavizada ---
   const canvas = document.createElement('canvas');
   canvas.width = outW;
   canvas.height = outH;
@@ -48,7 +65,7 @@ export async function upscaleImage(file: File, scale = 3): Promise<File> {
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, outW, outH);
+  ctx.drawImage(aaCanvas, 0, 0, outW, outH);
 
   // --- Sharpening leve por convolução ---
   const sharpenCanvas = document.createElement('canvas');
