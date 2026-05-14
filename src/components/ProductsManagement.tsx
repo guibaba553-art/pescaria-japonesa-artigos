@@ -97,6 +97,7 @@ export function ProductsManagement() {
   const [poundTest, setPoundTest] = useState('');
   const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
+  const [upscaleImages, setUpscaleImages] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
