@@ -32,8 +32,10 @@ import {
   Printer,
   Loader2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  X
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
