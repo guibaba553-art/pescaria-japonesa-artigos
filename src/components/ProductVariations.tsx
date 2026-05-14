@@ -3,7 +3,7 @@ import { ProductVariation } from "@/types/product";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Trash2, Plus, Scissors, Loader2 } from "lucide-react";
+import { Trash2, Plus, Scissors, Loader2, Sparkles } from "lucide-react";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { isValidImageUrl } from "@/utils/validation";
@@ -22,6 +22,7 @@ interface ProductVariationsProps {
 export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
+  const [upProcessing, setUpProcessing] = useState<string | null>(null);
 
   const removeBgFromDataUrl = async (dataUrl: string): Promise<string> => {
     const { removeBackground, loadImageFromUrl } = await import('@/utils/removeBackground');
@@ -33,6 +34,63 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       r.onerror = reject;
       r.readAsDataURL(blob);
     });
+  };
+
+  const urlToFile = async (currentUrl: string): Promise<File> => {
+    if (currentUrl.startsWith('data:')) {
+      const res = await fetch(currentUrl);
+      const blob = await res.blob();
+      return new File([blob], 'variation.jpg', { type: blob.type || 'image/jpeg' });
+    }
+    const res = await fetch(currentUrl, { mode: 'cors' });
+    const blob = await res.blob();
+    const name = currentUrl.split('/').pop() || 'variation.jpg';
+    return new File([blob], name, { type: blob.type || 'image/jpeg' });
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+
+  const handleUpscale = async (key: string, currentUrl: string, apply: (newUrl: string) => void) => {
+    if (!currentUrl) return;
+    setUpProcessing(key);
+    try {
+      toast({
+        title: 'Aplicando upscale com IA...',
+        description: 'Reconstruindo detalhes. Pode levar 10-30s.',
+      });
+      const inputFile = await urlToFile(currentUrl);
+      const { aiUpscaleImage } = await import('@/utils/aiUpscaleImage');
+      const { upscaleImage } = await import('@/utils/upscaleImage');
+      let upscaled: File;
+      try {
+        upscaled = await aiUpscaleImage(inputFile);
+      } catch (aiErr) {
+        console.warn('IA falhou, fallback canvas:', aiErr);
+        toast({
+          title: 'IA indisponível, usando upscale local',
+          description: aiErr instanceof Error ? aiErr.message : '',
+        });
+        upscaled = await upscaleImage(inputFile, 3);
+      }
+      const dataUrl = await fileToDataUrl(upscaled);
+      apply(dataUrl);
+      toast({ title: 'Upscale concluído!', description: 'Lembre-se de salvar.' });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Erro no upscale',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpProcessing(null);
+    }
   };
 
   const handleRemoveBg = async (key: string, currentUrl: string, apply: (newUrl: string) => void) => {
@@ -337,13 +395,28 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                               variant="secondary"
                               size="sm"
                               className="mt-1 h-7 px-2 text-[11px] gap-1 w-full"
-                              disabled={bgProcessing === variation.id}
+                              disabled={bgProcessing === variation.id || upProcessing === variation.id}
                               onClick={() => handleRemoveBg(variation.id, variation.image_url as string, (url) => updateVariation(variation.id, 'image_url', url))}
                             >
                               {bgProcessing === variation.id ? (
                                 <><Loader2 className="w-3 h-3 animate-spin" /> Processando</>
                               ) : (
                                 <><Scissors className="w-3 h-3" /> Remover fundo</>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="mt-1 h-7 px-2 text-[11px] gap-1 w-full"
+                              disabled={bgProcessing === variation.id || upProcessing === variation.id}
+                              onClick={() => handleUpscale(variation.id, variation.image_url as string, (url) => updateVariation(variation.id, 'image_url', url))}
+                              title="Upscale com IA — melhora resolução e remove serrilhado"
+                            >
+                              {upProcessing === variation.id ? (
+                                <><Loader2 className="w-3 h-3 animate-spin" /> Processando</>
+                              ) : (
+                                <><Sparkles className="w-3 h-3" /> Upscale</>
                               )}
                             </Button>
                           </div>
