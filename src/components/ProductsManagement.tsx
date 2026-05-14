@@ -243,7 +243,11 @@ export function ProductsManagement() {
           }
           let file: File;
           try {
-            file = await normalizeProductImage(original, 800, 0.9);
+            let processed = original;
+            if (upscaleImages) {
+              processed = await upscaleImage(original, 2);
+            }
+            file = await normalizeProductImage(processed, 800, 0.9);
           } catch {
             file = original;
           }
