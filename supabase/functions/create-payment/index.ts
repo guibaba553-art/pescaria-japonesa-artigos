@@ -458,7 +458,24 @@ serve(async (req) => {
 
       // Resolver payment_method_id: usar o do frontend, ou detectar localmente, ou via API MP
       let paymentMethodId = data.cardData.paymentMethodId;
-      
+
+      // Se o cliente pediu DÉBITO mas o frontend mandou um id de crédito (ex.: "visa"),
+      // forçamos a detecção local para devolver a variante de débito (debvisa/debmaster/debelo).
+      // O SDK Web do Mercado Pago sempre retorna a bandeira de crédito no createCardToken.
+      if (data.paymentMethod === 'debit') {
+        const debitId = detectCardBrand(data.cardData.cardNumber, 'debit');
+        if (debitId) {
+          if (paymentMethodId && paymentMethodId !== debitId) {
+            console.log(`Overriding payment_method_id "${paymentMethodId}" -> "${debitId}" (user selected debit)`);
+          }
+          paymentMethodId = debitId;
+        } else if (paymentMethodId && !paymentMethodId.startsWith('deb')) {
+          // Não conseguimos mapear localmente: descartamos o id de crédito para cair no fallback BIN
+          console.log(`Discarding credit payment_method_id "${paymentMethodId}" because user selected debit`);
+          paymentMethodId = undefined;
+        }
+      }
+
       if (!paymentMethodId) {
         // Tentar detecção local primeiro (mais rápido e confiável)
         paymentMethodId = detectCardBrand(data.cardData.cardNumber, data.paymentMethod as 'credit' | 'debit');

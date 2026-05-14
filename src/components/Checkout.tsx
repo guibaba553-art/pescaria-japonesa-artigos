@@ -615,7 +615,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           })),
           cardData: cardToken ? {
             token: cardToken.id,
-            paymentMethodId: cardToken.payment_method_id,
+            // No débito NÃO enviamos o payment_method_id retornado pelo SDK,
+            // pois o MP sempre devolve a bandeira de crédito (ex.: "visa").
+            // Deixamos o backend detectar a variante de débito (debvisa, debmaster, debelo...).
+            paymentMethodId: paymentMethod === 'debit' ? undefined : cardToken.payment_method_id,
             cardNumber: cardData.number.replace(/\s/g, ''),
             cardholderName: cardData.name,
             expirationDate: cardData.expiry,
