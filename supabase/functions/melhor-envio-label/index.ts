@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
             profile?.phone ||
             FROM_ADDRESS.phone,
           email: customerEmail || FROM_ADDRESS.email,
-          document: profile?.cpf || '',
+          document: profile?.cpf || FROM_ADDRESS.document,
           address: matchedAddress?.street || addressParts[0] || order.shipping_address,
           complement: matchedAddress?.complement || '',
           number: matchedAddress?.number || addressParts[1] || 'S/N',
