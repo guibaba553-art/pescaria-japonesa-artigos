@@ -97,9 +97,9 @@ function itemWeight(d: ItemDims): number {
 function packagingWeight(type: PackedBox['packaging'], lengthCm = 0): number {
   switch (type) {
     case 'caixa_pequena':
-      return Math.round(BOXES.caixa_pequena.volume * 0.04); // ~120g
+      return Math.round(BOXES.caixa_pequena.volume * 0.02); // ~60g (papelão simples)
     case 'caixa_grande':
-      return Math.round(BOXES.caixa_grande.volume * 0.04); // ~243g
+      return Math.round(BOXES.caixa_grande.volume * 0.02); // ~120g
     case 'envelope_bolha':
       return 30;
     case 'tubo':
