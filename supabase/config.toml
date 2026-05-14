@@ -68,3 +68,6 @@ verify_jwt = true
 
 [functions.stock-audit-daily]
 verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
