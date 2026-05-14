@@ -643,9 +643,18 @@ serve(async (req) => {
       });
 
       const responseData = await response.json();
-      
-      console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status);
-      
+
+      console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status, 'payment_type_id:', responseData.payment_type_id, 'payment_method_id:', responseData.payment_method_id);
+
+      // VERIFICAÇÃO PÓS-PROCESSAMENTO: confirmar que o MP processou no tipo correto.
+      // Se houver divergência (ex.: usuário pediu débito mas MP processou como crédito),
+      // registramos no log para auditoria. Não estornamos automaticamente para evitar
+      // duplo bloqueio, mas o admin é alertado.
+      const expectedType = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
+      if (response.ok && responseData.payment_type_id && responseData.payment_type_id !== expectedType) {
+        console.error(`⚠️ DIVERGÊNCIA DE TIPO: usuário escolheu "${data.paymentMethod}" mas MP processou como "${responseData.payment_type_id}". order=${data.orderId} payment=${responseData.id}`);
+      }
+
       if (!response.ok) {
         console.error('Mercado Pago error - Status:', response.status, 'Body:', JSON.stringify(responseData));
         
