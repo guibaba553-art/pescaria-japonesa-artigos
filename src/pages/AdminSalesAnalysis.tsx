@@ -150,6 +150,13 @@ export default function AdminSalesAnalysis() {
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
 
+  // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
+  useEffect(() => {
+    if (!invoiceTarget) return;
+    const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
+    setInvoiceModel(isSite ? 'nfe' : 'nfce');
+  }, [invoiceTarget]);
+
   // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
   useEffect(() => {
     if (!invoiceTarget) { setInvoiceCustomer(null); return; }
