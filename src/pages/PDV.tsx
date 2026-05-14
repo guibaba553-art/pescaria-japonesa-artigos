@@ -2261,7 +2261,7 @@ export default function PDV() {
               return (
                 <Card
                   key={variation.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow relative"
                   onClick={() => {
                     if (variation.stock > 0) {
                       addToCart(selectedProduct, variation);
@@ -2269,6 +2269,19 @@ export default function PDV() {
                     }
                   }}
                 >
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute top-2 right-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                    title="Ajustar estoque"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (selectedProduct) openStockEdit(selectedProduct, variation);
+                    }}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
                   <CardContent className="p-3 space-y-2">
                     <div className="w-full h-24 bg-muted rounded overflow-hidden flex items-center justify-center">
                       {imageUrl ? (
