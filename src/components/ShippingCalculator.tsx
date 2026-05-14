@@ -26,6 +26,7 @@ interface ShippingProduct {
   id?: string;
   variationId?: string;
   quantity: number;
+  price?: number;
 }
 
 interface ShippingCalculatorProps {
@@ -186,7 +187,13 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         weight_grams: variationD?.weight_grams ?? productD?.weight_grams ?? null,
       };
     });
-    return packItems(shipmentItems);
+    // Soma o valor total para declarar como seguro (insurance_value).
+    // Sem isso, transportadoras devolvem preço sem cobertura — fica artificialmente barato.
+    const totalInsurance = products.reduce(
+      (sum, p) => sum + (p.price || 0) * (p.quantity || 1),
+      0,
+    );
+    return packItems(shipmentItems, totalInsurance);
   };
 
   const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
