@@ -1702,7 +1702,29 @@ export default function PDV() {
           </div>
 
           {/* Carrinho e Pagamento */}
-          <div id="pdv-cart-panel" className="space-y-4">
+          <div
+            id="pdv-cart-panel"
+            className={cn(
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4',
+              mobileCartOpen
+                ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
+                : 'hidden'
+            )}
+          >
+            <div className="lg:hidden flex items-center justify-between sticky top-0 -mx-3 px-3 py-2 bg-background/95 backdrop-blur border-b border-border z-10">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-primary" />
+                <span className="font-bold text-sm">Carrinho ({cart.length})</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setMobileCartOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
