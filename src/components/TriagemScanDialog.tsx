@@ -58,6 +58,8 @@ export interface TriagemOrder {
   created_at: string;
   user_id: string;
   tracking_code?: string | null;
+  shipping_label_url?: string | null;
+  shipping_label_order_id?: string | null;
   order_items: TriagemOrderItem[];
   profile?: { full_name: string | null; phone: string | null; cpf: string | null } | null;
   nfe?: { id: string; nfe_number: string | null; danfe_url: string | null; status: string } | null;
@@ -437,7 +439,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                   onClick={() => setLabelDialogOpen(true)}
                 >
                   <Truck className="w-4 h-4 mr-2" />
-                  {order.tracking_code ? 'Reimprimir etiqueta' : 'Gerar etiqueta Melhor Envio'}
+                  {order.shipping_label_order_id ? 'Imprimir etiqueta' : order.tracking_code ? 'Reimprimir etiqueta' : 'Gerar etiqueta Melhor Envio'}
                 </Button>
               </div>
               {order.tracking_code && (
@@ -486,6 +488,9 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                 id: order.id,
                 shipping_cep: order.shipping_cep,
                 total_amount: order.total_amount,
+                tracking_code: order.tracking_code,
+                shipping_label_url: order.shipping_label_url,
+                shipping_label_order_id: order.shipping_label_order_id,
                 order_items: order.order_items.map((it) => ({
                   quantity: it.quantity,
                   product_id: it.product_id,
