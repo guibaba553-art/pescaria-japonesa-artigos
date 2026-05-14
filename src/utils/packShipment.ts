@@ -42,11 +42,13 @@ export interface PackedBox {
 }
 
 // Fallback quando o produto não tem dimensão cadastrada
+// Usamos valores baixos pois a maioria dos itens de pesca é leve (iscas, anzóis, linhas).
+// Cadastre peso/dimensão reais no produto para cotação precisa.
 const FALLBACK: Required<ItemDims> = {
-  width_cm: 15,
-  height_cm: 5,
-  length_cm: 20,
-  weight_grams: 300,
+  width_cm: 10,
+  height_cm: 3,
+  length_cm: 15,
+  weight_grams: 50,
 };
 
 // Embalagens (dimensões internas aproximadas)
@@ -95,9 +97,9 @@ function itemWeight(d: ItemDims): number {
 function packagingWeight(type: PackedBox['packaging'], lengthCm = 0): number {
   switch (type) {
     case 'caixa_pequena':
-      return Math.round(BOXES.caixa_pequena.volume * 0.04); // ~120g
+      return Math.round(BOXES.caixa_pequena.volume * 0.02); // ~60g (papelão simples)
     case 'caixa_grande':
-      return Math.round(BOXES.caixa_grande.volume * 0.04); // ~243g
+      return Math.round(BOXES.caixa_grande.volume * 0.02); // ~120g
     case 'envelope_bolha':
       return 30;
     case 'tubo':
