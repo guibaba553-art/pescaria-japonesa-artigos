@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
 
     // Transportadoras sem agência/coleta em Sinop-MT — não exibir para
     // funcionários nem clientes para evitar etiquetas que não dá pra postar.
-    const NO_AGENCY_IN_SINOP = ['j&t', 'jt express', 'j t express', 'jt-express'];
+    const NO_AGENCY_IN_SINOP = ['j&t', 'jt express', 'j t express', 'jt-express', 'jet'];
 
     const filteredOptions = allOptions.filter((opt) => {
       const company = (opt.company || '').toLowerCase();
