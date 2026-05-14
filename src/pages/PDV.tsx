@@ -144,6 +144,57 @@ export default function PDV() {
   // Variações
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showVariationsDialog, setShowVariationsDialog] = useState(false);
+
+  // Edição de estoque (admin/funcionário)
+  const [stockEditTarget, setStockEditTarget] = useState<{
+    product: Product;
+    variation?: Variation | null;
+  } | null>(null);
+  const [stockEditValue, setStockEditValue] = useState('');
+  const [stockEditReason, setStockEditReason] = useState('');
+  const [stockEditSaving, setStockEditSaving] = useState(false);
+
+  const openStockEdit = (product: Product, variation?: Variation | null) => {
+    const current = variation ? variation.stock : product.stock;
+    setStockEditTarget({ product, variation: variation ?? null });
+    setStockEditValue(String(current ?? 0));
+    setStockEditReason('');
+  };
+
+  const handleSaveStockEdit = async () => {
+    if (!stockEditTarget) return;
+    const newStockNum = Number(stockEditValue.replace(',', '.'));
+    if (!Number.isFinite(newStockNum) || newStockNum < 0) {
+      toast({ title: 'Estoque inválido', description: 'Informe um número maior ou igual a zero.', variant: 'destructive' });
+      return;
+    }
+    const current = stockEditTarget.variation ? stockEditTarget.variation.stock : stockEditTarget.product.stock;
+    const delta = newStockNum - Number(current ?? 0);
+    if (delta === 0) {
+      setStockEditTarget(null);
+      return;
+    }
+    setStockEditSaving(true);
+    try {
+      const { error } = await supabase.rpc('apply_stock_movement', {
+        p_product_id: stockEditTarget.product.id,
+        p_variation_id: stockEditTarget.variation?.id ?? null,
+        p_quantity_delta: delta,
+        p_movement_type: 'manual_adjust',
+        p_order_id: null,
+        p_reason: stockEditReason.trim() || `Ajuste manual via PDV (${stockEditTarget.product.name}${stockEditTarget.variation ? ' - ' + stockEditTarget.variation.name : ''})`,
+      });
+      if (error) throw error;
+      toast({ title: 'Estoque atualizado', description: `Novo estoque: ${newStockNum}` });
+      setStockEditTarget(null);
+      await loadProducts();
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar estoque', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setStockEditSaving(false);
+    }
+  };
+
   
   // Peso
   const [showWeightDialog, setShowWeightDialog] = useState(false);
