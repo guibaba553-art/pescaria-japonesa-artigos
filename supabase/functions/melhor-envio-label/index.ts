@@ -113,6 +113,22 @@ Deno.serve(async (req) => {
       'User-Agent': USER_AGENT,
     };
 
+    const getPrintLabelUrl = async (meOrderIds: string[]) => {
+      const printRes = await fetch(`${ME_API_BASE}/me/shipment/print`, {
+        method: 'POST',
+        headers: meHeaders,
+        body: JSON.stringify({ mode: 'private', orders: meOrderIds }),
+      });
+      const printData = await printRes.json();
+
+      if (!printRes.ok) {
+        console.error('Print error:', printData);
+        return { url: null, raw: printData };
+      }
+
+      return { url: printData?.url || null, raw: printData };
+    };
+
     // FULL FLOW: cria carrinho, faz checkout (compra) e gera etiqueta para um pedido
     if (action === 'full_flow') {
       if (!orderId || !meServiceId) {
@@ -133,6 +149,36 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ error: 'Order not found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (order.shipping_label_order_id) {
+        const { url: refreshedLabelUrl } = await getPrintLabelUrl([order.shipping_label_order_id]);
+        const labelUrl = refreshedLabelUrl || order.shipping_label_url || null;
+
+        if (refreshedLabelUrl && refreshedLabelUrl !== order.shipping_label_url) {
+          await supabase
+            .from('orders')
+            .update({ shipping_label_url: refreshedLabelUrl })
+            .eq('id', orderId);
+        }
+
+        if (!labelUrl) {
+          return new Response(
+            JSON.stringify({ error: 'Etiqueta já comprada, mas não foi possível recuperar o PDF para impressão.' }),
+            { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            reused: true,
+            meOrderId: order.shipping_label_order_id,
+            trackingCode: order.tracking_code || null,
+            labelUrl,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -260,12 +306,7 @@ Deno.serve(async (req) => {
       const generateData = await generateRes.json();
 
       // 4. Obter URL de impressão
-      const printRes = await fetch(`${ME_API_BASE}/me/shipment/print`, {
-        method: 'POST',
-        headers: meHeaders,
-        body: JSON.stringify({ mode: 'private', orders: [meOrderId] }),
-      });
-      const printData = await printRes.json();
+      const { url: labelUrl } = await getPrintLabelUrl([String(meOrderId)]);
 
       // 5. Buscar dados do pedido para pegar tracking
       const trackRes = await fetch(`${ME_API_BASE}/me/orders/${meOrderId}`, {
@@ -275,21 +316,79 @@ Deno.serve(async (req) => {
 
       const trackingCode = trackData?.tracking || null;
 
-      // Atualizar pedido com tracking_code
-      if (trackingCode) {
-        await supabase
-          .from('orders')
-          .update({ tracking_code: trackingCode })
-          .eq('id', orderId);
-      }
+      const orderUpdate: Record<string, string> = {
+        shipping_label_order_id: String(meOrderId),
+      };
+      if (trackingCode) orderUpdate.tracking_code = trackingCode;
+      if (labelUrl) orderUpdate.shipping_label_url = labelUrl;
+
+      await supabase
+        .from('orders')
+        .update(orderUpdate)
+        .eq('id', orderId);
 
       return new Response(
         JSON.stringify({
           success: true,
           meOrderId,
           trackingCode,
-          labelUrl: printData?.url || null,
+          labelUrl,
           generated: generateData,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'print') {
+      if (!orderId) {
+        return new Response(
+          JSON.stringify({ error: 'orderId required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: order, error: orderErr } = await supabase
+        .from('orders')
+        .select('tracking_code, shipping_label_order_id, shipping_label_url')
+        .eq('id', orderId)
+        .single();
+
+      if (orderErr || !order) {
+        return new Response(
+          JSON.stringify({ error: 'Order not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!order.shipping_label_order_id) {
+        return new Response(
+          JSON.stringify({ error: 'Pedido ainda não possui etiqueta comprada' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { url: refreshedLabelUrl } = await getPrintLabelUrl([order.shipping_label_order_id]);
+      const labelUrl = refreshedLabelUrl || order.shipping_label_url || null;
+
+      if (refreshedLabelUrl && refreshedLabelUrl !== order.shipping_label_url) {
+        await supabase
+          .from('orders')
+          .update({ shipping_label_url: refreshedLabelUrl })
+          .eq('id', orderId);
+      }
+
+      if (!labelUrl) {
+        return new Response(
+          JSON.stringify({ error: 'Não foi possível recuperar o PDF da etiqueta' }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          trackingCode: order.tracking_code || null,
+          labelUrl,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
