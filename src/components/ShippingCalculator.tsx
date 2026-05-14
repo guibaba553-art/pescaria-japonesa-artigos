@@ -26,6 +26,7 @@ interface ShippingProduct {
   id?: string;
   variationId?: string;
   quantity: number;
+  price?: number;
 }
 
 interface ShippingCalculatorProps {
