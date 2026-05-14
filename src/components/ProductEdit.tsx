@@ -254,7 +254,11 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
           // Normaliza para quadrado 800x800 com fundo branco
           let file: File;
           try {
-            file = await normalizeProductImage(original, 800, 0.9);
+            let processed = original;
+            if (upscaleImages) {
+              processed = await upscaleImage(original, 2);
+            }
+            file = await normalizeProductImage(processed, 800, 0.9);
           } catch {
             file = original;
           }
