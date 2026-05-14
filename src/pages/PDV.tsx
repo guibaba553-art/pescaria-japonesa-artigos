@@ -1632,7 +1632,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-340px)] lg:h-[700px]">
+                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
