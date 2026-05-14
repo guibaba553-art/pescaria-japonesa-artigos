@@ -16,7 +16,7 @@ import { Loader2, Truck, ExternalLink, Copy, MapPin, Info } from 'lucide-react';
 import { packItems } from '@/utils/packShipment';
 
 // Endereço de origem (loja) — onde despachar / onde a transportadora coleta
-const STORE_ADDRESS = 'Av. Paulino Müller, 1815 — Jucutuquara, Vitória/ES — CEP 29045-051';
+const STORE_ADDRESS = 'Av. das Itaúbas, 2281 — Jardim Paraíso, Sinop/MT — CEP 78556-100';
 
 interface DispatchInfo {
   mode: 'dropoff' | 'pickup';
