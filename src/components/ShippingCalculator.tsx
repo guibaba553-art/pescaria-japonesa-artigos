@@ -172,6 +172,38 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   const hasItemsWithoutDims = dimsReady && itemsMissingDims().length > 0;
 
+  // Pré-calcula como os itens serão empacotados (caixa/envelope/tubo) para
+  // avisar o cliente quando o pedido será enviado em vários volumes.
+  const packagePreview = (() => {
+    if (!products || products.length === 0 || !dimsReady || hasItemsWithoutDims) return null;
+    try {
+      const items = products.map((p, i) => {
+        const productD = (p.id && productDims[p.id]) || null;
+        const variationD = (p.variationId && variationDims[p.variationId]) || null;
+        return {
+          id: p.variationId || p.id || String(i + 1),
+          quantity: p.quantity,
+          width_cm: variationD?.width_cm ?? productD?.width_cm ?? null,
+          height_cm: variationD?.height_cm ?? productD?.height_cm ?? null,
+          length_cm: variationD?.length_cm ?? productD?.length_cm ?? null,
+          weight_grams: variationD?.weight_grams ?? productD?.weight_grams ?? null,
+        };
+      });
+      return packItems(items, 0);
+    } catch {
+      return null;
+    }
+  })();
+
+  const packagingLabel = (p: 'caixa_pequena' | 'caixa_grande' | 'envelope_bolha' | 'tubo') => {
+    switch (p) {
+      case 'caixa_pequena': return 'Caixa pequena (19×16×10)';
+      case 'caixa_grande': return 'Caixa grande (21×17×17)';
+      case 'envelope_bolha': return 'Envelope bolha';
+      case 'tubo': return 'Tubo (vara)';
+    }
+  };
+
   const buildMeProducts = () => {
     if (!products || products.length === 0) return undefined;
     const shipmentItems = products.map((p, i) => {
