@@ -12,8 +12,75 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, Truck, ExternalLink, Copy, MapPin, Info } from 'lucide-react';
 import { packItems } from '@/utils/packShipment';
+
+// Endereço de origem (loja) — onde despachar / onde a transportadora coleta
+const STORE_ADDRESS = 'Av. Paulino Müller, 1815 — Jucutuquara, Vitória/ES — CEP 29045-051';
+
+interface DispatchInfo {
+  mode: 'dropoff' | 'pickup';
+  label: string;
+  description: string;
+  findUrl?: string;
+}
+
+function getDispatchInfo(company: string | null): DispatchInfo {
+  const c = (company || '').toLowerCase();
+  if (c.includes('correio')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência dos Correios',
+      description: 'Os Correios não fazem coleta no balcão. Você precisa levar o pacote etiquetado a qualquer agência.',
+      findUrl: 'https://www.correios.com.br/atendimento/encontre-uma-agencia',
+    };
+  }
+  if (c.includes('jadlog')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência Jadlog (Pickup)',
+      description: 'Despache em qualquer ponto Pickup/Jadlog. Coleta no endereço só com contrato direto.',
+      findUrl: 'https://www.jadlog.com.br/jadlog/unidades',
+    };
+  }
+  if (c.includes('loggi')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência Loggi',
+      description: 'Despache em uma agência Loggi parceira ou em um ponto de coleta indicado no app.',
+      findUrl: 'https://www.loggi.com/agencias/',
+    };
+  }
+  if (c.includes('latam')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um balcão Latam Cargo',
+      description: 'Despache em um balcão Latam Cargo no aeroporto/terminal mais próximo.',
+      findUrl: 'https://www.latamcargo.com/pt/atendimento',
+    };
+  }
+  if (c.includes('azul')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um balcão Azul Cargo',
+      description: 'Despache em um balcão Azul Cargo Express.',
+      findUrl: 'https://www.azulcargo.com.br/Atendimento',
+    };
+  }
+  if (c.includes('j&t') || c.includes('jt express')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um ponto J&T Express',
+      description: 'Despache em um ponto J&T credenciado.',
+      findUrl: 'https://www.jtexpress.com.br/pontosdeatendimento',
+    };
+  }
+  return {
+    mode: 'dropoff',
+    label: 'Levar até a agência da transportadora',
+    description: 'Pelo Melhor Envio o vendedor leva o pacote até a agência. Coleta no endereço requer contrato direto.',
+  };
+}
 
 interface ShippingOption {
   codigo: string;
