@@ -27,6 +27,7 @@ import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
+import { upscaleImage } from '@/utils/upscaleImage';
 import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 
 interface Product {
@@ -96,6 +97,7 @@ export function ProductsManagement() {
   const [poundTest, setPoundTest] = useState('');
   const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
+  const [upscaleImages, setUpscaleImages] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
@@ -241,7 +243,11 @@ export function ProductsManagement() {
           }
           let file: File;
           try {
-            file = await normalizeProductImage(original, 800, 0.9);
+            let processed = original;
+            if (upscaleImages) {
+              processed = await upscaleImage(original, 2);
+            }
+            file = await normalizeProductImage(processed, 800, 0.9);
           } catch {
             file = original;
           }
@@ -818,6 +824,22 @@ export function ProductsManagement() {
                 <p className="text-xs text-muted-foreground">
                   Passe o mouse sobre uma imagem e clique em <span className="font-semibold">"Sem fundo"</span> para remover o fundo automaticamente com IA.
                 </p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="upscale-images-new" className="text-emerald-700 dark:text-emerald-400">
+                    Remover serrilhado (upscale)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Dobra a resolução e aplica sharpening leve — ideal para imagens pequenas ou com compressão ruim
+                  </p>
+                </div>
+                <Switch
+                  id="upscale-images-new"
+                  checked={upscaleImages}
+                  onCheckedChange={setUpscaleImages}
+                />
               </div>
 
               <Button type="submit" disabled={uploading} className="w-full">

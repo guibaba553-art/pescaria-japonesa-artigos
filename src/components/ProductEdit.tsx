@@ -24,6 +24,7 @@ import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
+import { upscaleImage } from '@/utils/upscaleImage';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { resolveOptionalMeasurementUpdate } from '@/utils/productMeasurements';
 
@@ -64,6 +65,7 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
   );
   const [minimumQuantity, setMinimumQuantity] = useState(product.minimum_quantity?.toString() || '1');
   const [sku, setSku] = useState(product.sku || '');
+  const [upscaleImages, setUpscaleImages] = useState(false);
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
   const [pdvNoMarkup, setPdvNoMarkup] = useState((product as any).pdv_no_markup || false);
@@ -252,7 +254,11 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
           // Normaliza para quadrado 800x800 com fundo branco
           let file: File;
           try {
-            file = await normalizeProductImage(original, 800, 0.9);
+            let processed = original;
+            if (upscaleImages) {
+              processed = await upscaleImage(original, 2);
+            }
+            file = await normalizeProductImage(processed, 800, 0.9);
           } catch {
             file = original;
           }
@@ -904,6 +910,22 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
                   ))}
                 </div>
               )}
+
+              <div className="flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="upscale-images" className="text-emerald-700 dark:text-emerald-400">
+                    Remover serrilhado (upscale)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Dobra a resolução e aplica sharpening leve — ideal para imagens pequenas ou com compressão ruim
+                  </p>
+                </div>
+                <Switch
+                  id="upscale-images"
+                  checked={upscaleImages}
+                  onCheckedChange={setUpscaleImages}
+                />
+              </div>
 
               <Input
                 id="edit-images"
