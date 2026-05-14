@@ -370,6 +370,29 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </Card>
       )}
 
+      {packagePreview && packagePreview.length > 1 && (
+        <Card className="p-3 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+          <div className="flex items-start gap-2">
+            <Package className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                Este pedido será enviado em {packagePreview.length} volumes
+              </p>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
+                Itens longos (como varas) viajam em tubo separado das caixas. O frete já considera todos os volumes — o valor exibido é o total.
+              </p>
+              <ul className="text-xs text-amber-900/80 dark:text-amber-200/80 list-disc list-inside">
+                {packagePreview.map((pkg, i) => (
+                  <li key={pkg.id}>
+                    Volume {i + 1}: {packagingLabel(pkg.packaging)} · {pkg.weight.toFixed(2)}kg
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {user && savedAddresses.length > 0 && (
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
