@@ -137,18 +137,25 @@ export default function MobileHome() {
   }, []);
   const t = useCountdown(endOfDay);
 
+  // Carga em duas fases: primeiro só "Ofertas Relâmpago" (acima da dobra),
+  // depois featured + bestSellers em idle — reduz LCP/TTI no mobile.
   useEffect(() => {
-    const load = async () => {
-      const [deals, feat, top] = await Promise.all([
-        supabase
-          .from("products")
-          .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
-          .eq("pdv_only", false)
-          .eq("on_sale", true)
-          .gt("stock", 0)
-          .not("sale_price", "is", null)
-          .order("sale_ends_at", { ascending: true, nullsFirst: false })
-          .limit(8),
+    let cancelled = false;
+    const loadCritical = async () => {
+      const { data } = await supabase
+        .from("products")
+        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+        .eq("pdv_only", false)
+        .eq("on_sale", true)
+        .gt("stock", 0)
+        .not("sale_price", "is", null)
+        .order("sale_ends_at", { ascending: true, nullsFirst: false })
+        .limit(8);
+      if (!cancelled) setFlashDeals(((data as unknown) as Product[]) || []);
+    };
+
+    const loadDeferred = async () => {
+      const [feat, top] = await Promise.all([
         supabase
           .from("products")
           .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
@@ -165,11 +172,25 @@ export default function MobileHome() {
           .order("rating", { ascending: false, nullsFirst: false })
           .limit(8),
       ]);
-      setFlashDeals(((deals.data as unknown) as Product[]) || []);
+      if (cancelled) return;
       setFeatured(((feat.data as unknown) as Product[]) || []);
       setBestSellers(((top.data as unknown) as Product[]) || []);
     };
-    load();
+
+    loadCritical();
+
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    };
+    if (w.requestIdleCallback) {
+      w.requestIdleCallback(loadDeferred, { timeout: 1500 });
+    } else {
+      setTimeout(loadDeferred, 600);
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
