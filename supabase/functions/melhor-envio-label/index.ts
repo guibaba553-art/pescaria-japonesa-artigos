@@ -143,8 +143,10 @@ Deno.serve(async (req) => {
         from: FROM_ADDRESS,
         to: {
           name: profile?.full_name || 'Cliente',
-          phone: profile?.phone || '',
-          email: '',
+          // Melhor Envio exige phone/email para vários serviços (ex.: Correios PAC = 33).
+          // Fallback para o contato da loja garante que o checkout não seja rejeitado.
+          phone: profile?.phone || FROM_ADDRESS.phone,
+          email: profile?.email || FROM_ADDRESS.email,
           document: profile?.cpf || '',
           address: addressParts[0] || order.shipping_address,
           complement: '',
