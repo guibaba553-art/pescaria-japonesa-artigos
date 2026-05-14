@@ -173,7 +173,10 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Falha ao cotar');
 
-      const filtered = (data.options || []).filter((o: ShippingOption) => o.codigo !== 'RETIRADA');
+      // Só mostra opções do Melhor Envio (são as únicas que conseguimos comprar etiqueta automaticamente)
+      const filtered = (data.options || []).filter(
+        (o: ShippingOption) => o.codigo !== 'RETIRADA' && o.codigo.startsWith('me-'),
+      );
       setOptions(filtered);
     } catch (err: any) {
       toast({
