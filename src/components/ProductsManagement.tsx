@@ -27,6 +27,7 @@ import { BarcodeInput } from '@/components/BarcodeInput';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
+import { upscaleImage } from '@/utils/upscaleImage';
 import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 
 interface Product {
