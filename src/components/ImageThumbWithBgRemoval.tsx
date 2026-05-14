@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Scissors, Sparkles, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { upscaleImage } from '@/utils/upscaleImage';
+import { aiUpscaleImage } from '@/utils/aiUpscaleImage';
 // NÃO importar @/utils/removeBackground estaticamente: ele puxa @huggingface/transformers (~40MB)
 // e quebra o code-split de páginas que usam este componente. Carregamos sob demanda.
 
