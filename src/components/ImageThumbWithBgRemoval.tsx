@@ -104,7 +104,7 @@ export function ImageThumbWithBgRemoval({
         inputFile = source;
       }
 
-      const upscaled = await upscaleImage(inputFile, 2);
+      const upscaled = await upscaleImage(inputFile, 3);
 
       if (typeof source === 'string') {
         // Imagens salvas: devolve data URL para o pai re-uploadar
@@ -163,7 +163,7 @@ export function ImageThumbWithBgRemoval({
             className="h-6 px-1.5 text-[10px] gap-1"
             onClick={handleUpscale}
             disabled={processing}
-            title="Upscale 2x — remove serrilhado"
+            title="Upscale 3x — remove serrilhado"
           >
             <Sparkles className="w-3 h-3" />
             Upscale
