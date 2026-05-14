@@ -121,7 +121,18 @@ Deno.serve(async (req) => {
           return [];
         }
         const arr = await r.json();
-        return (Array.isArray(arr) ? arr : [])
+        const list = Array.isArray(arr) ? arr : [];
+        console.log(
+          'Melhor Envio raw services:',
+          list.map((o: any) => ({
+            id: o.id,
+            company: o.company?.name,
+            name: o.name,
+            price: o.price,
+            error: o.error,
+          })),
+        );
+        return list
           .filter((opt: any) => !opt.error && opt.price)
           .map((opt: any) => ({
             codigo: `me-${opt.id}`,
