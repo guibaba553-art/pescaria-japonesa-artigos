@@ -95,6 +95,9 @@ interface OrderInfo {
   id: string;
   shipping_cep: string;
   total_amount: number;
+  tracking_code?: string | null;
+  shipping_label_url?: string | null;
+  shipping_label_order_id?: string | null;
   order_items: Array<{ quantity: number; product_id: string }>;
 }
 
@@ -115,6 +118,17 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
 
   useEffect(() => {
     if (open && order) {
+      if (order.shipping_label_order_id || order.shipping_label_url) {
+        setSelected('');
+        setOptions([]);
+        setLoadingQuotes(false);
+        setResult({
+          trackingCode: order.tracking_code || null,
+          labelUrl: order.shipping_label_url || null,
+        });
+        return;
+      }
+
       setResult(null);
       setSelected('');
       loadQuotes();
@@ -224,7 +238,7 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
       });
 
       toast({
-        title: 'Etiqueta gerada com sucesso! 🎉',
+        title: data?.reused ? 'Etiqueta pronta para impressão' : 'Etiqueta gerada com sucesso! 🎉',
         description: data.trackingCode
           ? `Rastreio: ${data.trackingCode}`
           : 'Etiqueta comprada — abra o PDF para imprimir.',
@@ -281,7 +295,7 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
                 </div>
               )}
               {result.labelUrl && (
-                <Button asChild className="w-full" size="lg">
+                  <Button asChild className="w-full" size="lg">
                   <a href={result.labelUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Imprimir Etiqueta (PDF)
@@ -290,7 +304,7 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
               )}
             </div>
 
-            {(() => {
+            {selected && (() => {
               const opt = options.find((o) => o.codigo === selected);
               const dispatch = getDispatchInfo(opt?.company || null);
               return (
