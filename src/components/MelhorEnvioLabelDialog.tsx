@@ -12,8 +12,75 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, Truck, ExternalLink, Copy, MapPin, Info } from 'lucide-react';
 import { packItems } from '@/utils/packShipment';
+
+// Endereço de origem (loja) — onde despachar / onde a transportadora coleta
+const STORE_ADDRESS = 'Av. das Itaúbas, 2281 — Jardim Paraíso, Sinop/MT — CEP 78556-100';
+
+interface DispatchInfo {
+  mode: 'dropoff' | 'pickup';
+  label: string;
+  description: string;
+  findUrl?: string;
+}
+
+function getDispatchInfo(company: string | null): DispatchInfo {
+  const c = (company || '').toLowerCase();
+  if (c.includes('correio')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência dos Correios',
+      description: 'Os Correios não fazem coleta no balcão. Você precisa levar o pacote etiquetado a qualquer agência.',
+      findUrl: 'https://www.correios.com.br/atendimento/encontre-uma-agencia',
+    };
+  }
+  if (c.includes('jadlog')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência Jadlog (Pickup)',
+      description: 'Despache em qualquer ponto Pickup/Jadlog. Coleta no endereço só com contrato direto.',
+      findUrl: 'https://www.jadlog.com.br/jadlog/unidades',
+    };
+  }
+  if (c.includes('loggi')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até uma agência Loggi',
+      description: 'Despache em uma agência Loggi parceira ou em um ponto de coleta indicado no app.',
+      findUrl: 'https://www.loggi.com/agencias/',
+    };
+  }
+  if (c.includes('latam')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um balcão Latam Cargo',
+      description: 'Despache em um balcão Latam Cargo no aeroporto/terminal mais próximo.',
+      findUrl: 'https://www.latamcargo.com/pt/atendimento',
+    };
+  }
+  if (c.includes('azul')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um balcão Azul Cargo',
+      description: 'Despache em um balcão Azul Cargo Express.',
+      findUrl: 'https://www.azulcargo.com.br/Atendimento',
+    };
+  }
+  if (c.includes('j&t') || c.includes('jt express')) {
+    return {
+      mode: 'dropoff',
+      label: 'Levar até um ponto J&T Express',
+      description: 'Despache em um ponto J&T credenciado.',
+      findUrl: 'https://www.jtexpress.com.br/pontosdeatendimento',
+    };
+  }
+  return {
+    mode: 'dropoff',
+    label: 'Levar até a agência da transportadora',
+    description: 'Pelo Melhor Envio o vendedor leva o pacote até a agência. Coleta no endereço requer contrato direto.',
+  };
+}
 
 interface ShippingOption {
   codigo: string;
@@ -208,6 +275,36 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
                 </Button>
               )}
             </div>
+
+            {(() => {
+              const opt = options.find((o) => o.codigo === selected);
+              const dispatch = getDispatchInfo(opt?.company || null);
+              return (
+                <div className="rounded-lg border bg-amber-500/10 border-amber-500/30 p-4 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+                    <MapPin className="h-4 w-4" />
+                    {dispatch.label}
+                  </div>
+                  <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
+                    {dispatch.description}
+                  </p>
+                  <div className="flex items-start gap-2 pt-2 border-t border-amber-500/20 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      <strong className="text-foreground">Origem (loja):</strong> {STORE_ADDRESS}
+                    </span>
+                  </div>
+                  {dispatch.findUrl && (
+                    <Button asChild variant="outline" size="sm" className="w-full mt-2">
+                      <a href={dispatch.findUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                        Encontrar agência mais próxima
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <div className="space-y-4 py-2">
@@ -225,24 +322,33 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
               </div>
             ) : (
               <RadioGroup value={selected} onValueChange={setSelected} className="space-y-2">
-                {options.map((opt) => (
-                  <Label
-                    key={opt.codigo}
-                    htmlFor={opt.codigo}
-                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:border-primary ${
-                      selected === opt.codigo ? 'border-primary bg-primary/5' : ''
-                    }`}
-                  >
-                    <RadioGroupItem value={opt.codigo} id={opt.codigo} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{opt.nome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Entrega em até {opt.prazoEntrega} dia{opt.prazoEntrega !== 1 ? 's' : ''} úteis
-                      </p>
-                    </div>
-                    <p className="font-bold text-primary shrink-0">R$ {opt.valor.toFixed(2)}</p>
-                  </Label>
-                ))}
+                {options.map((opt) => {
+                  const dispatch = getDispatchInfo(opt.company);
+                  return (
+                    <Label
+                      key={opt.codigo}
+                      htmlFor={opt.codigo}
+                      className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:border-primary ${
+                        selected === opt.codigo ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <RadioGroupItem value={opt.codigo} id={opt.codigo} className="mt-1" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold truncate">{opt.nome}</p>
+                          <p className="font-bold text-primary shrink-0">R$ {opt.valor.toFixed(2)}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Entrega em até {opt.prazoEntrega} dia{opt.prazoEntrega !== 1 ? 's' : ''} úteis
+                        </p>
+                        <div className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                          <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>{dispatch.label}</span>
+                        </div>
+                      </div>
+                    </Label>
+                  );
+                })}
               </RadioGroup>
             )}
           </div>
