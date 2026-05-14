@@ -275,6 +275,36 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
                 </Button>
               )}
             </div>
+
+            {(() => {
+              const opt = options.find((o) => o.codigo === selected);
+              const dispatch = getDispatchInfo(opt?.company || null);
+              return (
+                <div className="rounded-lg border bg-amber-500/10 border-amber-500/30 p-4 space-y-2">
+                  <div className="flex items-center gap-2 font-semibold text-amber-800 dark:text-amber-300">
+                    <MapPin className="h-4 w-4" />
+                    {dispatch.label}
+                  </div>
+                  <p className="text-sm text-amber-900/80 dark:text-amber-200/80">
+                    {dispatch.description}
+                  </p>
+                  <div className="flex items-start gap-2 pt-2 border-t border-amber-500/20 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      <strong className="text-foreground">Origem (loja):</strong> {STORE_ADDRESS}
+                    </span>
+                  </div>
+                  {dispatch.findUrl && (
+                    <Button asChild variant="outline" size="sm" className="w-full mt-2">
+                      <a href={dispatch.findUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                        Encontrar agência mais próxima
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ) : (
           <div className="space-y-4 py-2">
