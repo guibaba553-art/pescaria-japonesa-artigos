@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Scissors, Sparkles, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { upscaleImage } from '@/utils/upscaleImage';
+import { aiUpscaleImage } from '@/utils/aiUpscaleImage';
 // NÃO importar @/utils/removeBackground estaticamente: ele puxa @huggingface/transformers (~40MB)
 // e quebra o code-split de páginas que usam este componente. Carregamos sob demanda.
 
@@ -89,11 +90,10 @@ export function ImageThumbWithBgRemoval({
     setProcessing(true);
     try {
       toast({
-        title: 'Aplicando upscale...',
-        description: 'Removendo serrilhado da imagem.',
+        title: 'Aplicando upscale com IA...',
+        description: 'Reconstruindo detalhes e removendo serrilhado. Pode levar 10-30s.',
       });
 
-      // Para URLs já salvas, baixa como File primeiro
       let inputFile: File;
       if (typeof source === 'string') {
         const res = await fetch(source);
@@ -104,15 +104,24 @@ export function ImageThumbWithBgRemoval({
         inputFile = source;
       }
 
-      const upscaled = await upscaleImage(inputFile, 3);
+      // Tenta IA primeiro (qualidade muito superior); fallback para canvas
+      let upscaled: File;
+      try {
+        upscaled = await aiUpscaleImage(inputFile);
+      } catch (aiErr) {
+        console.warn('IA falhou, usando upscale local:', aiErr);
+        toast({
+          title: 'IA indisponível, usando upscale local',
+          description: aiErr instanceof Error ? aiErr.message : '',
+        });
+        upscaled = await upscaleImage(inputFile, 3);
+      }
 
       if (typeof source === 'string') {
-        // Imagens salvas: devolve data URL para o pai re-uploadar
         const dataUrl = await blobToDataUrl(upscaled);
         setPreviewUrl(dataUrl);
         onBackgroundRemoved(dataUrl);
       } else {
-        // Novo upload: devolve File diretamente
         setPreviewUrl(URL.createObjectURL(upscaled));
         onBackgroundRemoved(upscaled);
       }
