@@ -188,8 +188,19 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
 
   const handleGenerate = async () => {
     if (!order || !selected) return;
-    const meServiceId = Number(selected);
-    if (!Number.isFinite(meServiceId)) return;
+    if (!selected.startsWith('me-')) {
+      toast({
+        title: 'Transportadora não suportada para etiqueta automática',
+        description: 'Só é possível gerar etiqueta pelo Melhor Envio. Escolha uma opção iniciada por Correios/Jadlog/Loggi/Latam/Azul listada pelo Melhor Envio (não Frenet).',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const meServiceId = Number(selected.replace('me-', ''));
+    if (!Number.isFinite(meServiceId)) {
+      toast({ title: 'Serviço inválido', variant: 'destructive' });
+      return;
+    }
 
     setGenerating(true);
     try {
