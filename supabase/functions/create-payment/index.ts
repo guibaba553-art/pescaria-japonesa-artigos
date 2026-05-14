@@ -496,8 +496,20 @@ serve(async (req) => {
             const binData = await binResp.json();
             const results = binData?.results || [];
             const wanted = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
-            const match = results.find((r: any) => r.payment_type_id === wanted) || results[0];
-            paymentMethodId = match?.id;
+            const match = results.find((r: any) => r.payment_type_id === wanted);
+            // SEGURANÇA: se o usuário pediu débito e o BIN não retornou nenhuma
+            // opção de débito, NÃO caímos para crédito — abortamos com erro claro.
+            if (!match && data.paymentMethod === 'debit') {
+              console.error('BIN API: cartão não habilitado para débito. Resultados:', JSON.stringify(results.map((r: any) => ({ id: r.id, type: r.payment_type_id }))));
+              return new Response(
+                JSON.stringify({
+                  error: 'Este cartão não está habilitado para débito. Selecione crédito ou use outro cartão.',
+                  success: false,
+                }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            paymentMethodId = (match || results[0])?.id;
             console.log('Payment method detected via BIN API:', paymentMethodId);
           } else {
             console.error('BIN API returned status:', binResp.status);
@@ -512,6 +524,30 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ error: 'Não foi possível identificar a bandeira do cartão. Tente novamente.', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+
+      // SEGURANÇA FINAL: garantir que o id resolvido corresponde ao tipo escolhido pelo usuário.
+      // Bandeiras de débito do Mercado Pago começam com "deb" (debvisa, debmaster, debelo).
+      const isDebitId = paymentMethodId.startsWith('deb');
+      if (data.paymentMethod === 'debit' && !isDebitId) {
+        console.error(`ABORT: usuário escolheu débito mas payment_method_id resolvido é "${paymentMethodId}" (crédito).`);
+        return new Response(
+          JSON.stringify({
+            error: 'Não foi possível confirmar a bandeira de débito deste cartão. Tente novamente ou use outro cartão.',
+            success: false,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (data.paymentMethod === 'credit' && isDebitId) {
+        console.error(`ABORT: usuário escolheu crédito mas payment_method_id resolvido é "${paymentMethodId}" (débito).`);
+        return new Response(
+          JSON.stringify({
+            error: 'Inconsistência na bandeira do cartão. Tente novamente.',
+            success: false,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -607,9 +643,18 @@ serve(async (req) => {
       });
 
       const responseData = await response.json();
-      
-      console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status);
-      
+
+      console.log('Card payment response - Status:', response.status, 'Payment status:', responseData.status, 'payment_type_id:', responseData.payment_type_id, 'payment_method_id:', responseData.payment_method_id);
+
+      // VERIFICAÇÃO PÓS-PROCESSAMENTO: confirmar que o MP processou no tipo correto.
+      // Se houver divergência (ex.: usuário pediu débito mas MP processou como crédito),
+      // registramos no log para auditoria. Não estornamos automaticamente para evitar
+      // duplo bloqueio, mas o admin é alertado.
+      const expectedType = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
+      if (response.ok && responseData.payment_type_id && responseData.payment_type_id !== expectedType) {
+        console.error(`⚠️ DIVERGÊNCIA DE TIPO: usuário escolheu "${data.paymentMethod}" mas MP processou como "${responseData.payment_type_id}". order=${data.orderId} payment=${responseData.id}`);
+      }
+
       if (!response.ok) {
         console.error('Mercado Pago error - Status:', response.status, 'Body:', JSON.stringify(responseData));
         
