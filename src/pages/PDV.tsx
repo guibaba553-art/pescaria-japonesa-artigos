@@ -33,7 +33,8 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
