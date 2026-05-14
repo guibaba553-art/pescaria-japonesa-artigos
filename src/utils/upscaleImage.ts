@@ -1,13 +1,13 @@
 /**
- * Upscale leve de imagem via Canvas 2x + sharpening.
+ * Upscale leve de imagem via Canvas 3x + sharpening.
  * Remove serrilhado (aliasing) em imagens pequenas/compressão agressiva.
- * - Faz upscale 2x com imageSmoothingQuality='high'
+ * - Faz upscale 3x com imageSmoothingQuality='high'
  * - Aplica sharpening leve por convolução para restaurar bordas
  * - Exporta JPEG com qualidade 0.92
  *
  * Útil para fotos de produto que chegam com baixa resolução ou compressão ruim.
  */
-export async function upscaleImage(file: File, scale = 2): Promise<File> {
+export async function upscaleImage(file: File, scale = 3): Promise<File> {
   // SVGs e GIFs animados não devem ser rasterizados
   if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
     return file;
