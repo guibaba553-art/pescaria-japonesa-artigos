@@ -2328,7 +2328,63 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de cadastro de cliente */}
+      {/* Diálogo de ajuste de estoque */}
+      <Dialog open={!!stockEditTarget} onOpenChange={(open) => !open && setStockEditTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajustar estoque</DialogTitle>
+            <DialogDescription>
+              {stockEditTarget?.product.name}
+              {stockEditTarget?.variation ? ` — ${stockEditTarget.variation.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Estoque atual</Label>
+              <p className="text-2xl font-bold">
+                {stockEditTarget?.variation
+                  ? stockEditTarget.variation.stock
+                  : stockEditTarget?.product.stock}
+                {stockEditTarget?.product.sold_by_weight ? ' kg' : ' un'}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="new-stock">Novo estoque</Label>
+              <Input
+                id="new-stock"
+                type="number"
+                inputMode="decimal"
+                step={stockEditTarget?.product.sold_by_weight ? '0.001' : '1'}
+                min="0"
+                value={stockEditValue}
+                onChange={(e) => setStockEditValue(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label htmlFor="stock-reason">Motivo (opcional)</Label>
+              <Input
+                id="stock-reason"
+                placeholder="Ex.: contagem, perda, recebimento..."
+                value={stockEditReason}
+                onChange={(e) => setStockEditReason(e.target.value)}
+                maxLength={200}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setStockEditTarget(null)} disabled={stockEditSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveStockEdit} disabled={stockEditSaving}>
+              {stockEditSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
