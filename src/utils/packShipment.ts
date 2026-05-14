@@ -222,7 +222,7 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
 
     // Se for UM único item pequeno, usa dimensões do item + folga (evita peso cubado inflado).
     // Caso contrário, usa a caixa padrão (consolida vários itens).
-    let pkgDims = { w: dims.w, h: dims.h, l: dims.l };
+    let pkgDims: { w: number; h: number; l: number } = { w: dims.w, h: dims.h, l: dims.l };
     if (boxItems.length === 1) {
       const it = boxItems[0].item;
       const iw = dim(it, 'width_cm');
