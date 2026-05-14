@@ -14,7 +14,7 @@ const FROM_ADDRESS = {
   name: 'JAPAS Pesca',
   phone: '5566996579671',
   email: 'robertobaba2@gmail.com',
-  document: '', // CPF/CNPJ deve ser preenchido nas configurações da conta Melhor Envio
+  document: '33169502000108', // CNPJ da loja — usado como fallback se cliente não tiver CPF
   address: 'Endereço da loja', // Será sobrescrito pelo perfil ME
   complement: '',
   number: 'S/N',
