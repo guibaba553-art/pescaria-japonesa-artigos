@@ -292,24 +292,33 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
               </div>
             ) : (
               <RadioGroup value={selected} onValueChange={setSelected} className="space-y-2">
-                {options.map((opt) => (
-                  <Label
-                    key={opt.codigo}
-                    htmlFor={opt.codigo}
-                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:border-primary ${
-                      selected === opt.codigo ? 'border-primary bg-primary/5' : ''
-                    }`}
-                  >
-                    <RadioGroupItem value={opt.codigo} id={opt.codigo} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{opt.nome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Entrega em até {opt.prazoEntrega} dia{opt.prazoEntrega !== 1 ? 's' : ''} úteis
-                      </p>
-                    </div>
-                    <p className="font-bold text-primary shrink-0">R$ {opt.valor.toFixed(2)}</p>
-                  </Label>
-                ))}
+                {options.map((opt) => {
+                  const dispatch = getDispatchInfo(opt.company);
+                  return (
+                    <Label
+                      key={opt.codigo}
+                      htmlFor={opt.codigo}
+                      className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-all hover:border-primary ${
+                        selected === opt.codigo ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <RadioGroupItem value={opt.codigo} id={opt.codigo} className="mt-1" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold truncate">{opt.nome}</p>
+                          <p className="font-bold text-primary shrink-0">R$ {opt.valor.toFixed(2)}</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Entrega em até {opt.prazoEntrega} dia{opt.prazoEntrega !== 1 ? 's' : ''} úteis
+                        </p>
+                        <div className="mt-1.5 flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                          <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>{dispatch.label}</span>
+                        </div>
+                      </div>
+                    </Label>
+                  );
+                })}
               </RadioGroup>
             )}
           </div>
