@@ -5,7 +5,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Eye, Users, MousePointerClick, TrendingUp } from 'lucide-react';
+import { Eye, Users, MousePointerClick, TrendingUp, Activity, CalendarDays } from 'lucide-react';
 
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
@@ -72,7 +72,7 @@ function classifyReferrer(ref: string | null): string {
 
 export function SiteAnalytics() {
   const [loading, setLoading] = useState(true);
-  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0 });
+  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
   const [topPages, setTopPages] = useState<PageStat[]>([]);
   const [sources, setSources] = useState<SourceStat[]>([]);
@@ -201,11 +201,18 @@ export function SiteAnalytics() {
     const orders = ordersCount ?? 0;
     const conversion = totalVisitors > 0 ? (orders / totalVisitors) * 100 : 0;
 
+    const todayKey = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const todayEntry = daily.find(d => d.date === todayKey);
+    const avgPerDay = daily.length > 0 ? rows.length / daily.length : 0;
+
     setTotals({
       visits: rows.length,
       visitors: totalVisitors,
       conversion,
       orders30d: orders,
+      today: todayEntry?.visits ?? 0,
+      todayVisitors: todayEntry?.visitors ?? 0,
+      avgPerDay,
     });
     setDailyData(daily);
     setTopPages(top);
@@ -220,7 +227,7 @@ export function SiteAnalytics() {
   return (
     <div className="space-y-6">
       {/* KPI cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Visitas (30d)</CardTitle>
@@ -256,6 +263,26 @@ export function SiteAnalytics() {
           <CardContent>
             <div className="text-2xl font-bold">{totals.conversion.toFixed(2)}%</div>
             <p className="text-xs text-muted-foreground">visita → pedido</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Movimentação hoje</CardTitle>
+            <Activity className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totals.today.toLocaleString('pt-BR')}</div>
+            <p className="text-xs text-muted-foreground">{totals.todayVisitors} visitantes únicos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Média diária</CardTitle>
+            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totals.avgPerDay.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">visitas/dia (30d)</p>
           </CardContent>
         </Card>
       </div>
