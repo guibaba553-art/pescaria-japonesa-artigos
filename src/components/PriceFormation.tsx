@@ -56,6 +56,7 @@ interface Product {
   cost_group_id: string | null;
   freight_pct: number;
   op_cost_pct: number;
+  tax_pct: number;
   min_sale_price: number | null;
 }
 
