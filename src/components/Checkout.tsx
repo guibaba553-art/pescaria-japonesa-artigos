@@ -648,6 +648,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
         if (prefError || !prefData?.success || !prefData?.initPoint) {
           await cleanupPendingOrder(orderData.id);
+          createdOrderId = null;
           const { extractEdgeError } = await import('@/utils/siteCartValidation');
           const friendly = prefError ? await extractEdgeError(prefError) : null;
           throw new Error(friendly || prefData?.error || prefError?.message || 'Erro ao criar checkout');
@@ -703,6 +704,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
       if (error) {
         await cleanupPendingOrder(orderData.id);
+        createdOrderId = null;
         const { extractEdgeError } = await import('@/utils/siteCartValidation');
         const friendly = await extractEdgeError(error);
         console.error('Edge function error:', friendly || error);
