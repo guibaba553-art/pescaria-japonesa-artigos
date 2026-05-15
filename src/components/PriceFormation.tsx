@@ -208,6 +208,7 @@ export function PriceFormation() {
       setEditGroupId(selected.cost_group_id || "none");
       setEditFreightPct(selected.freight_pct ? String(selected.freight_pct) : "");
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
+      setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
     }
   }, [selected]);
