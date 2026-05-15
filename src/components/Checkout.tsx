@@ -178,19 +178,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         .order('last_used_at', { ascending: false });
       const list = (data ?? []) as SavedPaymentMethod[];
       setSavedMethods(list);
-      // Auto-aplica a forma padrão se houver e o usuário ainda não escolheu
-      const def = list.find((m) => m.is_default) ?? list[0];
-      if (def) {
-        setPaymentMethod((curr) => {
-          // Só sobrescreve se ainda for o default 'pix' e existir uma preferência salva
-          if (curr === 'pix') {
-            if (def.payment_method === 'credit_card') return 'credit';
-            if (def.payment_method === 'debit_card') return 'debit';
-            if (def.payment_method === 'pix') return 'pix';
-          }
-          return curr;
-        });
-      }
+      // IMPORTANTE: NÃO sobrescrever automaticamente o método selecionado.
+      // Antes este código trocava silenciosamente PIX → crédito/débito quando o
+      // usuário tinha um cartão salvo como padrão, alterando a intenção dele
+      // (paga no método errado ou é forçado a preencher cartão sem querer).
+      // Se quiser sugerir a forma salva, mostramos como sugestão na UI, mas
+      // a escolha final é sempre explícita via radio.
     })();
   }, [open]);
 
