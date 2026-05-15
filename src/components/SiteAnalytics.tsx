@@ -72,7 +72,7 @@ function classifyReferrer(ref: string | null): string {
 
 export function SiteAnalytics() {
   const [loading, setLoading] = useState(true);
-  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0 });
+  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
   const [topPages, setTopPages] = useState<PageStat[]>([]);
   const [sources, setSources] = useState<SourceStat[]>([]);
