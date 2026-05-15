@@ -80,10 +80,19 @@ export default function Products() {
     if (categoryParam) query = query.eq('category', categoryParam);
     if (subcategoryParam) query = query.eq('subcategory', subcategoryParam);
 
-    const { data, error } = await query;
+    let result = await query;
+    for (let attempt = 0; attempt < 2 && result.error && /failed to fetch|networkerror|load failed/i.test(result.error.message || ''); attempt++) {
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+      result = await query;
+    }
+    const { data, error } = result;
 
     if (error) {
-      toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
+      if (/failed to fetch|networkerror|load failed/i.test(error.message || '')) {
+        console.warn('[Products] rede instável:', error.message);
+      } else {
+        toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
+      }
     } else {
       setProducts((data || []) as unknown as Product[]);
     }
