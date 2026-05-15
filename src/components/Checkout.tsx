@@ -84,6 +84,36 @@ const paymentMethodLabel = (m: SavedPaymentMethod['payment_method']) => {
   }
 };
 
+const normalizeCpf = (value?: string | null) => value?.replace(/\D/g, '') ?? '';
+
+const isValidCpf = (value?: string | null) => {
+  const cpf = normalizeCpf(value);
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+
+  let digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  if (digit !== Number(cpf[9])) {
+    return false;
+  }
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+
+  digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  return digit === Number(cpf[10]);
+};
+
 export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: CheckoutProps) {
   const { total, items, clearCart } = useCart();
   const { toast } = useToast();
@@ -348,6 +378,30 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     }
   };
 
+  const cleanupPendingOrder = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-checkout-order', {
+        body: { orderId },
+      });
+
+      if (error) throw error;
+      if (data?.success === false && !data?.cancelled) {
+        throw new Error(data.error || 'Falha ao cancelar pedido pendente');
+      }
+    } catch (cleanupError) {
+      console.error('Erro ao limpar pedido pendente, tentando fallback local:', cleanupError);
+
+      try {
+        await supabase.rpc('release_stock_reservation', { p_order_id: orderId });
+      } catch (reservationError) {
+        console.error('Erro ao liberar reserva de estoque:', reservationError);
+      }
+
+      await supabase.from('order_items').delete().eq('order_id', orderId);
+      await supabase.from('orders').delete().eq('id', orderId);
+    }
+  };
+
   const validateCardData = () => {
     const errors: string[] = [];
 
@@ -399,6 +453,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
   const handleFinishPurchase = async () => {
     setIsProcessing(true);
+    let createdOrderId: string | null = null;
     
     try {
       // Validar dados do cartão se for pagamento com cartão
@@ -425,6 +480,19 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         .select('cpf, full_name')
         .eq('id', user.id)
         .maybeSingle();
+
+      if (paymentMethod === 'pix') {
+        const fullName = profile?.full_name?.trim() || user.user_metadata?.full_name?.trim() || '';
+        const cpf = normalizeCpf(profile?.cpf);
+
+        if (!fullName) {
+          throw new Error('Para pagar com PIX, preencha seu nome completo em “Meus Dados”.');
+        }
+
+        if (!isValidCpf(cpf)) {
+          throw new Error('Para pagar com PIX, cadastre um CPF válido em “Meus Dados”.');
+        }
+      }
 
       let cardToken = null;
       
@@ -524,6 +592,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error('Erro ao criar pedido');
       }
 
+      createdOrderId = orderData.id;
+
       // Criar itens do pedido
       // product_id sempre referencia products.id (FK do produto pai).
       // variation_id (opcional) referencia product_variations.id quando há variação.
@@ -577,8 +647,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         );
 
         if (prefError || !prefData?.success || !prefData?.initPoint) {
-          await supabase.from('order_items').delete().eq('order_id', orderData.id);
-          await supabase.from('orders').delete().eq('id', orderData.id);
+          await cleanupPendingOrder(orderData.id);
           const { extractEdgeError } = await import('@/utils/siteCartValidation');
           const friendly = prefError ? await extractEdgeError(prefError) : null;
           throw new Error(friendly || prefData?.error || prefError?.message || 'Erro ao criar checkout');
@@ -633,9 +702,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       });
 
       if (error) {
-        // Se falhar, deletar o pedido criado
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        await cleanupPendingOrder(orderData.id);
         const { extractEdgeError } = await import('@/utils/siteCartValidation');
         const friendly = await extractEdgeError(error);
         console.error('Edge function error:', friendly || error);
@@ -685,9 +752,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           }
         }
       } else {
-        // Se falhar, deletar o pedido criado
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        await cleanupPendingOrder(orderData.id);
 
         // Mostrar erro detalhado em toast destrutivo (com motivo do MP)
         const errorMessage = data.error || 'Pagamento não autorizado';
@@ -701,6 +766,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         return;
       }
     } catch (error) {
+      if (createdOrderId) {
+        await cleanupPendingOrder(createdOrderId);
+      }
+
       console.error('Payment error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao processar pagamento';
       
