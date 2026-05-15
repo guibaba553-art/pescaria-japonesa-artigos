@@ -201,11 +201,18 @@ export function SiteAnalytics() {
     const orders = ordersCount ?? 0;
     const conversion = totalVisitors > 0 ? (orders / totalVisitors) * 100 : 0;
 
+    const todayKey = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const todayEntry = daily.find(d => d.date === todayKey);
+    const avgPerDay = daily.length > 0 ? rows.length / daily.length : 0;
+
     setTotals({
       visits: rows.length,
       visitors: totalVisitors,
       conversion,
       orders30d: orders,
+      today: todayEntry?.visits ?? 0,
+      todayVisitors: todayEntry?.visitors ?? 0,
+      avgPerDay,
     });
     setDailyData(daily);
     setTopPages(top);
