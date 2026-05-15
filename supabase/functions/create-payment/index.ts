@@ -335,17 +335,24 @@ serve(async (req) => {
       console.log('Mercado Pago PIX response status:', response.status);
       
       if (!response.ok) {
-        console.error('Mercado Pago API Error - Status:', response.status, 'Code:', responseData.code);
-        
-        let errorMessage = 'Erro ao criar pagamento PIX';
+        console.error('Mercado Pago API Error - Status:', response.status, 'Body:', JSON.stringify(responseData));
+
+        let errorMessage = responseData?.message || responseData?.error || 'Erro ao criar pagamento PIX';
+        const causeMessages = Array.isArray(responseData?.cause)
+          ? responseData.cause.map((c: any) => c?.description || c?.message || c?.code).filter(Boolean).join('; ')
+          : '';
+        if (causeMessages) errorMessage = `${errorMessage} - ${causeMessages}`;
+
         if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
           errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado.';
         }
-        
+
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: errorMessage,
-            success: false 
+            mpStatus: response.status,
+            mpBody: responseData,
+            success: false
           }),
           { 
             status: response.status,
