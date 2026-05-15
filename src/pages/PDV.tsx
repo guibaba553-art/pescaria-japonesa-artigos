@@ -1199,8 +1199,9 @@ export default function PDV() {
 
   const calculateChange = () => {
     if (paymentMethod !== 'cash') return 0;
-    const received = parseFloat(cashReceived) || 0;
-    return Math.max(0, received - calculateTotal());
+    const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
+    const diffCents = Math.round(received * 100) - Math.round(calculateTotal() * 100);
+    return Math.max(0, diffCents / 100);
   };
 
   const [savingCustomer, setSavingCustomer] = useState(false);
