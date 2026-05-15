@@ -140,6 +140,7 @@ export function PriceFormation() {
           cost_group_id: p.cost_group_id || null,
           freight_pct: Number(p.freight_pct ?? 0),
           op_cost_pct: Number(p.op_cost_pct ?? 0),
+          tax_pct: Number(p.tax_pct ?? 0),
           min_sale_price: p.min_sale_price !== null && p.min_sale_price !== undefined ? Number(p.min_sale_price) : null,
         }));
 
