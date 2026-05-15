@@ -34,6 +34,36 @@ const paymentRequestSchema = z.object({
   orderId: z.string().uuid('Invalid order ID').optional(),
 });
 
+const normalizeCpf = (value?: string | null) => value?.replace(/\D/g, '') ?? '';
+
+const isValidCpf = (value?: string | null) => {
+  const cpf = normalizeCpf(value);
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < 9; i += 1) {
+    sum += Number(cpf[i]) * (10 - i);
+  }
+
+  let digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  if (digit !== Number(cpf[9])) {
+    return false;
+  }
+
+  sum = 0;
+  for (let i = 0; i < 10; i += 1) {
+    sum += Number(cpf[i]) * (11 - i);
+  }
+
+  digit = (sum * 10) % 11;
+  if (digit === 10) digit = 0;
+  return digit === Number(cpf[10]);
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -286,6 +316,32 @@ serve(async (req) => {
 
     // Para PIX
     if (data.paymentMethod === 'pix') {
+      const payerName = data.userName?.trim() || '';
+      const [firstName, ...lastNameParts] = payerName.split(/\s+/).filter(Boolean);
+      const lastName = lastNameParts.join(' ');
+      const cpf = normalizeCpf(data.userCpf);
+
+      if (!data.userEmail) {
+        return new Response(
+          JSON.stringify({ error: 'E-mail obrigatório para gerar PIX.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!firstName || !lastName) {
+        return new Response(
+          JSON.stringify({ error: 'Informe nome e sobrenome válidos para gerar o PIX.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!isValidCpf(cpf)) {
+        return new Response(
+          JSON.stringify({ error: 'CPF inválido para gerar o PIX. Atualize o cadastro e tente novamente.', success: false }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       // Modo simulação
       if (simulatePayment) {
         console.log('Simulation mode: PIX payment');
@@ -308,12 +364,12 @@ serve(async (req) => {
         description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
         payment_method_id: 'pix',
         payer: {
-          email: data.userEmail || 'cliente@japapesca.com',
-          first_name: data.userName?.split(' ')[0] || 'Cliente',
-          last_name: data.userName?.split(' ').slice(1).join(' ') || 'JAPA',
+          email: data.userEmail,
+          first_name: firstName,
+          last_name: lastName,
           identification: {
             type: 'CPF',
-            number: data.userCpf?.replace(/\D/g, '') || '00000000000'
+            number: cpf
           }
         },
       };
