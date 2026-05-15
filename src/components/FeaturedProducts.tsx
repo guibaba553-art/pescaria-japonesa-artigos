@@ -27,19 +27,37 @@ const FeaturedProducts = () => {
 
   const loadProducts = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
-      .eq('pdv_only', false)
-      .gt('stock', 0)
-      .eq('featured', true)
-      .order('created_at', { ascending: false })
-      .limit(4);
+    let lastError: any = null;
+    // Retry com backoff para tolerar quedas momentâneas de rede ("Failed to fetch")
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await supabase
+        .from('products')
+        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+        .eq('pdv_only', false)
+        .gt('stock', 0)
+        .eq('featured', true)
+        .order('created_at', { ascending: false })
+        .limit(4);
 
-    if (error) {
-      toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
-    } else {
-      setProducts(((data as any) || []) as Product[]);
+      if (!error) {
+        setProducts(((data as any) || []) as Product[]);
+        setLoading(false);
+        return;
+      }
+      lastError = error;
+      const isNetwork = /failed to fetch|networkerror|load failed/i.test(error.message || '');
+      if (!isNetwork) break;
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+    }
+
+    if (lastError) {
+      const msg = lastError.message || '';
+      // Erros transitórios de rede: log apenas, sem alarmar o usuário
+      if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+        console.warn('[FeaturedProducts] rede instável:', msg);
+      } else {
+        toast({ title: 'Erro ao carregar produtos', description: msg, variant: 'destructive' });
+      }
     }
     setLoading(false);
   };
