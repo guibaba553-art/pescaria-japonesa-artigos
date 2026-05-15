@@ -1345,6 +1345,7 @@ export type Database = {
           product_id: string
           sku: string | null
           stock: number
+          tax_pct: number
           updated_at: string
           weight_grams: number | null
           width_cm: number | null
@@ -1367,6 +1368,7 @@ export type Database = {
           product_id: string
           sku?: string | null
           stock?: number
+          tax_pct?: number
           updated_at?: string
           weight_grams?: number | null
           width_cm?: number | null
@@ -1389,6 +1391,7 @@ export type Database = {
           product_id?: string
           sku?: string | null
           stock?: number
+          tax_pct?: number
           updated_at?: string
           weight_grams?: number | null
           width_cm?: number | null
@@ -1461,6 +1464,7 @@ export type Database = {
           stock: number
           subcategory: string | null
           supplier_id: string | null
+          tax_pct: number
           unidade_comercial: string | null
           updated_at: string
           weight_grams: number | null
@@ -1516,6 +1520,7 @@ export type Database = {
           stock?: number
           subcategory?: string | null
           supplier_id?: string | null
+          tax_pct?: number
           unidade_comercial?: string | null
           updated_at?: string
           weight_grams?: number | null
@@ -1571,6 +1576,7 @@ export type Database = {
           stock?: number
           subcategory?: string | null
           supplier_id?: string | null
+          tax_pct?: number
           unidade_comercial?: string | null
           updated_at?: string
           weight_grams?: number | null
@@ -2469,6 +2475,7 @@ export type Database = {
           stock: number
           subcategory: string | null
           supplier_id: string | null
+          tax_pct: number
           unidade_comercial: string | null
           updated_at: string
           weight_grams: number | null
@@ -2533,6 +2540,7 @@ export type Database = {
           stock: number
           subcategory: string | null
           supplier_id: string | null
+          tax_pct: number
           unidade_comercial: string | null
           updated_at: string
           weight_grams: number | null
