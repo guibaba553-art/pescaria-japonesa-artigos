@@ -92,6 +92,7 @@ export function PriceFormation() {
   const [editGroupId, setEditGroupId] = useState<string>("none");
   const [editFreightPct, setEditFreightPct] = useState("");
   const [editOpCostPct, setEditOpCostPct] = useState("");
+  const [editTaxPct, setEditTaxPct] = useState("");
   const [editMinSale, setEditMinSale] = useState("");
   const [saving, setSaving] = useState(false);
 
