@@ -690,9 +690,26 @@ export function PriceFormation() {
                     </div>
                   </div>
 
+                  <div>
+                    <Label htmlFor="pf-tax">Imposto (%)</Label>
+                    <Input
+                      id="pf-tax"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editTaxPct}
+                      onChange={(e) => setEditTaxPct(e.target.value)}
+                      placeholder="0,00"
+                    />
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      % sobre o valor de venda · {fmt(liveTax)}
+                    </div>
+                  </div>
+
                   <div className="rounded-md border bg-muted/40 px-3 py-2 flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
-                      Custo total (custo + frete + operacionais)
+                      Custo total (custo + frete + operacionais + imposto)
                     </span>
                     <span className="font-bold">{fmt(liveTotalCost)}</span>
                   </div>
