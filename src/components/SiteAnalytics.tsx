@@ -227,7 +227,7 @@ export function SiteAnalytics() {
   return (
     <div className="space-y-6">
       {/* KPI cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Visitas (30d)</CardTitle>
