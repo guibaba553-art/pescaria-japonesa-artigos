@@ -56,6 +56,7 @@ interface Product {
   cost_group_id: string | null;
   freight_pct: number;
   op_cost_pct: number;
+  tax_pct: number;
   min_sale_price: number | null;
 }
 
@@ -91,6 +92,7 @@ export function PriceFormation() {
   const [editGroupId, setEditGroupId] = useState<string>("none");
   const [editFreightPct, setEditFreightPct] = useState("");
   const [editOpCostPct, setEditOpCostPct] = useState("");
+  const [editTaxPct, setEditTaxPct] = useState("");
   const [editMinSale, setEditMinSale] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -110,7 +112,7 @@ export function PriceFormation() {
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
         supabase
           .from("product_variations")
-          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id, freight_pct, op_cost_pct, min_sale_price")
+          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id, freight_pct, op_cost_pct, tax_pct, min_sale_price")
           .order("name"),
       ]);
 
@@ -139,6 +141,7 @@ export function PriceFormation() {
           cost_group_id: p.cost_group_id || null,
           freight_pct: Number(p.freight_pct ?? 0),
           op_cost_pct: Number(p.op_cost_pct ?? 0),
+          tax_pct: Number(p.tax_pct ?? 0),
           min_sale_price: p.min_sale_price !== null && p.min_sale_price !== undefined ? Number(p.min_sale_price) : null,
         }));
 
@@ -160,6 +163,7 @@ export function PriceFormation() {
           cost_group_id: v.cost_group_id || null,
           freight_pct: Number(v.freight_pct ?? 0),
           op_cost_pct: Number(v.op_cost_pct ?? 0),
+          tax_pct: Number(v.tax_pct ?? 0),
           min_sale_price: v.min_sale_price !== null && v.min_sale_price !== undefined ? Number(v.min_sale_price) : null,
         };
       });
@@ -204,6 +208,7 @@ export function PriceFormation() {
       setEditGroupId(selected.cost_group_id || "none");
       setEditFreightPct(selected.freight_pct ? String(selected.freight_pct) : "");
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
+      setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
     }
   }, [selected]);
@@ -242,10 +247,12 @@ export function PriceFormation() {
   const liveMargin = parseNum(editMargin);
   const liveFreightPct = parseNum(editFreightPct);
   const liveOpCostPct = parseNum(editOpCostPct);
+  const liveTaxPct = parseNum(editTaxPct);
   const liveMinSale = parseNum(editMinSale);
   const liveFreight = liveCost * (liveFreightPct / 100);
   const liveOpCost = liveCost * (liveOpCostPct / 100);
-  const liveTotalCost = liveCost + liveFreight + liveOpCost;
+  const liveTax = livePrice * (liveTaxPct / 100);
+  const liveTotalCost = liveCost + liveFreight + liveOpCost + liveTax;
   const liveProfit = livePrice - liveTotalCost;
   const liveMarkup = liveTotalCost > 0 ? (liveProfit / liveTotalCost) * 100 : 0;
   const belowMin = liveMinSale > 0 && livePrice > 0 && livePrice < liveMinSale;
@@ -293,6 +300,7 @@ export function PriceFormation() {
       const extraFields = {
         freight_pct: liveFreightPct,
         op_cost_pct: liveOpCostPct,
+        tax_pct: liveTaxPct,
         min_sale_price: editMinSale ? liveMinSale : null,
       };
       if (selected.variation_id) {
@@ -682,9 +690,26 @@ export function PriceFormation() {
                     </div>
                   </div>
 
+                  <div>
+                    <Label htmlFor="pf-tax">Imposto (%)</Label>
+                    <Input
+                      id="pf-tax"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      value={editTaxPct}
+                      onChange={(e) => setEditTaxPct(e.target.value)}
+                      placeholder="0,00"
+                    />
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      % sobre o valor de venda · {fmt(liveTax)}
+                    </div>
+                  </div>
+
                   <div className="rounded-md border bg-muted/40 px-3 py-2 flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
-                      Custo total (custo + frete + operacionais)
+                      Custo total (custo + frete + operacionais + imposto)
                     </span>
                     <span className="font-bold">{fmt(liveTotalCost)}</span>
                   </div>
