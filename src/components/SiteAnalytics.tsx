@@ -113,7 +113,8 @@ export function SiteAnalytics() {
       supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
-        .gte('created_at', sinceIso),
+        .gte('created_at', sinceIso)
+        .eq('source', 'site'),
     ]);
 
     const rows = visits || [];
