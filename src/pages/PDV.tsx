@@ -523,9 +523,18 @@ export default function PDV() {
       return;
     }
 
+    if (!user?.id) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Sua sessão expirou. Faça login novamente para salvar a venda.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       const saleData = {
-        user_id: user!.id,
+        user_id: user.id,
         cart_data: JSON.parse(JSON.stringify(cart)),
         customer_data: JSON.parse(JSON.stringify(selectedCustomer)),
         payment_method: paymentMethod,
