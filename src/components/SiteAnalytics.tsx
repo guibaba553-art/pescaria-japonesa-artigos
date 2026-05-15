@@ -5,7 +5,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Eye, Users, MousePointerClick, TrendingUp } from 'lucide-react';
+import { Eye, Users, MousePointerClick, TrendingUp, Activity, CalendarDays } from 'lucide-react';
 
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
