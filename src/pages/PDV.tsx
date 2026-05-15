@@ -1367,8 +1367,12 @@ export default function PDV() {
     }
 
     if (paymentMethod === 'cash') {
-      const received = parseFloat(cashReceived) || 0;
-      if (received < calculateTotal()) {
+      const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
+      // Comparar em centavos para evitar erro de ponto flutuante
+      // (ex.: total 50.00000000001 vs recebido 50 quebrava venda exata)
+      const receivedCents = Math.round(received * 100);
+      const totalCents = Math.round(calculateTotal() * 100);
+      if (receivedCents < totalCents) {
         toast({
           title: 'Valor insuficiente',
           description: 'O valor recebido é menor que o total',
