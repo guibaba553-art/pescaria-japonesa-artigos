@@ -300,6 +300,7 @@ export function PriceFormation() {
       const extraFields = {
         freight_pct: liveFreightPct,
         op_cost_pct: liveOpCostPct,
+        tax_pct: liveTaxPct,
         min_sale_price: editMinSale ? liveMinSale : null,
       };
       if (selected.variation_id) {
