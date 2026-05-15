@@ -265,6 +265,26 @@ export function SiteAnalytics() {
             <p className="text-xs text-muted-foreground">visita → pedido</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Movimentação hoje</CardTitle>
+            <Activity className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totals.today.toLocaleString('pt-BR')}</div>
+            <p className="text-xs text-muted-foreground">{totals.todayVisitors} visitantes únicos</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-medium">Média diária</CardTitle>
+            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totals.avgPerDay.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">visitas/dia (30d)</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Daily visits chart */}
