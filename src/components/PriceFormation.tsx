@@ -162,6 +162,7 @@ export function PriceFormation() {
           cost_group_id: v.cost_group_id || null,
           freight_pct: Number(v.freight_pct ?? 0),
           op_cost_pct: Number(v.op_cost_pct ?? 0),
+          tax_pct: Number(v.tax_pct ?? 0),
           min_sale_price: v.min_sale_price !== null && v.min_sale_price !== undefined ? Number(v.min_sale_price) : null,
         };
       });
