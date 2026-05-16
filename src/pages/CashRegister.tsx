@@ -612,13 +612,9 @@ export default function CashRegister() {
                 <span>Saída de troco:</span>
                 <span className="font-bold text-red-600">- {formatBRL(changeTotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Nº de vendas:</span>
-                <span className="font-bold">{salesCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Nº de vendas:</span>
-                <span className="font-bold">{salesCount}</span>
+              <div className="flex justify-between border-t pt-2">
+                <span className="font-bold">TOTAL ESPERADO:</span>
+                <span className="font-bold">{formatBRL((currentRegister?.expected_amount ?? 0))}</span>
               </div>
             </div>
             <div className="space-y-2">
