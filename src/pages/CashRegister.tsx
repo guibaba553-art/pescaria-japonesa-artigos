@@ -118,20 +118,18 @@ export default function CashRegister() {
           ...(savedRes.data || []),
         ];
 
-        const summary = { cash: 0, card: 0, pix: 0 };
-        allSales.forEach((s: any) => {
-          const amount = Number(s.total_amount) || 0;
+        // Caixa físico só considera vendas em DINHEIRO
+        const cashSales = allSales.filter((s: any) => {
           const method = (s.payment_method || '').toLowerCase();
-          if (method.includes('dinheiro') || method === 'cash') summary.cash += amount;
-          else if (method.includes('pix')) summary.pix += amount;
-          else if (
-            method.includes('cart') || method.includes('card') ||
-            method.includes('credit') || method.includes('debit') ||
-            method.includes('tef')
-          ) summary.card += amount;
+          return method.includes('dinheiro') || method === 'cash';
+        });
+
+        const summary = { cash: 0, card: 0, pix: 0 };
+        cashSales.forEach((s: any) => {
+          summary.cash += Number(s.total_amount) || 0;
         });
         setSalesSummary(summary);
-        setSalesCount(allSales.length);
+        setSalesCount(cashSales.length);
 
         // Movimentações deste caixa
         const { data: movs } = await supabase
@@ -604,16 +602,8 @@ export default function CashRegister() {
                 <span className="font-bold text-green-600">{formatBRL(salesSummary.cash)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Vendas Cartão/TEF:</span>
-                <span className="font-bold">{formatBRL(salesSummary.card)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vendas PIX:</span>
-                <span className="font-bold">{formatBRL(salesSummary.pix)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span>Total de vendas:</span>
-                <span className="font-bold">{formatBRL(totalSales)}</span>
+                <span>Nº de vendas:</span>
+                <span className="font-bold">{salesCount}</span>
               </div>
               <div className="flex justify-between">
                 <span>Nº de vendas:</span>
