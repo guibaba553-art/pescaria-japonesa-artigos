@@ -409,7 +409,12 @@ export default function CashRegister() {
               <KpiCard label="Nº de vendas" value={String(salesCount)} icon={<ShoppingCart className="w-4 h-4" />} />
               <KpiCard label="Ticket médio" value={formatBRL(avgTicket)} icon={<Target className="w-4 h-4" />} />
               <KpiCard label="Reforços" value={formatBRL(currentRegister.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
-              <KpiCard label="Sangrias" value={formatBRL(currentRegister.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
+              <div className="flex flex-col gap-2">
+                <KpiCard label="Sangrias" value={formatBRL(currentRegister.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
+                <Button size="sm" variant="outline" className="w-full" onClick={() => setShowWithdrawal(true)}>
+                  <TrendingDown className="w-4 h-4 mr-2" /> Fazer Sangria
+                </Button>
+              </div>
               <KpiCard label="Saída de troco" value={formatBRL(changeTotal)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
             </div>
 
