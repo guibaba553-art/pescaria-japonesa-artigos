@@ -1486,6 +1486,9 @@ export default function PDV() {
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
           notes: saleNotes || null,
+          cash_received: paymentMethod === 'cash'
+            ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+            : null,
         }])
         .select()
         .single();
@@ -1558,45 +1561,8 @@ export default function PDV() {
         });
       }
 
-      // Registrar saída de troco no caixa aberto (se houver)
-      if (paymentMethod === 'cash') {
-        try {
-          const receivedNum = parseFloat((cashReceived || '').replace(',', '.')) || 0;
-          const totalNum = Math.round(calculateTotal() * 100) / 100; // arredonda total p/ 2 casas
-          const trocoCents = Math.round(receivedNum * 100) - Math.round(totalNum * 100);
-          console.log('[Troco] received:', receivedNum, 'total:', totalNum, 'trocoCents:', trocoCents);
-          if (trocoCents > 0 && user?.id) {
-            const { data: reg, error: regErr } = await supabase
-              .from('cash_registers')
-              .select('id, withdrawals, expected_amount')
-              .eq('status', 'open')
-              .order('opened_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (regErr) console.error('[Troco] erro buscando caixa:', regErr);
-            if (reg) {
-              const troco = trocoCents / 100;
-              const { error: movErr } = await supabase.from('cash_movements').insert([{
-                cash_register_id: reg.id,
-                type: 'withdrawal',
-                amount: troco,
-                reason: `Troco - pedido ${order.id.slice(0, 8)}`,
-                performed_by: user.id,
-              }]);
-              if (movErr) console.error('[Troco] erro inserindo movimento:', movErr);
-              const { error: upErr } = await supabase.from('cash_registers').update({
-                withdrawals: Number(reg.withdrawals || 0) + troco,
-                expected_amount: Number(reg.expected_amount || 0) - troco,
-              }).eq('id', reg.id);
-              if (upErr) console.error('[Troco] erro atualizando caixa:', upErr);
-            } else {
-              console.warn('[Troco] nenhum caixa aberto encontrado');
-            }
-          }
-        } catch (e) {
-          console.error('[Troco] Falha ao registrar troco no caixa:', e);
-        }
-      }
+      // Troco é registrado automaticamente pelo trigger trg_auto_register_troco
+      // no banco (a partir do campo cash_received do pedido).
 
       toast({
         title: 'Venda finalizada!',
