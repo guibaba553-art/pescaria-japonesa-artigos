@@ -405,11 +405,12 @@ export default function CashRegister() {
               <KpiCard label="Aberto há" value={formatDuration(currentRegister.opened_at)} icon={<Clock className="w-4 h-4" />} />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <KpiCard label="Nº de vendas" value={String(salesCount)} icon={<ShoppingCart className="w-4 h-4" />} />
               <KpiCard label="Ticket médio" value={formatBRL(avgTicket)} icon={<Target className="w-4 h-4" />} />
               <KpiCard label="Reforços" value={formatBRL(currentRegister.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
               <KpiCard label="Sangrias" value={formatBRL(currentRegister.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
+              <KpiCard label="Saída de troco" value={formatBRL(changeTotal)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
             </div>
 
             <Tabs defaultValue="operations">
