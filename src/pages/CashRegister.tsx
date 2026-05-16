@@ -101,24 +101,37 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        const { data: sales } = await supabase
-          .from('saved_sales')
-          .select('total_amount, payment_method')
-          .gte('created_at', data.opened_at);
+        // Busca vendas finalizadas (orders) e rascunhos (saved_sales) deste caixa
+        const [ordersRes, savedRes] = await Promise.all([
+          supabase
+            .from('orders')
+            .select('total_amount, payment_method')
+            .gte('created_at', data.opened_at),
+          supabase
+            .from('saved_sales')
+            .select('total_amount, payment_method')
+            .gte('created_at', data.opened_at),
+        ]);
+
+        const allSales = [
+          ...(ordersRes.data || []),
+          ...(savedRes.data || []),
+        ];
 
         const summary = { cash: 0, card: 0, pix: 0 };
-        (sales || []).forEach((s) => {
+        allSales.forEach((s: any) => {
           const amount = Number(s.total_amount) || 0;
           const method = (s.payment_method || '').toLowerCase();
           if (method.includes('dinheiro') || method === 'cash') summary.cash += amount;
           else if (method.includes('pix')) summary.pix += amount;
           else if (
             method.includes('cart') || method.includes('card') ||
-            method.includes('credit') || method.includes('debit')
+            method.includes('credit') || method.includes('debit') ||
+            method.includes('tef')
           ) summary.card += amount;
         });
         setSalesSummary(summary);
-        setSalesCount((sales || []).length);
+        setSalesCount(allSales.length);
 
         // Movimentações deste caixa
         const { data: movs } = await supabase
