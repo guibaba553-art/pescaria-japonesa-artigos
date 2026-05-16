@@ -604,16 +604,8 @@ export default function CashRegister() {
                 <span className="font-bold text-green-600">{formatBRL(salesSummary.cash)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Vendas Cartão/TEF:</span>
-                <span className="font-bold">{formatBRL(salesSummary.card)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Vendas PIX:</span>
-                <span className="font-bold">{formatBRL(salesSummary.pix)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span>Total de vendas:</span>
-                <span className="font-bold">{formatBRL(totalSales)}</span>
+                <span>Nº de vendas:</span>
+                <span className="font-bold">{salesCount}</span>
               </div>
               <div className="flex justify-between">
                 <span>Nº de vendas:</span>
