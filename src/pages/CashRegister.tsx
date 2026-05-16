@@ -75,6 +75,7 @@ export default function CashRegister() {
   const [showClosing, setShowClosing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
+  const [changeTotal, setChangeTotal] = useState(0);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -138,9 +139,14 @@ export default function CashRegister() {
           .eq('cash_register_id', data.id)
           .order('created_at', { ascending: false });
         setMovements(movs || []);
+        const troco = (movs || [])
+          .filter((m: any) => m.type === 'withdrawal' && /troco/i.test(m.reason || ''))
+          .reduce((s: number, m: any) => s + Number(m.amount || 0), 0);
+        setChangeTotal(troco);
       } else {
         setMovements([]);
         setSalesCount(0);
+        setChangeTotal(0);
       }
     } catch (error: any) {
       toast({ title: 'Erro ao carregar caixa', description: error.message, variant: 'destructive' });
@@ -600,6 +606,10 @@ export default function CashRegister() {
               <div className="flex justify-between">
                 <span>Vendas Dinheiro:</span>
                 <span className="font-bold text-green-600">{formatBRL(salesSummary.cash)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Saída de troco:</span>
+                <span className="font-bold text-red-600">- {formatBRL(changeTotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Nº de vendas:</span>
