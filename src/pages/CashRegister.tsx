@@ -75,6 +75,7 @@ export default function CashRegister() {
   const [showClosing, setShowClosing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
+  const [changeTotal, setChangeTotal] = useState(0);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
