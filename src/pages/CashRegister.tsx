@@ -139,9 +139,14 @@ export default function CashRegister() {
           .eq('cash_register_id', data.id)
           .order('created_at', { ascending: false });
         setMovements(movs || []);
+        const troco = (movs || [])
+          .filter((m: any) => m.type === 'withdrawal' && /troco/i.test(m.reason || ''))
+          .reduce((s: number, m: any) => s + Number(m.amount || 0), 0);
+        setChangeTotal(troco);
       } else {
         setMovements([]);
         setSalesCount(0);
+        setChangeTotal(0);
       }
     } catch (error: any) {
       toast({ title: 'Erro ao carregar caixa', description: error.message, variant: 'destructive' });
