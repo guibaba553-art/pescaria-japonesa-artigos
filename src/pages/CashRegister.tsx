@@ -608,6 +608,10 @@ export default function CashRegister() {
                 <span className="font-bold text-green-600">{formatBRL(salesSummary.cash)}</span>
               </div>
               <div className="flex justify-between">
+                <span>Saída de troco:</span>
+                <span className="font-bold text-red-600">- {formatBRL(changeTotal)}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Nº de vendas:</span>
                 <span className="font-bold">{salesCount}</span>
               </div>
