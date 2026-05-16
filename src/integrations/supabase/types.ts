@@ -1115,6 +1115,7 @@ export type Database = {
           authorization_code: string | null
           card_brand: string | null
           card_last_digits: string | null
+          cash_received: number | null
           created_at: string
           customer_id: string | null
           delivery_type: string
@@ -1145,6 +1146,7 @@ export type Database = {
           authorization_code?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
+          cash_received?: number | null
           created_at?: string
           customer_id?: string | null
           delivery_type?: string
@@ -1175,6 +1177,7 @@ export type Database = {
           authorization_code?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
+          cash_received?: number | null
           created_at?: string
           customer_id?: string | null
           delivery_type?: string
