@@ -1486,6 +1486,9 @@ export default function PDV() {
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
           notes: saleNotes || null,
+          cash_received: paymentMethod === 'cash'
+            ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+            : null,
         }])
         .select()
         .single();
