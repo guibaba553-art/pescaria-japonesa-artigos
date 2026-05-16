@@ -1562,33 +1562,39 @@ export default function PDV() {
       if (paymentMethod === 'cash') {
         try {
           const receivedNum = parseFloat((cashReceived || '').replace(',', '.')) || 0;
-          const totalNum = calculateTotal();
+          const totalNum = Math.round(calculateTotal() * 100) / 100; // arredonda total p/ 2 casas
           const trocoCents = Math.round(receivedNum * 100) - Math.round(totalNum * 100);
+          console.log('[Troco] received:', receivedNum, 'total:', totalNum, 'trocoCents:', trocoCents);
           if (trocoCents > 0 && user?.id) {
-            const { data: reg } = await supabase
+            const { data: reg, error: regErr } = await supabase
               .from('cash_registers')
               .select('id, withdrawals, expected_amount')
               .eq('status', 'open')
               .order('opened_at', { ascending: false })
               .limit(1)
               .maybeSingle();
+            if (regErr) console.error('[Troco] erro buscando caixa:', regErr);
             if (reg) {
               const troco = trocoCents / 100;
-              await supabase.from('cash_movements').insert([{
+              const { error: movErr } = await supabase.from('cash_movements').insert([{
                 cash_register_id: reg.id,
                 type: 'withdrawal',
                 amount: troco,
                 reason: `Troco - pedido ${order.id.slice(0, 8)}`,
                 performed_by: user.id,
               }]);
-              await supabase.from('cash_registers').update({
+              if (movErr) console.error('[Troco] erro inserindo movimento:', movErr);
+              const { error: upErr } = await supabase.from('cash_registers').update({
                 withdrawals: Number(reg.withdrawals || 0) + troco,
                 expected_amount: Number(reg.expected_amount || 0) - troco,
               }).eq('id', reg.id);
+              if (upErr) console.error('[Troco] erro atualizando caixa:', upErr);
+            } else {
+              console.warn('[Troco] nenhum caixa aberto encontrado');
             }
           }
         } catch (e) {
-          console.warn('Falha ao registrar troco no caixa:', e);
+          console.error('[Troco] Falha ao registrar troco no caixa:', e);
         }
       }
 
