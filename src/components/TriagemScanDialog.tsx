@@ -307,7 +307,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {mode === 'pickup' ? (
@@ -344,7 +344,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
               {new Date(order.created_at).toLocaleString('pt-BR')}
             </div>
             {mode === 'pack' && (
-              <div className="text-xs text-muted-foreground pt-1 border-t mt-1">
+              <div className="text-xs text-muted-foreground pt-1 border-t mt-1 break-words">
                 <strong>Endereço:</strong> {order.shipping_address} · CEP {order.shipping_cep}
               </div>
             )}
