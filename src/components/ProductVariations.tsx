@@ -555,7 +555,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
             <div>
               <Label htmlFor="new-var-price" className="text-xs">
-                Preço (R$) *
+                Preço mínimo — Site (R$) *
               </Label>
               <Input
                 id="new-var-price"
@@ -565,6 +565,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 placeholder="0.00"
                 value={newVariation.price}
                 onChange={(e) => setNewVariation({ ...newVariation, price: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-var-price-pdv" className="text-xs">
+                Preço de venda — PDV (R$)
+              </Label>
+              <Input
+                id="new-var-price-pdv"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Se vazio, usa o do site"
+                value={newVariation.price_pdv}
+                onChange={(e) => setNewVariation({ ...newVariation, price_pdv: e.target.value })}
               />
             </div>
             <div>
