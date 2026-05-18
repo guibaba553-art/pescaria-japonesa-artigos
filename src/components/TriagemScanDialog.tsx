@@ -139,6 +139,29 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
     [scans],
   );
 
+  const packages = useMemo(() => {
+    if (!order) return [];
+    const shipmentItems = order.order_items.map((it) => {
+      const dims = it.product_variations?.weight_grams != null || it.product_variations?.length_cm != null
+        ? it.product_variations
+        : it.products;
+      return {
+        id: it.id,
+        quantity: it.quantity,
+        weight_grams: dims?.weight_grams ?? null,
+        length_cm: dims?.length_cm ?? null,
+        width_cm: dims?.width_cm ?? null,
+        height_cm: dims?.height_cm ?? null,
+      };
+    });
+    try {
+      return packItems(shipmentItems, order.total_amount);
+    } catch (e) {
+      console.error('[Triagem] packItems error:', e);
+      return [];
+    }
+  }, [order]);
+
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = barcode.trim();
