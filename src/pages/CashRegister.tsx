@@ -421,7 +421,7 @@ export default function CashRegister() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard label="Abertura" value={formatBRL(currentRegister.opening_amount)} icon={<Unlock className="w-4 h-4" />} />
               <KpiCard label="Vendas (total)" value={formatBRL(totalSales)} icon={<DollarSign className="w-4 h-4" />} accent="text-green-600" />
-              <KpiCard label="Esperado em caixa" value={formatBRL(currentRegister.expected_amount)} icon={<Target className="w-4 h-4" />} />
+              <KpiCard label="Esperado em caixa" value={formatBRL(expectedInDrawer)} icon={<Target className="w-4 h-4" />} />
               <KpiCard label="Aberto há" value={formatDuration(currentRegister.opened_at)} icon={<Clock className="w-4 h-4" />} />
             </div>
 
@@ -627,7 +627,7 @@ export default function CashRegister() {
             <div className="p-4 bg-muted rounded space-y-2">
               <div className="flex justify-between">
                 <span>Valor Esperado:</span>
-                <span className="font-bold">{formatBRL(currentRegister?.expected_amount ?? 0)}</span>
+                  <span className="font-bold">{formatBRL(expectedInDrawer)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Vendas Dinheiro:</span>
@@ -639,7 +639,7 @@ export default function CashRegister() {
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-bold">TOTAL ESPERADO:</span>
-                <span className="font-bold">{formatBRL((currentRegister?.expected_amount ?? 0))}</span>
+                <span className="font-bold">{formatBRL(expectedInDrawer)}</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -649,7 +649,7 @@ export default function CashRegister() {
             </div>
             {closingAmount && (() => {
               const counted = parseFloat(closingAmount);
-              const expected = currentRegister?.expected_amount ?? 0;
+              const expected = expectedInDrawer;
               const diff = counted - expected;
               const matches = Math.abs(diff) < 0.01;
               return (
