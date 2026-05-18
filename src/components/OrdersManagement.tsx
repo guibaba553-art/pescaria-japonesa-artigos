@@ -1265,6 +1265,7 @@ export function OrdersManagement() {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
     paraEnviar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery'),
     prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
+    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
     devolucoes: siteOrders.filter(o => o.status === 'devolvido' || o.status === 'devolucao_solicitada'),
