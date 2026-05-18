@@ -112,7 +112,7 @@ export function PriceFormation() {
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
         supabase
           .from("product_variations")
-          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id, freight_pct, op_cost_pct, tax_pct, min_sale_price")
+          .select("id, product_id, name, sku, price, price_pdv, image_url, cost, cost_group_id, freight_pct, op_cost_pct, tax_pct, min_sale_price")
           .order("name"),
       ]);
 
@@ -153,7 +153,7 @@ export function PriceFormation() {
           product_id: v.product_id,
           variation_id: v.id,
           name: `${parent.name || ""} - ${v.name}`,
-          price: Number(v.price || 0),
+          price: Number(v.price_pdv ?? v.price ?? 0),
           cost: v.cost !== null && v.cost !== undefined ? Number(v.cost) : null,
           sale_price: null,
           on_sale: false,
@@ -311,7 +311,7 @@ export function PriceFormation() {
           .from("product_variations")
           .update({
             cost: liveCost,
-            price: finalPrice,
+            price_pdv: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })

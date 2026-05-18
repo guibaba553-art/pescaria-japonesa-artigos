@@ -1348,6 +1348,7 @@ export type Database = {
           name: string
           op_cost_pct: number
           price: number
+          price_pdv: number | null
           product_id: string
           sku: string | null
           stock: number
@@ -1371,6 +1372,7 @@ export type Database = {
           name: string
           op_cost_pct?: number
           price?: number
+          price_pdv?: number | null
           product_id: string
           sku?: string | null
           stock?: number
@@ -1394,6 +1396,7 @@ export type Database = {
           name?: string
           op_cost_pct?: number
           price?: number
+          price_pdv?: number | null
           product_id?: string
           sku?: string | null
           stock?: number

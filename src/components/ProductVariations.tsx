@@ -128,6 +128,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   const [newVariation, setNewVariation] = useState({
     name: "",
     price: "",
+    price_pdv: "",
     stock: "",
     min_stock: "",
     description: "",
@@ -163,6 +164,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       product_id: "",
       name,
       price,
+      price_pdv: newVariation.price_pdv ? parseFloat(newVariation.price_pdv) : null,
       stock,
       min_stock: newVariation.min_stock ? parseInt(newVariation.min_stock) : 0,
       description: newVariation.description.trim() || null,
@@ -176,7 +178,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
 
     onVariationsChange([...variations, variation]);
     
-    setNewVariation({ name: "", price: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
+    setNewVariation({ name: "", price: "", price_pdv: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
@@ -187,7 +189,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       if (v.id !== variationId) return v;
       
       // Validações básicas
-      if (field === 'price') {
+      if (field === 'price' || field === 'price_pdv') {
+        if (value === '' || value === null) return { ...v, [field]: null };
         const numValue = parseFloat(value);
         if (isNaN(numValue) || numValue < 0) return v;
         return { ...v, [field]: numValue };
@@ -278,7 +281,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                       </div>
                       <div>
                         <Label htmlFor={`price-${variation.id}`} className="text-xs">
-                          Preço (R$) *
+                          Preço mínimo — Site (R$) *
                         </Label>
                         <Input
                           id={`price-${variation.id}`}
@@ -290,6 +293,22 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0.00"
                         />
                       </div>
+                      <div>
+                        <Label htmlFor={`pricepdv-${variation.id}`} className="text-xs">
+                          Preço de venda — PDV (R$)
+                        </Label>
+                        <Input
+                          id={`pricepdv-${variation.id}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variation.price_pdv ?? ''}
+                          onChange={(e) => updateVariation(variation.id, 'price_pdv', e.target.value)}
+                          placeholder="Se vazio, usa o preço do site"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <Label htmlFor={`stock-${variation.id}`} className="text-xs">
                           Estoque *
@@ -303,8 +322,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <Label htmlFor={`minstock-${variation.id}`} className="text-xs">
                           Estoque mínimo (alerta)
@@ -318,6 +335,19 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0"
                         />
                       </div>
+                      {(variation as any).min_sale_price != null && (
+                        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
+                          <Label className="text-[11px] text-amber-700 dark:text-amber-400">
+                            Preço Mínimo de Venda
+                          </Label>
+                          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                            {Number((variation as any).min_sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Definido em Formação de Preço
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -525,7 +555,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
             <div>
               <Label htmlFor="new-var-price" className="text-xs">
-                Preço (R$) *
+                Preço mínimo — Site (R$) *
               </Label>
               <Input
                 id="new-var-price"
@@ -535,6 +565,20 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                 placeholder="0.00"
                 value={newVariation.price}
                 onChange={(e) => setNewVariation({ ...newVariation, price: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-var-price-pdv" className="text-xs">
+                Preço de venda — PDV (R$)
+              </Label>
+              <Input
+                id="new-var-price-pdv"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Se vazio, usa o do site"
+                value={newVariation.price_pdv}
+                onChange={(e) => setNewVariation({ ...newVariation, price_pdv: e.target.value })}
               />
             </div>
             <div>

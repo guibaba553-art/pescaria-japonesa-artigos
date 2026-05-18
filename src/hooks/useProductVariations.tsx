@@ -82,6 +82,7 @@ export function useProductVariations(productId?: string) {
       product_id: targetProductId,
       name: v.name.trim(),
       price: Number(v.price),
+      price_pdv: v.price_pdv != null && !isNaN(Number(v.price_pdv)) ? Number(v.price_pdv) : null,
       stock: Number(v.stock),
       description: v.description?.trim() || null,
       sku: v.sku?.trim() || null,
