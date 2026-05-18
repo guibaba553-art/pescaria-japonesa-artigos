@@ -307,7 +307,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden grid-cols-[minmax(0,1fr)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {mode === 'pickup' ? (
@@ -386,7 +386,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
 
           {/* Scanner input */}
           <form onSubmit={handleScanSubmit} className="flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 ref={inputRef}
