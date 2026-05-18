@@ -337,14 +337,14 @@ export function PriceFormation() {
       setProducts((prev) =>
         prev.map((p) =>
           p.id === selected.id
-            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId, ...extraFields }
+            ? { ...p, cost: newCost, price: finalPrice, cost_group_id: newGroupId, ...extraFields }
             : p
         )
       );
       setSelected({
         ...selected,
         cost: newCost,
-        price: livePrice,
+        price: finalPrice,
         cost_group_id: newGroupId,
         ...extraFields,
       });
