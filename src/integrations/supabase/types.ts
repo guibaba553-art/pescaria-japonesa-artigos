@@ -1133,6 +1133,7 @@ export type Database = {
           shipping_cost: number
           shipping_label_order_id: string | null
           shipping_label_url: string | null
+          shipping_service_id: number | null
           source: string
           status: Database["public"]["Enums"]["order_status"]
           tef_transaction_id: string | null
@@ -1164,6 +1165,7 @@ export type Database = {
           shipping_cost?: number
           shipping_label_order_id?: string | null
           shipping_label_url?: string | null
+          shipping_service_id?: number | null
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
           tef_transaction_id?: string | null
@@ -1195,6 +1197,7 @@ export type Database = {
           shipping_cost?: number
           shipping_label_order_id?: string | null
           shipping_label_url?: string | null
+          shipping_service_id?: number | null
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
           tef_transaction_id?: string | null
