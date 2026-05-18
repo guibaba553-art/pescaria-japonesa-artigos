@@ -202,20 +202,36 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
   }
   flushEnvelope();
 
-  // 4) Empacota boxables: tenta caixa pequena, senão grande. Soma volumes com fator de
-  //    aproveitamento ~70% (perda por encaixe) e respeita maior dimensão.
+  // 4) Empacota boxables: tenta caixa pequena, senão grande.
+  //    Regras:
+  //      - CADA item precisa caber fisicamente na caixa (checagem 3D com dims ordenadas)
+  //      - Soma de volumes respeita ~70% de aproveitamento (perda por encaixe)
+  //      - Soma de pesos respeita cap por tipo de caixa (5kg pequena, 10kg grande, 30kg limite Correios)
   const PACK_EFFICIENCY = 0.7;
+  const WEIGHT_CAP = {
+    caixa_pequena: 5000, // 5kg
+    caixa_grande: 10000, // 10kg (hard limit Correios = 30kg)
+  } as const;
+
+  // Verifica se um item cabe dentro de uma caixa (3D, dimensões ordenadas)
+  const fitsInBox = (it: ItemDims, box: { w: number; h: number; l: number }): boolean => {
+    const itemDims = [dim(it, 'width_cm'), dim(it, 'height_cm'), dim(it, 'length_cm')].sort((a, b) => a - b);
+    const boxDims = [box.w, box.h, box.l].sort((a, b) => a - b);
+    return itemDims[0] <= boxDims[0] && itemDims[1] <= boxDims[1] && itemDims[2] <= boxDims[2];
+  };
+
   let boxItems: typeof boxables = [];
   let boxVol = 0;
   let boxWeight = 0;
-  let boxMaxDim = 0;
+  let boxAllFitSmall = true; // todos os itens cabem na caixa pequena?
 
   const chooseAndFlush = (force = false) => {
     if (boxItems.length === 0) return;
-    // Decide menor caixa que comporta
+    // Decide menor caixa que comporta: precisa de fit 3D de TODOS os itens + volume + peso
     const fitsSmall =
+      boxAllFitSmall &&
       boxVol <= BOXES.caixa_pequena.volume * PACK_EFFICIENCY &&
-      boxMaxDim <= BOXES.caixa_pequena.maxDim;
+      boxWeight <= WEIGHT_CAP.caixa_pequena;
     const chosen = fitsSmall ? 'caixa_pequena' : 'caixa_grande';
     const dims = BOXES[chosen];
     const insurancePerPkg = insuranceValue * (boxItems.length / units.length);
