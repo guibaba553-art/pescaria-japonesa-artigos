@@ -39,10 +39,18 @@ export interface TriagemOrderItem {
     name: string;
     image_url: string | null;
     sku: string | null;
+    weight_grams?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
   } | null;
   product_variations?: {
     name: string;
     sku: string | null;
+    weight_grams?: number | null;
+    length_cm?: number | null;
+    width_cm?: number | null;
+    height_cm?: number | null;
   } | null;
 }
 
