@@ -67,7 +67,8 @@ export function ProductCard({
   // Mostra "X vendidos" se houver, senão "Y pessoas vendo agora" para produtos populares
   const showSocialProof = product.stock > 0;
 
-  const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+  // Arredondamento APENAS visual (valor real no banco/edição é mantido)
+  const formatPrice = (v: number) => `R$ ${Math.round(v)}`;
 
   return (
     <article
