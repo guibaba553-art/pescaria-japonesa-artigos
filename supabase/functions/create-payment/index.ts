@@ -342,6 +342,19 @@ serve(async (req) => {
         );
       }
 
+      if (isTestMode && !simulatePayment) {
+        return new Response(
+          JSON.stringify({
+            error: 'PIX indisponível em credencial de teste do Mercado Pago. Para gerar QR real, a integração precisa estar em produção com uma chave PIX ativa.',
+            success: false,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       // Modo simulação
       if (simulatePayment) {
         console.log('Simulation mode: PIX payment');
