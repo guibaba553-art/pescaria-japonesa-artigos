@@ -77,6 +77,17 @@ export default function CashRegister() {
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
   const [changeTotal, setChangeTotal] = useState(0);
 
+  const expectedInDrawer = useMemo(() => {
+    if (!currentRegister) return 0;
+    const opening = Number(currentRegister.opening_amount || 0);
+    const additions = Number(currentRegister.additions || 0);
+    const withdrawals = Number(currentRegister.withdrawals || 0);
+    const cashSales = Number(salesSummary.cash || 0);
+    const troco = Number(changeTotal || 0);
+
+    return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
+  }, [currentRegister, salesSummary.cash, changeTotal]);
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [user, canView, loading, navigate]);
@@ -102,35 +113,42 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        // Busca vendas finalizadas (orders) e rascunhos (saved_sales) deste caixa
-        const [ordersRes, savedRes] = await Promise.all([
-          supabase
-            .from('orders')
-            .select('total_amount, payment_method')
-            .gte('created_at', data.opened_at),
-          supabase
-            .from('saved_sales')
-            .select('total_amount, payment_method')
-            .gte('created_at', data.opened_at),
-        ]);
+        const { data: pdvOrders, error: ordersError } = await supabase
+          .from('orders')
+          .select('total_amount, payment_method, status, source')
+          .eq('source', 'pdv')
+          .gte('created_at', data.opened_at)
+          .neq('status', 'cancelado');
 
-        const allSales = [
-          ...(ordersRes.data || []),
-          ...(savedRes.data || []),
-        ];
-
-        // Caixa físico só considera vendas em DINHEIRO
-        const cashSales = allSales.filter((s: any) => {
-          const method = (s.payment_method || '').toLowerCase();
-          return method.includes('dinheiro') || method === 'cash';
-        });
+        if (ordersError) throw ordersError;
 
         const summary = { cash: 0, card: 0, pix: 0 };
-        cashSales.forEach((s: any) => {
-          summary.cash += Number(s.total_amount) || 0;
+        (pdvOrders || []).forEach((sale: any) => {
+          const total = Number(sale.total_amount) || 0;
+          const method = String(sale.payment_method || '').toLowerCase();
+
+          if (method.includes('pix')) {
+            summary.pix += total;
+            return;
+          }
+
+          if (method.includes('cash') || method.includes('dinheiro')) {
+            summary.cash += total;
+            return;
+          }
+
+          if (
+            method.includes('credit') ||
+            method.includes('debit') ||
+            method.includes('card') ||
+            method.includes('cart')
+          ) {
+            summary.card += total;
+          }
         });
+
         setSalesSummary(summary);
-        setSalesCount(cashSales.length);
+        setSalesCount((pdvOrders || []).length);
 
         // Movimentações deste caixa
         const { data: movs } = await supabase
@@ -146,6 +164,7 @@ export default function CashRegister() {
       } else {
         setMovements([]);
         setSalesCount(0);
+        setSalesSummary({ cash: 0, card: 0, pix: 0 });
         setChangeTotal(0);
       }
     } catch (error: any) {
@@ -250,6 +269,7 @@ export default function CashRegister() {
     try {
       const { error } = await supabase.from('cash_registers').update({
         closing_amount: parseFloat(closingAmount),
+        expected_amount: expectedInDrawer,
         closed_at: new Date().toISOString(),
         status: 'closed',
         cash_sales: salesSummary.cash,
@@ -297,7 +317,7 @@ export default function CashRegister() {
       <div class="row"><span>Nº de vendas:</span><span>${salesCount}</span></div>
       <div class="row"><span>Ticket médio:</span><span>${formatBRL(avgTicket)}</span></div>
       <hr/>
-      <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(currentRegister.expected_amount)}</span></div>
+      <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(expectedInDrawer)}</span></div>
       <p style="text-align:center; font-size:11px;">Impresso em ${new Date().toLocaleString('pt-BR')}</p>
       </body></html>
     `);
@@ -401,7 +421,7 @@ export default function CashRegister() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard label="Abertura" value={formatBRL(currentRegister.opening_amount)} icon={<Unlock className="w-4 h-4" />} />
               <KpiCard label="Vendas (total)" value={formatBRL(totalSales)} icon={<DollarSign className="w-4 h-4" />} accent="text-green-600" />
-              <KpiCard label="Esperado em caixa" value={formatBRL(currentRegister.expected_amount)} icon={<Target className="w-4 h-4" />} />
+              <KpiCard label="Esperado em caixa" value={formatBRL(expectedInDrawer)} icon={<Target className="w-4 h-4" />} />
               <KpiCard label="Aberto há" value={formatDuration(currentRegister.opened_at)} icon={<Clock className="w-4 h-4" />} />
             </div>
 
@@ -607,7 +627,7 @@ export default function CashRegister() {
             <div className="p-4 bg-muted rounded space-y-2">
               <div className="flex justify-between">
                 <span>Valor Esperado:</span>
-                <span className="font-bold">{formatBRL(currentRegister?.expected_amount ?? 0)}</span>
+                  <span className="font-bold">{formatBRL(expectedInDrawer)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Vendas Dinheiro:</span>
@@ -619,7 +639,7 @@ export default function CashRegister() {
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-bold">TOTAL ESPERADO:</span>
-                <span className="font-bold">{formatBRL((currentRegister?.expected_amount ?? 0))}</span>
+                <span className="font-bold">{formatBRL(expectedInDrawer)}</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -629,7 +649,7 @@ export default function CashRegister() {
             </div>
             {closingAmount && (() => {
               const counted = parseFloat(closingAmount);
-              const expected = currentRegister?.expected_amount ?? 0;
+              const expected = expectedInDrawer;
               const diff = counted - expected;
               const matches = Math.abs(diff) < 0.01;
               return (
