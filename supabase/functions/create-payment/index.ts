@@ -399,7 +399,13 @@ serve(async (req) => {
           : '';
         if (causeMessages) errorMessage = `${errorMessage} - ${causeMessages}`;
 
-        if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
+        if (
+          errorMessage.includes('Collector user without key enabled for QR render') ||
+          errorMessage.includes('Financial Identity Use Case') ||
+          responseData?.code === '13253'
+        ) {
+          errorMessage = 'PIX indisponível nesta conta do Mercado Pago. Use a mesma conta da integração, com uma chave PIX ativa e em ambiente de produção.';
+        } else if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
           errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado.';
         }
 
