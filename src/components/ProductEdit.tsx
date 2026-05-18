@@ -150,8 +150,9 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
     if (open && product.id) {
       console.log('📂 Carregando dados do produto para edição:', product.id);
       
-      // Carregar variações
-      loadVariations(product.id);
+      // Resetar flag e carregar variações antes de liberar o submit
+      setVariationsLoaded(false);
+      loadVariations(product.id).finally(() => setVariationsLoaded(true));
       
       // Resetar estados do formulário
       setName(product.name);
