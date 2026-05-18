@@ -290,7 +290,9 @@ export function PriceFormation() {
 
   const handleSave = async () => {
     if (!selected) return;
-    if (livePrice <= 0) {
+    // Quando há valor mínimo de venda definido, ele vira o preço do site
+    const finalPrice = editMinSale && liveMinSale > 0 ? liveMinSale : livePrice;
+    if (finalPrice <= 0) {
       toast.error("Preço de venda deve ser maior que zero");
       return;
     }
@@ -308,7 +310,7 @@ export function PriceFormation() {
           .from("product_variations")
           .update({
             cost: liveCost,
-            price: livePrice,
+            price: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })
@@ -319,7 +321,7 @@ export function PriceFormation() {
           .from("products")
           .update({
             cost: liveCost,
-            price: livePrice,
+            price: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })
@@ -335,14 +337,14 @@ export function PriceFormation() {
       setProducts((prev) =>
         prev.map((p) =>
           p.id === selected.id
-            ? { ...p, cost: newCost, price: livePrice, cost_group_id: newGroupId, ...extraFields }
+            ? { ...p, cost: newCost, price: finalPrice, cost_group_id: newGroupId, ...extraFields }
             : p
         )
       );
       setSelected({
         ...selected,
         cost: newCost,
-        price: livePrice,
+        price: finalPrice,
         cost_group_id: newGroupId,
         ...extraFields,
       });
