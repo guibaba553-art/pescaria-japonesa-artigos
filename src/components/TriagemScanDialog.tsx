@@ -350,6 +350,40 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
             )}
           </div>
 
+          {/* Embalagem sugerida + atalho de etiqueta (modo embalar) */}
+          {mode === 'pack' && packages.length > 0 && (
+            <div className="rounded-lg border border-blue-300 dark:border-blue-700/40 bg-blue-50 dark:bg-blue-950/20 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Embalagem{packages.length > 1 ? `s (${packages.length} volumes)` : ''}
+                </h4>
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={() => setLabelDialogOpen(true)}
+                  className="h-8"
+                >
+                  <Printer className="w-3.5 h-3.5 mr-1.5" />
+                  {order.shipping_label_order_id || order.tracking_code ? 'Imprimir etiqueta' : 'Gerar etiqueta'}
+                </Button>
+              </div>
+              <ul className="space-y-1 text-sm">
+                {packages.map((pkg, idx) => (
+                  <li key={pkg.id} className="flex items-center justify-between gap-2 bg-background/60 rounded px-2 py-1.5">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Badge variant="outline" className="shrink-0">Vol {idx + 1}</Badge>
+                      <strong className="truncate">{PACKAGING_LABEL[pkg.packaging] || pkg.packaging}</strong>
+                    </span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {pkg.length}×{pkg.width}×{pkg.height}cm · {pkg.weight.toFixed(2)}kg
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Scanner input */}
           <form onSubmit={handleScanSubmit} className="flex gap-2">
             <div className="relative flex-1">
