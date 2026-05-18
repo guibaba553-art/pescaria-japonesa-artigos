@@ -34,7 +34,7 @@ interface CheckoutProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   shippingCost: number;
-  shippingInfo: { nome: string; prazoEntrega: number } | null;
+  shippingInfo: { nome: string; prazoEntrega: number; codigo?: string } | null;
 }
 
 type PaymentMethod = 'pix' | 'credit' | 'debit' | 'google_pay';
