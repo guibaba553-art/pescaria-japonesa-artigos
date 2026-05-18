@@ -70,9 +70,19 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Autorização: só o cron com o secret pode rodar
-  const provided = req.headers.get("x-cron-secret");
-  if (!CRON_SECRET || provided !== CRON_SECRET) {
+  // Cliente com service role pra rodar tudo
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  // Autorização: aceita x-cron-secret (validado contra vault via RPC) OU env CRON_SECRET
+  const provided = req.headers.get("x-cron-secret") || "";
+  let isAuthorized = !!CRON_SECRET && provided === CRON_SECRET;
+  if (!isAuthorized && provided) {
+    const { data: ok } = await supabase.rpc("verify_cron_secret", {
+      _secret: provided,
+    });
+    isAuthorized = ok === true;
+  }
+  if (!isAuthorized) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -80,7 +90,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const dump: Record<string, unknown> = {
       _meta: {
