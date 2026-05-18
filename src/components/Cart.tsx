@@ -39,7 +39,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
   const navigate = useNavigate();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
-  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number } | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number; codigo?: string } | null>(null);
 
   const handleCheckout = () => {
     if (!user) {
@@ -179,7 +179,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
                   products={items.map((it) => ({ id: it.id, variationId: it.variationId, quantity: it.quantity, price: it.price }))}
                   onSelectShipping={(option) => {
                     setShippingCost(option.valor);
-                    setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega });
+                    setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega, codigo: option.codigo });
                   }}
                 />
               </div>
