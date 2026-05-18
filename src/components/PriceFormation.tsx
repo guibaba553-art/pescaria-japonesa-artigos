@@ -112,7 +112,7 @@ export function PriceFormation() {
         supabase.from("cost_groups").select("id, name, cost, description").order("name"),
         supabase
           .from("product_variations")
-          .select("id, product_id, name, sku, price, image_url, cost, cost_group_id, freight_pct, op_cost_pct, tax_pct, min_sale_price")
+          .select("id, product_id, name, sku, price, price_pdv, image_url, cost, cost_group_id, freight_pct, op_cost_pct, tax_pct, min_sale_price")
           .order("name"),
       ]);
 
