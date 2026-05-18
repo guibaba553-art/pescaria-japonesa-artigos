@@ -128,6 +128,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
   const [newVariation, setNewVariation] = useState({
     name: "",
     price: "",
+    price_pdv: "",
     stock: "",
     min_stock: "",
     description: "",
