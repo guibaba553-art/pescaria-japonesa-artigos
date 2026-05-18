@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validar JWT do usuário
+    // Validar JWT do usuário OU service-role (chamadas server-to-server, ex: webhook)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -69,30 +69,33 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { data: userData, error: userErr } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    if (userErr || !userData.user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const bearerToken = authHeader.replace('Bearer ', '').trim();
+    const isServiceRole = bearerToken === serviceKey;
 
-    // Verificar se é admin ou employee
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userData.user.id);
+    if (!isServiceRole) {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(bearerToken);
+      if (userErr || !userData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    const isAuthorized = roles?.some(
-      (r) => r.role === 'admin' || r.role === 'employee'
-    );
-    if (!isAuthorized) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // Verificar se é admin ou employee
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.user.id);
+
+      const isAuthorized = roles?.some(
+        (r) => r.role === 'admin' || r.role === 'employee'
       );
+      if (!isAuthorized) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const body = await req.json();
