@@ -70,9 +70,16 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Autorização: só o cron com o secret pode rodar
+  // Autorização: aceita x-cron-secret OU Authorization: Bearer <service_role>
   const provided = req.headers.get("x-cron-secret");
-  if (!CRON_SECRET || provided !== CRON_SECRET) {
+  const auth = req.headers.get("authorization") || "";
+  const bearer = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : "";
+  const isAuthorized =
+    (CRON_SECRET && provided === CRON_SECRET) ||
+    (SERVICE_ROLE && bearer === SERVICE_ROLE);
+  if (!isAuthorized) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
