@@ -83,6 +83,10 @@ export function PurchaseLists() {
     (items ?? []).forEach((i: any) => {
       const prod = prodMap.get(i.product_id);
       const vari = i.variation_id ? varMap.get(i.variation_id) : null;
+      // Se o item tinha variation_id mas a variação não existe mais no banco,
+      // sinalizamos para o usuário ("variação removida") em vez de mostrar
+      // o item como se fosse o produto pai sem variação.
+      const orphanVariation = !!i.variation_id && !vari;
       const row: ItemRow = {
         id: i.id,
         list_id: i.list_id,
@@ -91,7 +95,7 @@ export function PurchaseLists() {
         quantity: Number(i.quantity),
         product_name: prod?.name ?? 'Produto removido',
         product_image: vari?.image_url ?? prod?.image_url ?? null,
-        variation_name: vari?.name ?? null,
+        variation_name: vari?.name ?? (orphanVariation ? '⚠ variação removida' : null),
       };
       (grouped[i.list_id] ||= []).push(row);
     });
