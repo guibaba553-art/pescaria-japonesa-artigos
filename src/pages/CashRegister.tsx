@@ -77,6 +77,17 @@ export default function CashRegister() {
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
   const [changeTotal, setChangeTotal] = useState(0);
 
+  const expectedInDrawer = useMemo(() => {
+    if (!currentRegister) return 0;
+    const opening = Number(currentRegister.opening_amount || 0);
+    const additions = Number(currentRegister.additions || 0);
+    const withdrawals = Number(currentRegister.withdrawals || 0);
+    const cashSales = Number(salesSummary.cash || 0);
+    const troco = Number(changeTotal || 0);
+
+    return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
+  }, [currentRegister, salesSummary.cash, changeTotal]);
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [user, canView, loading, navigate]);
@@ -102,35 +113,42 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        // Busca vendas finalizadas (orders) e rascunhos (saved_sales) deste caixa
-        const [ordersRes, savedRes] = await Promise.all([
-          supabase
-            .from('orders')
-            .select('total_amount, payment_method')
-            .gte('created_at', data.opened_at),
-          supabase
-            .from('saved_sales')
-            .select('total_amount, payment_method')
-            .gte('created_at', data.opened_at),
-        ]);
+        const { data: pdvOrders, error: ordersError } = await supabase
+          .from('orders')
+          .select('total_amount, payment_method, status, source')
+          .eq('source', 'pdv')
+          .gte('created_at', data.opened_at)
+          .neq('status', 'cancelado');
 
-        const allSales = [
-          ...(ordersRes.data || []),
-          ...(savedRes.data || []),
-        ];
-
-        // Caixa físico só considera vendas em DINHEIRO
-        const cashSales = allSales.filter((s: any) => {
-          const method = (s.payment_method || '').toLowerCase();
-          return method.includes('dinheiro') || method === 'cash';
-        });
+        if (ordersError) throw ordersError;
 
         const summary = { cash: 0, card: 0, pix: 0 };
-        cashSales.forEach((s: any) => {
-          summary.cash += Number(s.total_amount) || 0;
+        (pdvOrders || []).forEach((sale: any) => {
+          const total = Number(sale.total_amount) || 0;
+          const method = String(sale.payment_method || '').toLowerCase();
+
+          if (method.includes('pix')) {
+            summary.pix += total;
+            return;
+          }
+
+          if (method.includes('cash') || method.includes('dinheiro')) {
+            summary.cash += total;
+            return;
+          }
+
+          if (
+            method.includes('credit') ||
+            method.includes('debit') ||
+            method.includes('card') ||
+            method.includes('cart')
+          ) {
+            summary.card += total;
+          }
         });
+
         setSalesSummary(summary);
-        setSalesCount(cashSales.length);
+        setSalesCount((pdvOrders || []).length);
 
         // Movimentações deste caixa
         const { data: movs } = await supabase
@@ -146,6 +164,7 @@ export default function CashRegister() {
       } else {
         setMovements([]);
         setSalesCount(0);
+        setSalesSummary({ cash: 0, card: 0, pix: 0 });
         setChangeTotal(0);
       }
     } catch (error: any) {
