@@ -153,7 +153,7 @@ export function PriceFormation() {
           product_id: v.product_id,
           variation_id: v.id,
           name: `${parent.name || ""} - ${v.name}`,
-          price: Number(v.price || 0),
+          price: Number(v.price_pdv ?? v.price ?? 0),
           cost: v.cost !== null && v.cost !== undefined ? Number(v.cost) : null,
           sale_price: null,
           on_sale: false,
