@@ -420,7 +420,7 @@ export function ProductsManagement() {
           description="Gerencie os produtos da loja"
           kpis={[
             { label: 'Total', value: visibleProducts.length },
-            { label: 'Estoque total', value: totalStock, tone: 'primary' },
+            { label: 'Estoque total', value: Math.round(Number(totalStock) || 0), tone: 'primary' },
             { label: 'Esgotados', value: outOfStock, tone: 'danger' },
             { label: 'Promoção', value: onSaleCount, tone: 'success' },
             { label: 'Destaque', value: featuredCount, tone: 'warning' },
