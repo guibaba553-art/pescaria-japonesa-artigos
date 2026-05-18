@@ -269,6 +269,7 @@ export default function CashRegister() {
     try {
       const { error } = await supabase.from('cash_registers').update({
         closing_amount: parseFloat(closingAmount),
+        expected_amount: expectedInDrawer,
         closed_at: new Date().toISOString(),
         status: 'closed',
         cash_sales: salesSummary.cash,
@@ -316,7 +317,7 @@ export default function CashRegister() {
       <div class="row"><span>Nº de vendas:</span><span>${salesCount}</span></div>
       <div class="row"><span>Ticket médio:</span><span>${formatBRL(avgTicket)}</span></div>
       <hr/>
-      <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(currentRegister.expected_amount)}</span></div>
+      <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(expectedInDrawer)}</span></div>
       <p style="text-align:center; font-size:11px;">Impresso em ${new Date().toLocaleString('pt-BR')}</p>
       </body></html>
     `);
