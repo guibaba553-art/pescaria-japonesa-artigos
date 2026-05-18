@@ -311,7 +311,7 @@ export function PriceFormation() {
           .from("product_variations")
           .update({
             cost: liveCost,
-            price: finalPrice,
+            price_pdv: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })
