@@ -47,19 +47,20 @@ export function ProductCard({
 
   const hasVariations = product.variations && product.variations.length > 0;
   const isOnSale = product.on_sale && product.sale_price;
-  // Piso de preço mínimo de venda — aplicado SOMENTE na exibição do site (não afeta PDV/catálogo)
+  // REGRA: no SITE o preço exibido é o "Valor mínimo de venda" (min_sale_price) quando definido.
+  // O campo `price` é o preço médio usado no PDV — não é usado aqui no site (a menos que min_sale_price esteja vazio).
   const productMin = Number((product as any).min_sale_price) || 0;
-  const applyFloor = (v: number) => (productMin > 0 && v < productMin ? productMin : v);
-  const basePrice = applyFloor(isOnSale ? product.sale_price! : product.price);
-  // Para produtos com variações, usa o menor preço entre as variações (ignora 0), respeitando piso por variação
+  const sitePriceFor = (basePrice: number, minSale: number) =>
+    minSale > 0 ? minSale : basePrice;
+  const basePrice = sitePriceFor(
+    isOnSale ? product.sale_price! : product.price,
+    productMin,
+  );
+  // Para produtos com variações, usa o menor preço de site entre as variações (min_sale_price quando definido)
   const variationMin = hasVariations
     ? Math.min(
         ...product.variations!
-          .map((v) => {
-            const vMin = Number((v as any).min_sale_price) || 0;
-            const p = vMin > 0 && v.price < vMin ? vMin : v.price;
-            return p;
-          })
+          .map((v) => sitePriceFor(v.price, Number((v as any).min_sale_price) || 0))
           .filter((p) => p > 0)
       )
     : null;
