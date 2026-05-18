@@ -189,7 +189,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       if (v.id !== variationId) return v;
       
       // Validações básicas
-      if (field === 'price') {
+      if (field === 'price' || field === 'price_pdv') {
+        if (value === '' || value === null) return { ...v, [field]: null };
         const numValue = parseFloat(value);
         if (isNaN(numValue) || numValue < 0) return v;
         return { ...v, [field]: numValue };
