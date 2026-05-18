@@ -685,6 +685,24 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
               </div>
             </div>
 
+            {(product as any).min_sale_price != null && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label className="text-amber-700 dark:text-amber-400">
+                      Preço Mínimo de Venda
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Definido em Fiscal → Formação de Preço. Não editável aqui.
+                    </p>
+                  </div>
+                  <div className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                    {Number((product as any).min_sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="edit-description">Descrição (opcional)</Label>
               <Textarea
