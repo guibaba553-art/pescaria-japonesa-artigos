@@ -90,9 +90,14 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
   const { 
     variations, 
     setVariations, 
+    loading: variationsLoading,
     loadVariations, 
     saveVariations 
   } = useProductVariations();
+  // Flag que indica se já completamos pelo menos um load das variações
+  // após abrir o dialog. Bloqueia o submit antes disso para evitar que
+  // um save "vazio" apague variações existentes no banco.
+  const [variationsLoaded, setVariationsLoaded] = useState(false);
 
   // Auto-save de rascunho durante a edição. Imagens não são persistidas.
   const draftData = {
