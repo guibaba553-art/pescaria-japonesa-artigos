@@ -778,6 +778,12 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         friendlyMessage = 'Você excedeu o número de tentativas permitidas.';
       } else if (errorMessage.includes('Card Token not found')) {
         friendlyMessage = 'Erro ao processar cartão. Verifique os dados e tente novamente.';
+      } else if (
+        errorMessage.includes('Collector user without key enabled for QR render') ||
+        errorMessage.includes('PA_UNAUTHORIZED_RESULT_FROM_POLICIES') ||
+        errorMessage.includes('Financial Identity Use Case')
+      ) {
+        friendlyMessage = 'O PIX da loja não está configurado corretamente no Mercado Pago. É preciso usar a mesma conta da integração, com uma chave PIX ativa, em ambiente de produção.';
       }
 
       toast({
