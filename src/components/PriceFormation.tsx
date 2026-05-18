@@ -538,11 +538,18 @@ export function PriceFormation() {
             const groupName = p.cost_group_id
               ? groupsById.get(p.cost_group_id)?.name
               : null;
+            const noMinSale = p.min_sale_price == null;
             return (
               <button
                 key={p.id}
                 onClick={() => setSelected(p)}
-                className="text-left border rounded-lg p-3 hover:border-primary hover:shadow-md transition bg-card"
+                className={
+                  "text-left border rounded-lg p-3 hover:shadow-md transition bg-card " +
+                  (noMinSale
+                    ? "border-red-500 border-2 hover:border-red-600 bg-red-50/50 dark:bg-red-950/20"
+                    : "hover:border-primary")
+                }
+                title={noMinSale ? "Sem valor mínimo de venda definido" : undefined}
               >
                 <div className="flex gap-3">
                   {p.image_url ? (
@@ -581,6 +588,11 @@ export function PriceFormation() {
                         <Badge variant="outline" className="text-[10px]">
                           <Layers className="w-3 h-3 mr-1" />
                           {groupName}
+                        </Badge>
+                      )}
+                      {noMinSale && (
+                        <Badge className="bg-red-600 text-white text-[10px]">
+                          Sem mín. venda
                         </Badge>
                       )}
                     </div>
