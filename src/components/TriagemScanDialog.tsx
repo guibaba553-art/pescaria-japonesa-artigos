@@ -524,19 +524,10 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                     </a>
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="bg-background"
-                    onClick={emitNfe}
-                    disabled={emittingNfe}
-                  >
-                    {emittingNfe ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Receipt className="w-4 h-4 mr-2" />
-                    )}
-                    Emitir NF-e
-                  </Button>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-dashed text-xs text-muted-foreground bg-background">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    NF-e sendo emitida automaticamente...
+                  </div>
                 )}
 
                 <Button
