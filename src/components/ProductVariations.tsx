@@ -281,7 +281,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                       </div>
                       <div>
                         <Label htmlFor={`price-${variation.id}`} className="text-xs">
-                          Preço (R$) *
+                          Preço mínimo — Site (R$) *
                         </Label>
                         <Input
                           id={`price-${variation.id}`}
@@ -293,6 +293,22 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0.00"
                         />
                       </div>
+                      <div>
+                        <Label htmlFor={`pricepdv-${variation.id}`} className="text-xs">
+                          Preço de venda — PDV (R$)
+                        </Label>
+                        <Input
+                          id={`pricepdv-${variation.id}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variation.price_pdv ?? ''}
+                          onChange={(e) => updateVariation(variation.id, 'price_pdv', e.target.value)}
+                          placeholder="Se vazio, usa o preço do site"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <Label htmlFor={`stock-${variation.id}`} className="text-xs">
                           Estoque *
@@ -306,8 +322,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <Label htmlFor={`minstock-${variation.id}`} className="text-xs">
                           Estoque mínimo (alerta)
@@ -321,6 +335,19 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0"
                         />
                       </div>
+                      {(variation as any).min_sale_price != null && (
+                        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
+                          <Label className="text-[11px] text-amber-700 dark:text-amber-400">
+                            Preço Mínimo de Venda
+                          </Label>
+                          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                            {Number((variation as any).min_sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Definido em Formação de Preço
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
