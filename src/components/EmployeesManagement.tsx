@@ -179,9 +179,20 @@ export function EmployeesManagement() {
       return;
     }
 
-    await supabase
+    // Só cria a linha de permissões se ainda não existir.
+    // Antes usávamos upsert, o que sobrescrevia silenciosamente todas as
+    // permissões personalizadas de um funcionário re-adicionado.
+    const { data: existingPerms } = await supabase
       .from('employee_permissions')
-      .upsert({ user_id: userId, ...defaultPerms() }, { onConflict: 'user_id' });
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!existingPerms) {
+      await supabase
+        .from('employee_permissions')
+        .insert({ user_id: userId, ...defaultPerms() });
+    }
 
     toast({ title: 'Funcionário adicionado!' });
     setNewEmail('');
