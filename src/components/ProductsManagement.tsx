@@ -35,6 +35,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  price_pdv?: number | null;
   category: string;
   image_url: string | null;
   images: string[];
@@ -485,6 +486,7 @@ export function ProductsManagement() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {filteredProducts.map((product) => {
                 const v = velocities[product.id];
+                const displayPrice = Number(product.price_pdv ?? product.price ?? 0);
                 const accent =
                   product.stock === 0 ? 'border-l-destructive'
                   : v?.status === 'critical' ? 'border-l-orange-500'
@@ -562,11 +564,11 @@ export function ProductsManagement() {
                         <div>
                           {product.on_sale && product.sale_price ? (
                             <>
-                              <p className="line-through text-[10px] text-muted-foreground">R$ {product.price.toFixed(2)}</p>
+                              <p className="line-through text-[10px] text-muted-foreground">R$ {displayPrice.toFixed(2)}</p>
                               <p className="text-sm font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
                             </>
                           ) : (
-                            <p className="text-sm font-bold text-primary">R$ {product.price.toFixed(2)}</p>
+                            <p className="text-sm font-bold text-primary">R$ {displayPrice.toFixed(2)}</p>
                           )}
                         </div>
                         <div className="text-right">
