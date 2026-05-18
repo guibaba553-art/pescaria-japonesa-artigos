@@ -202,20 +202,36 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
   }
   flushEnvelope();
 
-  // 4) Empacota boxables: tenta caixa pequena, senão grande. Soma volumes com fator de
-  //    aproveitamento ~70% (perda por encaixe) e respeita maior dimensão.
+  // 4) Empacota boxables: tenta caixa pequena, senão grande.
+  //    Regras:
+  //      - CADA item precisa caber fisicamente na caixa (checagem 3D com dims ordenadas)
+  //      - Soma de volumes respeita ~70% de aproveitamento (perda por encaixe)
+  //      - Soma de pesos respeita cap por tipo de caixa (5kg pequena, 10kg grande, 30kg limite Correios)
   const PACK_EFFICIENCY = 0.7;
+  const WEIGHT_CAP = {
+    caixa_pequena: 5000, // 5kg
+    caixa_grande: 10000, // 10kg (hard limit Correios = 30kg)
+  } as const;
+
+  // Verifica se um item cabe dentro de uma caixa (3D, dimensões ordenadas)
+  const fitsInBox = (it: ItemDims, box: { w: number; h: number; l: number }): boolean => {
+    const itemDims = [dim(it, 'width_cm'), dim(it, 'height_cm'), dim(it, 'length_cm')].sort((a, b) => a - b);
+    const boxDims = [box.w, box.h, box.l].sort((a, b) => a - b);
+    return itemDims[0] <= boxDims[0] && itemDims[1] <= boxDims[1] && itemDims[2] <= boxDims[2];
+  };
+
   let boxItems: typeof boxables = [];
   let boxVol = 0;
   let boxWeight = 0;
-  let boxMaxDim = 0;
+  let boxAllFitSmall = true; // todos os itens cabem na caixa pequena?
 
   const chooseAndFlush = (force = false) => {
     if (boxItems.length === 0) return;
-    // Decide menor caixa que comporta
+    // Decide menor caixa que comporta: precisa de fit 3D de TODOS os itens + volume + peso
     const fitsSmall =
+      boxAllFitSmall &&
       boxVol <= BOXES.caixa_pequena.volume * PACK_EFFICIENCY &&
-      boxMaxDim <= BOXES.caixa_pequena.maxDim;
+      boxWeight <= WEIGHT_CAP.caixa_pequena;
     const chosen = fitsSmall ? 'caixa_pequena' : 'caixa_grande';
     const dims = BOXES[chosen];
     const insurancePerPkg = insuranceValue * (boxItems.length / units.length);
@@ -247,19 +263,19 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     boxItems = [];
     boxVol = 0;
     boxWeight = 0;
-    boxMaxDim = 0;
+    boxAllFitSmall = true;
     return force;
   };
 
   for (const u of boxables) {
     const v = itemVolume(u.item);
     const w = itemWeight(u.item);
-    const md = maxDimension(u.item);
+    const fitsSmallItem = fitsInBox(u.item, { w: BOXES.caixa_pequena.w, h: BOXES.caixa_pequena.h, l: BOXES.caixa_pequena.l });
+    const fitsLargeItem = fitsInBox(u.item, { w: BOXES.caixa_grande.w, h: BOXES.caixa_grande.h, l: BOXES.caixa_grande.l });
 
-    // Caso especial: item sozinho não cabe na caixa grande (50–100cm).
-    // Divide em 2 pacotes "caixa grande" — fechamos o pack atual e emitimos
-    // 2 caixas grandes para esse item (peso/seguro divididos pela metade).
-    if (md > BOXES.caixa_grande.maxDim) {
+    // Caso especial: item sozinho não cabe nem na caixa grande (alguma dim entre 22cm e 100cm).
+    // Divide em 2 pacotes "caixa grande" — peso/seguro dividido pela metade.
+    if (!fitsLargeItem) {
       chooseAndFlush();
       const insurancePerPkg = (insuranceValue * (1 / units.length)) / 2;
       const halfWeight = (w / 2 + packagingWeight('caixa_grande')) / 1000;
@@ -276,16 +292,15 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
       continue;
     }
 
-    // Se exceder caixa grande consolidando, fecha o atual e abre novo
+    // Se exceder caixa grande consolidando (volume ou peso), fecha o atual e abre novo
     const wouldOverflow =
       boxVol + v > BOXES.caixa_grande.volume * PACK_EFFICIENCY ||
-      boxWeight + w > 25000 || // 25kg limite Correios
-      Math.max(boxMaxDim, md) > BOXES.caixa_grande.maxDim;
+      boxWeight + w > WEIGHT_CAP.caixa_grande * 3; // ~30kg limite Correios
     if (wouldOverflow) chooseAndFlush();
     boxItems.push(u);
     boxVol += v;
     boxWeight += w;
-    boxMaxDim = Math.max(boxMaxDim, md);
+    if (!fitsSmallItem) boxAllFitSmall = false;
   }
   chooseAndFlush();
 
