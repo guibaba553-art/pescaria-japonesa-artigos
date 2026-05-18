@@ -90,9 +90,14 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
   const { 
     variations, 
     setVariations, 
+    loading: variationsLoading,
     loadVariations, 
     saveVariations 
   } = useProductVariations();
+  // Flag que indica se já completamos pelo menos um load das variações
+  // após abrir o dialog. Bloqueia o submit antes disso para evitar que
+  // um save "vazio" apague variações existentes no banco.
+  const [variationsLoaded, setVariationsLoaded] = useState(false);
 
   // Auto-save de rascunho durante a edição. Imagens não são persistidas.
   const draftData = {
@@ -145,8 +150,9 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
     if (open && product.id) {
       console.log('📂 Carregando dados do produto para edição:', product.id);
       
-      // Carregar variações
-      loadVariations(product.id);
+      // Resetar flag e carregar variações antes de liberar o submit
+      setVariationsLoaded(false);
+      loadVariations(product.id).finally(() => setVariationsLoaded(true));
       
       // Resetar estados do formulário
       setName(product.name);
@@ -228,6 +234,19 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // SEGURANÇA: nunca salvar antes de carregar as variações existentes.
+    // Sem isso, um submit precoce envia variations=[] e o saveVariations
+    // interpreta como "remover todas", apagando UUIDs referenciados por
+    // pedidos, listas de compra e carrinhos.
+    if (!variationsLoaded || variationsLoading) {
+      toast({
+        title: 'Aguarde',
+        description: 'Carregando variações do produto...',
+      });
+      return;
+    }
+
     setUpdating(true);
 
     console.log('=== ATUALIZANDO PRODUTO ===');
@@ -966,8 +985,12 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updating}>
-                {updating ? 'Atualizando...' : 'Salvar Alterações'}
+              <Button type="submit" disabled={updating || !variationsLoaded || variationsLoading}>
+                {updating
+                  ? 'Atualizando...'
+                  : !variationsLoaded || variationsLoading
+                    ? 'Carregando variações...'
+                    : 'Salvar Alterações'}
               </Button>
             </div>
           </form>
