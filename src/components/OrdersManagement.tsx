@@ -1352,6 +1352,7 @@ export function OrdersManagement() {
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="para-enviar"><OrdersTable orders={site.paraEnviar} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
+      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
       <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
