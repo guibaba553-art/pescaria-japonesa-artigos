@@ -263,19 +263,19 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
     boxItems = [];
     boxVol = 0;
     boxWeight = 0;
-    boxMaxDim = 0;
+    boxAllFitSmall = true;
     return force;
   };
 
   for (const u of boxables) {
     const v = itemVolume(u.item);
     const w = itemWeight(u.item);
-    const md = maxDimension(u.item);
+    const fitsSmallItem = fitsInBox(u.item, { w: BOXES.caixa_pequena.w, h: BOXES.caixa_pequena.h, l: BOXES.caixa_pequena.l });
+    const fitsLargeItem = fitsInBox(u.item, { w: BOXES.caixa_grande.w, h: BOXES.caixa_grande.h, l: BOXES.caixa_grande.l });
 
-    // Caso especial: item sozinho não cabe na caixa grande (50–100cm).
-    // Divide em 2 pacotes "caixa grande" — fechamos o pack atual e emitimos
-    // 2 caixas grandes para esse item (peso/seguro divididos pela metade).
-    if (md > BOXES.caixa_grande.maxDim) {
+    // Caso especial: item sozinho não cabe nem na caixa grande (alguma dim entre 22cm e 100cm).
+    // Divide em 2 pacotes "caixa grande" — peso/seguro dividido pela metade.
+    if (!fitsLargeItem) {
       chooseAndFlush();
       const insurancePerPkg = (insuranceValue * (1 / units.length)) / 2;
       const halfWeight = (w / 2 + packagingWeight('caixa_grande')) / 1000;
@@ -292,16 +292,15 @@ export function packItems(items: ShipmentItem[], insuranceValue = 0): PackedBox[
       continue;
     }
 
-    // Se exceder caixa grande consolidando, fecha o atual e abre novo
+    // Se exceder caixa grande consolidando (volume ou peso), fecha o atual e abre novo
     const wouldOverflow =
       boxVol + v > BOXES.caixa_grande.volume * PACK_EFFICIENCY ||
-      boxWeight + w > 25000 || // 25kg limite Correios
-      Math.max(boxMaxDim, md) > BOXES.caixa_grande.maxDim;
+      boxWeight + w > WEIGHT_CAP.caixa_grande * 3; // ~30kg limite Correios
     if (wouldOverflow) chooseAndFlush();
     boxItems.push(u);
     boxVol += v;
     boxWeight += w;
-    boxMaxDim = Math.max(boxMaxDim, md);
+    if (!fitsSmallItem) boxAllFitSmall = false;
   }
   chooseAndFlush();
 
