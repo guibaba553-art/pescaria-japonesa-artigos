@@ -1291,7 +1291,7 @@ export function OrdersManagement() {
   const renderSiteTabs = () => (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-6 gap-1">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-7 gap-1">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
@@ -1311,6 +1311,13 @@ export function OrdersManagement() {
             Pronto p/ Retirar
             {site.prontoRetirar.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="aguardando-envio" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Aguardando Envio
+            {site.aguardandoEnvio.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="em-caminho" className="shrink-0">
