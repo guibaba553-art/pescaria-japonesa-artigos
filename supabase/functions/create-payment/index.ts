@@ -342,6 +342,19 @@ serve(async (req) => {
         );
       }
 
+      if (isTestMode && !simulatePayment) {
+        return new Response(
+          JSON.stringify({
+            error: 'PIX indisponível em credencial de teste do Mercado Pago. Para gerar QR real, a integração precisa estar em produção com uma chave PIX ativa.',
+            success: false,
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
       // Modo simulação
       if (simulatePayment) {
         console.log('Simulation mode: PIX payment');
@@ -399,7 +412,13 @@ serve(async (req) => {
           : '';
         if (causeMessages) errorMessage = `${errorMessage} - ${causeMessages}`;
 
-        if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
+        if (
+          errorMessage.includes('Collector user without key enabled for QR render') ||
+          errorMessage.includes('Financial Identity Use Case') ||
+          responseData?.code === '13253'
+        ) {
+          errorMessage = 'PIX indisponível nesta conta do Mercado Pago. Use a mesma conta da integração, com uma chave PIX ativa e em ambiente de produção.';
+        } else if (response.status === 403 && responseData.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES') {
           errorMessage = 'Credenciais do Mercado Pago sem permissão. Verifique se sua conta tem PIX habilitado.';
         }
 
