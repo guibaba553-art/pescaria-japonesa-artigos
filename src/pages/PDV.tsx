@@ -1148,7 +1148,7 @@ export default function PDV() {
       return item.customPrice;
     }
     if (item.variation) {
-      return getPdvPriceForVariation(item.product, item.variation.price, paymentMethod);
+      return getPdvPriceForVariation(item.product, Number((item.variation as any).price_pdv ?? item.variation.price), paymentMethod);
     }
     return getPdvPrice(item.product, paymentMethod);
   };
