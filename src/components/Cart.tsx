@@ -39,7 +39,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
   const navigate = useNavigate();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [shippingCost, setShippingCost] = useState(0);
-  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number } | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number; codigo?: string } | null>(null);
 
   const handleCheckout = () => {
     if (!user) {
