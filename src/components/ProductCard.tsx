@@ -47,10 +47,21 @@ export function ProductCard({
 
   const hasVariations = product.variations && product.variations.length > 0;
   const isOnSale = product.on_sale && product.sale_price;
-  const basePrice = isOnSale ? product.sale_price! : product.price;
-  // Para produtos com variações, usa o menor preço entre as variações (ignora 0)
+  // Piso de preço mínimo de venda — aplicado SOMENTE na exibição do site (não afeta PDV/catálogo)
+  const productMin = Number((product as any).min_sale_price) || 0;
+  const applyFloor = (v: number) => (productMin > 0 && v < productMin ? productMin : v);
+  const basePrice = applyFloor(isOnSale ? product.sale_price! : product.price);
+  // Para produtos com variações, usa o menor preço entre as variações (ignora 0), respeitando piso por variação
   const variationMin = hasVariations
-    ? Math.min(...product.variations!.map((v) => v.price).filter((p) => p > 0))
+    ? Math.min(
+        ...product.variations!
+          .map((v) => {
+            const vMin = Number((v as any).min_sale_price) || 0;
+            const p = vMin > 0 && v.price < vMin ? vMin : v.price;
+            return p;
+          })
+          .filter((p) => p > 0)
+      )
     : null;
   const finalPrice = hasVariations && variationMin && isFinite(variationMin) ? variationMin : basePrice;
   const discount = isOnSale

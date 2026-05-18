@@ -290,8 +290,9 @@ export function PriceFormation() {
 
   const handleSave = async () => {
     if (!selected) return;
-    // Quando há valor mínimo de venda definido, ele vira o preço do site
-    const finalPrice = editMinSale && liveMinSale > 0 ? liveMinSale : livePrice;
+    // O preço real (catálogo/PDV) é sempre o livePrice calculado.
+    // O min_sale_price é armazenado separadamente e aplicado SOMENTE como piso visual no site.
+    const finalPrice = livePrice;
     if (finalPrice <= 0) {
       toast.error("Preço de venda deve ser maior que zero");
       return;
