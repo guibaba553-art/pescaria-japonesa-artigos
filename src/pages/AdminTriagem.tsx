@@ -47,7 +47,7 @@ export default function AdminTriagem() {
         .from('orders')
         .select(
           `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code, shipping_label_url, shipping_label_order_id,
-           order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku), product_variations(name, sku)),
+           order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku, weight_grams, length_cm, width_cm, height_cm), product_variations(name, sku, weight_grams, length_cm, width_cm, height_cm)),
            nfe_emissions(id, nfe_number, danfe_url, status)`,
         )
         .eq('source', 'site')
@@ -148,7 +148,7 @@ export default function AdminTriagem() {
         .from('orders')
         .select(
           `id, total_amount, shipping_cost, shipping_address, shipping_cep, status, delivery_type, source, created_at, user_id, tracking_code, shipping_label_url, shipping_label_order_id,
-           order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku), product_variations(name, sku)),
+           order_items(id, quantity, price_at_purchase, product_id, variation_id, products(name, image_url, sku, weight_grams, length_cm, width_cm, height_cm), product_variations(name, sku, weight_grams, length_cm, width_cm, height_cm)),
            nfe_emissions(id, nfe_number, danfe_url, status)`,
         )
         .eq('id', orderId)
