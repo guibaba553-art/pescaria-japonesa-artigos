@@ -818,20 +818,28 @@ export function OrdersManagement() {
           order_items (
             *,
             products (name)
-          ),
-          nfe_emissions (
-            id,
-            nfe_number,
-            nfe_key,
-            nfe_xml_url,
-            status,
-            emitted_at,
-            error_message
           )
         `)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(300);
 
       if (ordersError) throw ordersError;
+
+      // Buscar NF-e emissions separadamente (evita join pesado que estoura timeout)
+      const orderIdsForNfe = (ordersData ?? []).map((o: any) => o.id);
+      const nfeMap: Record<string, any[]> = {};
+      if (orderIdsForNfe.length > 0) {
+        const { data: nfeData } = await supabase
+          .from('nfe_emissions')
+          .select('id, order_id, nfe_number, nfe_key, nfe_xml_url, status, emitted_at, error_message')
+          .in('order_id', orderIdsForNfe);
+        (nfeData ?? []).forEach((n: any) => {
+          (nfeMap[n.order_id] = nfeMap[n.order_id] || []).push(n);
+        });
+      }
+      (ordersData ?? []).forEach((o: any) => {
+        o.nfe_emissions = nfeMap[o.id] || [];
+      });
 
       // Buscar perfis dos usuários
       const userIds = [...new Set(ordersData?.map(o => o.user_id) || [])];
