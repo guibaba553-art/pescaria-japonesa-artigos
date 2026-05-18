@@ -164,6 +164,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
       product_id: "",
       name,
       price,
+      price_pdv: newVariation.price_pdv ? parseFloat(newVariation.price_pdv) : null,
       stock,
       min_stock: newVariation.min_stock ? parseInt(newVariation.min_stock) : 0,
       description: newVariation.description.trim() || null,
@@ -177,7 +178,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
 
     onVariationsChange([...variations, variation]);
     
-    setNewVariation({ name: "", price: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
+    setNewVariation({ name: "", price: "", price_pdv: "", stock: "", min_stock: "", description: "", image_url: "", sku: "", weight_grams: "", length_cm: "", width_cm: "", height_cm: "" });
   };
 
   /**
