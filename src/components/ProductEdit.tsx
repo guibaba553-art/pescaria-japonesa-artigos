@@ -234,6 +234,19 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // SEGURANÇA: nunca salvar antes de carregar as variações existentes.
+    // Sem isso, um submit precoce envia variations=[] e o saveVariations
+    // interpreta como "remover todas", apagando UUIDs referenciados por
+    // pedidos, listas de compra e carrinhos.
+    if (!variationsLoaded || variationsLoading) {
+      toast({
+        title: 'Aguarde',
+        description: 'Carregando variações do produto...',
+      });
+      return;
+    }
+
     setUpdating(true);
 
     console.log('=== ATUALIZANDO PRODUTO ===');
