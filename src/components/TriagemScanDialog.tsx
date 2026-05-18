@@ -556,10 +556,10 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
             </div>
           )}
 
-          <DialogFooter className="gap-2 flex-wrap">
-            <div className="flex-1 text-xs text-muted-foreground self-center">
-              Total do pedido: <strong>{fmt(order.total_amount)}</strong>
-            </div>
+          <div className="text-xs text-muted-foreground text-center pt-2">
+            Total do pedido: <strong>{fmt(order.total_amount)}</strong>
+          </div>
+          <DialogFooter className="gap-2 flex-wrap sm:justify-center justify-center">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
