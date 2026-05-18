@@ -637,7 +637,7 @@ export function PriceFormation() {
 
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="pf-price">Valor de venda (R$)</Label>
+                    <Label htmlFor="pf-price">Valor de venda — PDV (R$)</Label>
                     <Input
                       id="pf-price"
                       type="number"
@@ -647,6 +647,9 @@ export function PriceFormation() {
                       value={editPrice}
                       onChange={(e) => handlePriceChange(e.target.value)}
                     />
+                    <div className="text-[11px] text-muted-foreground mt-1">
+                      Preço médio usado no PDV. Não é o preço do site.
+                    </div>
                   </div>
 
                   <div>
