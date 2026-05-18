@@ -54,80 +54,101 @@ export function useProductVariations(productId?: string) {
   }, [productId, toast]);
 
   /**
-   * Salva variações no banco de dados
-   * ESTRATÉGIA: Sempre deleta tudo e recria (operação atômica)
+   * Salva variações no banco de dados PRESERVANDO IDs existentes.
+   *
+   * IMPORTANTE: NUNCA fazer DELETE + INSERT em massa aqui. Cada variação
+   * tem um UUID referenciado por:
+   *  - purchase_list_items.variation_id
+   *  - order_items.variation_id
+   *  - itens salvos no carrinho do site (localStorage)
+   *  - product_label_pending.variation_id
+   *  - dismissed_stock_alerts.variation_id
+   * Se a gente apaga e recria, todos esses ponteiros viram órfãos.
+   *
+   * Estratégia (diff):
+   *  1. Variações com `id` existente → UPDATE (mantém o mesmo UUID)
+   *  2. Variações sem `id` (novas no form) → INSERT
+   *  3. IDs que existiam no banco e sumiram do form → DELETE
    */
   const saveVariations = useCallback(async (
-    targetProductId: string, 
+    targetProductId: string,
     variationsToSave: ProductVariation[]
   ): Promise<{ success: boolean; error?: string }> => {
-    console.log('=== SALVANDO VARIAÇÕES ===');
+    console.log('=== SALVANDO VARIAÇÕES (modo diff, preserva IDs) ===');
     console.log('Produto:', targetProductId);
-    console.log('Variações a salvar:', variationsToSave.length);
+    console.log('Variações no form:', variationsToSave.length);
+
+    const buildPayload = (v: ProductVariation) => ({
+      product_id: targetProductId,
+      name: v.name.trim(),
+      price: Number(v.price),
+      stock: Number(v.stock),
+      description: v.description?.trim() || null,
+      sku: v.sku?.trim() || null,
+      image_url: v.image_url || null,
+      weight_grams: parseOptionalMeasurementInput(v.weight_grams, 'int'),
+      length_cm: parseOptionalMeasurementInput(v.length_cm, 'float'),
+      width_cm: parseOptionalMeasurementInput(v.width_cm, 'float'),
+      height_cm: parseOptionalMeasurementInput(v.height_cm, 'float'),
+      min_stock: v.min_stock != null ? Number(v.min_stock) : 0,
+    });
 
     try {
-      // PASSO 1: Deletar TODAS as variações existentes
-      console.log('Deletando variações antigas...');
-      const { error: deleteError } = await supabase
+      // Carrega IDs atualmente no banco para esse produto
+      const { data: existingRows, error: loadErr } = await supabase
         .from('product_variations')
-        .delete()
+        .select('id')
         .eq('product_id', targetProductId);
-      
-      if (deleteError) {
-        console.error('❌ Erro ao deletar:', deleteError);
-        return { 
-          success: false, 
-          error: `Erro ao limpar variações: ${deleteError.message}` 
-        };
+      if (loadErr) {
+        return { success: false, error: `Erro ao ler variações atuais: ${loadErr.message}` };
       }
-      console.log('✅ Variações antigas deletadas');
+      const existingIds = new Set((existingRows ?? []).map((r: any) => r.id as string));
 
-      // PASSO 2: Inserir novas variações (se houver)
-      if (variationsToSave.length > 0) {
-        const variationsToInsert = variationsToSave.map(v => {
-          console.log(`📝 Preparando para salvar: ${v.name}, image_url:`, v.image_url?.substring(0, 80));
-          return {
-            product_id: targetProductId,
-            name: v.name.trim(),
-            price: Number(v.price),
-            stock: Number(v.stock),
-            description: v.description?.trim() || null,
-            sku: v.sku?.trim() || null,
-            image_url: v.image_url || null,
-            weight_grams: parseOptionalMeasurementInput(v.weight_grams, 'int'),
-            length_cm: parseOptionalMeasurementInput(v.length_cm, 'float'),
-            width_cm: parseOptionalMeasurementInput(v.width_cm, 'float'),
-            height_cm: parseOptionalMeasurementInput(v.height_cm, 'float'),
-            min_stock: v.min_stock != null ? Number(v.min_stock) : 0
-          };
-        });
+      const toUpdate = variationsToSave.filter(v => v.id && existingIds.has(v.id));
+      const toInsert = variationsToSave.filter(v => !v.id || !existingIds.has(v.id));
+      const keepIds = new Set(toUpdate.map(v => v.id as string));
+      const toDeleteIds = Array.from(existingIds).filter(id => !keepIds.has(id));
 
-        console.log('Inserindo novas variações:', variationsToInsert.length);
-        const { error: insertError, data } = await supabase
+      console.log(`📝 update=${toUpdate.length} insert=${toInsert.length} delete=${toDeleteIds.length}`);
+
+      // 1) UPDATE preservando ID
+      for (const v of toUpdate) {
+        const { error: upErr } = await supabase
           .from('product_variations')
-          .insert(variationsToInsert)
-          .select();
-
-        if (insertError) {
-          console.error('❌ Erro ao inserir:', insertError);
-          return { 
-            success: false, 
-            error: `Erro ao salvar variações: ${insertError.message}` 
-          };
+          .update(buildPayload(v))
+          .eq('id', v.id!);
+        if (upErr) {
+          return { success: false, error: `Erro ao atualizar "${v.name}": ${upErr.message}` };
         }
-        
-        console.log(`✅ ${data?.length || 0} variações salvas com sucesso`);
-        console.log('📸 Primeira variação salva:', data?.[0]);
-      } else {
-        console.log('✅ Produto sem variações (ok)');
       }
 
-      console.log('=== SALVAMENTO CONCLUÍDO COM SUCESSO ===');
+      // 2) INSERT das novas
+      if (toInsert.length > 0) {
+        const { error: insErr } = await supabase
+          .from('product_variations')
+          .insert(toInsert.map(buildPayload));
+        if (insErr) {
+          return { success: false, error: `Erro ao inserir variações: ${insErr.message}` };
+        }
+      }
+
+      // 3) DELETE apenas as que sumiram do form
+      if (toDeleteIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from('product_variations')
+          .delete()
+          .in('id', toDeleteIds);
+        if (delErr) {
+          return { success: false, error: `Erro ao remover variações antigas: ${delErr.message}` };
+        }
+      }
+
+      console.log('=== SALVAMENTO CONCLUÍDO (IDs preservados) ===');
       return { success: true };
-      
+
     } catch (error: any) {
       console.error('❌ Erro inesperado:', error);
-      return { 
+      return {
         success: false, 
         error: error.message || 'Erro desconhecido' 
       };
