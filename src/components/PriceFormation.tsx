@@ -131,7 +131,7 @@ export function PriceFormation() {
           product_id: p.id,
           variation_id: null,
           name: p.name,
-          price: Number(p.price || 0),
+          price: Number(p.price_pdv ?? p.price ?? 0),
           cost: p.cost !== null ? Number(p.cost) : null,
           sale_price: p.sale_price !== null ? Number(p.sale_price) : null,
           on_sale: !!p.on_sale,
@@ -322,7 +322,7 @@ export function PriceFormation() {
           .from("products")
           .update({
             cost: liveCost,
-            price: finalPrice,
+            price_pdv: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })
