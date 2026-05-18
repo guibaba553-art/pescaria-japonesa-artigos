@@ -985,8 +985,12 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={updating}>
-                {updating ? 'Atualizando...' : 'Salvar Alterações'}
+              <Button type="submit" disabled={updating || !variationsLoaded || variationsLoading}>
+                {updating
+                  ? 'Atualizando...'
+                  : !variationsLoaded || variationsLoading
+                    ? 'Carregando variações...'
+                    : 'Salvar Alterações'}
               </Button>
             </div>
           </form>
