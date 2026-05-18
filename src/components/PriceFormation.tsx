@@ -322,7 +322,7 @@ export function PriceFormation() {
           .from("products")
           .update({
             cost: liveCost,
-            price: finalPrice,
+            price_pdv: finalPrice,
             cost_group_id: newGroupId,
             ...extraFields,
           })
