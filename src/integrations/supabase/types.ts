@@ -2631,6 +2631,7 @@ export type Database = {
           product_name: string
         }[]
       }
+      verify_cron_secret: { Args: { _secret: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "employee" | "user"
