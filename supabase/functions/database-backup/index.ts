@@ -70,15 +70,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  // Autorização: aceita x-cron-secret OU Authorization: Bearer <service_role>
-  const provided = req.headers.get("x-cron-secret");
-  const auth = req.headers.get("authorization") || "";
-  const bearer = auth.toLowerCase().startsWith("bearer ")
-    ? auth.slice(7).trim()
-    : "";
-  const isAuthorized =
-    (CRON_SECRET && provided === CRON_SECRET) ||
-    (SERVICE_ROLE && bearer === SERVICE_ROLE);
+  // Cliente com service role pra rodar tudo
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  // Autorização: aceita x-cron-secret (validado contra vault via RPC) OU env CRON_SECRET
+  const provided = req.headers.get("x-cron-secret") || "";
+  let isAuthorized = !!CRON_SECRET && provided === CRON_SECRET;
+  if (!isAuthorized && provided) {
+    const { data: ok } = await supabase.rpc("verify_cron_secret", {
+      _secret: provided,
+    });
+    isAuthorized = ok === true;
+  }
   if (!isAuthorized) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
@@ -87,7 +90,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const dump: Record<string, unknown> = {
       _meta: {
