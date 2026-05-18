@@ -1,0 +1,1 @@
+ALTER TABLE public.product_variations ADD COLUMN IF NOT EXISTS price_pdv numeric;
