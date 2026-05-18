@@ -307,7 +307,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden grid-cols-[minmax(0,1fr)]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {mode === 'pickup' ? (
