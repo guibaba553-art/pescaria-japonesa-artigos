@@ -133,7 +133,10 @@ const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_t
 const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'retirado' : 'aguardando_envio';
+    // Para entregas, "embalar" é feito exclusivamente pela Triagem (com leitura de SKU).
+    // Aqui só liberamos a transição direta para retirada (pickup).
+    if (deliveryType === 'pickup') return 'retirado';
+    return null;
   }
   if (currentStatus === 'aguardando_envio') return 'enviado';
   if (currentStatus === 'enviado') return 'entregado';
