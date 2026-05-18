@@ -28,6 +28,14 @@ import {
   Printer,
 } from 'lucide-react';
 import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
+import { packItems } from '@/utils/packShipment';
+
+const PACKAGING_LABEL: Record<string, string> = {
+  caixa_pequena: 'Caixa pequena 19×16×10',
+  caixa_grande: 'Caixa grande 21×17×17',
+  envelope_bolha: 'Envelope bolha 19×25',
+  tubo: 'Tubo (vara)',
+};
 
 export interface TriagemOrderItem {
   id: string;
