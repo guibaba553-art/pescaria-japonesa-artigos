@@ -332,6 +332,35 @@ serve(async (req) => {
           }
         }
 
+        // ----- Geração automática da etiqueta de envio (Melhor Envio) -----
+        // Para pedidos de delivery do site que tenham serviço de frete escolhido.
+        if (
+          !alreadyProcessed &&
+          !stockFailed &&
+          order.source !== 'pdv' &&
+          order.delivery_type === 'delivery' &&
+          order.shipping_service_id &&
+          !order.shipping_label_order_id
+        ) {
+          try {
+            console.log(`[payment-webhook] Gerando etiqueta automática para pedido ${order.id} (serviço ${order.shipping_service_id})`);
+            const { data: labelData, error: labelErr } = await supabase.functions.invoke('melhor-envio-label', {
+              body: {
+                action: 'full_flow',
+                orderId: order.id,
+                meServiceId: Number(order.shipping_service_id),
+              },
+            });
+            if (labelErr) {
+              console.error('[payment-webhook] Falha ao gerar etiqueta automática:', labelErr);
+            } else {
+              console.log('[payment-webhook] Etiqueta gerada:', labelData?.tracking_code || 'ok');
+            }
+          } catch (labelErr) {
+            console.error('[payment-webhook] Erro inesperado na geração automática de etiqueta:', labelErr);
+          }
+        }
+
         // ----- E-mail de confirmação de compra (1x por pedido) -----
         if (!alreadyProcessed) {
           try {
