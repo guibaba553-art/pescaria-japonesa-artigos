@@ -567,6 +567,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       }
 
       // Criar pedido no banco de dados
+      // Extrair o ID numérico do serviço Melhor Envio (formato: "me-{id}")
+      const meServiceMatch = !isPickup && shippingInfo?.codigo?.match(/^me-(\d+)$/);
+      const meServiceId = meServiceMatch ? parseInt(meServiceMatch[1], 10) : null;
+
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -576,7 +580,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           shipping_address: shippingAddressText,
           shipping_cep: shippingCepValue,
           status: 'aguardando_pagamento',
-          delivery_type: isPickup ? 'pickup' : 'delivery'
+          delivery_type: isPickup ? 'pickup' : 'delivery',
+          shipping_service_id: meServiceId,
         })
         .select()
         .single();
