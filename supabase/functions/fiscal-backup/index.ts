@@ -8,6 +8,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers":
+    "X-Backup-Count, X-Backup-Downloaded, X-Backup-Failed, X-Backup-Drive-Id, X-Backup-Drive-Link, X-Backup-Drive-Error",
 };
 
 Deno.serve(async (req) => {
