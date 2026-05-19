@@ -94,7 +94,12 @@ export default function ProductDetails() {
         .eq('product_id', id);
       
       if (variationsData) {
-        setVariations(variationsData);
+        const normalizedVariations = (variationsData as ProductVariation[]).map((variation) => ({
+          ...variation,
+          price: sitePriceForVariation(variation, (prod as any).min_sale_price),
+        }));
+
+        setVariations(normalizedVariations);
       }
     }
     setLoading(false);
