@@ -281,7 +281,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                       </div>
                       <div>
                         <Label htmlFor={`price-${variation.id}`} className="text-xs">
-                          Preço — Site (R$) *
+                          Preço mínimo — Site (R$) *
                         </Label>
                         <Input
                           id={`price-${variation.id}`}
