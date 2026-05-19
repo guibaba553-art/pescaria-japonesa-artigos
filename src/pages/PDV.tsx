@@ -414,12 +414,23 @@ export default function PDV() {
   const loadProducts = async () => {
     try {
       // Use RPC para que admins/funcionários acessem campos sensíveis (custo, preços PDV, margens)
-      const { data: prods, error } = await supabase.rpc('get_products_admin');
-      if (error) throw error;
+      // IMPORTANTE: paginar via .range para ultrapassar o limite default do PostgREST.
+      const prods: any[] = [];
+      let from = 0;
+      const PAGE_P = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: page, error } = await supabase
+          .rpc('get_products_admin')
+          .range(from, from + PAGE_P - 1);
+        if (error) throw error;
+        if (!page || page.length === 0) break;
+        prods.push(...page);
+        if (page.length < PAGE_P) break;
+        from += PAGE_P;
+      }
+      console.log(`[PDV] Produtos carregados: ${prods.length}`);
 
-      // Carrega variações e junta no objeto produto, mantendo apenas em estoque
-      // IMPORTANTE: buscar TODAS as variações em chunks (evita URL muito grande com .in())
-      // e paginar para ultrapassar o limite default de 1000 linhas do PostgREST.
       const ids = (prods || []).map((p: any) => p.id);
       const vars: any[] = [];
       const CHUNK = 100;
