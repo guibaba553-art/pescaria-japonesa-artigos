@@ -16,8 +16,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2 } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
+import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
 function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
@@ -70,6 +72,7 @@ interface Customer {
   inscricao_estadual: string | null;
   ie_indicador: string | null;
   created_at: string;
+  score: number;
 }
 
 const emptyForm = {
@@ -106,6 +109,11 @@ export default function AdminCustomers() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [fixingId, setFixingId] = useState<string | null>(null);
   const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [tiers, setTiers] = useState<CustomerTier[]>([]);
+  const [scoreFor, setScoreFor] = useState<Customer | null>(null);
+
+  useEffect(() => { loadTiers().then(setTiers); }, []);
+
 
   const lookupCnpj = async (digits: string) => {
     if (digits.length !== 14) {
@@ -576,6 +584,18 @@ export default function AdminCustomers() {
                       <Badge variant={c.cnpj ? 'default' : 'secondary'}>
                         {c.cnpj ? 'PJ' : 'PF'}
                       </Badge>
+                      {(() => {
+                        const tier = getTierForScore(tiers, c.score || 0);
+                        if (!tier) return null;
+                        return (
+                          <Badge
+                            className="gap-1 text-white border-0"
+                            style={{ backgroundColor: tier.color }}
+                          >
+                            <Award className="w-3 h-3" /> {tier.name} · {c.score || 0}
+                          </Badge>
+                        );
+                      })()}
                       {dup && (
                         <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white">
                           <AlertTriangle className="w-3 h-3" /> Duplicado
@@ -645,6 +665,9 @@ export default function AdminCustomers() {
                   <div className="flex gap-2 pt-2">
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
                       <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setScoreFor(c)}>
+                      <Award className="w-3.5 h-3.5 mr-1.5" /> Pontos
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
@@ -857,6 +880,15 @@ export default function AdminCustomers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CustomerScoreDialog
+        open={!!scoreFor}
+        onOpenChange={(v) => !v && setScoreFor(null)}
+        customer={scoreFor ? { id: scoreFor.id, full_name: scoreFor.full_name, company_name: scoreFor.company_name, score: scoreFor.score || 0 } : null}
+        onChanged={(newScore) => {
+          setList((prev) => prev.map((c) => (scoreFor && c.id === scoreFor.id ? { ...c, score: newScore } : c)));
+        }}
+      />
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>

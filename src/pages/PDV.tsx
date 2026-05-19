@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +59,8 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
+import { Award } from 'lucide-react';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
@@ -204,6 +206,12 @@ export default function PDV() {
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [tiers, setTiers] = useState<CustomerTier[]>([]);
+  useEffect(() => { loadTiers().then(setTiers); }, []);
+  const customerTier = useMemo(
+    () => (selectedCustomer ? getTierForScore(tiers, selectedCustomer.score || 0) : null),
+    [selectedCustomer, tiers]
+  );
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
@@ -1367,6 +1375,18 @@ export default function PDV() {
       return;
     }
 
+    // Bloqueio por classificação do cliente
+    if (selectedCustomer && customerTier?.block_purchase) {
+      toast({
+        title: `Venda bloqueada — cliente ${customerTier.name}`,
+        description: customerTier.perks || 'Este cliente está bloqueado para vendas.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+
+
     if (paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
       // Comparar em centavos para evitar erro de ponto flutuante
@@ -2099,6 +2119,27 @@ export default function PDV() {
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.street}, {selectedCustomer.number} - {selectedCustomer.neighborhood}
                             </p>
+                            {customerTier && (
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-white px-2 py-0.5 rounded"
+                                  style={{ backgroundColor: customerTier.color }}
+                                >
+                                  <Award className="w-3 h-3" /> {customerTier.name} · {selectedCustomer.score || 0} pts
+                                </span>
+                                {customerTier.block_purchase && (
+                                  <span className="text-xs font-semibold text-destructive">Venda bloqueada</span>
+                                )}
+                                {!customerTier.block_purchase && customerTier.discount_percent > 0 && (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    {customerTier.discount_percent}% off aplicado
+                                  </span>
+                                )}
+                                {!customerTier.allow_discount && !customerTier.block_purchase && (
+                                  <span className="text-xs font-semibold text-orange-600">Sem descontos</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <Button
                             size="sm"
@@ -2114,10 +2155,27 @@ export default function PDV() {
                         <CustomerSearchCombobox
                           onSelect={(customer) => {
                             setSelectedCustomer(customer);
-                            toast({
-                              title: 'Cliente selecionado',
-                              description: customer.company_name || customer.full_name,
-                            });
+                            const tier = getTierForScore(tiers, customer.score || 0);
+                            if (tier?.block_purchase) {
+                              toast({
+                                title: `Cliente ${tier.name}`,
+                                description: 'Venda bloqueada para este cliente.',
+                                variant: 'destructive',
+                              });
+                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
+                              const subtotal = calculateSubtotal();
+                              const disc = (subtotal * tier.discount_percent) / 100;
+                              setDiscountInput(disc.toFixed(2).replace('.', ','));
+                              toast({
+                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off`,
+                                description: `Desconto de R$ ${disc.toFixed(2)} aplicado automaticamente.`,
+                              });
+                            } else {
+                              toast({
+                                title: 'Cliente selecionado',
+                                description: customer.company_name || customer.full_name,
+                              });
+                            }
                           }}
                         />
                         
