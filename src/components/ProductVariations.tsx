@@ -542,7 +542,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
             </div>
             <div>
               <Label htmlFor="new-var-price" className="text-xs">
-                Preço mínimo — Site (R$) *
+                Preço — Site (R$) *
               </Label>
               <Input
                 id="new-var-price"
