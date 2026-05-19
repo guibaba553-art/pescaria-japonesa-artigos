@@ -928,11 +928,12 @@ export function OrdersManagement() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const updateOrderStatus = async (orderId: string, newStatus: Order['status'], extra?: Record<string, any>) => {
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus as any })
+      .update({ status: newStatus as any, ...(extra || {}) })
       .eq('id', orderId);
+
 
     if (error) {
       toast({
