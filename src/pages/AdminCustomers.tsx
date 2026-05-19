@@ -109,6 +109,11 @@ export default function AdminCustomers() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [fixingId, setFixingId] = useState<string | null>(null);
   const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [tiers, setTiers] = useState<CustomerTier[]>([]);
+  const [scoreFor, setScoreFor] = useState<Customer | null>(null);
+
+  useEffect(() => { loadTiers().then(setTiers); }, []);
+
 
   const lookupCnpj = async (digits: string) => {
     if (digits.length !== 14) {
