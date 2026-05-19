@@ -472,6 +472,92 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_score_events: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          order_id: string | null
+          performed_by: string | null
+          points_delta: number
+          reason: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          order_id?: string | null
+          performed_by?: string | null
+          points_delta: number
+          reason: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          order_id?: string | null
+          performed_by?: string | null
+          points_delta?: number
+          reason?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_score_events_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tiers: {
+        Row: {
+          allow_discount: boolean
+          block_purchase: boolean
+          color: string
+          created_at: string
+          discount_percent: number
+          id: string
+          max_score: number | null
+          min_score: number
+          name: string
+          perks: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          allow_discount?: boolean
+          block_purchase?: boolean
+          color?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          max_score?: number | null
+          min_score: number
+          name: string
+          perks?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          allow_discount?: boolean
+          block_purchase?: boolean
+          color?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          max_score?: number | null
+          min_score?: number
+          name?: string
+          perks?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           cep: string
@@ -490,6 +576,7 @@ export type Database = {
           municipio: string | null
           neighborhood: string
           number: string
+          score: number
           street: string
           uf: string | null
           updated_at: string
@@ -511,6 +598,7 @@ export type Database = {
           municipio?: string | null
           neighborhood: string
           number: string
+          score?: number
           street: string
           uf?: string | null
           updated_at?: string
@@ -532,6 +620,7 @@ export type Database = {
           municipio?: string | null
           neighborhood?: string
           number?: string
+          score?: number
           street?: string
           uf?: string | null
           updated_at?: string
@@ -1128,6 +1217,7 @@ export type Database = {
           pix_expiration: string | null
           qr_code: string | null
           qr_code_base64: string | null
+          return_is_defect: boolean
           shipping_address: string
           shipping_cep: string
           shipping_cost: number
@@ -1160,6 +1250,7 @@ export type Database = {
           pix_expiration?: string | null
           qr_code?: string | null
           qr_code_base64?: string | null
+          return_is_defect?: boolean
           shipping_address: string
           shipping_cep: string
           shipping_cost?: number
@@ -1192,6 +1283,7 @@ export type Database = {
           pix_expiration?: string | null
           qr_code?: string | null
           qr_code_base64?: string | null
+          return_is_defect?: boolean
           shipping_address?: string
           shipping_cep?: string
           shipping_cost?: number
@@ -2384,6 +2476,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_customer_score: {
+        Args: {
+          p_customer_id: string
+          p_delta: number
+          p_order_id?: string
+          p_reason: string
+          p_source?: string
+        }
+        Returns: Json
+      }
       add_label_pending: {
         Args: { p_product_id: string; p_qty: number; p_variation_id: string }
         Returns: string
