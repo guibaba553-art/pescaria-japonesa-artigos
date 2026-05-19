@@ -179,6 +179,21 @@ Deno.serve(async (req) => {
     const blob = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 
     const fname = `backup-fiscal-${startDate}_a_${endDate}.zip`;
+
+    // Upload pro Google Drive (Meu Drive > japa pesca 2026 > bekup)
+    let driveId = "";
+    let driveLink = "";
+    let driveError = "";
+    try {
+      const up = await uploadToBackupFolder(fname, blob, "application/zip");
+      driveId = up.id || "";
+      driveLink = up.webViewLink || "";
+      console.log(`✓ Drive upload: ${driveId} ${driveLink}`);
+    } catch (e) {
+      driveError = (e as Error).message;
+      console.error("Drive upload falhou:", e);
+    }
+
     return new Response(blob, {
       status: 200,
       headers: {
@@ -188,6 +203,9 @@ Deno.serve(async (req) => {
         "X-Backup-Count": String(manifest.length),
         "X-Backup-Downloaded": String(downloaded),
         "X-Backup-Failed": String(failed),
+        "X-Backup-Drive-Id": driveId,
+        "X-Backup-Drive-Link": driveLink,
+        "X-Backup-Drive-Error": driveError,
       },
     });
   } catch (err: any) {
