@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, TrendingUp, ShoppingCart, DollarSign, Calculator,
   Package, ClipboardList, Users, ShieldCheck, CalendarRange, ScanBarcode,
-  FileUp, UserSquare2,
+  FileUp, UserSquare2, AlertTriangle,
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 
@@ -120,6 +120,13 @@ export default function Admin() {
       desc: 'Importar estoque antigo a partir de PDF',
       icon: FileUp,
       path: '/admin/migracao-estoque',
+      adminOnly: true,
+    },
+    {
+      title: 'Painel de Erros',
+      desc: 'Erros capturados de todos os usuários do site',
+      icon: AlertTriangle,
+      path: '/admin/erros',
       adminOnly: true,
     },
   ];
