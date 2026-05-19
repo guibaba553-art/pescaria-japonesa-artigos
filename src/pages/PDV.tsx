@@ -722,12 +722,36 @@ export default function PDV() {
     clearSale();
   };
 
-  const handleProductClick = (product: Product) => {
-    // Se tem variações, mostrar diálogo de seleção
+  const handleProductClick = async (product: Product) => {
+    // Se tem variações no cache, mostrar diálogo de seleção
     if (product.variations && product.variations.length > 0) {
       setSelectedProduct(product);
       setShowVariationsDialog(true);
-    } else if (product.sold_by_weight) {
+      return;
+    }
+
+    // SAFETY NET: o cache pode estar desatualizado (variação cadastrada
+    // recentemente, falha de RLS na carga em lote, etc). Sempre confere no
+    // banco antes de tratar como produto simples — caso contrário o item
+    // seria adicionado com o preço-base e ignoraria o estoque da variação.
+    try {
+      const { data: vars } = await supabase
+        .from('product_variations')
+        .select('*')
+        .eq('product_id', product.id);
+      if (vars && vars.length > 0) {
+        const enriched = { ...product, variations: vars as any } as Product;
+        // Atualiza o cache local para próximos cliques
+        setProducts((prev) => prev.map((p) => (p.id === product.id ? enriched : p)));
+        setSelectedProduct(enriched);
+        setShowVariationsDialog(true);
+        return;
+      }
+    } catch (e) {
+      console.error('Falha ao verificar variações antes do clique:', e);
+    }
+
+    if (product.sold_by_weight) {
       // Se é vendido por peso, mostrar diálogo de entrada de peso
       setSelectedProduct(product);
       setWeightInput('');
@@ -917,16 +941,30 @@ export default function PDV() {
       const matched = products.find((product) => matchesAny(product.sku));
       if (matched) {
         console.log('✅ Produto encontrado:', matched.name);
-        if (matched.variations && matched.variations.length > 0) {
+        // SAFETY NET: confirmar no banco se existem variações cadastradas
+        // — evita vender produto com variações como se fosse simples quando
+        // o cache local está desatualizado.
+        let effective: Product = matched;
+        if (!matched.variations || matched.variations.length === 0) {
+          const { data: vars } = await supabase
+            .from('product_variations')
+            .select('*')
+            .eq('product_id', matched.id);
+          if (vars && vars.length > 0) {
+            effective = { ...matched, variations: vars as any } as Product;
+            setProducts((prev) => prev.map((p) => (p.id === matched.id ? effective : p)));
+          }
+        }
+        if (effective.variations && effective.variations.length > 0) {
           // Produto tem variações — abrir seletor em vez de adicionar direto (evita preço 0)
-          setSelectedProduct(matched);
+          setSelectedProduct(effective);
           setShowVariationsDialog(true);
-        } else if (matched.sold_by_weight) {
-          setSelectedProduct(matched);
+        } else if (effective.sold_by_weight) {
+          setSelectedProduct(effective);
           setWeightInput('');
           setShowWeightDialog(true);
         } else {
-          addToCart(matched, undefined, 1);
+          addToCart(effective, undefined, 1);
         }
         setBarcodeInput('');
         playBeep();
