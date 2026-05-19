@@ -528,14 +528,7 @@ export function PriceFormation() {
             Mostrando {visible.length} de {filtered.length}
             {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
           </div>
-          {visible.length < filtered.length && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + VISIBLE_STEP)}
-              className="text-primary hover:underline font-medium"
-            >
-              Carregar mais {Math.min(VISIBLE_STEP, filtered.length - visible.length)}
-            </button>
+        </div>
           )}
         </div>
 
