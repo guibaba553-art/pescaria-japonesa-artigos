@@ -49,6 +49,8 @@ export function CustomerSearchCombobox({ onSelect, placeholder }: Props) {
         const ors: string[] = [
           `full_name.ilike.%${safe}%`,
           `company_name.ilike.%${safe}%`,
+          `cpf.ilike.%${safe}%`,
+          `cnpj.ilike.%${safe}%`,
         ];
         if (onlyDigits.length >= 2) {
           ors.push(`cpf.ilike.%${onlyDigits}%`);
