@@ -472,6 +472,36 @@ export default function AdminCustomers() {
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex rounded-md border overflow-hidden">
+              <Button
+                type="button"
+                size="sm"
+                variant={docFilter === 'all' ? 'default' : 'ghost'}
+                className="rounded-none h-8 px-3"
+                onClick={() => setDocFilter('all')}
+              >
+                Todos <Badge variant="secondary" className="ml-2">{list.length}</Badge>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={docFilter === 'pj' ? 'default' : 'ghost'}
+                className="rounded-none h-8 px-3 border-l"
+                onClick={() => setDocFilter('pj')}
+              >
+                PJ (CNPJ) <Badge variant="secondary" className="ml-2">{pjCount}</Badge>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={docFilter === 'pf' ? 'default' : 'ghost'}
+                className="rounded-none h-8 px-3 border-l"
+                onClick={() => setDocFilter('pf')}
+              >
+                PF (CPF) <Badge variant="secondary" className="ml-2">{pfCount}</Badge>
+              </Button>
+            </div>
+
             
             <Button
               type="button"
