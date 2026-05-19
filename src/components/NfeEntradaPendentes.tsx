@@ -289,8 +289,22 @@ export function NfeEntradaPendentes() {
                       size="sm"
                       variant="ghost"
                       onClick={() => baixarXml(item)}
+                      title="Baixar XML"
                     >
                       <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => baixarPdf(item)}
+                      disabled={baixandoPdf === item.id}
+                      title="Baixar DANFE (PDF)"
+                    >
+                      {baixandoPdf === item.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
                     </Button>
                     {filtroStatus === 'pendente' && (
                       <>
