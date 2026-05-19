@@ -881,6 +881,15 @@ export default function AdminCustomers() {
         </DialogContent>
       </Dialog>
 
+      <CustomerScoreDialog
+        open={!!scoreFor}
+        onOpenChange={(v) => !v && setScoreFor(null)}
+        customer={scoreFor ? { id: scoreFor.id, full_name: scoreFor.full_name, company_name: scoreFor.company_name, score: scoreFor.score || 0 } : null}
+        onChanged={(newScore) => {
+          setList((prev) => prev.map((c) => (scoreFor && c.id === scoreFor.id ? { ...c, score: newScore } : c)));
+        }}
+      />
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
