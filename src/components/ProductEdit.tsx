@@ -232,8 +232,8 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
     // SEGURANÇA: nunca salvar antes de carregar as variações existentes.
     // Sem isso, um submit precoce envia variations=[] e o saveVariations
