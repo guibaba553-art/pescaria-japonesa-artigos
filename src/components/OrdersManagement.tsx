@@ -470,32 +470,14 @@ const OrdersTable = ({
                           Confirmar Devolução
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar recebimento da devolução</AlertDialogTitle>
-                          <AlertDialogDescription asChild>
-                            <div>
-                              O produto retornou à loja? Ao confirmar, o pedido será marcado como <strong>devolvido</strong> e o <strong>estoque será reposto automaticamente</strong>. Esta ação não pode ser desfeita.
-                              <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
-                                <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
-                                <div><strong>Cliente:</strong> {customerName}</div>
-                                <div><strong>CPF:</strong> {customerCpf}</div>
-                                <div><strong>Total:</strong> R$ {order.total_amount.toFixed(2)}</div>
-                                <div><strong>Itens a repor no estoque:</strong> {order.order_items.length}</div>
-                              </div>
-                            </div>
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => updateOrderStatus(order.id, 'devolvido')}
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                          >
-                            Confirmar devolução
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
+                      <ConfirmReturnDialogContent
+                        order={order}
+                        customerName={customerName}
+                        customerCpf={customerCpf}
+                        onConfirm={(isDefect) =>
+                          updateOrderStatus(order.id, 'devolvido', { return_is_defect: isDefect })
+                        }
+                      />
                     </AlertDialog>
 
                     <Button
