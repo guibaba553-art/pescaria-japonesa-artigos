@@ -23,7 +23,7 @@ const AdminCustomers = lazy(() => import("./pages/AdminCustomers"));
 const Account = lazy(() => import("./pages/Account"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
-const RemoveLogoBackground = lazy(() => import("./pages/RemoveLogoBackground"));
+
 const PDV = lazy(() => import("./pages/PDV"));
 const SalesHistory = lazy(() => import("./pages/SalesHistory"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
