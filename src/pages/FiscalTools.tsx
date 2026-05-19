@@ -219,7 +219,7 @@ export default function FiscalTools() {
         </div>
 
         <Tabs defaultValue="taxes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-9">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="taxes">
               <TrendingUp className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Impostos</span>
