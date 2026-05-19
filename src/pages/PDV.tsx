@@ -2155,10 +2155,27 @@ export default function PDV() {
                         <CustomerSearchCombobox
                           onSelect={(customer) => {
                             setSelectedCustomer(customer);
-                            toast({
-                              title: 'Cliente selecionado',
-                              description: customer.company_name || customer.full_name,
-                            });
+                            const tier = getTierForScore(tiers, customer.score || 0);
+                            if (tier?.block_purchase) {
+                              toast({
+                                title: `Cliente ${tier.name}`,
+                                description: 'Venda bloqueada para este cliente.',
+                                variant: 'destructive',
+                              });
+                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
+                              const subtotal = calculateSubtotal();
+                              const disc = (subtotal * tier.discount_percent) / 100;
+                              setDiscountInput(disc.toFixed(2).replace('.', ','));
+                              toast({
+                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off`,
+                                description: `Desconto de R$ ${disc.toFixed(2)} aplicado automaticamente.`,
+                              });
+                            } else {
+                              toast({
+                                title: 'Cliente selecionado',
+                                description: customer.company_name || customer.full_name,
+                              });
+                            }
                           }}
                         />
                         
