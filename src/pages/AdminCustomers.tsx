@@ -472,34 +472,31 @@ export default function AdminCustomers() {
             />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex rounded-md border overflow-hidden">
-              <Button
-                type="button"
-                size="sm"
-                variant={docFilter === 'all' ? 'default' : 'ghost'}
-                className="rounded-none h-8 px-3"
-                onClick={() => setDocFilter('all')}
-              >
-                Todos <Badge variant="secondary" className="ml-2">{list.length}</Badge>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={docFilter === 'pj' ? 'default' : 'ghost'}
-                className="rounded-none h-8 px-3 border-l"
-                onClick={() => setDocFilter('pj')}
-              >
-                PJ (CNPJ) <Badge variant="secondary" className="ml-2">{pjCount}</Badge>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={docFilter === 'pf' ? 'default' : 'ghost'}
-                className="rounded-none h-8 px-3 border-l"
-                onClick={() => setDocFilter('pf')}
-              >
-                PF (CPF) <Badge variant="secondary" className="ml-2">{pfCount}</Badge>
-              </Button>
+            <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-sm">
+              {([
+                { key: 'all', label: 'Todos', count: list.length },
+                { key: 'pj', label: 'PJ', count: pjCount },
+                { key: 'pf', label: 'PF', count: pfCount },
+              ] as const).map((t) => {
+                const active = docFilter === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setDocFilter(t.key)}
+                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[5px] font-medium transition-colors ${
+                      active
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {t.label}
+                    <span className={`text-xs font-mono ${active ? 'text-muted-foreground' : 'opacity-70'}`}>
+                      {t.count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             
