@@ -293,8 +293,13 @@ export default function AdminCustomers() {
       });
     }
     if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
+    if (docFilter === 'pj') arr = arr.filter((c) => !!c.cnpj);
+    else if (docFilter === 'pf') arr = arr.filter((c) => !c.cnpj);
     return arr;
-  }, [list, search, onlyInvalid, validations]);
+  }, [list, search, onlyInvalid, docFilter, validations]);
+
+  const pjCount = useMemo(() => list.filter((c) => !!c.cnpj).length, [list]);
+  const pfCount = useMemo(() => list.filter((c) => !c.cnpj).length, [list]);
 
   // Identifica documentos duplicados já existentes no banco
   const duplicateDocs = useMemo(() => {
