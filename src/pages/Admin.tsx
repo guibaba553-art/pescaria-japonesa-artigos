@@ -122,6 +122,13 @@ export default function Admin() {
       path: '/admin/migracao-estoque',
       adminOnly: true,
     },
+    {
+      title: 'Painel de Erros',
+      desc: 'Erros capturados de todos os usuários do site',
+      icon: AlertTriangle,
+      path: '/admin/erros',
+      adminOnly: true,
+    },
   ];
 
   return (
