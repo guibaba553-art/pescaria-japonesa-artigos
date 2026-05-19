@@ -1375,6 +1375,18 @@ export default function PDV() {
       return;
     }
 
+    // Bloqueio por classificação do cliente
+    if (selectedCustomer && customerTier?.block_purchase) {
+      toast({
+        title: `Venda bloqueada — cliente ${customerTier.name}`,
+        description: customerTier.perks || 'Este cliente está bloqueado para vendas.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+
+
     if (paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
       // Comparar em centavos para evitar erro de ponto flutuante
