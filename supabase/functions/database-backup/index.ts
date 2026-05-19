@@ -154,6 +154,23 @@ Deno.serve(async (req) => {
       .map(([t, m]) => `<li><b>${t}</b>: ${m}</li>`)
       .join("");
 
+    // Upload pro Google Drive (Meu Drive > japa pesca 2026 > bekup)
+    let driveInfo: { id?: string; link?: string; error?: string } = {};
+    try {
+      const up = await uploadToBackupFolder(path, gz, "application/gzip");
+      driveInfo = { id: up.id, link: up.webViewLink };
+      console.log(`✓ Drive upload: ${up.id} ${up.webViewLink ?? ""}`);
+    } catch (e) {
+      driveInfo = { error: (e as Error).message };
+      console.error("Drive upload falhou:", e);
+    }
+
+    const driveBlock = driveInfo.link
+      ? `<p>☁️ <a href="${driveInfo.link}">Abrir no Google Drive</a> (pasta <b>japa pesca 2026 / bekup</b>)</p>`
+      : driveInfo.error
+        ? `<p style="color:#b00">⚠️ Falha ao enviar pro Drive: ${driveInfo.error}</p>`
+        : "";
+
     const html = `
       <h2>Backup do banco — Japas Pesca</h2>
       <p>Gerado em <b>${new Date().toLocaleString("pt-BR")}</b></p>
@@ -163,6 +180,7 @@ Deno.serve(async (req) => {
         <li>Tamanho do arquivo (gzip): ${sizeMb} MB</li>
       </ul>
       <p><a href="${signed.signedUrl}">📥 Baixar backup</a> (link válido por 7 dias)</p>
+      ${driveBlock}
       ${errorList ? `<h3>Tabelas com erro:</h3><ul>${errorList}</ul>` : ""}
       <hr/>
       <small>Backup automático — enviado a cada 3 dias.</small>
