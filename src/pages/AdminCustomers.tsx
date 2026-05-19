@@ -16,8 +16,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2 } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
+import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
 function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
