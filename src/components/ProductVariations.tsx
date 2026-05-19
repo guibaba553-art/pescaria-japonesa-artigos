@@ -332,6 +332,7 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           min="0"
                           value={variation.min_stock ?? 0}
                           onChange={(e) => updateVariation(variation.id, 'min_stock', e.target.value)}
+                          placeholder="0"
                         />
                       </div>
                       {(variation as any).min_sale_price != null && (
