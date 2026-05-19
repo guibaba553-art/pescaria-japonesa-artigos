@@ -29,17 +29,44 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // SECURITY: Require CRON_SECRET to prevent unauthorized DFe fetches
+  // SECURITY: aceita CRON_SECRET (cron) OU usuário admin autenticado (manual)
   const cronSecret = Deno.env.get('CRON_SECRET');
-  const authHeader = req.headers.get('authorization');
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const authHeader = req.headers.get('authorization') || '';
+  const isCron = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+
+  let isAdmin = false;
+  if (!isCron && authHeader.startsWith('Bearer ')) {
+    try {
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      );
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData } = await supabaseAuth.auth.getUser(token);
+      const userId = userData?.user?.id;
+      if (userId) {
+        const { data: roleRow } = await supabaseAuth
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        isAdmin = !!roleRow;
+      }
+    } catch (e) {
+      console.error('[fetch-dfe-focus] auth check failed:', e);
+    }
+  }
+
+  if (!isCron && !isAdmin) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  const triggeredManually = req.method === 'POST';
+  const triggeredManually = !isCron;
+
 
   try {
     const focusToken = Deno.env.get('FOCUS_NFE_TOKEN_PRODUCAO');
