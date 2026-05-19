@@ -2,6 +2,7 @@
 // Uso: guarda obrigatória de 5 anos (Receita Federal — Art. 173 CTN / Art. 195 CF)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import JSZip from "https://esm.sh/jszip@3.10.1";
+import { uploadToBackupFolder } from "../_shared/googleDrive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
