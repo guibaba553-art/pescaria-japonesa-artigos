@@ -224,11 +224,8 @@ export function PriceFormation() {
     );
   }, [products, search]);
 
-  const VISIBLE_STEP = 80;
-  const [visibleCount, setVisibleCount] = useState(VISIBLE_STEP);
-  useEffect(() => { setVisibleCount(VISIBLE_STEP); }, [search]);
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const VISIBLE_LIMIT = visibleCount;
+  const visible = filtered;
+  const VISIBLE_LIMIT = filtered.length;
   const groupsById = useMemo(() => {
     const m = new Map<string, CostGroup>();
     groups.forEach((g) => m.set(g.id, g));
