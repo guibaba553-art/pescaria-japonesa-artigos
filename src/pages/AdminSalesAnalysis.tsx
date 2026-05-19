@@ -149,6 +149,7 @@ export default function AdminSalesAnalysis() {
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
+  const [changingCustomer, setChangingCustomer] = useState(false);
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
@@ -196,6 +197,27 @@ export default function AdminSalesAnalysis() {
     }
     toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
+    setChangingCustomer(false);
+    fetchAll(true);
+  };
+
+  const handleUnlinkCustomer = async () => {
+    if (!invoiceTarget) return;
+    setLinkingCustomer(true);
+    if (invoiceTarget.kind === 'order') {
+      const { error } = await supabase.from('orders').update({ customer_id: null }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: null } });
+    } else {
+      const { error } = await supabase.from('saved_sales').update({ customer_data: null }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: null } });
+    }
+    toast.success('Cliente removido');
+    setInvoiceCustomer(null);
+    setChangingCustomer(true);
     fetchAll(true);
   };
 
@@ -1451,8 +1473,8 @@ export default function AdminSalesAnalysis() {
                           <div className="text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">
                             Nota será emitida para
                           </div>
-                          {invoiceCustomer ? (
-                            <div className="space-y-1">
+                          {invoiceCustomer && !changingCustomer ? (
+                            <div className="space-y-2">
                               <div className="font-bold text-base text-foreground">
                                 {invoiceCustomer.company_name || invoiceCustomer.full_name}
                               </div>
@@ -1476,14 +1498,37 @@ export default function AdminSalesAnalysis() {
                                   {(invoiceCustomer.municipio || invoiceCustomer.uf) && ` — ${invoiceCustomer.municipio || ''}/${invoiceCustomer.uf || ''}`}
                                 </div>
                               )}
+                              <div className="flex gap-2 pt-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setChangingCustomer(true)}
+                                  disabled={linkingCustomer}
+                                >
+                                  Trocar cliente
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleUnlinkCustomer}
+                                  disabled={linkingCustomer}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Remover
+                                </Button>
+                              </div>
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              <p className="text-amber-700 dark:text-amber-400 font-medium">
-                                ⚠ Nenhum cliente vinculado a este pedido.
-                              </p>
+                              {!invoiceCustomer && (
+                                <p className="text-amber-700 dark:text-amber-400 font-medium">
+                                  ⚠ Nenhum cliente vinculado a este pedido.
+                                </p>
+                              )}
                               <p className="text-xs text-muted-foreground">
-                                Selecione um cliente cadastrado para vincular antes de emitir a nota:
+                                {changingCustomer ? 'Selecione outro cliente:' : 'Selecione um cliente cadastrado para vincular antes de emitir a nota:'}
                               </p>
                               <CustomerSearchCombobox
                                 onSelect={handleLinkCustomer}
@@ -1491,6 +1536,17 @@ export default function AdminSalesAnalysis() {
                               />
                               {linkingCustomer && (
                                 <p className="text-xs text-muted-foreground">Vinculando...</p>
+                              )}
+                              {changingCustomer && invoiceCustomer && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setChangingCustomer(false)}
+                                  disabled={linkingCustomer}
+                                >
+                                  Cancelar
+                                </Button>
                               )}
                             </div>
                           )}
