@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Award, Plus, Minus, Loader2, History } from 'lucide-react';
+import { Award, Plus, Minus, Loader2, History, X, PlusCircle } from 'lucide-react';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 interface ScoreEvent {
