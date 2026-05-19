@@ -13,13 +13,14 @@ import { BarcodeInput } from "@/components/BarcodeInput";
 interface ProductVariationsProps {
   variations: ProductVariation[];
   onVariationsChange: (variations: ProductVariation[]) => void;
+  productMinSalePrice?: number | null;
 }
 
 /**
  * Componente para gerenciar variações de produto
  * Interface intuitiva para adicionar, editar e remover variações
  */
-export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
+export function ProductVariations({ variations, onVariationsChange, productMinSalePrice }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
   const [upProcessing, setUpProcessing] = useState<string | null>(null);
