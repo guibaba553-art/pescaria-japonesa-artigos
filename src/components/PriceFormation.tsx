@@ -224,11 +224,8 @@ export function PriceFormation() {
     );
   }, [products, search]);
 
-  const VISIBLE_STEP = 80;
-  const [visibleCount, setVisibleCount] = useState(VISIBLE_STEP);
-  useEffect(() => { setVisibleCount(VISIBLE_STEP); }, [search]);
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const VISIBLE_LIMIT = visibleCount;
+  const visible = filtered;
+  const VISIBLE_LIMIT = filtered.length;
   const groupsById = useMemo(() => {
     const m = new Map<string, CostGroup>();
     groups.forEach((g) => m.set(g.id, g));
@@ -531,15 +528,6 @@ export function PriceFormation() {
             Mostrando {visible.length} de {filtered.length}
             {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
           </div>
-          {visible.length < filtered.length && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount((c) => c + VISIBLE_STEP)}
-              className="text-primary hover:underline font-medium"
-            >
-              Carregar mais {Math.min(VISIBLE_STEP, filtered.length - visible.length)}
-            </button>
-          )}
         </div>
 
         {loadError && (
