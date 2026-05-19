@@ -46,6 +46,7 @@ export default function AdminCatalog() {
   const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
   const canView = isAdmin || (isEmployee && permissions.catalog);
   const [draftCount, setDraftCount] = useState(0);
+  const [labelCount, setLabelCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !canView) {
@@ -61,8 +62,17 @@ export default function AdminCatalog() {
     setDraftCount(count ?? 0);
   };
 
+  const loadLabelCount = async () => {
+    const { count } = await supabase
+      .from('product_label_pending')
+      .select('id', { count: 'exact', head: true })
+      .gt('pending_qty', 0);
+    setLabelCount(count ?? 0);
+  };
+
   useEffect(() => {
     loadDraftCount();
+    loadLabelCount();
   }, []);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -101,8 +111,13 @@ export default function AdminCatalog() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="labels" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+            <TabsTrigger value="labels" className="gap-2 relative shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Tag className="w-4 h-4" /> Etiquetas
+              {labelCount > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  {labelCount}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques

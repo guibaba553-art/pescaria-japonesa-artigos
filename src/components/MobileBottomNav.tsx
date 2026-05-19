@@ -49,7 +49,6 @@ export function MobileBottomNav() {
     '/auth',
     '/forgot-password',
     '/reset-password',
-    '/remover-fundo-logo',
   ];
   if (HIDDEN_PREFIXES.some((p) => location.pathname.startsWith(p))) {
     return null;

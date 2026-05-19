@@ -45,7 +45,7 @@ function detectDevice(ua: string): string {
 
 function shouldTrack(path: string): boolean {
   // Skip admin/internal pages
-  const blocked = ['/admin', '/dashboard', '/pdv', '/fechamento-caixa', '/ferramentas-fiscais', '/auth', '/forgot-password', '/reset-password', '/conta', '/remover-fundo-logo', '/meus-dados'];
+  const blocked = ['/admin', '/dashboard', '/pdv', '/fechamento-caixa', '/ferramentas-fiscais', '/auth', '/forgot-password', '/reset-password', '/conta', '/meus-dados'];
   return !blocked.some((p) => path.startsWith(p));
 }
 
