@@ -46,6 +46,9 @@ const formatBRL = (v: number) =>
 const formatDateTime = (s: string) =>
   new Date(s).toLocaleString('pt-BR');
 
+const isAutomaticChangeMovement = (movement: Pick<CashMovement, 'type' | 'reason'>) =>
+  movement.type === 'withdrawal' && /^Troco - pedido\b/i.test(movement.reason || '');
+
 const formatDuration = (start: string) => {
   const ms = Date.now() - new Date(start).getTime();
   const h = Math.floor(ms / (1000 * 60 * 60));
@@ -75,18 +78,118 @@ export default function CashRegister() {
   const [showClosing, setShowClosing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
-  const [changeTotal, setChangeTotal] = useState(0);
+
+  const summarizeSales = (orders: Array<{ total_amount: number; payment_method: string | null }>) => {
+    const summary = { cash: 0, card: 0, pix: 0 };
+
+    orders.forEach((sale) => {
+      const total = Number(sale.total_amount) || 0;
+      const method = String(sale.payment_method || '').toLowerCase();
+
+      if (method.includes('pix')) {
+        summary.pix += total;
+        return;
+      }
+
+      if (method.includes('cash') || method.includes('dinheiro')) {
+        summary.cash += total;
+        return;
+      }
+
+      if (
+        method.includes('credit') ||
+        method.includes('debit') ||
+        method.includes('card') ||
+        method.includes('cart')
+      ) {
+        summary.card += total;
+      }
+    });
+
+    return summary;
+  };
+
+  const movementTotals = useMemo(() => {
+    return movements.reduce(
+      (acc, movement) => {
+        const amount = Number(movement.amount || 0);
+
+        if (movement.type === 'addition') {
+          acc.additions += amount;
+          return acc;
+        }
+
+        if (movement.type === 'withdrawal') {
+          if (isAutomaticChangeMovement(movement)) {
+            acc.change += amount;
+          } else {
+            acc.withdrawals += amount;
+          }
+        }
+
+        return acc;
+      },
+      { additions: 0, withdrawals: 0, change: 0 }
+    );
+  }, [movements]);
 
   const expectedInDrawer = useMemo(() => {
     if (!currentRegister) return 0;
     const opening = Number(currentRegister.opening_amount || 0);
-    const additions = Number(currentRegister.additions || 0);
-    const withdrawals = Number(currentRegister.withdrawals || 0);
+    const additions = Number(movementTotals.additions || 0);
+    const withdrawals = Number(movementTotals.withdrawals || 0);
     const cashSales = Number(salesSummary.cash || 0);
-    const troco = Number(changeTotal || 0);
+    const troco = Number(movementTotals.change || 0);
 
     return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
-  }, [currentRegister, salesSummary.cash, changeTotal]);
+  }, [currentRegister, salesSummary.cash, movementTotals]);
+
+  const loadRegisterActivity = async (register: Pick<CashRegister, 'id' | 'opened_at'>, closedAt?: string) => {
+    let ordersQuery = supabase
+      .from('orders')
+      .select('total_amount, payment_method, status, source, created_at')
+      .eq('source', 'pdv')
+      .gte('created_at', register.opened_at)
+      .in('status', ['entregado', 'retirado']);
+
+    if (closedAt) {
+      ordersQuery = ordersQuery.lte('created_at', closedAt);
+    }
+
+    const { data: pdvOrders, error: ordersError } = await ordersQuery;
+    if (ordersError) throw ordersError;
+
+    const { data: movs, error: movementsError } = await supabase
+      .from('cash_movements')
+      .select('id, type, amount, reason, created_at')
+      .eq('cash_register_id', register.id)
+      .order('created_at', { ascending: false });
+
+    if (movementsError) throw movementsError;
+
+    const summary = summarizeSales((pdvOrders || []) as Array<{ total_amount: number; payment_method: string | null }>);
+    const totals = (movs || []).reduce(
+      (acc: { additions: number; withdrawals: number; change: number }, movement: any) => {
+        const amount = Number(movement.amount || 0);
+
+        if (movement.type === 'addition') acc.additions += amount;
+        if (movement.type === 'withdrawal') {
+          if (isAutomaticChangeMovement(movement)) acc.change += amount;
+          else acc.withdrawals += amount;
+        }
+
+        return acc;
+      },
+      { additions: 0, withdrawals: 0, change: 0 }
+    );
+
+    return {
+      salesSummary: summary,
+      salesCount: (pdvOrders || []).length,
+      movements: (movs || []) as CashMovement[],
+      movementTotals: totals,
+    };
+  };
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -113,59 +216,14 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        const { data: pdvOrders, error: ordersError } = await supabase
-          .from('orders')
-          .select('total_amount, payment_method, status, source')
-          .eq('source', 'pdv')
-          .gte('created_at', data.opened_at)
-          .neq('status', 'cancelado');
-
-        if (ordersError) throw ordersError;
-
-        const summary = { cash: 0, card: 0, pix: 0 };
-        (pdvOrders || []).forEach((sale: any) => {
-          const total = Number(sale.total_amount) || 0;
-          const method = String(sale.payment_method || '').toLowerCase();
-
-          if (method.includes('pix')) {
-            summary.pix += total;
-            return;
-          }
-
-          if (method.includes('cash') || method.includes('dinheiro')) {
-            summary.cash += total;
-            return;
-          }
-
-          if (
-            method.includes('credit') ||
-            method.includes('debit') ||
-            method.includes('card') ||
-            method.includes('cart')
-          ) {
-            summary.card += total;
-          }
-        });
-
-        setSalesSummary(summary);
-        setSalesCount((pdvOrders || []).length);
-
-        // Movimentações deste caixa
-        const { data: movs } = await supabase
-          .from('cash_movements')
-          .select('id, type, amount, reason, created_at')
-          .eq('cash_register_id', data.id)
-          .order('created_at', { ascending: false });
-        setMovements(movs || []);
-        const troco = (movs || [])
-          .filter((m: any) => m.type === 'withdrawal' && /troco/i.test(m.reason || ''))
-          .reduce((s: number, m: any) => s + Number(m.amount || 0), 0);
-        setChangeTotal(troco);
+        const activity = await loadRegisterActivity(data);
+        setSalesSummary(activity.salesSummary);
+        setSalesCount(activity.salesCount);
+        setMovements(activity.movements);
       } else {
         setMovements([]);
         setSalesCount(0);
         setSalesSummary({ cash: 0, card: 0, pix: 0 });
-        setChangeTotal(0);
       }
     } catch (error: any) {
       toast({ title: 'Erro ao carregar caixa', description: error.message, variant: 'destructive' });
@@ -217,8 +275,9 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
-      const newWithdrawals = currentRegister!.withdrawals + parseFloat(withdrawalAmount);
-      const newExpected = currentRegister!.expected_amount - parseFloat(withdrawalAmount);
+      const amount = parseFloat(withdrawalAmount);
+      const newWithdrawals = movementTotals.withdrawals + amount;
+      const newExpected = expectedInDrawer - amount;
       const { error } = await supabase.from('cash_registers').update({
         withdrawals: newWithdrawals, expected_amount: newExpected,
       }).eq('id', currentRegister!.id);
@@ -242,8 +301,9 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
-      const newAdditions = currentRegister!.additions + parseFloat(additionAmount);
-      const newExpected = currentRegister!.expected_amount + parseFloat(additionAmount);
+      const amount = parseFloat(additionAmount);
+      const newAdditions = movementTotals.additions + amount;
+      const newExpected = expectedInDrawer + amount;
       const { error } = await supabase.from('cash_registers').update({
         additions: newAdditions, expected_amount: newExpected,
       }).eq('id', currentRegister!.id);
@@ -267,14 +327,26 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
+      const closedAt = new Date().toISOString();
+      const activity = await loadRegisterActivity(currentRegister!, closedAt);
+      const recalculatedExpected = Number((
+        Number(currentRegister!.opening_amount || 0) +
+        Number(activity.movementTotals.additions || 0) -
+        Number(activity.movementTotals.withdrawals || 0) +
+        Number(activity.salesSummary.cash || 0) -
+        Number(activity.movementTotals.change || 0)
+      ).toFixed(2));
+
       const { error } = await supabase.from('cash_registers').update({
         closing_amount: parseFloat(closingAmount),
-        expected_amount: expectedInDrawer,
-        closed_at: new Date().toISOString(),
+        expected_amount: recalculatedExpected,
+        closed_at: closedAt,
         status: 'closed',
-        cash_sales: salesSummary.cash,
-        card_sales: salesSummary.card,
-        pix_sales: salesSummary.pix,
+        cash_sales: activity.salesSummary.cash,
+        card_sales: activity.salesSummary.card,
+        pix_sales: activity.salesSummary.pix,
+        additions: activity.movementTotals.additions,
+        withdrawals: activity.movementTotals.withdrawals,
       }).eq('id', currentRegister!.id);
       if (error) throw error;
       toast({ title: 'Caixa fechado!' });
@@ -306,8 +378,8 @@ export default function CashRegister() {
       <div class="row"><span>Tempo aberto:</span><span>${formatDuration(currentRegister.opened_at)}</span></div>
       <hr/>
       <div class="row"><span>Abertura:</span><span>${formatBRL(currentRegister.opening_amount)}</span></div>
-      <div class="row"><span>Reforços:</span><span>${formatBRL(currentRegister.additions)}</span></div>
-      <div class="row"><span>Sangrias:</span><span>-${formatBRL(currentRegister.withdrawals)}</span></div>
+      <div class="row"><span>Reforços:</span><span>${formatBRL(movementTotals.additions)}</span></div>
+      <div class="row"><span>Sangrias:</span><span>-${formatBRL(movementTotals.withdrawals)}</span></div>
       <hr/>
       <div class="row"><span>Vendas Dinheiro:</span><span>${formatBRL(salesSummary.cash)}</span></div>
       <div class="row"><span>Vendas Cartão:</span><span>${formatBRL(salesSummary.card)}</span></div>
@@ -428,14 +500,14 @@ export default function CashRegister() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <KpiCard label="Nº de vendas" value={String(salesCount)} icon={<ShoppingCart className="w-4 h-4" />} />
               <KpiCard label="Ticket médio" value={formatBRL(avgTicket)} icon={<Target className="w-4 h-4" />} />
-              <KpiCard label="Reforços" value={formatBRL(currentRegister.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
+              <KpiCard label="Reforços" value={formatBRL(movementTotals.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
               <div className="flex flex-col gap-2">
-                <KpiCard label="Sangrias" value={formatBRL(currentRegister.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
+                <KpiCard label="Sangrias" value={formatBRL(movementTotals.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
                 <Button size="sm" variant="outline" className="w-full" onClick={() => setShowWithdrawal(true)}>
                   <TrendingDown className="w-4 h-4 mr-2" /> Fazer Sangria
                 </Button>
               </div>
-              <KpiCard label="Saída de troco" value={formatBRL(changeTotal)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
+              <KpiCard label="Saída de troco" value={formatBRL(movementTotals.change)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
             </div>
 
             <Tabs defaultValue="operations">
@@ -451,7 +523,7 @@ export default function CashRegister() {
                   <ActionCard
                     title="Sangria"
                     desc="Retirar dinheiro"
-                    value={formatBRL(currentRegister.withdrawals)}
+                    value={formatBRL(movementTotals.withdrawals)}
                     accent="text-red-600"
                     icon={<TrendingDown className="w-4 h-4 mr-2" />}
                     onClick={() => setShowWithdrawal(true)}
@@ -459,7 +531,7 @@ export default function CashRegister() {
                   <ActionCard
                     title="Reforço"
                     desc="Adicionar dinheiro"
-                    value={formatBRL(currentRegister.additions)}
+                    value={formatBRL(movementTotals.additions)}
                     accent="text-blue-600"
                     icon={<TrendingUp className="w-4 h-4 mr-2" />}
                     onClick={() => setShowAddition(true)}
@@ -635,7 +707,7 @@ export default function CashRegister() {
               </div>
               <div className="flex justify-between">
                 <span>Saída de troco:</span>
-                <span className="font-bold text-red-600">- {formatBRL(changeTotal)}</span>
+                <span className="font-bold text-red-600">- {formatBRL(movementTotals.change)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-bold">TOTAL ESPERADO:</span>
