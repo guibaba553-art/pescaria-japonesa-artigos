@@ -206,6 +206,12 @@ export default function PDV() {
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [tiers, setTiers] = useState<CustomerTier[]>([]);
+  useEffect(() => { loadTiers().then(setTiers); }, []);
+  const customerTier = useMemo(
+    () => (selectedCustomer ? getTierForScore(tiers, selectedCustomer.score || 0) : null),
+    [selectedCustomer, tiers]
+  );
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
