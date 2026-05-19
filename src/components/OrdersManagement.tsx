@@ -22,6 +22,54 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
+function ConfirmReturnDialogContent({
+  order, customerName, customerCpf, onConfirm,
+}: {
+  order: any;
+  customerName: string;
+  customerCpf: string;
+  onConfirm: (isDefect: boolean) => void;
+}) {
+  const [isDefect, setIsDefect] = useState(false);
+  return (
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Confirmar recebimento da devolução</AlertDialogTitle>
+        <AlertDialogDescription asChild>
+          <div>
+            O produto retornou à loja? Ao confirmar, o pedido será marcado como <strong>devolvido</strong> e o <strong>estoque será reposto automaticamente</strong>.
+            <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+              <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+              <div><strong>Cliente:</strong> {customerName}</div>
+              <div><strong>CPF:</strong> {customerCpf}</div>
+              <div><strong>Total:</strong> R$ {Number(order.total_amount).toFixed(2)}</div>
+              <div><strong>Itens a repor no estoque:</strong> {order.order_items.length}</div>
+            </div>
+            <label className="mt-3 flex items-start gap-2 p-3 rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 cursor-pointer">
+              <Checkbox checked={isDefect} onCheckedChange={(v) => setIsDefect(!!v)} className="mt-0.5" />
+              <div className="text-sm">
+                <span className="font-semibold">Devolução por defeito do produto</span>
+                <div className="text-xs text-muted-foreground">Marque se foi por defeito — o cliente <strong>não perderá pontos</strong> na sua classificação.</div>
+              </div>
+            </label>
+          </div>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+        <AlertDialogAction
+          onClick={() => onConfirm(isDefect)}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          Confirmar devolução
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  );
+}
 
 interface OrderItem {
   id: string;
