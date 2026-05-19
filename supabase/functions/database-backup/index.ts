@@ -213,6 +213,7 @@ Deno.serve(async (req) => {
         total_rows: totalRows,
         errors,
         email_id: emailJson.id,
+        drive: driveInfo,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
