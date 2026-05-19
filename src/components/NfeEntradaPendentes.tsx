@@ -107,6 +107,38 @@ export function NfeEntradaPendentes() {
     URL.revokeObjectURL(url);
   };
 
+  const [baixandoPdf, setBaixandoPdf] = useState<string | null>(null);
+  const baixarPdf = async (item: NfePendente) => {
+    setBaixandoPdf(item.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Sessão expirada');
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-danfe-focus`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chave: item.chave_nfe }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Erro ${res.status}`);
+      }
+      const blob = await res.blob();
+      const dl = document.createElement('a');
+      dl.href = URL.createObjectURL(blob);
+      dl.download = `danfe-${item.chave_nfe}.pdf`;
+      dl.click();
+      URL.revokeObjectURL(dl.href);
+      toast.success('DANFE baixada');
+    } catch (e: any) {
+      toast.error(`Erro ao baixar PDF: ${e.message}`);
+    } finally {
+      setBaixandoPdf(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
