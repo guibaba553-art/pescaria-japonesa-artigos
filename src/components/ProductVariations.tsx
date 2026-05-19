@@ -332,8 +332,8 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           min="0"
                           value={variation.min_stock ?? 0}
                           onChange={(e) => updateVariation(variation.id, 'min_stock', e.target.value)}
-                          placeholder="0"
                         />
+                      </div>
                       {(variation as any).min_sale_price != null && (
                         <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
                           <Label className="text-[11px] text-amber-700 dark:text-amber-400">
@@ -347,7 +347,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           </p>
                         </div>
                       )}
-                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
