@@ -146,6 +146,19 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
   };
 
   // Carregar variações quando o dialog abre
+  // Atalho F4 para salvar
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F4') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, variationsLoaded, variationsLoading]);
+
   useEffect(() => {
     if (open && product.id) {
       console.log('📂 Carregando dados do produto para edição:', product.id);
@@ -232,8 +245,8 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
     // SEGURANÇA: nunca salvar antes de carregar as variações existentes.
     // Sem isso, um submit precoce envia variations=[] e o saveVariations
