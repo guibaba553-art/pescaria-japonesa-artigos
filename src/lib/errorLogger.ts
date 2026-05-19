@@ -22,7 +22,7 @@ async function logError(payload: {
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("error_logs").insert({
+    await supabase.from("error_logs").insert([{
       user_id: user?.id ?? null,
       user_email: user?.email ?? null,
       message: (payload.message || "Unknown error").slice(0, 2000),
@@ -31,8 +31,8 @@ async function logError(payload: {
       url: typeof window !== "undefined" ? window.location.href : null,
       user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       severity: payload.severity ?? "error",
-      context: payload.context ?? null,
-    });
+      context: (payload.context ?? null) as never,
+    }] as never);
   } catch {
     // silent
   }
