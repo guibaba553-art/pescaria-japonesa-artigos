@@ -243,10 +243,6 @@ export default function FiscalTools() {
               <Receipt className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas Fiscais</span>
             </TabsTrigger>
-            <TabsTrigger value="emitir">
-              <Send className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Emitir NF-e</span>
-            </TabsTrigger>
             <TabsTrigger value="entrada">
               <ArrowDownToLine className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas de Entrada</span>
