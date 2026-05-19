@@ -94,7 +94,7 @@ export default function FiscalTools() {
       data.forEach((e: any) => {
         const status = (e.status || '').toLowerCase();
         const emittedAt = e.emitted_at ? new Date(e.emitted_at) : null;
-        if (status === 'authorized' || status === 'autorizado' || status === 'emitida') {
+        if (status === 'authorized' || status === 'autorizado' || status === 'emitida' || status === 'success') {
           if (emittedAt && emittedAt >= startToday) emittedToday++;
           if (emittedAt && emittedAt >= startMonth) {
             emittedMonth++;
