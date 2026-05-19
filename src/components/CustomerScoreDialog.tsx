@@ -17,6 +17,14 @@ interface ScoreEvent {
   order_id: string | null;
   created_at: string;
 }
+interface ReasonPreset {
+  id: string;
+  label: string;
+  reason: string;
+  sign: number;
+  points: number;
+  emoji: string | null;
+}
 
 interface Props {
   open: boolean;
