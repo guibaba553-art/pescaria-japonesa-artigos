@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Send, Wallet, DollarSign, FileBarChart } from "lucide-react";
+import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Wallet, DollarSign, FileBarChart } from "lucide-react";
 
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
@@ -24,9 +24,6 @@ const XMLImporter = lazy(() =>
 );
 const AccountantReport = lazy(() =>
   import("@/components/AccountantReport").then((m) => ({ default: m.AccountantReport }))
-);
-const EmitNFeManual = lazy(() =>
-  import("@/components/EmitNFeManual").then((m) => ({ default: m.EmitNFeManual }))
 );
 const ExpenseTracker = lazy(() =>
   import("@/components/ExpenseTracker").then((m) => ({ default: m.ExpenseTracker }))
@@ -243,10 +240,6 @@ export default function FiscalTools() {
               <Receipt className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas Fiscais</span>
             </TabsTrigger>
-            <TabsTrigger value="emitir">
-              <Send className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Emitir NF-e</span>
-            </TabsTrigger>
             <TabsTrigger value="entrada">
               <ArrowDownToLine className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Notas de Entrada</span>
@@ -313,11 +306,6 @@ export default function FiscalTools() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="emitir">
-            <Suspense fallback={<FiscalTabFallback />}>
-              <EmitNFeManual />
-            </Suspense>
-          </TabsContent>
 
           <TabsContent value="entrada">
             <Card>
