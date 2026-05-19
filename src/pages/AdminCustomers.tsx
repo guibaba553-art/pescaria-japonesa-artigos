@@ -523,6 +523,13 @@ export default function AdminCustomers() {
               <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
             </Button>
             <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
+            <Button
+              variant="outline"
+              onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              Recompensas/Punições
+            </Button>
             <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />
               Novo cliente
