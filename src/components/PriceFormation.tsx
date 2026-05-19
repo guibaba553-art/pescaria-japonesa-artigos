@@ -526,10 +526,20 @@ export function PriceFormation() {
           />
         </div>
 
-        <div className="text-xs text-muted-foreground">
-          Mostrando {visible.length} de {filtered.length}
-          {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
-          {filtered.length > VISIBLE_LIMIT && " — refine a busca para ver mais"}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div>
+            Mostrando {visible.length} de {filtered.length}
+            {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
+          </div>
+          {visible.length < filtered.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((c) => c + VISIBLE_STEP)}
+              className="text-primary hover:underline font-medium"
+            >
+              Carregar mais {Math.min(VISIBLE_STEP, filtered.length - visible.length)}
+            </button>
+          )}
         </div>
 
         {loadError && (
