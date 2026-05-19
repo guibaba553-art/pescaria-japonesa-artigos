@@ -11,7 +11,7 @@ import { useCart } from '@/hooks/useCart';
 import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
-import { ProductVariationSelector } from '@/components/ProductVariationSelector';
+import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
 
