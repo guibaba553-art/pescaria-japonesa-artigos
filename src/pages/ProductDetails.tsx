@@ -448,7 +448,7 @@ export default function ProductDetails() {
                   }
 
                   const finalPrice = selectedVariation 
-                    ? selectedVariation.price
+                    ? sitePriceForVariation(selectedVariation, (product as any).min_sale_price)
                     : (product.on_sale && product.sale_price ? product.sale_price : product.price);
                   
                   addItem({
