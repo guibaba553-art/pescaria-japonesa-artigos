@@ -378,8 +378,8 @@ export default function CashRegister() {
       <div class="row"><span>Tempo aberto:</span><span>${formatDuration(currentRegister.opened_at)}</span></div>
       <hr/>
       <div class="row"><span>Abertura:</span><span>${formatBRL(currentRegister.opening_amount)}</span></div>
-      <div class="row"><span>Reforços:</span><span>${formatBRL(currentRegister.additions)}</span></div>
-      <div class="row"><span>Sangrias:</span><span>-${formatBRL(currentRegister.withdrawals)}</span></div>
+      <div class="row"><span>Reforços:</span><span>${formatBRL(movementTotals.additions)}</span></div>
+      <div class="row"><span>Sangrias:</span><span>-${formatBRL(movementTotals.withdrawals)}</span></div>
       <hr/>
       <div class="row"><span>Vendas Dinheiro:</span><span>${formatBRL(salesSummary.cash)}</span></div>
       <div class="row"><span>Vendas Cartão:</span><span>${formatBRL(salesSummary.card)}</span></div>
@@ -500,9 +500,9 @@ export default function CashRegister() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <KpiCard label="Nº de vendas" value={String(salesCount)} icon={<ShoppingCart className="w-4 h-4" />} />
               <KpiCard label="Ticket médio" value={formatBRL(avgTicket)} icon={<Target className="w-4 h-4" />} />
-              <KpiCard label="Reforços" value={formatBRL(currentRegister.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
+              <KpiCard label="Reforços" value={formatBRL(movementTotals.additions)} icon={<TrendingUp className="w-4 h-4" />} accent="text-blue-600" />
               <div className="flex flex-col gap-2">
-                <KpiCard label="Sangrias" value={formatBRL(currentRegister.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
+                <KpiCard label="Sangrias" value={formatBRL(movementTotals.withdrawals)} icon={<TrendingDown className="w-4 h-4" />} accent="text-red-600" />
                 <Button size="sm" variant="outline" className="w-full" onClick={() => setShowWithdrawal(true)}>
                   <TrendingDown className="w-4 h-4 mr-2" /> Fazer Sangria
                 </Button>
@@ -523,7 +523,7 @@ export default function CashRegister() {
                   <ActionCard
                     title="Sangria"
                     desc="Retirar dinheiro"
-                    value={formatBRL(currentRegister.withdrawals)}
+                    value={formatBRL(movementTotals.withdrawals)}
                     accent="text-red-600"
                     icon={<TrendingDown className="w-4 h-4 mr-2" />}
                     onClick={() => setShowWithdrawal(true)}
@@ -531,7 +531,7 @@ export default function CashRegister() {
                   <ActionCard
                     title="Reforço"
                     desc="Adicionar dinheiro"
-                    value={formatBRL(currentRegister.additions)}
+                    value={formatBRL(movementTotals.additions)}
                     accent="text-blue-600"
                     icon={<TrendingUp className="w-4 h-4 mr-2" />}
                     onClick={() => setShowAddition(true)}
