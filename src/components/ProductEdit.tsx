@@ -146,6 +146,19 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
   };
 
   // Carregar variações quando o dialog abre
+  // Atalho F4 para salvar
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F4') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, variationsLoaded, variationsLoading]);
+
   useEffect(() => {
     if (open && product.id) {
       console.log('📂 Carregando dados do produto para edição:', product.id);
