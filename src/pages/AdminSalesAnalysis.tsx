@@ -149,6 +149,7 @@ export default function AdminSalesAnalysis() {
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
+  const [changingCustomer, setChangingCustomer] = useState(false);
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
