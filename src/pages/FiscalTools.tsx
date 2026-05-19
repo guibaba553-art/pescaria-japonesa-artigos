@@ -309,11 +309,6 @@ export default function FiscalTools() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="emitir">
-            <Suspense fallback={<FiscalTabFallback />}>
-              <EmitNFeManual />
-            </Suspense>
-          </TabsContent>
 
           <TabsContent value="entrada">
             <Card>
