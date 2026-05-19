@@ -103,7 +103,7 @@ export function ProductVariationSelector({
                   </div>
                   <div className="pl-6 space-y-1">
                     <div className="text-lg font-semibold text-primary">
-                      R$ {variation.price.toFixed(2)}
+                      R$ {sitePriceForVariation(variation, productMinSalePrice).toFixed(2)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {isOutOfStock ? (
