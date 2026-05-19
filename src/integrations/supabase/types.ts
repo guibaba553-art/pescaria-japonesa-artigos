@@ -1358,10 +1358,19 @@ export type Database = {
           return_is_defect: boolean
           shipping_address: string
           shipping_cep: string
+          shipping_city: string | null
+          shipping_complement: string | null
           shipping_cost: number
+          shipping_ibge: string | null
           shipping_label_order_id: string | null
           shipping_label_url: string | null
+          shipping_neighborhood: string | null
+          shipping_number: string | null
+          shipping_recipient_name: string | null
+          shipping_recipient_phone: string | null
           shipping_service_id: number | null
+          shipping_street: string | null
+          shipping_uf: string | null
           source: string
           status: Database["public"]["Enums"]["order_status"]
           tef_transaction_id: string | null
@@ -1391,10 +1400,19 @@ export type Database = {
           return_is_defect?: boolean
           shipping_address: string
           shipping_cep: string
+          shipping_city?: string | null
+          shipping_complement?: string | null
           shipping_cost?: number
+          shipping_ibge?: string | null
           shipping_label_order_id?: string | null
           shipping_label_url?: string | null
+          shipping_neighborhood?: string | null
+          shipping_number?: string | null
+          shipping_recipient_name?: string | null
+          shipping_recipient_phone?: string | null
           shipping_service_id?: number | null
+          shipping_street?: string | null
+          shipping_uf?: string | null
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
           tef_transaction_id?: string | null
@@ -1424,10 +1442,19 @@ export type Database = {
           return_is_defect?: boolean
           shipping_address?: string
           shipping_cep?: string
+          shipping_city?: string | null
+          shipping_complement?: string | null
           shipping_cost?: number
+          shipping_ibge?: string | null
           shipping_label_order_id?: string | null
           shipping_label_url?: string | null
+          shipping_neighborhood?: string | null
+          shipping_number?: string | null
+          shipping_recipient_name?: string | null
+          shipping_recipient_phone?: string | null
           shipping_service_id?: number | null
+          shipping_street?: string | null
+          shipping_uf?: string | null
           source?: string
           status?: Database["public"]["Enums"]["order_status"]
           tef_transaction_id?: string | null
