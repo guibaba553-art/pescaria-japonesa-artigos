@@ -46,6 +46,9 @@ const formatBRL = (v: number) =>
 const formatDateTime = (s: string) =>
   new Date(s).toLocaleString('pt-BR');
 
+const isAutomaticChangeMovement = (movement: Pick<CashMovement, 'type' | 'reason'>) =>
+  movement.type === 'withdrawal' && /^Troco - pedido\b/i.test(movement.reason || '');
+
 const formatDuration = (start: string) => {
   const ms = Date.now() - new Date(start).getTime();
   const h = Math.floor(ms / (1000 * 60 * 60));
@@ -75,18 +78,41 @@ export default function CashRegister() {
   const [showClosing, setShowClosing] = useState(false);
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
-  const [changeTotal, setChangeTotal] = useState(0);
+
+  const movementTotals = useMemo(() => {
+    return movements.reduce(
+      (acc, movement) => {
+        const amount = Number(movement.amount || 0);
+
+        if (movement.type === 'addition') {
+          acc.additions += amount;
+          return acc;
+        }
+
+        if (movement.type === 'withdrawal') {
+          if (isAutomaticChangeMovement(movement)) {
+            acc.change += amount;
+          } else {
+            acc.withdrawals += amount;
+          }
+        }
+
+        return acc;
+      },
+      { additions: 0, withdrawals: 0, change: 0 }
+    );
+  }, [movements]);
 
   const expectedInDrawer = useMemo(() => {
     if (!currentRegister) return 0;
     const opening = Number(currentRegister.opening_amount || 0);
-    const additions = Number(currentRegister.additions || 0);
-    const withdrawals = Number(currentRegister.withdrawals || 0);
+    const additions = Number(movementTotals.additions || 0);
+    const withdrawals = Number(movementTotals.withdrawals || 0);
     const cashSales = Number(salesSummary.cash || 0);
-    const troco = Number(changeTotal || 0);
+    const troco = Number(movementTotals.change || 0);
 
     return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
-  }, [currentRegister, salesSummary.cash, changeTotal]);
+  }, [currentRegister, salesSummary.cash, movementTotals]);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -118,7 +144,7 @@ export default function CashRegister() {
           .select('total_amount, payment_method, status, source')
           .eq('source', 'pdv')
           .gte('created_at', data.opened_at)
-          .neq('status', 'cancelado');
+          .in('status', ['entregado', 'retirado']);
 
         if (ordersError) throw ordersError;
 
@@ -157,15 +183,10 @@ export default function CashRegister() {
           .eq('cash_register_id', data.id)
           .order('created_at', { ascending: false });
         setMovements(movs || []);
-        const troco = (movs || [])
-          .filter((m: any) => m.type === 'withdrawal' && /troco/i.test(m.reason || ''))
-          .reduce((s: number, m: any) => s + Number(m.amount || 0), 0);
-        setChangeTotal(troco);
       } else {
         setMovements([]);
         setSalesCount(0);
         setSalesSummary({ cash: 0, card: 0, pix: 0 });
-        setChangeTotal(0);
       }
     } catch (error: any) {
       toast({ title: 'Erro ao carregar caixa', description: error.message, variant: 'destructive' });
