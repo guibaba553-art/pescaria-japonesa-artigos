@@ -4,6 +4,7 @@ export interface ProductVariation {
   product_id: string;
   name: string;
   price: number;
+  min_sale_price?: number | null;
   price_pdv?: number | null;
   stock: number;
   description?: string | null;
