@@ -79,6 +79,36 @@ export default function CashRegister() {
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
 
+  const summarizeSales = (orders: Array<{ total_amount: number; payment_method: string | null }>) => {
+    const summary = { cash: 0, card: 0, pix: 0 };
+
+    orders.forEach((sale) => {
+      const total = Number(sale.total_amount) || 0;
+      const method = String(sale.payment_method || '').toLowerCase();
+
+      if (method.includes('pix')) {
+        summary.pix += total;
+        return;
+      }
+
+      if (method.includes('cash') || method.includes('dinheiro')) {
+        summary.cash += total;
+        return;
+      }
+
+      if (
+        method.includes('credit') ||
+        method.includes('debit') ||
+        method.includes('card') ||
+        method.includes('cart')
+      ) {
+        summary.card += total;
+      }
+    });
+
+    return summary;
+  };
+
   const movementTotals = useMemo(() => {
     return movements.reduce(
       (acc, movement) => {
@@ -114,6 +144,53 @@ export default function CashRegister() {
     return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
   }, [currentRegister, salesSummary.cash, movementTotals]);
 
+  const loadRegisterActivity = async (register: Pick<CashRegister, 'id' | 'opened_at'>, closedAt?: string) => {
+    let ordersQuery = supabase
+      .from('orders')
+      .select('total_amount, payment_method, status, source, created_at')
+      .eq('source', 'pdv')
+      .gte('created_at', register.opened_at)
+      .in('status', ['entregado', 'retirado']);
+
+    if (closedAt) {
+      ordersQuery = ordersQuery.lte('created_at', closedAt);
+    }
+
+    const { data: pdvOrders, error: ordersError } = await ordersQuery;
+    if (ordersError) throw ordersError;
+
+    const { data: movs, error: movementsError } = await supabase
+      .from('cash_movements')
+      .select('id, type, amount, reason, created_at')
+      .eq('cash_register_id', register.id)
+      .order('created_at', { ascending: false });
+
+    if (movementsError) throw movementsError;
+
+    const summary = summarizeSales((pdvOrders || []) as Array<{ total_amount: number; payment_method: string | null }>);
+    const totals = (movs || []).reduce(
+      (acc: { additions: number; withdrawals: number; change: number }, movement: any) => {
+        const amount = Number(movement.amount || 0);
+
+        if (movement.type === 'addition') acc.additions += amount;
+        if (movement.type === 'withdrawal') {
+          if (isAutomaticChangeMovement(movement)) acc.change += amount;
+          else acc.withdrawals += amount;
+        }
+
+        return acc;
+      },
+      { additions: 0, withdrawals: 0, change: 0 }
+    );
+
+    return {
+      salesSummary: summary,
+      salesCount: (pdvOrders || []).length,
+      movements: (movs || []) as CashMovement[],
+      movementTotals: totals,
+    };
+  };
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [user, canView, loading, navigate]);
@@ -139,50 +216,10 @@ export default function CashRegister() {
       setCurrentRegister(data);
 
       if (data) {
-        const { data: pdvOrders, error: ordersError } = await supabase
-          .from('orders')
-          .select('total_amount, payment_method, status, source')
-          .eq('source', 'pdv')
-          .gte('created_at', data.opened_at)
-          .in('status', ['entregado', 'retirado']);
-
-        if (ordersError) throw ordersError;
-
-        const summary = { cash: 0, card: 0, pix: 0 };
-        (pdvOrders || []).forEach((sale: any) => {
-          const total = Number(sale.total_amount) || 0;
-          const method = String(sale.payment_method || '').toLowerCase();
-
-          if (method.includes('pix')) {
-            summary.pix += total;
-            return;
-          }
-
-          if (method.includes('cash') || method.includes('dinheiro')) {
-            summary.cash += total;
-            return;
-          }
-
-          if (
-            method.includes('credit') ||
-            method.includes('debit') ||
-            method.includes('card') ||
-            method.includes('cart')
-          ) {
-            summary.card += total;
-          }
-        });
-
-        setSalesSummary(summary);
-        setSalesCount((pdvOrders || []).length);
-
-        // Movimentações deste caixa
-        const { data: movs } = await supabase
-          .from('cash_movements')
-          .select('id, type, amount, reason, created_at')
-          .eq('cash_register_id', data.id)
-          .order('created_at', { ascending: false });
-        setMovements(movs || []);
+        const activity = await loadRegisterActivity(data);
+        setSalesSummary(activity.salesSummary);
+        setSalesCount(activity.salesCount);
+        setMovements(activity.movements);
       } else {
         setMovements([]);
         setSalesCount(0);
@@ -238,8 +275,9 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
-      const newWithdrawals = currentRegister!.withdrawals + parseFloat(withdrawalAmount);
-      const newExpected = currentRegister!.expected_amount - parseFloat(withdrawalAmount);
+      const amount = parseFloat(withdrawalAmount);
+      const newWithdrawals = movementTotals.withdrawals + amount;
+      const newExpected = expectedInDrawer - amount;
       const { error } = await supabase.from('cash_registers').update({
         withdrawals: newWithdrawals, expected_amount: newExpected,
       }).eq('id', currentRegister!.id);
@@ -263,8 +301,9 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
-      const newAdditions = currentRegister!.additions + parseFloat(additionAmount);
-      const newExpected = currentRegister!.expected_amount + parseFloat(additionAmount);
+      const amount = parseFloat(additionAmount);
+      const newAdditions = movementTotals.additions + amount;
+      const newExpected = expectedInDrawer + amount;
       const { error } = await supabase.from('cash_registers').update({
         additions: newAdditions, expected_amount: newExpected,
       }).eq('id', currentRegister!.id);
@@ -288,14 +327,26 @@ export default function CashRegister() {
     }
     setLoadingAction(true);
     try {
+      const closedAt = new Date().toISOString();
+      const activity = await loadRegisterActivity(currentRegister!, closedAt);
+      const recalculatedExpected = Number((
+        Number(currentRegister!.opening_amount || 0) +
+        Number(activity.movementTotals.additions || 0) -
+        Number(activity.movementTotals.withdrawals || 0) +
+        Number(activity.salesSummary.cash || 0) -
+        Number(activity.movementTotals.change || 0)
+      ).toFixed(2));
+
       const { error } = await supabase.from('cash_registers').update({
         closing_amount: parseFloat(closingAmount),
-        expected_amount: expectedInDrawer,
-        closed_at: new Date().toISOString(),
+        expected_amount: recalculatedExpected,
+        closed_at: closedAt,
         status: 'closed',
-        cash_sales: salesSummary.cash,
-        card_sales: salesSummary.card,
-        pix_sales: salesSummary.pix,
+        cash_sales: activity.salesSummary.cash,
+        card_sales: activity.salesSummary.card,
+        pix_sales: activity.salesSummary.pix,
+        additions: activity.movementTotals.additions,
+        withdrawals: activity.movementTotals.withdrawals,
       }).eq('id', currentRegister!.id);
       if (error) throw error;
       toast({ title: 'Caixa fechado!' });
