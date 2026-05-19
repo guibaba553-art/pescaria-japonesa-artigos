@@ -13,13 +13,14 @@ import { BarcodeInput } from "@/components/BarcodeInput";
 interface ProductVariationsProps {
   variations: ProductVariation[];
   onVariationsChange: (variations: ProductVariation[]) => void;
+  productMinSalePrice?: number | null;
 }
 
 /**
  * Componente para gerenciar variações de produto
  * Interface intuitiva para adicionar, editar e remover variações
  */
-export function ProductVariations({ variations, onVariationsChange }: ProductVariationsProps) {
+export function ProductVariations({ variations, onVariationsChange, productMinSalePrice }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
   const [upProcessing, setUpProcessing] = useState<string | null>(null);
@@ -321,19 +322,24 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                           placeholder="0"
                         />
                       </div>
-                      {(variation as any).min_sale_price != null && (
-                        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
-                          <Label className="text-[11px] text-amber-700 dark:text-amber-400">
-                            Preço Mínimo de Venda — Site
-                          </Label>
-                          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                            {Number((variation as any).min_sale_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Definido em Fiscal → Formação de Preço
-                          </p>
-                        </div>
-                      )}
+                      {(() => {
+                        const minVal = (variation as any).min_sale_price ?? productMinSalePrice ?? null;
+                        const fromProduct = (variation as any).min_sale_price == null && productMinSalePrice != null;
+                        if (minVal == null) return null;
+                        return (
+                          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
+                            <Label className="text-[11px] text-amber-700 dark:text-amber-400">
+                              Preço Mínimo de Venda — Site
+                            </Label>
+                            <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                              {Number(minVal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {fromProduct ? 'Herdado do produto (Fiscal)' : 'Definido em Fiscal → Formação de Preço'}
+                            </p>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
