@@ -56,7 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
+import { getPdvPrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
@@ -72,6 +72,11 @@ interface ProductVariation {
   product_id: string;
   name: string;
   price: number;
+  price_pdv?: number | null;
+  price_pdv_pix?: number | null;
+  price_pdv_cash?: number | null;
+  price_pdv_debit?: number | null;
+  price_pdv_credit?: number | null;
   stock: number;
   description?: string | null;
   sku?: string | null;
@@ -1205,7 +1210,18 @@ export default function PDV() {
       return item.customPrice;
     }
     if (item.variation) {
-      return getPdvPriceForVariation(item.product, Number((item.variation as any).price_pdv ?? item.variation.price), paymentMethod);
+      return getPdvPrice(
+        {
+          ...item.product,
+          price: Number(item.variation.price ?? 0),
+          price_pdv: (item.variation as any).price_pdv ?? item.product.price_pdv ?? null,
+          price_pdv_pix: (item.variation as any).price_pdv_pix ?? null,
+          price_pdv_cash: (item.variation as any).price_pdv_cash ?? null,
+          price_pdv_debit: (item.variation as any).price_pdv_debit ?? null,
+          price_pdv_credit: (item.variation as any).price_pdv_credit ?? null,
+        },
+        paymentMethod,
+      );
     }
     return getPdvPrice(item.product, paymentMethod);
   };
@@ -2436,7 +2452,15 @@ export default function PDV() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-base font-bold text-primary">
-                        R$ {selectedProduct ? getPdvPriceForVariation(selectedProduct, Number((variation as any).price_pdv ?? variation.price), paymentMethod).toFixed(2) : Number((variation as any).price_pdv ?? variation.price).toFixed(2)}
+                        R$ {selectedProduct ? getPdvPrice({
+                          ...selectedProduct,
+                          price: Number(variation.price ?? 0),
+                          price_pdv: (variation as any).price_pdv ?? selectedProduct.price_pdv ?? null,
+                          price_pdv_pix: (variation as any).price_pdv_pix ?? null,
+                          price_pdv_cash: (variation as any).price_pdv_cash ?? null,
+                          price_pdv_debit: (variation as any).price_pdv_debit ?? null,
+                          price_pdv_credit: (variation as any).price_pdv_credit ?? null,
+                        }, paymentMethod).toFixed(2) : Number((variation as any).price_pdv ?? variation.price).toFixed(2)}
                       </span>
                       <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
                         {variation.stock > 0 ? `${variation.stock} un` : 'Esgotado'}
