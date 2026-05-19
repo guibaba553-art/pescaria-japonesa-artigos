@@ -11,7 +11,7 @@ import { useCart } from '@/hooks/useCart';
 import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
-import { ProductVariationSelector } from '@/components/ProductVariationSelector';
+import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
 
@@ -296,19 +296,22 @@ export default function ProductDetails() {
 
               {/* Preço comercial */}
               {variations.length > 0 ? (
-                selectedVariation && (
-                  <div className="bg-muted/40 rounded-2xl p-5 mb-4">
-                    <p className="text-xs text-muted-foreground mb-1">Variação selecionada:</p>
-                    <p className="text-4xl font-display font-black text-primary tracking-tight">
-                      R$ {selectedVariation.price.toFixed(2).replace('.', ',')}
-                    </p>
-                    {selectedVariation.price >= 50 && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        ou <strong className="text-foreground">10x de R$ {(selectedVariation.price / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                selectedVariation && (() => {
+                  const sitePrice = sitePriceForVariation(selectedVariation, (product as any).min_sale_price);
+                  return (
+                    <div className="bg-muted/40 rounded-2xl p-5 mb-4">
+                      <p className="text-xs text-muted-foreground mb-1">Variação selecionada:</p>
+                      <p className="text-4xl font-display font-black text-primary tracking-tight">
+                        R$ {sitePrice.toFixed(2).replace('.', ',')}
                       </p>
-                    )}
-                  </div>
-                )
+                      {sitePrice >= 50 && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          ou <strong className="text-foreground">10x de R$ {(sitePrice / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="bg-muted/40 rounded-2xl p-5 mb-4">
                   {product.on_sale && product.sale_price ? (
@@ -369,6 +372,7 @@ export default function ProductDetails() {
               <div className="space-y-4 border-t pt-6">
                 <ProductVariationSelector
                   variations={variations}
+                  productMinSalePrice={(product as any).min_sale_price ?? null}
                   onVariationSelect={(variation) => {
                     console.log('📦 Variação selecionada:', variation?.name);
                     setSelectedVariation(variation);
@@ -444,7 +448,7 @@ export default function ProductDetails() {
                   }
 
                   const finalPrice = selectedVariation 
-                    ? selectedVariation.price
+                    ? sitePriceForVariation(selectedVariation, (product as any).min_sale_price)
                     : (product.on_sale && product.sale_price ? product.sale_price : product.price);
                   
                   addItem({

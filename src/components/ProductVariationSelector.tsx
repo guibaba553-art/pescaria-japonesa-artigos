@@ -7,11 +7,26 @@ import { Badge } from "./ui/badge";
 interface ProductVariationSelectorProps {
   variations: ProductVariation[];
   onVariationSelect: (variation: ProductVariation | null) => void;
+  productMinSalePrice?: number | null;
 }
+
+// Preço exibido no site: prioriza min_sale_price da variação,
+// depois min_sale_price do produto pai, e por fim cai no price (PDV).
+export const sitePriceForVariation = (
+  variation: ProductVariation,
+  productMinSalePrice?: number | null
+) => {
+  const vMin = Number((variation as any).min_sale_price) || 0;
+  if (vMin > 0) return vMin;
+  const pMin = Number(productMinSalePrice) || 0;
+  if (pMin > 0) return pMin;
+  return variation.price;
+};
 
 export function ProductVariationSelector({ 
   variations, 
-  onVariationSelect 
+  onVariationSelect,
+  productMinSalePrice,
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
 
@@ -88,7 +103,7 @@ export function ProductVariationSelector({
                   </div>
                   <div className="pl-6 space-y-1">
                     <div className="text-lg font-semibold text-primary">
-                      R$ {variation.price.toFixed(2)}
+                      R$ {sitePriceForVariation(variation, productMinSalePrice).toFixed(2)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {isOutOfStock ? (
@@ -125,7 +140,7 @@ export function ProductVariationSelector({
                   {selectedVariation.name}
                 </div>
                 <div className="text-lg font-bold text-primary">
-                  R$ {selectedVariation.price.toFixed(2)}
+                  R$ {sitePriceForVariation(selectedVariation, productMinSalePrice).toFixed(2)}
                 </div>
               </div>
             </div>
