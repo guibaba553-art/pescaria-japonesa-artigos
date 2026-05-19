@@ -140,7 +140,7 @@ export function ProductVariationSelector({
                   {selectedVariation.name}
                 </div>
                 <div className="text-lg font-bold text-primary">
-                  R$ {selectedVariation.price.toFixed(2)}
+                  R$ {sitePriceForVariation(selectedVariation, productMinSalePrice).toFixed(2)}
                 </div>
               </div>
             </div>
