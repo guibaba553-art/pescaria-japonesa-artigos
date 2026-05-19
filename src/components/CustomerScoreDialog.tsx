@@ -180,7 +180,7 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }:
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { label: '🏬➡️🌐 Veio à loja e comprou no site (na loja)', value: 'Veio à loja, foi atendido e comprou no site dentro da loja', sign: 1, pts: 2 },
+                    { label: '🏬➡️🌐 Veio à loja e comprou no site (na loja)', value: 'Veio à loja, foi atendido e comprou no site dentro da loja (custo de atendimento + desconto do site)', sign: -1, pts: 2 },
                     { label: '⭐ Cliente fiel / recorrente', value: 'Cliente fiel / compra recorrente', sign: 1, pts: 1 },
                     { label: '🎁 Brinde / cortesia', value: 'Brinde / cortesia promocional', sign: 1, pts: 1 },
                     { label: '🤝 Indicou novo cliente', value: 'Indicou novo cliente', sign: 1, pts: 2 },
