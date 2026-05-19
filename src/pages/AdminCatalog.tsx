@@ -46,6 +46,7 @@ export default function AdminCatalog() {
   const { user, isEmployee, isAdmin, permissions, loading } = useAuth();
   const canView = isAdmin || (isEmployee && permissions.catalog);
   const [draftCount, setDraftCount] = useState(0);
+  const [labelCount, setLabelCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !canView) {
@@ -61,8 +62,17 @@ export default function AdminCatalog() {
     setDraftCount(count ?? 0);
   };
 
+  const loadLabelCount = async () => {
+    const { count } = await supabase
+      .from('product_label_pending')
+      .select('id', { count: 'exact', head: true })
+      .gt('pending_qty', 0);
+    setLabelCount(count ?? 0);
+  };
+
   useEffect(() => {
     loadDraftCount();
+    loadLabelCount();
   }, []);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
