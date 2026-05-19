@@ -72,6 +72,11 @@ interface ProductVariation {
   product_id: string;
   name: string;
   price: number;
+  price_pdv?: number | null;
+  price_pdv_pix?: number | null;
+  price_pdv_cash?: number | null;
+  price_pdv_debit?: number | null;
+  price_pdv_credit?: number | null;
   stock: number;
   description?: string | null;
   sku?: string | null;
@@ -1205,7 +1210,18 @@ export default function PDV() {
       return item.customPrice;
     }
     if (item.variation) {
-      return getPdvPriceForVariation(item.product, Number((item.variation as any).price_pdv ?? item.variation.price), paymentMethod);
+      return getPdvPrice(
+        {
+          ...item.product,
+          price: Number(item.variation.price ?? 0),
+          price_pdv: (item.variation as any).price_pdv ?? item.product.price_pdv ?? null,
+          price_pdv_pix: (item.variation as any).price_pdv_pix ?? null,
+          price_pdv_cash: (item.variation as any).price_pdv_cash ?? null,
+          price_pdv_debit: (item.variation as any).price_pdv_debit ?? null,
+          price_pdv_credit: (item.variation as any).price_pdv_credit ?? null,
+        },
+        paymentMethod,
+      );
     }
     return getPdvPrice(item.product, paymentMethod);
   };
