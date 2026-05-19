@@ -56,7 +56,7 @@ export function CustomerSearchCombobox({ onSelect, placeholder }: Props) {
         }
         const { data, error } = await supabase
           .from('customers')
-          .select('id, full_name, company_name, cpf, cnpj, cep, street, number, neighborhood, municipio, uf, email, codigo_municipio_ibge, inscricao_estadual, ie_indicador, complemento')
+          .select('id, full_name, company_name, cpf, cnpj, cep, street, number, neighborhood, municipio, uf, email, codigo_municipio_ibge, inscricao_estadual, ie_indicador, complemento, score')
           .or(ors.join(','))
           .order('full_name')
           .limit(20);
