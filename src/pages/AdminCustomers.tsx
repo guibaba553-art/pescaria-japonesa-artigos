@@ -584,6 +584,18 @@ export default function AdminCustomers() {
                       <Badge variant={c.cnpj ? 'default' : 'secondary'}>
                         {c.cnpj ? 'PJ' : 'PF'}
                       </Badge>
+                      {(() => {
+                        const tier = getTierForScore(tiers, c.score || 0);
+                        if (!tier) return null;
+                        return (
+                          <Badge
+                            className="gap-1 text-white border-0"
+                            style={{ backgroundColor: tier.color }}
+                          >
+                            <Award className="w-3 h-3" /> {tier.name} · {c.score || 0}
+                          </Badge>
+                        );
+                      })()}
                       {dup && (
                         <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white">
                           <AlertTriangle className="w-3 h-3" /> Duplicado
