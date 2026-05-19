@@ -92,7 +92,7 @@ const App = () => (
                 <Route path="/conta" element={<Account />} />
                 <Route path="/produtos" element={<Products />} />
                 <Route path="/produto/:id" element={<ProductDetails />} />
-                <Route path="/remover-fundo-logo" element={<RemoveLogoBackground />} />
+                
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
