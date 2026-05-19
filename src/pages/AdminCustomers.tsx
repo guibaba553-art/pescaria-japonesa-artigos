@@ -666,6 +666,9 @@ export default function AdminCustomers() {
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
                       <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => setScoreFor(c)}>
+                      <Award className="w-3.5 h-3.5 mr-1.5" /> Pontos
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
