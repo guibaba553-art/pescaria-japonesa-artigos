@@ -296,19 +296,22 @@ export default function ProductDetails() {
 
               {/* Preço comercial */}
               {variations.length > 0 ? (
-                selectedVariation && (
-                  <div className="bg-muted/40 rounded-2xl p-5 mb-4">
-                    <p className="text-xs text-muted-foreground mb-1">Variação selecionada:</p>
-                    <p className="text-4xl font-display font-black text-primary tracking-tight">
-                      R$ {selectedVariation.price.toFixed(2).replace('.', ',')}
-                    </p>
-                    {selectedVariation.price >= 50 && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        ou <strong className="text-foreground">10x de R$ {(selectedVariation.price / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                selectedVariation && (() => {
+                  const sitePrice = sitePriceForVariation(selectedVariation, (product as any).min_sale_price);
+                  return (
+                    <div className="bg-muted/40 rounded-2xl p-5 mb-4">
+                      <p className="text-xs text-muted-foreground mb-1">Variação selecionada:</p>
+                      <p className="text-4xl font-display font-black text-primary tracking-tight">
+                        R$ {sitePrice.toFixed(2).replace('.', ',')}
                       </p>
-                    )}
-                  </div>
-                )
+                      {sitePrice >= 50 && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          ou <strong className="text-foreground">10x de R$ {(sitePrice / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
                 <div className="bg-muted/40 rounded-2xl p-5 mb-4">
                   {product.on_sale && product.sale_price ? (
