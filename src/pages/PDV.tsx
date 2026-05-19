@@ -2119,6 +2119,27 @@ export default function PDV() {
                             <p className="text-xs text-muted-foreground">
                               {selectedCustomer.street}, {selectedCustomer.number} - {selectedCustomer.neighborhood}
                             </p>
+                            {customerTier && (
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <span
+                                  className="inline-flex items-center gap-1 text-xs font-semibold text-white px-2 py-0.5 rounded"
+                                  style={{ backgroundColor: customerTier.color }}
+                                >
+                                  <Award className="w-3 h-3" /> {customerTier.name} · {selectedCustomer.score || 0} pts
+                                </span>
+                                {customerTier.block_purchase && (
+                                  <span className="text-xs font-semibold text-destructive">Venda bloqueada</span>
+                                )}
+                                {!customerTier.block_purchase && customerTier.discount_percent > 0 && (
+                                  <span className="text-xs font-semibold text-emerald-600">
+                                    {customerTier.discount_percent}% off aplicado
+                                  </span>
+                                )}
+                                {!customerTier.allow_discount && !customerTier.block_purchase && (
+                                  <span className="text-xs font-semibold text-orange-600">Sem descontos</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <Button
                             size="sm"
