@@ -197,6 +197,27 @@ export default function AdminSalesAnalysis() {
     }
     toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
+    setChangingCustomer(false);
+    fetchAll(true);
+  };
+
+  const handleUnlinkCustomer = async () => {
+    if (!invoiceTarget) return;
+    setLinkingCustomer(true);
+    if (invoiceTarget.kind === 'order') {
+      const { error } = await supabase.from('orders').update({ customer_id: null }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: null } });
+    } else {
+      const { error } = await supabase.from('saved_sales').update({ customer_data: null }).eq('id', invoiceTarget.id);
+      setLinkingCustomer(false);
+      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
+      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: null } });
+    }
+    toast.success('Cliente removido');
+    setInvoiceCustomer(null);
+    setChangingCustomer(true);
     fetchAll(true);
   };
 
