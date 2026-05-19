@@ -472,6 +472,60 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_rewards: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          effect: Database["public"]["Enums"]["reward_effect"]
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["reward_kind"]
+          scope: Database["public"]["Enums"]["reward_scope"]
+          starts_at: string | null
+          tier_id: string | null
+          title: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          effect?: Database["public"]["Enums"]["reward_effect"]
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["reward_kind"]
+          scope: Database["public"]["Enums"]["reward_scope"]
+          starts_at?: string | null
+          tier_id?: string | null
+          title: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          effect?: Database["public"]["Enums"]["reward_effect"]
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["reward_kind"]
+          scope?: Database["public"]["Enums"]["reward_scope"]
+          starts_at?: string | null
+          tier_id?: string | null
+          title?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       customer_score_events: {
         Row: {
           created_at: string
@@ -2794,6 +2848,14 @@ export type Database = {
         | "devolvido"
         | "devolucao_solicitada"
         | "aguardando_envio"
+      reward_effect:
+        | "discount_percent"
+        | "free_gift"
+        | "block_purchase"
+        | "block_discount"
+        | "note"
+      reward_kind: "reward" | "punishment"
+      reward_scope: "customer" | "tier"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2935,6 +2997,15 @@ export const Constants = {
         "devolucao_solicitada",
         "aguardando_envio",
       ],
+      reward_effect: [
+        "discount_percent",
+        "free_gift",
+        "block_purchase",
+        "block_discount",
+        "note",
+      ],
+      reward_kind: ["reward", "punishment"],
+      reward_scope: ["customer", "tier"],
     },
   },
 } as const

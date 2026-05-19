@@ -16,9 +16,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
+import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
@@ -111,6 +112,8 @@ export default function AdminCustomers() {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   const [scoreFor, setScoreFor] = useState<Customer | null>(null);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
@@ -520,6 +523,13 @@ export default function AdminCustomers() {
               <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
             </Button>
             <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
+            <Button
+              variant="outline"
+              onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              Recompensas/Punições
+            </Button>
             <Button onClick={openNew}>
               <Plus className="w-4 h-4 mr-2" />
               Novo cliente
@@ -668,6 +678,14 @@ export default function AdminCustomers() {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setScoreFor(c)}>
                       <Award className="w-3.5 h-3.5 mr-1.5" /> Pontos
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setRewardsCustomerId(c.id); setRewardsOpen(true); }}
+                      title="Recompensas/Punições para este cliente"
+                    >
+                      <Gift className="w-3.5 h-3.5" />
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
@@ -888,6 +906,12 @@ export default function AdminCustomers() {
         onChanged={(newScore) => {
           setList((prev) => prev.map((c) => (scoreFor && c.id === scoreFor.id ? { ...c, score: newScore } : c)));
         }}
+      />
+
+      <CustomerRewardsDialog
+        open={rewardsOpen}
+        onOpenChange={(v) => { setRewardsOpen(v); if (!v) setRewardsCustomerId(null); }}
+        initialCustomerId={rewardsCustomerId}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
