@@ -280,20 +280,6 @@ export function ProductVariations({ variations, onVariationsChange }: ProductVar
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`price-${variation.id}`} className="text-xs">
-                          Preço mínimo — Site (R$) *
-                        </Label>
-                        <Input
-                          id={`price-${variation.id}`}
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={variation.price}
-                          onChange={(e) => updateVariation(variation.id, 'price', e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
                         <Label htmlFor={`pricepdv-${variation.id}`} className="text-xs">
                           Preço de venda — PDV (R$)
                         </Label>
