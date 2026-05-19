@@ -908,6 +908,12 @@ export default function AdminCustomers() {
         }}
       />
 
+      <CustomerRewardsDialog
+        open={rewardsOpen}
+        onOpenChange={(v) => { setRewardsOpen(v); if (!v) setRewardsCustomerId(null); }}
+        initialCustomerId={rewardsCustomerId}
+      />
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
