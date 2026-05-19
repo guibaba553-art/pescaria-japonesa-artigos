@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
+import { installGlobalErrorLogger } from "./lib/errorLogger";
+
+installGlobalErrorLogger();
 
 // Sessão sempre persistente — o Supabase mantém o token no localStorage e renova
 // automaticamente. Não removemos o token em beforeunload pois isso desconectava
