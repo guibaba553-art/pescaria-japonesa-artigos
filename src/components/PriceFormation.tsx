@@ -224,8 +224,11 @@ export function PriceFormation() {
     );
   }, [products, search]);
 
-  const VISIBLE_LIMIT = 80;
-  const visible = useMemo(() => filtered.slice(0, VISIBLE_LIMIT), [filtered]);
+  const VISIBLE_STEP = 80;
+  const [visibleCount, setVisibleCount] = useState(VISIBLE_STEP);
+  useEffect(() => { setVisibleCount(VISIBLE_STEP); }, [search]);
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const VISIBLE_LIMIT = visibleCount;
   const groupsById = useMemo(() => {
     const m = new Map<string, CostGroup>();
     groups.forEach((g) => m.set(g.id, g));
@@ -523,10 +526,20 @@ export function PriceFormation() {
           />
         </div>
 
-        <div className="text-xs text-muted-foreground">
-          Mostrando {visible.length} de {filtered.length}
-          {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
-          {filtered.length > VISIBLE_LIMIT && " — refine a busca para ver mais"}
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div>
+            Mostrando {visible.length} de {filtered.length}
+            {filtered.length !== products.length ? ` (filtrado de ${products.length})` : ""}
+          </div>
+          {visible.length < filtered.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((c) => c + VISIBLE_STEP)}
+              className="text-primary hover:underline font-medium"
+            >
+              Carregar mais {Math.min(VISIBLE_STEP, filtered.length - visible.length)}
+            </button>
+          )}
         </div>
 
         {loadError && (
