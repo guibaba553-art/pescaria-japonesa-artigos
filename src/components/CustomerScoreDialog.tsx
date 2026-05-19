@@ -41,13 +41,65 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }:
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
   const [currentScore, setCurrentScore] = useState(0);
+  const [presets, setPresets] = useState<ReasonPreset[]>([]);
+  const [showNewPreset, setShowNewPreset] = useState(false);
+  const [npLabel, setNpLabel] = useState('');
+  const [npEmoji, setNpEmoji] = useState('');
+  const [npSign, setNpSign] = useState<1 | -1>(1);
+  const [npPoints, setNpPoints] = useState(1);
+  const [savingPreset, setSavingPreset] = useState(false);
 
   useEffect(() => {
     if (!open || !customer) return;
     setCurrentScore(customer.score || 0);
     loadTiers().then(setTiers);
     loadEvents();
+    loadPresets();
   }, [open, customer?.id]);
+
+  const loadPresets = async () => {
+    const { data } = await supabase
+      .from('customer_score_reason_presets')
+      .select('id, label, reason, sign, points, emoji')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    setPresets((data as ReasonPreset[]) || []);
+  };
+
+  const createPreset = async () => {
+    if (!npLabel.trim()) {
+      toast({ title: 'Informe o rótulo', variant: 'destructive' });
+      return;
+    }
+    setSavingPreset(true);
+    const { error } = await supabase.from('customer_score_reason_presets').insert({
+      label: npLabel.trim(),
+      reason: npLabel.trim(),
+      emoji: npEmoji.trim() || null,
+      sign: npSign,
+      points: Math.max(1, npPoints),
+      sort_order: (presets[presets.length - 1]?.['sort_order' as any] ?? presets.length * 10) + 10,
+    });
+    setSavingPreset(false);
+    if (error) {
+      toast({ title: 'Erro ao criar motivo', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setNpLabel(''); setNpEmoji(''); setNpSign(1); setNpPoints(1);
+    setShowNewPreset(false);
+    loadPresets();
+    toast({ title: 'Motivo criado' });
+  };
+
+  const deletePreset = async (id: string) => {
+    if (!confirm('Remover este motivo rápido?')) return;
+    const { error } = await supabase.from('customer_score_reason_presets').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+      return;
+    }
+    loadPresets();
+  };
 
   const loadEvents = async () => {
     if (!customer) return;
