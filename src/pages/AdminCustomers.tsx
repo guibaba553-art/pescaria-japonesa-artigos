@@ -679,6 +679,14 @@ export default function AdminCustomers() {
                     <Button size="sm" variant="outline" onClick={() => setScoreFor(c)}>
                       <Award className="w-3.5 h-3.5 mr-1.5" /> Pontos
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => { setRewardsCustomerId(c.id); setRewardsOpen(true); }}
+                      title="Recompensas/Punições para este cliente"
+                    >
+                      <Gift className="w-3.5 h-3.5" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
