@@ -507,7 +507,7 @@ export default function CashRegister() {
                   <TrendingDown className="w-4 h-4 mr-2" /> Fazer Sangria
                 </Button>
               </div>
-              <KpiCard label="Saída de troco" value={formatBRL(changeTotal)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
+              <KpiCard label="Saída de troco" value={formatBRL(movementTotals.change)} icon={<TrendingDown className="w-4 h-4" />} accent="text-orange-600" />
             </div>
 
             <Tabs defaultValue="operations">
@@ -707,7 +707,7 @@ export default function CashRegister() {
               </div>
               <div className="flex justify-between">
                 <span>Saída de troco:</span>
-                <span className="font-bold text-red-600">- {formatBRL(changeTotal)}</span>
+                <span className="font-bold text-red-600">- {formatBRL(movementTotals.change)}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-bold">TOTAL ESPERADO:</span>
