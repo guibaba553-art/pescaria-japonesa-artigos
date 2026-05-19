@@ -59,6 +59,8 @@ import {
 import { getPdvPrice, getPdvPriceForVariation, getPdvBasePrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
+import { Award } from 'lucide-react';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
