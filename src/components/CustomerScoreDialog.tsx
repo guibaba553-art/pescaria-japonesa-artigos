@@ -235,43 +235,94 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }:
               </div>
 
               <div className="pt-1">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                  Motivos rápidos
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Motivos rápidos
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPreset((v) => !v)}
+                    className="text-[11px] flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <PlusCircle className="w-3 h-3" />
+                    {showNewPreset ? 'Cancelar' : 'Novo motivo'}
+                  </button>
                 </div>
+
+                {showNewPreset && (
+                  <div className="mb-2 p-2 rounded-md border bg-muted/30 flex flex-wrap items-end gap-2">
+                    <Input
+                      placeholder="😀"
+                      value={npEmoji}
+                      onChange={(e) => setNpEmoji(e.target.value)}
+                      className="w-16 text-center"
+                      maxLength={4}
+                    />
+                    <Input
+                      placeholder="Rótulo do motivo"
+                      value={npLabel}
+                      onChange={(e) => setNpLabel(e.target.value)}
+                      className="flex-1 min-w-[180px]"
+                    />
+                    <div className="flex rounded-md overflow-hidden border">
+                      <button
+                        type="button"
+                        onClick={() => setNpSign(1)}
+                        className={`px-2 py-1 text-xs ${npSign === 1 ? 'bg-emerald-600 text-white' : 'bg-background'}`}
+                      >+</button>
+                      <button
+                        type="button"
+                        onClick={() => setNpSign(-1)}
+                        className={`px-2 py-1 text-xs ${npSign === -1 ? 'bg-destructive text-destructive-foreground' : 'bg-background'}`}
+                      >−</button>
+                    </div>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={npPoints}
+                      onChange={(e) => setNpPoints(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-20"
+                    />
+                    <Button type="button" size="sm" onClick={createPreset} disabled={savingPreset}>
+                      Salvar motivo
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: '🏬➡️🌐 Veio à loja e comprou no site (na loja)', value: 'Veio à loja, foi atendido e comprou no site dentro da loja (custo de atendimento + desconto do site)', sign: -1, pts: 2 },
-                    { label: '⭐ Cliente fiel / recorrente', value: 'Cliente fiel / compra recorrente', sign: 1, pts: 1 },
-                    { label: '🎁 Brinde / cortesia', value: 'Brinde / cortesia promocional', sign: 1, pts: 1 },
-                    { label: '🤝 Indicou novo cliente', value: 'Indicou novo cliente', sign: 1, pts: 2 },
-                    { label: '💬 Elogio / avaliação positiva', value: 'Elogio público / avaliação positiva', sign: 1, pts: 1 },
-                    { label: '😡 Cliente mal educado', value: 'Cliente mal educado / desrespeitoso', sign: -1, pts: 2 },
-                    { label: '🙄 Cliente chato / problemático', value: 'Cliente chato / problemático', sign: -1, pts: 1 },
-                    { label: '📵 Não retira pedido / sumiu', value: 'Não retirou o pedido / não respondeu', sign: -1, pts: 2 },
-                    { label: '↩️ Devolução sem ser defeito', value: 'Devolução sem ser por defeito do produto', sign: -1, pts: 1 },
-                    { label: '⚠️ Reclamação indevida', value: 'Reclamação indevida / má-fé', sign: -1, pts: 3 },
-                    { label: '💸 Calote / não pagou', value: 'Calote / cheque devolvido / não pagou', sign: -1, pts: 5 },
-                  ].map((r) => (
-                    <button
-                      key={r.label}
-                      type="button"
-                      onClick={() => {
-                        setReason(r.value);
-                        setDelta(r.pts);
-                      }}
-                      className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
-                        r.sign > 0
-                          ? 'border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400'
-                          : 'border-destructive/40 text-destructive hover:bg-destructive/10'
-                      }`}
-                      title={`${r.sign > 0 ? '+' : '-'}${r.pts} sugerido`}
-                    >
-                      {r.label}
-                      <span className="ml-1 opacity-60 tabular-nums">
-                        ({r.sign > 0 ? '+' : '-'}{r.pts})
-                      </span>
-                    </button>
+                  {presets.map((p) => (
+                    <div key={p.id} className="group relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReason(p.reason);
+                          setDelta(p.points);
+                        }}
+                        className={`text-[11px] px-2 py-1 rounded-md border transition-colors pr-5 ${
+                          p.sign > 0
+                            ? 'border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400'
+                            : 'border-destructive/40 text-destructive hover:bg-destructive/10'
+                        }`}
+                        title={`${p.sign > 0 ? '+' : '-'}${p.points} sugerido`}
+                      >
+                        {p.emoji ? `${p.emoji} ` : ''}{p.label}
+                        <span className="ml-1 opacity-60 tabular-nums">
+                          ({p.sign > 0 ? '+' : '-'}{p.points})
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePreset(p.id)}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-background border opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground"
+                        title="Remover motivo"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
                   ))}
+                  {presets.length === 0 && (
+                    <div className="text-xs text-muted-foreground">Nenhum motivo cadastrado.</div>
+                  )}
                 </div>
               </div>
             </div>
