@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, RefreshCw, FileCheck, X, Eye, Download } from "lucide-react";
+import { Loader2, RefreshCw, FileCheck, X, Eye, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -105,6 +105,38 @@ export function NfeEntradaPendentes() {
     a.download = `nfe-${item.chave_nfe}.xml`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const [baixandoPdf, setBaixandoPdf] = useState<string | null>(null);
+  const baixarPdf = async (item: NfePendente) => {
+    setBaixandoPdf(item.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('Sessão expirada');
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-danfe-focus`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chave: item.chave_nfe }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Erro ${res.status}`);
+      }
+      const blob = await res.blob();
+      const dl = document.createElement('a');
+      dl.href = URL.createObjectURL(blob);
+      dl.download = `danfe-${item.chave_nfe}.pdf`;
+      dl.click();
+      URL.revokeObjectURL(dl.href);
+      toast.success('DANFE baixada');
+    } catch (e: any) {
+      toast.error(`Erro ao baixar PDF: ${e.message}`);
+    } finally {
+      setBaixandoPdf(null);
+    }
   };
 
   return (
@@ -257,8 +289,22 @@ export function NfeEntradaPendentes() {
                       size="sm"
                       variant="ghost"
                       onClick={() => baixarXml(item)}
+                      title="Baixar XML"
                     >
                       <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => baixarPdf(item)}
+                      disabled={baixandoPdf === item.id}
+                      title="Baixar DANFE (PDF)"
+                    >
+                      {baixandoPdf === item.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4" />
+                      )}
                     </Button>
                     {filtroStatus === 'pendente' && (
                       <>
