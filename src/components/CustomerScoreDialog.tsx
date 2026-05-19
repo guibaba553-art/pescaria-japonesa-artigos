@@ -173,6 +173,47 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }:
                   </Button>
                 </div>
               </div>
+
+              <div className="pt-1">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                  Motivos rápidos
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { label: '🏬➡️🌐 Veio à loja e comprou no site (na loja)', value: 'Veio à loja, foi atendido e comprou no site dentro da loja', sign: 1, pts: 2 },
+                    { label: '⭐ Cliente fiel / recorrente', value: 'Cliente fiel / compra recorrente', sign: 1, pts: 1 },
+                    { label: '🎁 Brinde / cortesia', value: 'Brinde / cortesia promocional', sign: 1, pts: 1 },
+                    { label: '🤝 Indicou novo cliente', value: 'Indicou novo cliente', sign: 1, pts: 2 },
+                    { label: '💬 Elogio / avaliação positiva', value: 'Elogio público / avaliação positiva', sign: 1, pts: 1 },
+                    { label: '😡 Cliente mal educado', value: 'Cliente mal educado / desrespeitoso', sign: -1, pts: 2 },
+                    { label: '🙄 Cliente chato / problemático', value: 'Cliente chato / problemático', sign: -1, pts: 1 },
+                    { label: '📵 Não retira pedido / sumiu', value: 'Não retirou o pedido / não respondeu', sign: -1, pts: 2 },
+                    { label: '↩️ Devolução sem ser defeito', value: 'Devolução sem ser por defeito do produto', sign: -1, pts: 1 },
+                    { label: '⚠️ Reclamação indevida', value: 'Reclamação indevida / má-fé', sign: -1, pts: 3 },
+                    { label: '💸 Calote / não pagou', value: 'Calote / cheque devolvido / não pagou', sign: -1, pts: 5 },
+                  ].map((r) => (
+                    <button
+                      key={r.label}
+                      type="button"
+                      onClick={() => {
+                        setReason(r.value);
+                        setDelta(r.pts);
+                      }}
+                      className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${
+                        r.sign > 0
+                          ? 'border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400'
+                          : 'border-destructive/40 text-destructive hover:bg-destructive/10'
+                      }`}
+                      title={`${r.sign > 0 ? '+' : '-'}${r.pts} sugerido`}
+                    >
+                      {r.label}
+                      <span className="ml-1 opacity-60 tabular-nums">
+                        ({r.sign > 0 ? '+' : '-'}{r.pts})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div>
