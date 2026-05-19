@@ -72,6 +72,7 @@ interface Customer {
   inscricao_estadual: string | null;
   ie_indicador: string | null;
   created_at: string;
+  score: number;
 }
 
 const emptyForm = {
