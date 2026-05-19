@@ -111,8 +111,13 @@ export default function AdminCatalog() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="labels" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+            <TabsTrigger value="labels" className="gap-2 relative shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Tag className="w-4 h-4" /> Etiquetas
+              {labelCount > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                  {labelCount}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques
