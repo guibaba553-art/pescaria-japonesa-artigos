@@ -7,11 +7,26 @@ import { Badge } from "./ui/badge";
 interface ProductVariationSelectorProps {
   variations: ProductVariation[];
   onVariationSelect: (variation: ProductVariation | null) => void;
+  productMinSalePrice?: number | null;
 }
+
+// Preço exibido no site: prioriza min_sale_price da variação,
+// depois min_sale_price do produto pai, e por fim cai no price (PDV).
+export const sitePriceForVariation = (
+  variation: ProductVariation,
+  productMinSalePrice?: number | null
+) => {
+  const vMin = Number((variation as any).min_sale_price) || 0;
+  if (vMin > 0) return vMin;
+  const pMin = Number(productMinSalePrice) || 0;
+  if (pMin > 0) return pMin;
+  return variation.price;
+};
 
 export function ProductVariationSelector({ 
   variations, 
-  onVariationSelect 
+  onVariationSelect,
+  productMinSalePrice,
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
 
