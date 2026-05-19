@@ -50,7 +50,7 @@ export function CustomerSearchCombobox({ onSelect, placeholder }: Props) {
           `full_name.ilike.%${safe}%`,
           `company_name.ilike.%${safe}%`,
         ];
-        if (onlyDigits.length >= 3) {
+        if (onlyDigits.length >= 2) {
           ors.push(`cpf.ilike.%${onlyDigits}%`);
           ors.push(`cnpj.ilike.%${onlyDigits}%`);
         }
