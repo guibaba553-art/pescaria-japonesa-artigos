@@ -112,6 +112,8 @@ export default function AdminCustomers() {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   const [scoreFor, setScoreFor] = useState<Customer | null>(null);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
