@@ -2,11 +2,14 @@
 // Uso: guarda obrigatória de 5 anos (Receita Federal — Art. 173 CTN / Art. 195 CF)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import JSZip from "https://esm.sh/jszip@3.10.1";
+import { uploadToBackupFolder } from "../_shared/googleDrive.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers":
+    "X-Backup-Count, X-Backup-Downloaded, X-Backup-Failed, X-Backup-Drive-Id, X-Backup-Drive-Link, X-Backup-Drive-Error",
 };
 
 Deno.serve(async (req) => {
@@ -178,6 +181,21 @@ Deno.serve(async (req) => {
     const blob = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
 
     const fname = `backup-fiscal-${startDate}_a_${endDate}.zip`;
+
+    // Upload pro Google Drive (Meu Drive > japa pesca 2026 > bekup)
+    let driveId = "";
+    let driveLink = "";
+    let driveError = "";
+    try {
+      const up = await uploadToBackupFolder(fname, blob, "application/zip");
+      driveId = up.id || "";
+      driveLink = up.webViewLink || "";
+      console.log(`✓ Drive upload: ${driveId} ${driveLink}`);
+    } catch (e) {
+      driveError = (e as Error).message;
+      console.error("Drive upload falhou:", e);
+    }
+
     return new Response(blob, {
       status: 200,
       headers: {
@@ -187,6 +205,9 @@ Deno.serve(async (req) => {
         "X-Backup-Count": String(manifest.length),
         "X-Backup-Downloaded": String(downloaded),
         "X-Backup-Failed": String(failed),
+        "X-Backup-Drive-Id": driveId,
+        "X-Backup-Drive-Link": driveLink,
+        "X-Backup-Drive-Error": driveError,
       },
     });
   } catch (err: any) {
