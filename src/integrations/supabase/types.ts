@@ -513,6 +513,48 @@ export type Database = {
           },
         ]
       }
+      customer_score_reason_presets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          emoji: string | null
+          id: string
+          is_active: boolean
+          label: string
+          points: number
+          reason: string
+          sign: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          points?: number
+          reason: string
+          sign?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          points?: number
+          reason?: string
+          sign?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_tiers: {
         Row: {
           allow_discount: boolean
