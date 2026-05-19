@@ -891,6 +891,7 @@ export function ProductEdit({ product, onUpdate, open: openProp, onOpenChange, h
             <ProductVariations
               variations={variations}
               onVariationsChange={setVariations}
+              productMinSalePrice={(product as any).min_sale_price ?? null}
             />
 
             <div className="space-y-2">
