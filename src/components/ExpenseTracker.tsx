@@ -128,8 +128,12 @@ export function ExpenseTracker() {
   const totals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = monthEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
-    return { fixed, variable, total: fixed + variable };
-  }, [monthEntries]);
+    const incomeSite = incomes.filter(i => i.source === "site").reduce((s, i) => s + i.total_amount, 0);
+    const incomePdv = incomes.filter(i => i.source === "pdv").reduce((s, i) => s + i.total_amount, 0);
+    const income = incomeSite + incomePdv;
+    const expensesTotal = fixed + variable;
+    return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
+  }, [monthEntries, incomes]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
