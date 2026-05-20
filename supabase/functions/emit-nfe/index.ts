@@ -462,14 +462,33 @@ serve(async (req) => {
     // ---------- CHAMADA FOCUS ----------
     const auth = btoa(`${focusToken}:`);
     const url = `${focusBaseUrl}/v2/nfe?ref=${encodeURIComponent(ref)}`;
-    const focusResp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const ac = new AbortController();
+    const focusTimeout = setTimeout(() => ac.abort(), 25000);
+    let focusResp: Response;
+    try {
+      focusResp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: ac.signal,
+      });
+    } catch (err) {
+      clearTimeout(focusTimeout);
+      const msg = (err as Error).name === 'AbortError'
+        ? 'Tempo de resposta da Focus excedido (25s). Tente novamente.'
+        : `Falha ao chamar Focus: ${(err as Error).message}`;
+      if (emission) {
+        await supabase.from('nfe_emissions').update({ status: 'error', error_message: msg }).eq('id', emission.id);
+      }
+      return new Response(
+        JSON.stringify({ error: msg }),
+        { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    clearTimeout(focusTimeout);
 
     const respText = await focusResp.text();
     let result: any;
