@@ -146,6 +146,7 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
+  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
