@@ -262,15 +262,78 @@ serve(async (req) => {
     const hasCpf = destCpf.length === 11;
     const hasCnpj = destCnpj.length === 14;
 
-    const missingClient: string[] = [];
-    if (!destNome) missingClient.push('nome');
-    if (!hasCpf && !hasCnpj) missingClient.push('CPF ou CNPJ');
-    if (!addr.logradouro || addr.logradouro === 'NAO INFORMADO') missingClient.push('logradouro');
-    if (!addr.numero) missingClient.push('número');
-    if (!addr.bairro) missingClient.push('bairro');
-    if (!addr.municipio) missingClient.push('município');
-    if (!addr.uf) missingClient.push('UF');
-    if (!addr.cep || addr.cep === '00000000' || addr.cep.length !== 8) missingClient.push('CEP');
+    const computeMissing = () => {
+      const m: string[] = [];
+      if (!destNome) m.push('nome');
+      if (!hasCpf && !hasCnpj) m.push('CPF ou CNPJ');
+      if (!addr.logradouro || addr.logradouro === 'NAO INFORMADO') m.push('logradouro');
+      if (!addr.numero) m.push('número');
+      if (!addr.bairro) m.push('bairro');
+      if (!addr.municipio) m.push('município');
+      if (!addr.uf) m.push('UF');
+      if (!addr.cep || addr.cep === '00000000' || addr.cep.length !== 8) m.push('CEP');
+      return m;
+    };
+
+    let missingClient = computeMissing();
+
+    // Fallback automático: se faltar endereço/CEP e o cliente tem CNPJ,
+    // consulta a Focus por CNPJ pra preencher os campos faltantes e
+    // grava de volta no cadastro do cliente para reaproveitar.
+    const needsAddress = missingClient.some((f) =>
+      ['logradouro', 'número', 'bairro', 'município', 'UF', 'CEP'].includes(f)
+    );
+    if (needsAddress && hasCnpj) {
+      try {
+        const isProducaoLookup = focusSettings.ambiente === 'producao';
+        const lookupToken = isProducaoLookup
+          ? Deno.env.get('FOCUS_NFE_TOKEN_PRINCIPAL')
+          : Deno.env.get('FOCUS_NFE_TOKEN_HOMOLOGACAO');
+        const lookupBase = isProducaoLookup
+          ? 'https://api.focusnfe.com.br'
+          : 'https://homologacao.focusnfe.com.br';
+        if (lookupToken) {
+          const lookupAuth = btoa(`${lookupToken}:`);
+          const ac = new AbortController();
+          const t = setTimeout(() => ac.abort(), 15000);
+          const r = await fetch(`${lookupBase}/v2/cnpjs/${destCnpj}?completo=1`, {
+            headers: { Authorization: `Basic ${lookupAuth}` },
+            signal: ac.signal,
+          }).catch(() => null);
+          clearTimeout(t);
+          if (r && r.ok) {
+            const d: any = await r.json().catch(() => ({}));
+            const end = d.endereco || {};
+            const fillIf = (cur: string, val: any) =>
+              (!cur || cur === 'NAO INFORMADO') && val ? String(val).trim() : cur;
+            addr.logradouro = fillIf(addr.logradouro, end.logradouro || d.logradouro);
+            addr.numero = fillIf(addr.numero, end.numero || d.numero);
+            addr.bairro = fillIf(addr.bairro, end.bairro || d.bairro);
+            addr.municipio = fillIf(addr.municipio, end.nome_municipio || end.municipio || d.municipio);
+            addr.uf = fillIf(addr.uf, end.uf || d.uf);
+            const cepFound = String(end.cep || d.cep || '').replace(/\D/g, '');
+            if ((!addr.cep || addr.cep.length !== 8) && cepFound.length === 8) addr.cep = cepFound;
+            if (!destNome) destNome = (d.razao_social || d.nome || '').trim();
+
+            // Persiste no cadastro do cliente para próximas emissões
+            if (order.customer_id) {
+              await supabase.from('customers').update({
+                street: addr.logradouro || null,
+                number: addr.numero || null,
+                neighborhood: addr.bairro || null,
+                municipio: addr.municipio || null,
+                uf: addr.uf || null,
+                cep: addr.cep || null,
+              }).eq('id', order.customer_id);
+            }
+            missingClient = computeMissing();
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback CNPJ lookup falhou:', (e as Error).message);
+      }
+    }
+
 
     if (missingClient.length > 0) {
       return new Response(
