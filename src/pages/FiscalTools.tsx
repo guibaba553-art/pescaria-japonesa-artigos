@@ -234,7 +234,7 @@ export default function FiscalTools() {
             </TabsTrigger>
             <TabsTrigger value="gastos">
               <Wallet className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Gastos</span>
+              <span className="hidden sm:inline">Gastos e Entradas</span>
             </TabsTrigger>
             <TabsTrigger value="nfe">
               <Receipt className="w-4 h-4 mr-2" />
@@ -276,10 +276,10 @@ export default function FiscalTools() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5" /> Controle de Gastos
+                  <Wallet className="w-5 h-5" /> Gastos e Entradas
                 </CardTitle>
                 <CardDescription>
-                  Cadastre custos fixos (recorrentes mês a mês) e variáveis (pontuais). Navegue pelos meses para ver o histórico completo.
+                  Visão consolidada do mês: entradas (vendas do site e PDV) e saídas (custos fixos e variáveis). Navegue pelos meses para ver o histórico completo.
                 </CardDescription>
               </CardHeader>
               <CardContent>
