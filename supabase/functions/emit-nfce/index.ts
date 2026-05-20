@@ -415,9 +415,21 @@ serve(async (req) => {
     }
 
     const auth = btoa(`${focusToken}:`);
+
+    // Wrapper com timeout (25s) por chamada à Focus, evitando que a função fique pendurada.
+    const focusFetch = async (url: string, init: RequestInit) => {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 25000);
+      try {
+        return await fetch(url, { ...init, signal: ac.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
     const sendToFocus = async (currentRef: string, currentPayload: Record<string, unknown>) => {
       const url = `${focusBaseUrl}/v2/nfce?ref=${encodeURIComponent(currentRef)}`;
-      const response = await fetch(url, {
+      const response = await focusFetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Basic ${auth}`,
@@ -439,7 +451,7 @@ serve(async (req) => {
 
     const fetchExistingNfce = async (existingRef: string) => {
       const url = `${focusBaseUrl}/v2/nfce/${encodeURIComponent(existingRef)}`;
-      const response = await fetch(url, {
+      const response = await focusFetch(url, {
         method: 'GET',
         headers: {
           Authorization: `Basic ${auth}`,
@@ -464,7 +476,7 @@ serve(async (req) => {
 
     let attempt = 1;
     let duplicityCount = 0;
-    const maxAttempts = 50;
+    const maxAttempts = 10;
 
     while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
       const normalizedError = normalize(result);
@@ -482,11 +494,13 @@ serve(async (req) => {
 
       if (isDuplicityError) {
         duplicityCount += 1;
+        // Salto agressivo já na 1ª duplicidade — evita ficar batendo número-a-número
+        // contra a SEFAZ quando a sequência local ficou para trás.
         const jumpSize =
-          duplicityCount >= 30 ? 20 :
-          duplicityCount >= 15 ? 10 :
-          duplicityCount >= 8 ? 5 :
-          1;
+          duplicityCount >= 5 ? 100 :
+          duplicityCount >= 3 ? 50 :
+          duplicityCount >= 2 ? 20 :
+          10;
 
         await reserveNfceNumber(currentNfceNumber + jumpSize);
       }
