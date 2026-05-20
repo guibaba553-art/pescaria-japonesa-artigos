@@ -226,17 +226,23 @@ serve(async (req) => {
     let destIE = '';
     const addr = parseAddress(order.shipping_address);
 
-    // Prioridade 1: campos estruturados gravados no próprio pedido
-    if (order.shipping_street) addr.logradouro = order.shipping_street;
-    if (order.shipping_number) addr.numero = order.shipping_number;
-    if (order.shipping_complement) addr.complemento = order.shipping_complement;
-    if (order.shipping_neighborhood) addr.bairro = order.shipping_neighborhood;
-    if (order.shipping_city) addr.municipio = order.shipping_city;
-    if (order.shipping_uf) addr.uf = order.shipping_uf;
-    if (order.shipping_cep) addr.cep = cleanDoc(order.shipping_cep);
-    if (order.shipping_recipient_name) destNome = order.shipping_recipient_name.trim();
+    // Helper: trata "00000000" e strings vazias como ausente
+    const isBlank = (v?: string | null) => {
+      const s = String(v || '').trim();
+      return !s || s === '00000000' || s.toUpperCase() === 'NAO INFORMADO';
+    };
 
-    // Prioridade 2: dados estruturados do customer (CPF/CNPJ/IE + endereço cadastral)
+    // Prioridade 1: campos estruturados gravados no próprio pedido
+    if (!isBlank(order.shipping_street)) addr.logradouro = order.shipping_street;
+    if (!isBlank(order.shipping_number)) addr.numero = order.shipping_number;
+    if (!isBlank(order.shipping_complement)) addr.complemento = order.shipping_complement;
+    if (!isBlank(order.shipping_neighborhood)) addr.bairro = order.shipping_neighborhood;
+    if (!isBlank(order.shipping_city)) addr.municipio = order.shipping_city;
+    if (!isBlank(order.shipping_uf)) addr.uf = order.shipping_uf;
+    if (!isBlank(order.shipping_cep)) addr.cep = cleanDoc(order.shipping_cep);
+    if (!isBlank(order.shipping_recipient_name)) destNome = (order.shipping_recipient_name || '').trim();
+
+    // Prioridade 2: dados estruturados do customer
     if (order.customer_id) {
       const { data: cust } = await supabase
         .from('customers')
@@ -248,16 +254,16 @@ serve(async (req) => {
         destCpf = cleanDoc(cust.cpf);
         destCnpj = cleanDoc(cust.cnpj);
         destIE = (cust.inscricao_estadual || '').trim();
-        // Endereço do customer só preenche o que o pedido não trouxe (pedido > cadastro)
-        if (!order.shipping_street && cust.street) addr.logradouro = cust.street;
-        if (!order.shipping_number && cust.number) addr.numero = cust.number;
-        if (!order.shipping_neighborhood && cust.neighborhood) addr.bairro = cust.neighborhood;
-        if (!order.shipping_cep && cust.cep) addr.cep = cleanDoc(cust.cep);
-        if (!order.shipping_city && cust.municipio) addr.municipio = cust.municipio;
-        if (!order.shipping_uf && cust.uf) addr.uf = cust.uf;
-        if (!order.shipping_complement && cust.complemento) addr.complemento = cust.complemento;
+        if (isBlank(addr.logradouro) && !isBlank(cust.street)) addr.logradouro = cust.street!;
+        if (isBlank(addr.numero) && !isBlank(cust.number)) addr.numero = cust.number!;
+        if (isBlank(addr.bairro) && !isBlank(cust.neighborhood)) addr.bairro = cust.neighborhood!;
+        if (isBlank(addr.cep) && !isBlank(cust.cep)) addr.cep = cleanDoc(cust.cep);
+        if (isBlank(addr.municipio) && !isBlank(cust.municipio)) addr.municipio = cust.municipio!;
+        if (isBlank(addr.uf) && !isBlank(cust.uf)) addr.uf = cust.uf!;
+        if (isBlank(addr.complemento) && !isBlank(cust.complemento)) addr.complemento = cust.complemento!;
       }
     }
+
 
     const hasCpf = destCpf.length === 11;
     const hasCnpj = destCnpj.length === 14;
