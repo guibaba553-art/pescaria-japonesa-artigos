@@ -340,6 +340,57 @@ serve(async (req) => {
       }
     }
 
+    // Fallback ViaCEP: se temos CEP mas faltam logradouro/bairro/município/UF,
+    // consulta ViaCEP (gratuito) e completa. Funciona pra CPF e CNPJ.
+    const stillNeedsStreetParts = () => {
+      const m = computeMissing();
+      return m.some((f) => ['logradouro', 'bairro', 'município', 'UF'].includes(f));
+    };
+    if (stillNeedsStreetParts() && addr.cep && addr.cep.length === 8) {
+      try {
+        const ac = new AbortController();
+        const t = setTimeout(() => ac.abort(), 8000);
+        const r = await fetch(`https://viacep.com.br/ws/${addr.cep}/json/`, { signal: ac.signal }).catch(() => null);
+        clearTimeout(t);
+        if (r && r.ok) {
+          const v: any = await r.json().catch(() => ({}));
+          if (!v.erro) {
+            if (isBlank(addr.logradouro) && v.logradouro) addr.logradouro = String(v.logradouro).trim();
+            if (isBlank(addr.bairro) && v.bairro) addr.bairro = String(v.bairro).trim();
+            if (isBlank(addr.municipio) && v.localidade) addr.municipio = String(v.localidade).trim();
+            if (isBlank(addr.uf) && v.uf) addr.uf = String(v.uf).trim().toUpperCase();
+            if (isBlank(addr.complemento) && v.complemento) addr.complemento = String(v.complemento).trim();
+
+            if (order.customer_id) {
+              await supabase.from('customers').update({
+                street: addr.logradouro || null,
+                neighborhood: addr.bairro || null,
+                municipio: addr.municipio || null,
+                uf: addr.uf || null,
+                complemento: addr.complemento || null,
+              }).eq('id', order.customer_id);
+            }
+            missingClient = computeMissing();
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback ViaCEP falhou:', (e as Error).message);
+      }
+    }
+
+    // Último recurso: número fica "S/N" quando o resto do endereço está completo
+    if (missingClient.includes('número')
+      && !isBlank(addr.logradouro) && !isBlank(addr.bairro)
+      && !isBlank(addr.municipio) && !isBlank(addr.uf) && addr.cep?.length === 8) {
+      addr.numero = 'S/N';
+      if (order.customer_id) {
+        await supabase.from('customers').update({ number: 'S/N' }).eq('id', order.customer_id);
+      }
+      missingClient = computeMissing();
+    }
+
+
+
 
     if (missingClient.length > 0) {
       return new Response(
