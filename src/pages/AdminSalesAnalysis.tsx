@@ -146,6 +146,7 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
+  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('manual');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
@@ -156,6 +157,7 @@ export default function AdminSalesAnalysis() {
     if (!invoiceTarget) return;
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
+    setCustomerMode('manual');
     setChangingCustomer(false);
   }, [invoiceTarget]);
 
@@ -1482,7 +1484,34 @@ export default function AdminSalesAnalysis() {
                           <div className="text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">
                             Nota será emitida para
                           </div>
-                          {invoiceCustomer && !changingCustomer ? (
+                          <div className="mb-3 inline-flex rounded-md border border-border bg-background p-1">
+                            <Button
+                              type="button"
+                              variant={customerMode === 'auto' ? 'secondary' : 'ghost'}
+                              size="sm"
+                              className="h-8"
+                              onClick={() => {
+                                setCustomerMode('auto');
+                                setChangingCustomer(false);
+                              }}
+                            >
+                              Automático
+                            </Button>
+                            <Button
+                              type="button"
+                              variant={customerMode === 'manual' ? 'secondary' : 'ghost'}
+                              size="sm"
+                              className="h-8"
+                              onClick={() => {
+                                setCustomerMode('manual');
+                                setChangingCustomer(true);
+                              }}
+                            >
+                              Manual
+                            </Button>
+                          </div>
+
+                          {customerMode === 'auto' && invoiceCustomer && !changingCustomer ? (
                             <div className="space-y-2">
                               <div className="font-bold text-base text-foreground">
                                 {invoiceCustomer.company_name || invoiceCustomer.full_name}
@@ -1537,7 +1566,9 @@ export default function AdminSalesAnalysis() {
                                 </p>
                               )}
                               <p className="text-xs text-muted-foreground">
-                                {changingCustomer ? 'Selecione outro cliente:' : 'Selecione um cliente cadastrado para vincular antes de emitir a nota:'}
+                                {changingCustomer || customerMode === 'manual'
+                                  ? 'Selecione outro cliente:'
+                                  : 'Selecione um cliente cadastrado para vincular antes de emitir a nota:'}
                               </p>
                               <CustomerSearchCombobox
                                 onSelect={handleLinkCustomer}
@@ -1551,7 +1582,10 @@ export default function AdminSalesAnalysis() {
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setChangingCustomer(false)}
+                                  onClick={() => {
+                                    setChangingCustomer(false);
+                                    setCustomerMode('auto');
+                                  }}
                                   disabled={linkingCustomer}
                                 >
                                   Cancelar
