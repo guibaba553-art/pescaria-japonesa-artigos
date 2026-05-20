@@ -141,18 +141,19 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
       .subscribe();
 
     // Fallback: refetch a cada 30s e quando a aba volta ao foco
-    const interval = setInterval(loadNFEs, 30000);
+    const interval = setInterval(() => loadNFEs(), 30000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') loadNFEs();
     };
+    const onFocus = () => loadNFEs();
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', loadNFEs);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', loadNFEs);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
