@@ -50,11 +50,21 @@ interface MonthlyEntry {
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+interface IncomeEntry {
+  id: string;
+  source: "site" | "pdv";
+  created_at: string;
+  total_amount: number;
+  customer_name?: string | null;
+  payment_method?: string | null;
+}
+
 export function ExpenseTracker() {
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [overrides, setOverrides] = useState<Override[]>([]);
+  const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -63,15 +73,32 @@ export function ExpenseTracker() {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: exp }, { data: ov }] = await Promise.all([
+    const monthStart = startOfMonth(currentMonth).toISOString();
+    const monthEnd = endOfMonth(currentMonth).toISOString();
+    const [{ data: exp }, { data: ov }, { data: ord }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
+      supabase
+        .from("orders")
+        .select("id, source, created_at, total_amount, customer_name, payment_method, status")
+        .gte("created_at", monthStart)
+        .lte("created_at", monthEnd)
+        .neq("status", "cancelado" as any)
+        .order("created_at", { ascending: false }),
     ]);
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
+    setIncomes(((ord ?? []) as any[]).map((o) => ({
+      id: o.id,
+      source: o.source === "pdv" ? "pdv" : "site",
+      created_at: o.created_at,
+      total_amount: Number(o.total_amount || 0),
+      customer_name: o.customer_name,
+      payment_method: o.payment_method,
+    })));
     setLoading(false);
   };
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [currentMonth]);
 
   // Calcular entradas do mês
   const monthEntries: MonthlyEntry[] = useMemo(() => {
