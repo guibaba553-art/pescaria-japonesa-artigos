@@ -1,0 +1,1 @@
+UPDATE public.focus_nfe_settings SET proximo_numero_nfce = GREATEST(proximo_numero_nfce, 2100), updated_at = now();
