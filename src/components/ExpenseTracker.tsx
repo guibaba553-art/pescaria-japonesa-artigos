@@ -217,13 +217,29 @@ export function ExpenseTracker() {
       </Card>
 
       {/* KPIs do mês */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+              <span>Entradas Site</span><TrendingUp className="w-4 h-4" />
+            </div>
+            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(totals.incomeSite)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+              <span>Entradas PDV</span><TrendingUp className="w-4 h-4" />
+            </div>
+            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(totals.incomePdv)}</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Custos fixos</span><Repeat className="w-4 h-4" />
             </div>
-            <div className="text-2xl font-bold text-blue-600 mt-2">{fmtBRL(totals.fixed)}</div>
+            <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(totals.fixed)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -231,24 +247,30 @@ export function ExpenseTracker() {
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Custos variáveis</span><Zap className="w-4 h-4" />
             </div>
-            <div className="text-2xl font-bold text-orange-600 mt-2">{fmtBRL(totals.variable)}</div>
+            <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(totals.variable)}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cn(totals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Total do mês</span><Wallet className="w-4 h-4" />
+              <span>Saldo do mês</span><Wallet className="w-4 h-4" />
             </div>
-            <div className="text-2xl font-bold text-red-600 mt-2">{fmtBRL(totals.total)}</div>
+            <div className={cn("text-xl font-bold mt-2", totals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
+              {fmtBRL(totals.balance)}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-1">
+              Entradas {fmtBRL(totals.income)} − Saídas {fmtBRL(totals.total)}
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">Todas ({monthEntries.length})</TabsTrigger>
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="all">Saídas ({monthEntries.length})</TabsTrigger>
           <TabsTrigger value="fixed">Fixas ({monthEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
           <TabsTrigger value="variable">Variáveis ({monthEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
+          <TabsTrigger value="incomes">Entradas ({incomes.length})</TabsTrigger>
         </TabsList>
         {(["all", "fixed", "variable"] as const).map(tab => (
           <TabsContent key={tab} value={tab}>
@@ -262,7 +284,44 @@ export function ExpenseTracker() {
             />
           </TabsContent>
         ))}
+        <TabsContent value="incomes">
+          <IncomeList incomes={incomes} loading={loading} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function IncomeList({ incomes, loading }: { incomes: IncomeEntry[]; loading: boolean }) {
+  if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
+  if (incomes.length === 0) return (
+    <Card><CardContent className="p-8 text-center text-muted-foreground">
+      Nenhuma entrada (venda) neste mês.
+    </CardContent></Card>
+  );
+  return (
+    <div className="space-y-2">
+      {incomes.map(i => (
+        <Card key={i.id} className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant={i.source === "pdv" ? "default" : "secondary"} className="text-[10px]">
+                  {i.source === "pdv" ? "PDV" : "Site"}
+                </Badge>
+                {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
+              </div>
+              <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {format(parseISO(i.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })} • Pedido #{i.id.slice(0, 8)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-emerald-600">{fmtBRL(i.total_amount)}</div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
