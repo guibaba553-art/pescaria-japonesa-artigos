@@ -769,23 +769,42 @@ export function PriceFormation() {
                     <span className="font-bold">{fmt(liveTotalCost)}</span>
                   </div>
 
-                  <div>
-                    <Label htmlFor="pf-min-sale">Valor mínimo de venda — Site (R$)</Label>
-                    <Input
-                      id="pf-min-sale"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={editMinSale}
-                      onChange={(e) => setEditMinSale(e.target.value)}
-                      placeholder="0,00"
-                    />
-                    <div className="text-[11px] text-muted-foreground mt-1">
-                      Preço exibido no site (loja online). Independente do valor do PDV.
-                      Se vazio, o site usa o "Valor de venda".
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="pf-site-margin">Margem do Site (%)</Label>
+                      <Input
+                        id="pf-site-margin"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editSiteMarginPct}
+                        onChange={(e) => handleSiteMarginChange(e.target.value)}
+                        placeholder="0,00"
+                      />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        Custo total + esta % = Valor mínimo do site.
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="pf-min-sale">Valor mínimo de venda — Site (R$)</Label>
+                      <Input
+                        id="pf-min-sale"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editMinSale}
+                        onChange={(e) => handleMinSaleChange(e.target.value)}
+                        placeholder="0,00"
+                      />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        Preço exibido no site (loja online). Independente do PDV.
+                        Se vazio, o site usa o "Valor de venda".
+                      </div>
                     </div>
                   </div>
+
 
                   <div>
                     <Label htmlFor="pf-margin">Margem de lucro (%)</Label>
