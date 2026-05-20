@@ -415,9 +415,21 @@ serve(async (req) => {
     }
 
     const auth = btoa(`${focusToken}:`);
+
+    // Wrapper com timeout (25s) por chamada à Focus, evitando que a função fique pendurada.
+    const focusFetch = async (url: string, init: RequestInit) => {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 25000);
+      try {
+        return await fetch(url, { ...init, signal: ac.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
     const sendToFocus = async (currentRef: string, currentPayload: Record<string, unknown>) => {
       const url = `${focusBaseUrl}/v2/nfce?ref=${encodeURIComponent(currentRef)}`;
-      const response = await fetch(url, {
+      const response = await focusFetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Basic ${auth}`,
@@ -439,7 +451,7 @@ serve(async (req) => {
 
     const fetchExistingNfce = async (existingRef: string) => {
       const url = `${focusBaseUrl}/v2/nfce/${encodeURIComponent(existingRef)}`;
-      const response = await fetch(url, {
+      const response = await focusFetch(url, {
         method: 'GET',
         headers: {
           Authorization: `Basic ${auth}`,
