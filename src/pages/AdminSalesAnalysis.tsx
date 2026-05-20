@@ -146,6 +146,7 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
+  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('manual');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
@@ -156,6 +157,7 @@ export default function AdminSalesAnalysis() {
     if (!invoiceTarget) return;
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
+    setCustomerMode('manual');
     setChangingCustomer(false);
   }, [invoiceTarget]);
 
