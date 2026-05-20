@@ -94,6 +94,7 @@ export function PriceFormation() {
   const [editOpCostPct, setEditOpCostPct] = useState("");
   const [editTaxPct, setEditTaxPct] = useState("");
   const [editMinSale, setEditMinSale] = useState("");
+  const [editSiteMarginPct, setEditSiteMarginPct] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Group manager
