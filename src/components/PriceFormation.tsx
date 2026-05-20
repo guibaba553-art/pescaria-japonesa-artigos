@@ -94,6 +94,7 @@ export function PriceFormation() {
   const [editOpCostPct, setEditOpCostPct] = useState("");
   const [editTaxPct, setEditTaxPct] = useState("");
   const [editMinSale, setEditMinSale] = useState("");
+  const [editSiteMarginPct, setEditSiteMarginPct] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Group manager
@@ -210,6 +211,17 @@ export function PriceFormation() {
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
       setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
+      // Margem do site derivada do min_sale_price vs custo total atual
+      const fPct = Number(selected.freight_pct ?? 0);
+      const oPct = Number(selected.op_cost_pct ?? 0);
+      const tPct = Number(selected.tax_pct ?? 0);
+      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
+      if (selected.min_sale_price != null && totalCost > 0) {
+        const m = ((Number(selected.min_sale_price) - totalCost) / totalCost) * 100;
+        setEditSiteMarginPct(m.toFixed(2));
+      } else {
+        setEditSiteMarginPct("");
+      }
     }
   }, [selected]);
 
@@ -285,6 +297,30 @@ export function PriceFormation() {
     if (livePrice > 0) {
       const m = ((livePrice - c) / livePrice) * 100;
       setEditMargin(m.toFixed(2));
+    }
+  };
+
+  // Margem do Site (%) → recalcula Valor mínimo de venda do site
+  // Fórmula: min_sale = custo_total * (1 + margem/100)
+  const handleSiteMarginChange = (v: string) => {
+    setEditSiteMarginPct(v);
+    const m = parseNum(v);
+    if (m < 0) return;
+    const newMin = liveTotalCost * (1 + m / 100);
+    if (isFinite(newMin) && newMin > 0) {
+      setEditMinSale(newMin.toFixed(2));
+    }
+  };
+
+  // Quando o usuário edita manualmente o Valor mínimo, derivar a margem implícita
+  const handleMinSaleChange = (v: string) => {
+    setEditMinSale(v);
+    const min = parseNum(v);
+    if (liveTotalCost > 0 && min > 0) {
+      const m = ((min - liveTotalCost) / liveTotalCost) * 100;
+      setEditSiteMarginPct(m.toFixed(2));
+    } else if (!v) {
+      setEditSiteMarginPct("");
     }
   };
 
@@ -733,23 +769,42 @@ export function PriceFormation() {
                     <span className="font-bold">{fmt(liveTotalCost)}</span>
                   </div>
 
-                  <div>
-                    <Label htmlFor="pf-min-sale">Valor mínimo de venda — Site (R$)</Label>
-                    <Input
-                      id="pf-min-sale"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
-                      value={editMinSale}
-                      onChange={(e) => setEditMinSale(e.target.value)}
-                      placeholder="0,00"
-                    />
-                    <div className="text-[11px] text-muted-foreground mt-1">
-                      Preço exibido no site (loja online). Independente do valor do PDV.
-                      Se vazio, o site usa o "Valor de venda".
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="pf-site-margin">Margem do Site (%)</Label>
+                      <Input
+                        id="pf-site-margin"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editSiteMarginPct}
+                        onChange={(e) => handleSiteMarginChange(e.target.value)}
+                        placeholder="0,00"
+                      />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        Custo total + esta % = Valor mínimo do site.
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="pf-min-sale">Valor mínimo de venda — Site (R$)</Label>
+                      <Input
+                        id="pf-min-sale"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        value={editMinSale}
+                        onChange={(e) => handleMinSaleChange(e.target.value)}
+                        placeholder="0,00"
+                      />
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        Preço exibido no site (loja online). Independente do PDV.
+                        Se vazio, o site usa o "Valor de venda".
+                      </div>
                     </div>
                   </div>
+
 
                   <div>
                     <Label htmlFor="pf-margin">Margem de lucro (%)</Label>
