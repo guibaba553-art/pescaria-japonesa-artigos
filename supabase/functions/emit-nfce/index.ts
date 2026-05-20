@@ -476,7 +476,7 @@ serve(async (req) => {
 
     let attempt = 1;
     let duplicityCount = 0;
-    const maxAttempts = 50;
+    const maxAttempts = 10;
 
     while (((!response.ok) || String(result.status || '').toLowerCase() === 'erro_autorizacao') && attempt < maxAttempts) {
       const normalizedError = normalize(result);
@@ -494,11 +494,13 @@ serve(async (req) => {
 
       if (isDuplicityError) {
         duplicityCount += 1;
+        // Salto agressivo já na 1ª duplicidade — evita ficar batendo número-a-número
+        // contra a SEFAZ quando a sequência local ficou para trás.
         const jumpSize =
-          duplicityCount >= 30 ? 20 :
-          duplicityCount >= 15 ? 10 :
-          duplicityCount >= 8 ? 5 :
-          1;
+          duplicityCount >= 5 ? 100 :
+          duplicityCount >= 3 ? 50 :
+          duplicityCount >= 2 ? 20 :
+          10;
 
         await reserveNfceNumber(currentNfceNumber + jumpSize);
       }
