@@ -211,6 +211,17 @@ export function PriceFormation() {
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
       setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
+      // Margem do site derivada do min_sale_price vs custo total atual
+      const fPct = Number(selected.freight_pct ?? 0);
+      const oPct = Number(selected.op_cost_pct ?? 0);
+      const tPct = Number(selected.tax_pct ?? 0);
+      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
+      if (selected.min_sale_price != null && totalCost > 0) {
+        const m = ((Number(selected.min_sale_price) - totalCost) / totalCost) * 100;
+        setEditSiteMarginPct(m.toFixed(2));
+      } else {
+        setEditSiteMarginPct("");
+      }
     }
   }, [selected]);
 
