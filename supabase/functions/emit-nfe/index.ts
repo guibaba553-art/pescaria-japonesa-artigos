@@ -33,15 +33,20 @@ function parseAddress(raw: string): {
     const ufIdx = parts.findIndex((p) => p.toUpperCase() === ufMatch[1]);
     if (ufIdx > 0) municipio = parts[ufIdx - 1];
   }
-  if (!municipio) municipio = parts[3] || parts[2] || 'CUIABA';
+  // Se não conseguimos identificar um município com confiança a partir da string,
+  // deixamos VAZIO para que os dados estruturados do cliente possam preencher.
+  // (Antes caía num fallback "CUIABA" que sobrescrevia clientes de outras cidades.)
+
+  // Detecta placeholders como "Venda Presencial" — não devem virar logradouro real
+  const looksLikePlaceholder = parts.length <= 1 && !ufMatch && !cepMatch;
 
   return {
-    logradouro: parts[0] || 'NAO INFORMADO',
-    numero: (parts[1] || 'S/N').replace(/\D/g, '') || 'S/N',
-    bairro: parts[2] || 'CENTRO',
+    logradouro: looksLikePlaceholder ? '' : (parts[0] || ''),
+    numero: looksLikePlaceholder ? '' : ((parts[1] || '').replace(/\D/g, '') || ''),
+    bairro: looksLikePlaceholder ? '' : (parts[2] || ''),
     municipio,
-    uf: ufMatch ? ufMatch[1] : 'MT',
-    cep: cepMatch ? cleanDoc(cepMatch[1]) : '00000000',
+    uf: ufMatch ? ufMatch[1] : '',
+    cep: cepMatch ? cleanDoc(cepMatch[1]) : '',
   };
 }
 
