@@ -61,50 +61,63 @@ export function EmployeesManagement() {
   const [newEmail, setNewEmail] = useState('');
   const [adding, setAdding] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
-    const { data: roles, error: rolesErr } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('role', 'employee');
+  const isNetworkError = (msg: string) =>
+    /failed to fetch|networkerror|network/i.test(msg);
 
-    if (rolesErr) {
-      toast({ title: 'Erro', description: rolesErr.message, variant: 'destructive' });
+  const load = async (attempt = 0) => {
+    if (attempt === 0) setLoading(true);
+    try {
+      const { data: roles, error: rolesErr } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'employee');
+
+      if (rolesErr) throw rolesErr;
+
+      const ids = (roles || []).map((r) => r.user_id);
+      if (ids.length === 0) {
+        setEmployees([]);
+        setLoading(false);
+        return;
+      }
+
+      const [profilesRes, permsRes] = await Promise.all([
+        supabase.from('profiles').select('id, full_name').in('id', ids),
+        supabase.from('employee_permissions').select('*').in('user_id', ids),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
+      if (permsRes.error) throw permsRes.error;
+      const profiles = profilesRes.data;
+      const perms = permsRes.data;
+
+      const rows: EmployeeRow[] = ids.map((id) => {
+        const profile = profiles?.find((p) => p.id === id);
+        const perm = perms?.find((p: any) => p.user_id === id);
+        const defaults = defaultPerms();
+        return {
+          user_id: id,
+          full_name: profile?.full_name ?? null,
+          can_access_pdv: perm?.can_access_pdv ?? defaults.can_access_pdv,
+          can_access_catalog: perm?.can_access_catalog ?? defaults.can_access_catalog,
+          can_access_cash_register: perm?.can_access_cash_register ?? defaults.can_access_cash_register,
+          can_access_dashboard: perm?.can_access_dashboard ?? defaults.can_access_dashboard,
+          can_access_orders: perm?.can_access_orders ?? defaults.can_access_orders,
+          can_access_sales_analysis: perm?.can_access_sales_analysis ?? defaults.can_access_sales_analysis,
+          can_access_triagem: perm?.can_access_triagem ?? defaults.can_access_triagem,
+          can_access_fiscal: perm?.can_access_fiscal ?? defaults.can_access_fiscal,
+        };
+      });
+      setEmployees(rows);
       setLoading(false);
-      return;
-    }
-
-    const ids = (roles || []).map((r) => r.user_id);
-    if (ids.length === 0) {
-      setEmployees([]);
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      if (isNetworkError(msg) && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+        return load(attempt + 1);
+      }
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
       setLoading(false);
-      return;
     }
-
-    const [{ data: profiles }, { data: perms }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name').in('id', ids),
-      supabase.from('employee_permissions').select('*').in('user_id', ids),
-    ]);
-
-    const rows: EmployeeRow[] = ids.map((id) => {
-      const profile = profiles?.find((p) => p.id === id);
-      const perm = perms?.find((p: any) => p.user_id === id);
-      const defaults = defaultPerms();
-      return {
-        user_id: id,
-        full_name: profile?.full_name ?? null,
-        can_access_pdv: perm?.can_access_pdv ?? defaults.can_access_pdv,
-        can_access_catalog: perm?.can_access_catalog ?? defaults.can_access_catalog,
-        can_access_cash_register: perm?.can_access_cash_register ?? defaults.can_access_cash_register,
-        can_access_dashboard: perm?.can_access_dashboard ?? defaults.can_access_dashboard,
-        can_access_orders: perm?.can_access_orders ?? defaults.can_access_orders,
-        can_access_sales_analysis: perm?.can_access_sales_analysis ?? defaults.can_access_sales_analysis,
-        can_access_triagem: perm?.can_access_triagem ?? defaults.can_access_triagem,
-        can_access_fiscal: perm?.can_access_fiscal ?? defaults.can_access_fiscal,
-      };
-    });
-    setEmployees(rows);
-    setLoading(false);
   };
 
   useEffect(() => {
