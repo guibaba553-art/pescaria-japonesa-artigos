@@ -405,12 +405,28 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
 
   const categories = type === "fixed" ? CATEGORIES_FIXED : CATEGORIES_VARIABLE;
 
+  const parseBRL = (raw: string): number => {
+    if (!raw) return NaN;
+    let s = String(raw).trim().replace(/R\$\s?/gi, "").replace(/\s/g, "");
+    const hasComma = s.includes(",");
+    const hasDot = s.includes(".");
+    if (hasComma && hasDot) {
+      // Formato BR "1.500,50" → remove pontos (milhar) e troca vírgula por ponto
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else if (hasComma) {
+      s = s.replace(",", ".");
+    }
+    // Mantém apenas dígitos, ponto e sinal
+    s = s.replace(/[^0-9.\-]/g, "");
+    return Number(s);
+  };
+
   const handleSave = async () => {
     if (!description.trim() || !category || !amount) {
       return toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
     }
-    const amountN = Number(amount.replace(",", "."));
-    if (isNaN(amountN) || amountN < 0) return toast({ title: "Valor inválido", variant: "destructive" });
+    const amountN = parseBRL(amount);
+    if (isNaN(amountN) || amountN < 0) return toast({ title: "Valor inválido", description: `Não consegui interpretar "${amount}". Use vírgula como decimal, ex: 1500,50`, variant: "destructive" });
     setSaving(true);
     const payload = {
       type, category, description: description.trim(), amount: amountN,
