@@ -289,6 +289,30 @@ export function PriceFormation() {
     }
   };
 
+  // Margem do Site (%) → recalcula Valor mínimo de venda do site
+  // Fórmula: min_sale = custo_total * (1 + margem/100)
+  const handleSiteMarginChange = (v: string) => {
+    setEditSiteMarginPct(v);
+    const m = parseNum(v);
+    if (m < 0) return;
+    const newMin = liveTotalCost * (1 + m / 100);
+    if (isFinite(newMin) && newMin > 0) {
+      setEditMinSale(newMin.toFixed(2));
+    }
+  };
+
+  // Quando o usuário edita manualmente o Valor mínimo, derivar a margem implícita
+  const handleMinSaleChange = (v: string) => {
+    setEditMinSale(v);
+    const min = parseNum(v);
+    if (liveTotalCost > 0 && min > 0) {
+      const m = ((min - liveTotalCost) / liveTotalCost) * 100;
+      setEditSiteMarginPct(m.toFixed(2));
+    } else if (!v) {
+      setEditSiteMarginPct("");
+    }
+  };
+
   const handleSave = async () => {
     if (!selected) return;
     // O preço real (catálogo/PDV) é sempre o livePrice calculado.
