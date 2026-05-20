@@ -300,6 +300,8 @@ export default function AdminSalesAnalysis() {
       const fromIso = period.from.toISOString();
       const toIso = period.to.toISOString();
 
+      console.log('[SalesAnalysis] fetch start', { fromIso, toIso, silent });
+
       const [ordersRes, savedRes, nfeRes] = await Promise.all([
         supabase
           .from('orders')
@@ -316,9 +318,15 @@ export default function AdminSalesAnalysis() {
           .gte('created_at', fromIso).lte('created_at', toIso),
       ]);
 
-      if (ordersRes.error) throw ordersRes.error;
-      if (savedRes.error) throw savedRes.error;
-      if (nfeRes.error) throw nfeRes.error;
+      console.log('[SalesAnalysis] fetch done', {
+        orders: { n: ordersRes.data?.length, err: ordersRes.error?.message },
+        saved: { n: savedRes.data?.length, err: savedRes.error?.message },
+        nfe: { n: nfeRes.data?.length, err: nfeRes.error?.message },
+      });
+
+      if (ordersRes.error) throw new Error('orders → ' + ordersRes.error.message);
+      if (savedRes.error) throw new Error('saved_sales → ' + savedRes.error.message);
+      if (nfeRes.error) throw new Error('nfe_emissions → ' + nfeRes.error.message);
 
       const unified: UnifiedRow[] = [];
 
