@@ -157,6 +157,8 @@ export default function AdminSalesAnalysis() {
     if (!invoiceTarget) return;
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
+    setCustomerMode('auto');
+    setChangingCustomer(false);
   }, [invoiceTarget]);
 
   // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
