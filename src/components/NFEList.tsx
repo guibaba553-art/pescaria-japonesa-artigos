@@ -141,22 +141,23 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
       .subscribe();
 
     // Fallback: refetch a cada 30s e quando a aba volta ao foco
-    const interval = setInterval(loadNFEs, 30000);
+    const interval = setInterval(() => loadNFEs(), 30000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') loadNFEs();
     };
+    const onFocus = () => loadNFEs();
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', loadNFEs);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', loadNFEs);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
-  const loadNFEs = async () => {
+  const loadNFEs = async (attempt = 0) => {
     try {
       const { data, error } = await supabase
         .from('nfe_emissions')
@@ -166,11 +167,23 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
       if (error) throw error;
       setNfes(data || []);
     } catch (error: any) {
-      toast({
-        title: 'Erro ao carregar NF-es',
-        description: error.message,
-        variant: 'destructive',
-      });
+      const msg = String(error?.message || '');
+      const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
+      // Retry silencioso até 3x para falhas transitórias de rede
+      if (isNetwork && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        return loadNFEs(attempt + 1);
+      }
+      // Só exibe toast se não for falha de rede transitória
+      if (!isNetwork) {
+        toast({
+          title: 'Erro ao carregar NF-es',
+          description: msg,
+          variant: 'destructive',
+        });
+      } else {
+        console.warn('[NFEList] Falha de rede ao carregar NF-es (silenciada):', msg);
+      }
     } finally {
       setLoading(false);
     }
