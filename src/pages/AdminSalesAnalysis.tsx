@@ -146,6 +146,7 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
+  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('auto');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
@@ -156,6 +157,8 @@ export default function AdminSalesAnalysis() {
     if (!invoiceTarget) return;
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
+    setCustomerMode('auto');
+    setChangingCustomer(false);
   }, [invoiceTarget]);
 
   // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
@@ -1474,14 +1477,32 @@ export default function AdminSalesAnalysis() {
                       {/* Destinatário */}
                       {invoiceTarget && (invoiceTarget.kind === 'order' || invoiceTarget.kind === 'saved') && (
                         <div className={`mt-3 p-3 rounded-lg text-sm border ${
-                          invoiceCustomer
+                          customerMode === 'auto' && invoiceCustomer
                             ? 'bg-emerald-500/5 border-emerald-500/40'
                             : 'bg-amber-500/5 border-amber-500/40'
                         }`}>
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">
-                            Nota será emitida para
+                          <div className="flex items-center justify-between mb-2 gap-2">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              Nota será emitida para
+                            </div>
+                            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+                              <button
+                                type="button"
+                                onClick={() => { setCustomerMode('auto'); setChangingCustomer(false); }}
+                                className={`px-2.5 py-1 ${customerMode === 'auto' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+                              >
+                                Automático
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setCustomerMode('manual'); setChangingCustomer(true); }}
+                                className={`px-2.5 py-1 border-l border-border ${customerMode === 'manual' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}
+                              >
+                                Manual
+                              </button>
+                            </div>
                           </div>
-                          {invoiceCustomer && !changingCustomer ? (
+                          {customerMode === 'auto' && invoiceCustomer && !changingCustomer ? (
                             <div className="space-y-2">
                               <div className="font-bold text-base text-foreground">
                                 {invoiceCustomer.company_name || invoiceCustomer.full_name}
