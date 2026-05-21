@@ -755,7 +755,7 @@ export function PriceFormation() {
                         min="0"
                         inputMode="decimal"
                         value={editFreightPct}
-                        onChange={(e) => setEditFreightPct(e.target.value)}
+                        onChange={(e) => handleFreightPctChange(e.target.value)}
                         placeholder="0,00"
                       />
                       <div className="text-[11px] text-muted-foreground mt-1">
