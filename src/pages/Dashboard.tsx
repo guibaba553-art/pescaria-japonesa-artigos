@@ -177,7 +177,7 @@ export default function Dashboard() {
         }
       }
 
-      // Lucro por item: (max(preço de venda, preço mínimo) − custo total) × quantidade
+      // Lucro por item: (preço efetivamente cobrado na venda − custo total) × quantidade
       const deliveredIds = new Set(delivered.map((o) => o.id));
       let custoTotalAcc = 0;
       let receitaItensAcc = 0;
@@ -191,13 +191,11 @@ export default function Dashboard() {
         const fPct = Number(variation.freight_pct ?? product.freight_pct ?? 0) / 100;
         const oPct = Number(variation.op_cost_pct ?? product.op_cost_pct ?? 0) / 100;
         const tPct = Number(variation.tax_pct ?? product.tax_pct ?? 0) / 100;
-        const minSale = Number(variation.min_sale_price ?? product.min_sale_price ?? 0);
         // Custo total unitário: custo base + frete + operacional + imposto
         const custoUnit = baseCost + baseCost * fPct + baseCost * oPct + venda * tPct;
-        // Valor de venda OU mínimo (o maior)
-        const valorVenda = Math.max(venda, minSale);
+        // Receita = preço realmente registrado na venda (já reflete PDV/mínimo/método)
         custoTotalAcc += custoUnit * qty;
-        receitaItensAcc += valorVenda * qty;
+        receitaItensAcc += venda * qty;
       });
       setTotalCost(custoTotalAcc);
       setItemsRevenue(receitaItensAcc);
