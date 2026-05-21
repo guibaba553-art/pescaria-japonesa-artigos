@@ -157,8 +157,7 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // Lucro por item: (preço de venda − custo total) × quantidade, somando todos os itens entregues
-      // custo total unitário = cost + cost·frete% + cost·oper% + preçoVenda·imposto%
+      // Lucro por item: (preço de venda − custo) × quantidade, somando todos os itens entregues
       const deliveredIds = new Set(delivered.map((o) => o.id));
       let custoTotalAcc = 0;
       let receitaItensAcc = 0;
@@ -167,11 +166,7 @@ export default function Dashboard() {
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
         const cost = Number(it.products?.cost || 0);
-        const fPct = Number(it.products?.freight_pct || 0) / 100;
-        const oPct = Number(it.products?.op_cost_pct || 0) / 100;
-        const tPct = Number(it.products?.tax_pct || 0) / 100;
-        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
-        custoTotalAcc += custoUnit * qty;
+        custoTotalAcc += cost * qty;
         receitaItensAcc += venda * qty;
       });
       setTotalCost(custoTotalAcc);
