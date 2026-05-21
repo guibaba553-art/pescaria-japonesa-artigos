@@ -154,6 +154,7 @@ export default function Dashboard() {
       setTotalCustomers(profiles?.length || 0);
 
       // Buscar TODOS os order_items (paginado para evitar limite de 1000)
+      // Embutimos campos do produto no próprio select para evitar problemas de lookup
       const orderItems: any[] = [];
       {
         const pageSize = 1000;
@@ -161,7 +162,9 @@ export default function Dashboard() {
         while (true) {
           const { data: page, error } = await supabase
             .from('order_items')
-            .select('quantity, price_at_purchase, order_id, product_id, products(name), orders(source, status)')
+            .select(
+              'quantity, price_at_purchase, order_id, product_id, products(name, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price), orders(source, status)'
+            )
             .range(from, from + pageSize - 1);
           if (error || !page || page.length === 0) break;
           orderItems.push(...page);
@@ -172,14 +175,13 @@ export default function Dashboard() {
 
       // Lucro por item: (max(preço de venda, preço mínimo) − custo total) × quantidade
       const deliveredIds = new Set(delivered.map((o) => o.id));
-      const productMap = new Map((products || []).map((p: any) => [p.id, p]));
       let custoTotalAcc = 0;
       let receitaItensAcc = 0;
       orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const p: any = productMap.get(it.product_id) || {};
+        const p: any = it.products || {};
         const cost = Number(p.cost || 0);
         const fPct = Number(p.freight_pct || 0) / 100;
         const oPct = Number(p.op_cost_pct || 0) / 100;
@@ -194,6 +196,7 @@ export default function Dashboard() {
       });
       setTotalCost(custoTotalAcc);
       setItemsRevenue(receitaItensAcc);
+
 
 
 
