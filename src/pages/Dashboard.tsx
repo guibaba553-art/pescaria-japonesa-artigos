@@ -331,9 +331,9 @@ export default function Dashboard() {
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'];
 
   const StatCard = ({
-    title, value, growth, icon, hint,
+    title, value, growth, icon, hint, formula,
   }: {
-    title: string; value: string; growth?: number; icon: React.ReactNode; hint?: string;
+    title: string; value: string; growth?: number; icon: React.ReactNode; hint?: string; formula?: string;
   }) => (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -342,6 +342,9 @@ export default function Dashboard() {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">{value}</div>
+        {formula && (
+          <p className="text-[11px] text-muted-foreground/80 mt-1 font-mono">{formula}</p>
+        )}
         {growth !== undefined && (
           <p className="text-xs text-muted-foreground">
             <span className={growth >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -354,6 +357,7 @@ export default function Dashboard() {
       </CardContent>
     </Card>
   );
+
 
   const ChannelSection = ({
     title, icon, stats, color, dataKey, orderKey, top,
@@ -609,16 +613,19 @@ export default function Dashboard() {
           <StatCard
             title="Lucro Bruto"
             value={formatBRL(lucroBruto)}
-            hint={`Margem bruta: ${margemBruta.toFixed(1)}%`}
+            formula="Σ (max(venda, mín) − custo unit.) × qtd"
+            hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
             icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
           <StatCard
             title="Lucro Líquido"
             value={formatBRL(lucroLiquido)}
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% · despesas: ${formatBRL(totalExpenses)}`}
+            formula="Lucro Bruto − Despesas gerais"
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}%  |  ${formatBRL(lucroBruto)} − ${formatBRL(totalExpenses)}`}
             icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
         </div>
+
 
 
         {/* Alertas de estoque */}
