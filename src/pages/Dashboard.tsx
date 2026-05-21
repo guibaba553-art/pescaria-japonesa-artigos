@@ -135,13 +135,15 @@ export default function Dashboard() {
         { data: products },
         { data: profiles },
         { data: orderItems },
+        { data: expenses },
       ] = await Promise.all([
         supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
         supabase.from('products').select('id, name, stock'),
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
+        supabase.from('expenses').select('amount'),
       ]);
 
       const days = PERIODS[period].days;
@@ -153,6 +155,23 @@ export default function Dashboard() {
       setSiteStats(calcChannelStats(siteOrders, days));
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
+
+      // CMV — custo dos produtos vendidos (apenas pedidos entregues)
+      const deliveredIds = new Set(delivered.map((o) => o.id));
+      let cmv = 0;
+      (orderItems || []).forEach((it: any) => {
+        if (!deliveredIds.has(it.order_id)) return;
+        const cost = Number(it.products?.cost || 0);
+        cmv += Number(it.quantity) * cost;
+      });
+      setTotalCost(cmv);
+
+      // Despesas totais (todas — mesma base do "Receita Total")
+      const expensesSum = (expenses || []).reduce(
+        (s: number, e: any) => s + Number(e.amount || 0),
+        0,
+      );
+      setTotalExpenses(expensesSum);
 
       // Pending / status overview
       const pending = (orders || []).filter(
