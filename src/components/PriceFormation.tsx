@@ -789,7 +789,7 @@ export function PriceFormation() {
                       min="0"
                       inputMode="decimal"
                       value={editTaxPct}
-                      onChange={(e) => setEditTaxPct(e.target.value)}
+                      onChange={(e) => handleTaxPctChange(e.target.value)}
                       placeholder="0,00"
                     />
                     <div className="text-[11px] text-muted-foreground mt-1">
