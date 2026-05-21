@@ -556,29 +556,17 @@ export default function Dashboard() {
         </div>
 
         {/* Lucro */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Custo dos Produtos (CMV)"
-            value={formatBRL(totalCost)}
-            hint="Custo total das mercadorias entregues"
-            icon={<Package className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Despesas"
-            value={formatBRL(totalExpenses)}
-            hint="Despesas fixas e variáveis lançadas"
-            icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <StatCard
             title="Lucro Bruto"
             value={formatBRL(lucroBruto)}
-            hint={`Margem bruta: ${margemBruta.toFixed(1)}% (Receita − CMV)`}
+            hint={`Margem bruta: ${margemBruta.toFixed(1)}%`}
             icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
           <StatCard
             title="Lucro Líquido"
             value={formatBRL(lucroLiquido)}
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% (Lucro bruto − Despesas)`}
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}%`}
             icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
         </div>
