@@ -451,11 +451,12 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  // Lucro = Σ (preço de venda − custo total) por item de cada pedido entregue
+  // Lucro = Σ (valor vendido do item − custo do item) × quantidade
+  // conforme solicitado, sem descontar despesas globais nesta métrica
   const lucroBruto = itemsRevenue - totalCost;
-  const lucroLiquido = lucroBruto - totalExpenses;
+  const lucroLiquido = lucroBruto;
   const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
-  const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
+  const margemLiquida = margemBruta;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -573,7 +574,7 @@ export default function Dashboard() {
           <StatCard
             title="Lucro Líquido"
             value={formatBRL(lucroLiquido)}
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}%`}
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% · sem despesas gerais`}
             icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
         </div>
