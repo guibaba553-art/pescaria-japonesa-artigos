@@ -134,11 +134,13 @@ export default function Dashboard() {
       const [
         { data: orders },
         { data: products },
+        { data: productVariations },
         { data: profiles },
         { data: expenses },
       ] = await Promise.all([
         supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
         supabase.from('products').select('id, name, stock, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price'),
+        supabase.from('product_variations').select('id, product_id, name, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price'),
         supabase.from('profiles').select('id'),
         supabase.from('expenses').select('amount'),
       ]);
@@ -153,8 +155,11 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
+      const productMap = new Map((products || []).map((p: any) => [p.id, p]));
+      const variationMap = new Map((productVariations || []).map((v: any) => [v.id, v]));
+      const orderMap = new Map((orders || []).map((o: any) => [o.id, o]));
+
       // Buscar TODOS os order_items (paginado para evitar limite de 1000)
-      // Embutimos campos do produto no próprio select para evitar problemas de lookup
       const orderItems: any[] = [];
       {
         const pageSize = 1000;
@@ -162,11 +167,10 @@ export default function Dashboard() {
         while (true) {
           const { data: page, error } = await supabase
             .from('order_items')
-            .select(
-              'quantity, price_at_purchase, order_id, product_id, products(name, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price), orders(source, status)'
-            )
+            .select('quantity, price_at_purchase, order_id, product_id, variation_id')
             .range(from, from + pageSize - 1);
-          if (error || !page || page.length === 0) break;
+          if (error) throw error;
+          if (!page || page.length === 0) break;
           orderItems.push(...page);
           if (page.length < pageSize) break;
           from += pageSize;
@@ -181,14 +185,15 @@ export default function Dashboard() {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const p: any = it.products || {};
-        const cost = Number(p.cost || 0);
-        const fPct = Number(p.freight_pct || 0) / 100;
-        const oPct = Number(p.op_cost_pct || 0) / 100;
-        const tPct = Number(p.tax_pct || 0) / 100;
-        const minSale = Number(p.min_sale_price || 0);
+        const product: any = productMap.get(it.product_id) || {};
+        const variation: any = it.variation_id ? variationMap.get(it.variation_id) || {} : {};
+        const baseCost = Number(variation.cost ?? product.cost ?? 0);
+        const fPct = Number(variation.freight_pct ?? product.freight_pct ?? 0) / 100;
+        const oPct = Number(variation.op_cost_pct ?? product.op_cost_pct ?? 0) / 100;
+        const tPct = Number(variation.tax_pct ?? product.tax_pct ?? 0) / 100;
+        const minSale = Number(variation.min_sale_price ?? product.min_sale_price ?? 0);
         // Custo total unitário: custo base + frete + operacional + imposto
-        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
+        const custoUnit = baseCost + baseCost * fPct + baseCost * oPct + venda * tPct;
         // Valor de venda OU mínimo (o maior)
         const valorVenda = Math.max(venda, minSale);
         custoTotalAcc += custoUnit * qty;
@@ -268,7 +273,9 @@ export default function Dashboard() {
         (orderItems || [])
           .filter(filterFn)
           .forEach((item: any) => {
-            const name = item.products?.name || '—';
+            const product: any = productMap.get(item.product_id) || {};
+            const variation: any = item.variation_id ? variationMap.get(item.variation_id) || {} : {};
+            const name = variation.name || product.name || '—';
             if (!acc[name]) acc[name] = { name, quantity: 0, revenue: 0 };
             acc[name].quantity += item.quantity;
             acc[name].revenue += item.quantity * parseFloat(item.price_at_purchase);
@@ -279,10 +286,16 @@ export default function Dashboard() {
       };
 
       setTopPdv(
-        aggregate((i: any) => i.orders?.status === 'entregado' && i.orders?.source === 'pdv')
+        aggregate((i: any) => {
+          const order = orderMap.get(i.order_id);
+          return order?.status === 'entregado' && order?.source === 'pdv';
+        })
       );
       setTopSite(
-        aggregate((i: any) => i.orders?.status === 'entregado' && i.orders?.source !== 'pdv')
+        aggregate((i: any) => {
+          const order = orderMap.get(i.order_id);
+          return order?.status === 'entregado' && order?.source !== 'pdv';
+        })
       );
     } catch (error: any) {
       console.error('Erro ao carregar dashboard:', error);
