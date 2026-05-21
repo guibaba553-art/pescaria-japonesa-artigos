@@ -143,7 +143,7 @@ export default function Dashboard() {
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, products(name, cost, freight_pct, op_cost_pct, tax_pct), orders(source, status)'),
         supabase.from('expenses').select('amount'),
       ]);
 
@@ -157,15 +157,25 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // CMV — custo dos produtos vendidos (apenas pedidos entregues)
+      // Lucro por item: (preço de venda − custo total) × quantidade, somando todos os itens entregues
+      // custo total unitário = cost + cost·frete% + cost·oper% + preçoVenda·imposto%
       const deliveredIds = new Set(delivered.map((o) => o.id));
-      let cmv = 0;
+      let custoTotalAcc = 0;
+      let receitaItensAcc = 0;
       (orderItems || []).forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
+        const qty = Number(it.quantity || 0);
+        const venda = Number(it.price_at_purchase || 0);
         const cost = Number(it.products?.cost || 0);
-        cmv += Number(it.quantity) * cost;
+        const fPct = Number(it.products?.freight_pct || 0) / 100;
+        const oPct = Number(it.products?.op_cost_pct || 0) / 100;
+        const tPct = Number(it.products?.tax_pct || 0) / 100;
+        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
+        custoTotalAcc += custoUnit * qty;
+        receitaItensAcc += venda * qty;
       });
-      setTotalCost(cmv);
+      setTotalCost(custoTotalAcc);
+      setItemsRevenue(receitaItensAcc);
 
       // Despesas totais (todas — mesma base do "Receita Total")
       const expensesSum = (expenses || []).reduce(
