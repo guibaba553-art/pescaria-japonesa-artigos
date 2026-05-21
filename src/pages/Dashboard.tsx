@@ -445,6 +445,10 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const lucroBruto = totalRevenue - totalCost;
+  const lucroLiquido = lucroBruto - totalExpenses;
+  const margemBruta = totalRevenue > 0 ? (lucroBruto / totalRevenue) * 100 : 0;
+  const margemLiquida = totalRevenue > 0 ? (lucroLiquido / totalRevenue) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
