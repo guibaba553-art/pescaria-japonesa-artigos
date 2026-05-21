@@ -80,6 +80,8 @@ export default function Dashboard() {
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [outOfStock, setOutOfStock] = useState(0);
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
+  const [totalCost, setTotalCost] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
@@ -133,13 +135,15 @@ export default function Dashboard() {
         { data: products },
         { data: profiles },
         { data: orderItems },
+        { data: expenses },
       ] = await Promise.all([
         supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
         supabase.from('products').select('id, name, stock'),
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
+        supabase.from('expenses').select('amount'),
       ]);
 
       const days = PERIODS[period].days;
@@ -151,6 +155,23 @@ export default function Dashboard() {
       setSiteStats(calcChannelStats(siteOrders, days));
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
+
+      // CMV — custo dos produtos vendidos (apenas pedidos entregues)
+      const deliveredIds = new Set(delivered.map((o) => o.id));
+      let cmv = 0;
+      (orderItems || []).forEach((it: any) => {
+        if (!deliveredIds.has(it.order_id)) return;
+        const cost = Number(it.products?.cost || 0);
+        cmv += Number(it.quantity) * cost;
+      });
+      setTotalCost(cmv);
+
+      // Despesas totais (todas — mesma base do "Receita Total")
+      const expensesSum = (expenses || []).reduce(
+        (s: number, e: any) => s + Number(e.amount || 0),
+        0,
+      );
+      setTotalExpenses(expensesSum);
 
       // Pending / status overview
       const pending = (orders || []).filter(
@@ -424,6 +445,10 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const lucroBruto = totalRevenue - totalCost;
+  const lucroLiquido = lucroBruto - totalExpenses;
+  const margemBruta = totalRevenue > 0 ? (lucroBruto / totalRevenue) * 100 : 0;
+  const margemLiquida = totalRevenue > 0 ? (lucroLiquido / totalRevenue) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -529,6 +554,35 @@ export default function Dashboard() {
             icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
           />
         </div>
+
+        {/* Lucro */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Custo dos Produtos (CMV)"
+            value={formatBRL(totalCost)}
+            hint="Custo total das mercadorias entregues"
+            icon={<Package className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatCard
+            title="Despesas"
+            value={formatBRL(totalExpenses)}
+            hint="Despesas fixas e variáveis lançadas"
+            icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatCard
+            title="Lucro Bruto"
+            value={formatBRL(lucroBruto)}
+            hint={`Margem bruta: ${margemBruta.toFixed(1)}% (Receita − CMV)`}
+            icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+          />
+          <StatCard
+            title="Lucro Líquido"
+            value={formatBRL(lucroLiquido)}
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% (Lucro bruto − Despesas)`}
+            icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+          />
+        </div>
+
 
         {/* Alertas de estoque */}
         {lowStock.length > 0 && (
