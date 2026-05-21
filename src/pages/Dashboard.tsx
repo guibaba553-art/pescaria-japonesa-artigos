@@ -143,7 +143,7 @@ export default function Dashboard() {
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name, cost, freight_pct, op_cost_pct, tax_pct), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
         supabase.from('expenses').select('amount'),
       ]);
 
