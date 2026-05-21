@@ -135,15 +135,11 @@ export default function Dashboard() {
         { data: orders },
         { data: products },
         { data: profiles },
-        { data: orderItems },
         { data: expenses },
       ] = await Promise.all([
         supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
-        supabase.from('products').select('id, name, stock'),
+        supabase.from('products').select('id, name, stock, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price'),
         supabase.from('profiles').select('id'),
-        supabase
-          .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
         supabase.from('expenses').select('amount'),
       ]);
 
@@ -157,20 +153,49 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // Lucro por item: (preço de venda − custo) × quantidade, somando todos os itens entregues
+      // Buscar TODOS os order_items (paginado para evitar limite de 1000)
+      const orderItems: any[] = [];
+      {
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('order_items')
+            .select('quantity, price_at_purchase, order_id, product_id, products(name), orders(source, status)')
+            .range(from, from + pageSize - 1);
+          if (error || !page || page.length === 0) break;
+          orderItems.push(...page);
+          if (page.length < pageSize) break;
+          from += pageSize;
+        }
+      }
+
+      // Lucro por item: (max(preço de venda, preço mínimo) − custo total) × quantidade
       const deliveredIds = new Set(delivered.map((o) => o.id));
+      const productMap = new Map((products || []).map((p: any) => [p.id, p]));
       let custoTotalAcc = 0;
       let receitaItensAcc = 0;
-      (orderItems || []).forEach((it: any) => {
+      orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const cost = Number(it.products?.cost || 0);
-        custoTotalAcc += cost * qty;
-        receitaItensAcc += venda * qty;
+        const p: any = productMap.get(it.product_id) || {};
+        const cost = Number(p.cost || 0);
+        const fPct = Number(p.freight_pct || 0) / 100;
+        const oPct = Number(p.op_cost_pct || 0) / 100;
+        const tPct = Number(p.tax_pct || 0) / 100;
+        const minSale = Number(p.min_sale_price || 0);
+        // Custo total unitário: custo base + frete + operacional + imposto
+        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
+        // Valor de venda OU mínimo (o maior)
+        const valorVenda = Math.max(venda, minSale);
+        custoTotalAcc += custoUnit * qty;
+        receitaItensAcc += valorVenda * qty;
       });
       setTotalCost(custoTotalAcc);
       setItemsRevenue(receitaItensAcc);
+
+
 
       // Despesas totais (todas — mesma base do "Receita Total")
       const expensesSum = (expenses || []).reduce(
