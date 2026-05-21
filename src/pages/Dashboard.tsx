@@ -615,7 +615,7 @@ export default function Dashboard() {
           <StatCard
             title="Lucro Líquido"
             value={formatBRL(lucroLiquido)}
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% · sem despesas gerais`}
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% · despesas: ${formatBRL(totalExpenses)}`}
             icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
         </div>
