@@ -613,16 +613,19 @@ export default function Dashboard() {
           <StatCard
             title="Lucro Bruto"
             value={formatBRL(lucroBruto)}
-            hint={`Margem bruta: ${margemBruta.toFixed(1)}%`}
+            formula="Σ (max(venda, mín) − custo unit.) × qtd"
+            hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
             icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
           <StatCard
             title="Lucro Líquido"
             value={formatBRL(lucroLiquido)}
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}% · despesas: ${formatBRL(totalExpenses)}`}
+            formula="Lucro Bruto − Despesas gerais"
+            hint={`Margem líquida: ${margemLiquida.toFixed(1)}%  |  ${formatBRL(lucroBruto)} − ${formatBRL(totalExpenses)}`}
             icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
         </div>
+
 
 
         {/* Alertas de estoque */}
