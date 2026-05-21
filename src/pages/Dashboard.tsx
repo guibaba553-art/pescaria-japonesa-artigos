@@ -153,47 +153,48 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // Buscar TODOS os order_items dos pedidos entregues (sem limite de 1000)
-      const deliveredIds = delivered.map((o) => o.id);
-      const productMap = new Map((products || []).map((p: any) => [p.id, p]));
-
-      let custoTotalAcc = 0;
-      let receitaItensAcc = 0;
-
-      if (deliveredIds.length > 0) {
-        // paginar para evitar limite de 1000
+      // Buscar TODOS os order_items (paginado para evitar limite de 1000)
+      const orderItems: any[] = [];
+      {
         const pageSize = 1000;
         let from = 0;
         while (true) {
-          const { data: itemsPage, error } = await supabase
+          const { data: page, error } = await supabase
             .from('order_items')
-            .select('quantity, price_at_purchase, order_id, product_id')
-            .in('order_id', deliveredIds)
+            .select('quantity, price_at_purchase, order_id, product_id, products(name), orders(source, status)')
             .range(from, from + pageSize - 1);
-          if (error || !itemsPage || itemsPage.length === 0) break;
-          itemsPage.forEach((it: any) => {
-            const qty = Number(it.quantity || 0);
-            const venda = Number(it.price_at_purchase || 0);
-            const p: any = productMap.get(it.product_id) || {};
-            const cost = Number(p.cost || 0);
-            const fPct = Number(p.freight_pct || 0) / 100;
-            const oPct = Number(p.op_cost_pct || 0) / 100;
-            const tPct = Number(p.tax_pct || 0) / 100;
-            const minSale = Number(p.min_sale_price || 0);
-            // Custo total por unidade: custo + frete + operacional + imposto
-            const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
-            // Valor de venda OU mínimo (o maior dos dois)
-            const valorVenda = Math.max(venda, minSale);
-            custoTotalAcc += custoUnit * qty;
-            receitaItensAcc += valorVenda * qty;
-          });
-          if (itemsPage.length < pageSize) break;
+          if (error || !page || page.length === 0) break;
+          orderItems.push(...page);
+          if (page.length < pageSize) break;
           from += pageSize;
         }
       }
 
+      // Lucro por item: (max(preço de venda, preço mínimo) − custo total) × quantidade
+      const deliveredIds = new Set(delivered.map((o) => o.id));
+      const productMap = new Map((products || []).map((p: any) => [p.id, p]));
+      let custoTotalAcc = 0;
+      let receitaItensAcc = 0;
+      orderItems.forEach((it: any) => {
+        if (!deliveredIds.has(it.order_id)) return;
+        const qty = Number(it.quantity || 0);
+        const venda = Number(it.price_at_purchase || 0);
+        const p: any = productMap.get(it.product_id) || {};
+        const cost = Number(p.cost || 0);
+        const fPct = Number(p.freight_pct || 0) / 100;
+        const oPct = Number(p.op_cost_pct || 0) / 100;
+        const tPct = Number(p.tax_pct || 0) / 100;
+        const minSale = Number(p.min_sale_price || 0);
+        // Custo total unitário: custo base + frete + operacional + imposto
+        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
+        // Valor de venda OU mínimo (o maior)
+        const valorVenda = Math.max(venda, minSale);
+        custoTotalAcc += custoUnit * qty;
+        receitaItensAcc += valorVenda * qty;
+      });
       setTotalCost(custoTotalAcc);
       setItemsRevenue(receitaItensAcc);
+
 
 
       // Despesas totais (todas — mesma base do "Receita Total")
