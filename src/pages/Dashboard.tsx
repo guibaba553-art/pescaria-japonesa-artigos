@@ -611,7 +611,7 @@ export default function Dashboard() {
           <StatCard
             title="Lucro Bruto"
             value={formatBRL(lucroBruto)}
-            formula="Σ (max(venda, mín) − custo unit.) × qtd"
+            formula="Σ (preço registrado na venda − custo unit.) × qtd"
             hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
             icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
           />
