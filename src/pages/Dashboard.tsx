@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [outOfStock, setOutOfStock] = useState(0);
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalCost, setTotalCost] = useState(0);
+  const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
@@ -142,7 +143,7 @@ export default function Dashboard() {
         supabase.from('profiles').select('id'),
         supabase
           .from('order_items')
-          .select('quantity, price_at_purchase, order_id, products(name, cost), orders(source, status)'),
+          .select('quantity, price_at_purchase, order_id, products(name, cost, freight_pct, op_cost_pct, tax_pct), orders(source, status)'),
         supabase.from('expenses').select('amount'),
       ]);
 
@@ -156,15 +157,25 @@ export default function Dashboard() {
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
-      // CMV — custo dos produtos vendidos (apenas pedidos entregues)
+      // Lucro por item: (preço de venda − custo total) × quantidade, somando todos os itens entregues
+      // custo total unitário = cost + cost·frete% + cost·oper% + preçoVenda·imposto%
       const deliveredIds = new Set(delivered.map((o) => o.id));
-      let cmv = 0;
+      let custoTotalAcc = 0;
+      let receitaItensAcc = 0;
       (orderItems || []).forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
+        const qty = Number(it.quantity || 0);
+        const venda = Number(it.price_at_purchase || 0);
         const cost = Number(it.products?.cost || 0);
-        cmv += Number(it.quantity) * cost;
+        const fPct = Number(it.products?.freight_pct || 0) / 100;
+        const oPct = Number(it.products?.op_cost_pct || 0) / 100;
+        const tPct = Number(it.products?.tax_pct || 0) / 100;
+        const custoUnit = cost + cost * fPct + cost * oPct + venda * tPct;
+        custoTotalAcc += custoUnit * qty;
+        receitaItensAcc += venda * qty;
       });
-      setTotalCost(cmv);
+      setTotalCost(custoTotalAcc);
+      setItemsRevenue(receitaItensAcc);
 
       // Despesas totais (todas — mesma base do "Receita Total")
       const expensesSum = (expenses || []).reduce(
@@ -445,10 +456,11 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const lucroBruto = totalRevenue - totalCost;
+  // Lucro = Σ (preço de venda − custo total) por item de cada pedido entregue
+  const lucroBruto = itemsRevenue - totalCost;
   const lucroLiquido = lucroBruto - totalExpenses;
-  const margemBruta = totalRevenue > 0 ? (lucroBruto / totalRevenue) * 100 : 0;
-  const margemLiquida = totalRevenue > 0 ? (lucroLiquido / totalRevenue) * 100 : 0;
+  const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
+  const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
