@@ -300,6 +300,41 @@ export function PriceFormation() {
     }
   };
 
+  // Quando o usuário muda Frete/Operacional/Imposto %, recalcula o preço
+  // mantendo o markup atual sobre o custo total.
+  // Fórmula (resolvendo circularidade do imposto que incide sobre o preço):
+  //   newPrice = cost*(1+f+o)*(1+M) / (1 - t*(1+M))
+  // onde M = markup atual (liveProfit / liveTotalCost) em decimal.
+  const repriceFromPercents = (newFreightPct: number, newOpPct: number, newTaxPct: number) => {
+    const cost = liveCost;
+    if (cost <= 0 || liveTotalCost <= 0 || livePrice <= 0) return;
+    const M = (livePrice - liveTotalCost) / liveTotalCost; // markup decimal
+    const f = newFreightPct / 100;
+    const o = newOpPct / 100;
+    const t = newTaxPct / 100;
+    const denom = 1 - t * (1 + M);
+    if (denom <= 0) return; // imposto inviável, evita preço negativo/infinito
+    const newPrice = (cost * (1 + f + o) * (1 + M)) / denom;
+    if (isFinite(newPrice) && newPrice > 0) {
+      setEditPrice(newPrice.toFixed(2));
+      const newMargin = ((newPrice - cost) / newPrice) * 100;
+      setEditMargin(newMargin.toFixed(2));
+    }
+  };
+
+  const handleFreightPctChange = (v: string) => {
+    setEditFreightPct(v);
+    repriceFromPercents(parseNum(v), liveOpCostPct, liveTaxPct);
+  };
+  const handleOpCostPctChange = (v: string) => {
+    setEditOpCostPct(v);
+    repriceFromPercents(liveFreightPct, parseNum(v), liveTaxPct);
+  };
+  const handleTaxPctChange = (v: string) => {
+    setEditTaxPct(v);
+    repriceFromPercents(liveFreightPct, liveOpCostPct, parseNum(v));
+  };
+
   // Margem do Site (%) → recalcula Valor mínimo de venda do site
   // Fórmula: min_sale = custo_total * (1 + margem/100)
   const handleSiteMarginChange = (v: string) => {
@@ -720,7 +755,7 @@ export function PriceFormation() {
                         min="0"
                         inputMode="decimal"
                         value={editFreightPct}
-                        onChange={(e) => setEditFreightPct(e.target.value)}
+                        onChange={(e) => handleFreightPctChange(e.target.value)}
                         placeholder="0,00"
                       />
                       <div className="text-[11px] text-muted-foreground mt-1">
@@ -736,7 +771,7 @@ export function PriceFormation() {
                         min="0"
                         inputMode="decimal"
                         value={editOpCostPct}
-                        onChange={(e) => setEditOpCostPct(e.target.value)}
+                        onChange={(e) => handleOpCostPctChange(e.target.value)}
                         placeholder="0,00"
                       />
                       <div className="text-[11px] text-muted-foreground mt-1">
@@ -754,7 +789,7 @@ export function PriceFormation() {
                       min="0"
                       inputMode="decimal"
                       value={editTaxPct}
-                      onChange={(e) => setEditTaxPct(e.target.value)}
+                      onChange={(e) => handleTaxPctChange(e.target.value)}
                       placeholder="0,00"
                     />
                     <div className="text-[11px] text-muted-foreground mt-1">
