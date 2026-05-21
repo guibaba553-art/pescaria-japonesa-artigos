@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [outOfStock, setOutOfStock] = useState(0);
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalCost, setTotalCost] = useState(0);
+  const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
