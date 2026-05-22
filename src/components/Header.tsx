@@ -244,7 +244,9 @@ export function Header() {
                 className="hidden sm:inline-flex rounded-full"
               >
                 <UserCircle className="w-4 h-4 mr-2" />
-                Conta
+                <span className="max-w-[140px] truncate">
+                  {firstName ? `Olá, ${firstName}` : 'Conta'}
+                </span>
               </Button>
               {!loading && (isEmployee || isAdmin) && (
                 <>
