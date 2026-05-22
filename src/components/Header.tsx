@@ -6,7 +6,7 @@ import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart, Boxes, ClipboardList, Users, BarChart3, ScanLine, UserCog, FileText, AlertTriangle, Wallet, Receipt, History } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 interface Suggestion {
