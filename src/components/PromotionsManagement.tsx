@@ -18,6 +18,8 @@ interface Variation {
   on_sale: boolean;
   sale_price: number | null;
   sale_ends_at: string | null;
+  sale_limit_qty: number | null;
+  sale_sold_qty: number;
 }
 
 interface Product {
@@ -30,6 +32,8 @@ interface Product {
   on_sale: boolean;
   sale_price: number | null;
   sale_ends_at: string | null;
+  sale_limit_qty: number | null;
+  sale_sold_qty: number;
   variations: Variation[];
 }
 
@@ -39,6 +43,7 @@ interface Draft {
   mode: Mode;
   amount: string;
   endsAt: string;
+  limitQty: string;
 }
 
 function toLocalDateTime(iso: string | null) {
@@ -48,15 +53,16 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft {
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
       endsAt: toLocalDateTime(endsAt),
+      limitQty: limitQty != null ? String(limitQty) : '',
     };
   }
-  return { mode: 'percent', amount: '10', endsAt: '' };
+  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '' };
 }
 
 function computeFinalPrice(basePrice: number, draft: Draft): number {
@@ -80,7 +86,7 @@ export function PromotionsManagement() {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
       .from('products')
-      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at')
+      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty')
       .neq('category', 'Pendente Revisão')
       .order('name');
     if (e1) {
@@ -90,7 +96,7 @@ export function PromotionsManagement() {
     }
     const { data: vars, error: e2 } = await supabase
       .from('product_variations')
-      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at');
+      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
@@ -128,12 +134,12 @@ export function PromotionsManagement() {
     (p) => p.on_sale || p.variations.some((v) => v.on_sale)
   ).length;
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, endsAt);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
   };
 
-  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null) => {
-    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt);
+  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null) => {
+    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
     setDrafts({ ...drafts, [key]: { ...current, ...patch } });
   };
 
@@ -151,10 +157,12 @@ export function PromotionsManagement() {
       setSaving((s) => ({ ...s, [key]: false }));
       return;
     }
+    const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const payload: any = {
       on_sale: true,
       sale_price: Number(final.toFixed(2)),
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
+      sale_limit_qty: limitParsed,
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
@@ -171,7 +179,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from(table)
-      .update({ on_sale: false, sale_price: null, sale_ends_at: null })
+      .update({ on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -191,13 +199,16 @@ export function PromotionsManagement() {
     basePrice: number,
     salePrice: number | null,
     endsAt: string | null,
-    onSale: boolean
+    onSale: boolean,
+    limitQty: number | null,
+    soldQty: number
   ) => {
     const key = `${table}:${id}`;
-    const draft = getDraft(key, basePrice, salePrice, endsAt);
+    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
+    const soldOut = limitQty != null && soldQty >= limitQty;
 
     return (
       <div className="space-y-3 p-3 rounded-md border bg-muted/30">
@@ -207,7 +218,7 @@ export function PromotionsManagement() {
               key={m}
               size="sm"
               variant={draft.mode === m ? 'default' : 'outline'}
-              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt)}
+              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty)}
             >
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
@@ -223,7 +234,7 @@ export function PromotionsManagement() {
               min={0}
               step={draft.mode === 'percent' ? 1 : 0.01}
               value={draft.amount}
-              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt)}
+              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
               className="w-32"
             />
           </div>
@@ -232,8 +243,20 @@ export function PromotionsManagement() {
             <Input
               type="datetime-local"
               value={draft.endsAt}
-              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt)}
+              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
               className="w-56"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              placeholder="Ex: 10"
+              value={draft.limitQty}
+              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              className="w-32"
             />
           </div>
           <div className="text-sm">
@@ -243,7 +266,7 @@ export function PromotionsManagement() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             {onSale ? 'Atualizar promoção' : 'Aplicar promoção'}
@@ -259,6 +282,12 @@ export function PromotionsManagement() {
             </Badge>
           )}
           {onSale && !endsAt && <Badge variant="secondary">Sem prazo</Badge>}
+          {onSale && limitQty != null && (
+            <Badge variant={soldOut ? 'destructive' : 'secondary'}>
+              {soldOut ? `Esgotado (${soldQty}/${limitQty})` : `${soldQty}/${limitQty} vendidos`}
+            </Badge>
+          )}
+          {onSale && limitQty == null && <Badge variant="secondary">Sem limite</Badge>}
         </div>
       </div>
     );
@@ -342,7 +371,7 @@ export function PromotionsManagement() {
 
                   {!hasVars && (
                     <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale)}
+                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty)}
                     </div>
                   )}
 
@@ -364,7 +393,7 @@ export function PromotionsManagement() {
                             </div>
                             {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale)}
+                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty)}
                         </div>
                       ))}
                     </div>
