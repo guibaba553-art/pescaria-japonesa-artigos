@@ -20,6 +20,10 @@ interface Variation {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  cost: number;
+  freight_pct: number;
+  op_cost_pct: number;
+  tax_pct: number;
 }
 
 interface Product {
@@ -34,6 +38,10 @@ interface Product {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  cost: number;
+  freight_pct: number;
+  op_cost_pct: number;
+  tax_pct: number;
   variations: Variation[];
 }
 
