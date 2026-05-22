@@ -335,12 +335,14 @@ serve(async (req) => {
 
     // Para PIX
     if (data.paymentMethod === 'pix') {
+      console.log('PIX branch reached. hasEmail:', !!data.userEmail, 'hasName:', !!data.userName, 'hasCpf:', !!data.userCpf);
       const payerName = data.userName?.trim() || '';
       const [firstName, ...lastNameParts] = payerName.split(/\s+/).filter(Boolean);
       const lastName = lastNameParts.join(' ');
       const cpf = normalizeCpf(data.userCpf);
 
       if (!data.userEmail) {
+        console.warn('PIX rejected: missing email');
         return new Response(
           JSON.stringify({ error: 'E-mail obrigatório para gerar PIX.', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -348,13 +350,15 @@ serve(async (req) => {
       }
 
       if (!firstName || !lastName) {
+        console.warn('PIX rejected: missing first/last name. payerName=', JSON.stringify(payerName));
         return new Response(
-          JSON.stringify({ error: 'Informe nome e sobrenome válidos para gerar o PIX.', success: false }),
+          JSON.stringify({ error: 'Informe nome e sobrenome válidos para gerar o PIX. Atualize seu cadastro com nome completo.', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       if (!isValidCpf(cpf)) {
+        console.warn('PIX rejected: invalid CPF. length=', cpf.length);
         return new Response(
           JSON.stringify({ error: 'CPF inválido para gerar o PIX. Atualize o cadastro e tente novamente.', success: false }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -406,21 +410,39 @@ serve(async (req) => {
         },
       };
 
-      console.log('Creating PIX payment');
+      console.log('Creating PIX payment — calling Mercado Pago…');
 
-      const response = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
-        },
-        body: JSON.stringify(pixPayment),
-      });
-
-      const responseData = await response.json();
-      
-      console.log('Mercado Pago PIX response status:', response.status);
+      let response: Response;
+      let responseData: any;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s
+        response = await fetch('https://api.mercadopago.com/v1/payments', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
+          },
+          body: JSON.stringify(pixPayment),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        responseData = await response.json();
+        console.log('Mercado Pago PIX response status:', response.status);
+      } catch (mpErr) {
+        const isAbort = (mpErr as any)?.name === 'AbortError';
+        console.error('Mercado Pago fetch failed:', isAbort ? 'TIMEOUT (20s)' : (mpErr as any)?.message || mpErr);
+        return new Response(
+          JSON.stringify({
+            error: isAbort
+              ? 'O Mercado Pago demorou para responder. Tente novamente em alguns segundos.'
+              : 'Falha ao contatar o Mercado Pago. Tente novamente.',
+            success: false,
+          }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       if (!response.ok) {
         console.error('Mercado Pago API Error - Status:', response.status, 'Body:', JSON.stringify(responseData));
