@@ -52,7 +52,10 @@ interface Product {
   width_cm?: number | null;
   height_cm?: number | null;
   pdv_only?: boolean;
+  supplier_id?: string | null;
 }
+
+interface SupplierOpt { id: string; name: string; }
 
 type DimsCheck = Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>;
 
@@ -102,6 +105,8 @@ export function ProductsManagement() {
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
+  const [supplierFilter, setSupplierFilter] = useState<string>('all');
+  const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
   const [shortDescription, setShortDescription] = useState('');
   const [generatingSummary, setGeneratingSummary] = useState(false);
@@ -152,6 +157,9 @@ export function ProductsManagement() {
   useEffect(() => {
     loadProducts();
     loadStockDiscrepancies();
+    supabase.from('suppliers').select('id, razao_social, nome_fantasia').eq('is_active', true).order('razao_social').then(({ data }) => {
+      if (data) setSuppliers((data as any[]).map((s) => ({ id: s.id, name: s.nome_fantasia || s.razao_social })));
+    });
   }, []);
 
   const loadStockDiscrepancies = async () => {
@@ -394,6 +402,11 @@ export function ProductsManagement() {
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
   if (filter === 'no-dims') filteredProducts = filteredProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id]));
   if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
+  if (supplierFilter !== 'all') {
+    filteredProducts = filteredProducts.filter((p) =>
+      supplierFilter === 'none' ? !p.supplier_id : p.supplier_id === supplierFilter
+    );
+  }
   filteredProducts = filteredProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -430,14 +443,28 @@ export function ProductsManagement() {
         />
         <CardContent className="p-4 md:p-6 space-y-4">
           <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Procurar por nome, categoria ou SKU..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Procurar por nome, categoria ou SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                <SelectTrigger className="w-full sm:w-[220px]">
+                  <SelectValue placeholder="Fornecedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos fornecedores</SelectItem>
+                  <SelectItem value="none">Sem fornecedor</SelectItem>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               onClick={() => {
