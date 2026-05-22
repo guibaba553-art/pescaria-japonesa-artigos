@@ -357,7 +357,7 @@ export function Header() {
       {/* Atalhos admin (desktop) — visíveis em áreas admin para admin/funcionários */}
       {isAdminArea && !loading && (isAdmin || isEmployee) && (
         <nav className="hidden lg:block border-t border-border/60 bg-background">
-          <div className="container mx-auto h-12 flex items-center gap-6 overflow-x-auto">
+          <div className="container mx-auto h-12 flex items-center gap-6 overflow-x-auto scrollbar-hide">
             {visibleShortcuts.map((s) => {
               const Icon = s.icon;
               const active =
