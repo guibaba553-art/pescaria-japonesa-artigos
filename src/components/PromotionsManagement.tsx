@@ -13,6 +13,7 @@ interface Variation {
   product_id: string;
   name: string;
   price: number;
+  min_sale_price: number | null;
   stock: number;
   image_url: string | null;
   on_sale: boolean;
@@ -31,6 +32,7 @@ interface Product {
   name: string;
   category: string;
   price: number;
+  min_sale_price: number | null;
   image_url: string | null;
   stock: number;
   on_sale: boolean;
