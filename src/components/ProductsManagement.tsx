@@ -402,6 +402,11 @@ export function ProductsManagement() {
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
   if (filter === 'no-dims') filteredProducts = filteredProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id]));
   if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
+  if (supplierFilter !== 'all') {
+    filteredProducts = filteredProducts.filter((p) =>
+      supplierFilter === 'none' ? !p.supplier_id : p.supplier_id === supplierFilter
+    );
+  }
   filteredProducts = filteredProducts.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
