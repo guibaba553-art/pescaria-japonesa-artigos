@@ -222,7 +222,7 @@ export default function ProductDetails() {
                 className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-300"
               />
 
-              {product.on_sale && product.sale_price && (
+              {productPromoActive && product.sale_price && (
                 <div className="absolute top-3 left-3">
                   <span className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-black tracking-tight shadow-lg">
                     −{Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
