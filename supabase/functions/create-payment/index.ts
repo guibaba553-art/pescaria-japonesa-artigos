@@ -216,18 +216,60 @@ serve(async (req) => {
     console.log('Creating payment - Method:', data.paymentMethod, 'Amount:', data.amount, 'User:', user.id);
     
     // SECURITY: Verify prices against database to prevent price manipulation
+    // PERF: paraleliza todas as queries de produto/variação (antes era sequencial = lento no PIX)
+    const productIdsToFetch = new Set<string>();
+    const variationIdsToFetch = new Set<string>();
+    for (const item of data.items) {
+      if (item.variationId) variationIdsToFetch.add(item.variationId);
+      else productIdsToFetch.add(item.id);
+    }
+
+    const [variationsRes, directProductsRes] = await Promise.all([
+      variationIdsToFetch.size
+        ? supabase.from('product_variations').select(`${PROMO_VARIATION_COLS}, product_id`).in('id', Array.from(variationIdsToFetch))
+        : Promise.resolve({ data: [], error: null } as any),
+      productIdsToFetch.size
+        ? supabase.from('products').select(PROMO_PRODUCT_COLS).in('id', Array.from(productIdsToFetch))
+        : Promise.resolve({ data: [], error: null } as any),
+    ]);
+
+    if (variationsRes.error || directProductsRes.error) {
+      console.error('Price fetch error:', variationsRes.error || directProductsRes.error);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao validar produtos. Tente novamente.', success: false }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+      );
+    }
+
+    const variationsById = new Map<string, any>((variationsRes.data || []).map((v: any) => [v.id, v]));
+    const productsById = new Map<string, any>((directProductsRes.data || []).map((p: any) => [p.id, p]));
+
+    // Busca produtos-pai das variações em paralelo (apenas os que ainda não temos)
+    const parentIdsNeeded = new Set<string>();
+    for (const v of variationsRes.data || []) {
+      if (v.product_id && !productsById.has(v.product_id)) parentIdsNeeded.add(v.product_id);
+    }
+    if (parentIdsNeeded.size) {
+      const { data: parents, error: parentsError } = await supabase
+        .from('products')
+        .select(PROMO_PRODUCT_COLS)
+        .in('id', Array.from(parentIdsNeeded));
+      if (parentsError) {
+        console.error('Parent products fetch error:', parentsError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao validar produtos. Tente novamente.', success: false }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
+        );
+      }
+      for (const p of parents || []) productsById.set((p as any).id, p);
+    }
+
     let verifiedAmount = 0;
     for (const item of data.items) {
       let dbPrice: number;
-      
       if (item.variationId) {
-        const { data: variation, error } = await supabase
-          .from('product_variations')
-          .select(PROMO_VARIATION_COLS)
-          .eq('id', item.variationId)
-          .maybeSingle();
-
-        if (error || !variation) {
+        const variation = variationsById.get(item.variationId);
+        if (!variation) {
           console.error('Invalid variation:', item.variationId);
           return new Response(
             JSON.stringify({
@@ -238,41 +280,27 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
           );
         }
-
-        const { data: product, error: productError } = await supabase
-          .from('products')
-          .select(PROMO_PRODUCT_COLS)
-          .eq('id', (variation as any).product_id)
-          .single();
-
-        if (productError || !product) {
+        const product = productsById.get(variation.product_id);
+        if (!product) {
           console.error('Invalid parent product for variation:', item.variationId);
           return new Response(
             JSON.stringify({ error: 'Produto não encontrado', success: false }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
           );
         }
-
         dbPrice = effectiveVariationPrice(variation as any, product as any);
       } else {
-        const { data: product, error } = await supabase
-          .from('products')
-          .select(PROMO_PRODUCT_COLS)
-          .eq('id', item.id)
-          .single();
-        
-        if (error || !product) {
+        const product = productsById.get(item.id);
+        if (!product) {
           console.error('Invalid product:', item.id);
           return new Response(
             JSON.stringify({ error: 'Invalid product', success: false }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
           );
         }
-        
         dbPrice = effectiveProductPrice(product as any);
       }
-      
-      // Verify client-provided price matches database (allow 0.01 difference for rounding)
+
       if (Math.abs(Number(item.price) - dbPrice) > 0.01) {
         console.error('Price mismatch - Client:', item.price, 'DB:', dbPrice);
         return new Response(
@@ -280,7 +308,7 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }}
         );
       }
-      
+
       verifiedAmount += dbPrice * item.quantity;
     }
     
