@@ -157,10 +157,12 @@ export function PromotionsManagement() {
       setSaving((s) => ({ ...s, [key]: false }));
       return;
     }
+    const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const payload: any = {
       on_sale: true,
       sale_price: Number(final.toFixed(2)),
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
+      sale_limit_qty: limitParsed,
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
