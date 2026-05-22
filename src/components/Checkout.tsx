@@ -1074,7 +1074,9 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   <DollarSign className="w-5 h-5 text-primary" />
                   <div>
                     <p className="font-medium">Cartão de Débito</p>
-                    <p className="text-sm text-muted-foreground">À vista</p>
+                    <p className="text-sm text-muted-foreground">
+                      À vista{supportedDebitBrands?.length ? ` · ${debitHint}` : ''}
+                    </p>
                   </div>
                 </Label>
               </div>
@@ -1098,6 +1100,18 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           {(paymentMethod === 'credit' || paymentMethod === 'debit') && (
             <div className="space-y-4">
               <h3 className="font-semibold">Dados do Cartão</h3>
+
+              {paymentMethod === 'debit' && supportedDebitBrands?.length === 0 && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  O débito não está habilitado nesta loja. Selecione crédito ou outra forma de pagamento.
+                </div>
+              )}
+
+              {paymentMethod === 'debit' && debitBrandMismatch && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  Este cartão {detectedCardBrand} não está habilitado no débito desta loja. {debitHint}
+                </div>
+              )}
 
               {/* Cartões salvos (apenas dados não-sensíveis) */}
               {savedMethods.filter((m) =>
@@ -1277,6 +1291,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 disabled={
                   isProcessing || 
                   !shippingInfo || 
+                  (paymentMethod === 'debit' && supportedDebitBrands?.length === 0) ||
+                  debitBrandMismatch ||
                   ((paymentMethod === 'credit' || paymentMethod === 'debit') && (
                     !mpLoaded || 
                     !cardData.number || 
@@ -1298,6 +1314,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Carregando sistema de pagamento...
                   </>
+                ) : (paymentMethod === 'debit' && supportedDebitBrands?.length === 0) ? (
+                  '⚠️ Débito indisponível nesta loja'
+                ) : debitBrandMismatch ? (
+                  '⚠️ Este cartão não pode ser usado no débito'
                 ) : ((paymentMethod === 'credit' || paymentMethod === 'debit') && (!cardData.number || !cardData.name || !cardData.expiry || !cardData.cvv)) ? (
                   '⚠️ Preencha todos os dados do cartão'
                 ) : (
