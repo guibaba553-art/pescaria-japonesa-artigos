@@ -2697,6 +2697,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_logs: { Args: never; Returns: Json }
+      consume_promo_limits: { Args: { p_items: Json }; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2906,6 +2907,7 @@ export type Database = {
         Args: { p_product_id: string; p_variation_id?: string }
         Returns: Json
       }
+      release_promo_limits: { Args: { p_items: Json }; Returns: undefined }
       release_stock_reservation: { Args: { p_order_id: string }; Returns: Json }
       reserve_stock_for_order: {
         Args: { p_items: Json; p_order_id: string; p_ttl_minutes?: number }
