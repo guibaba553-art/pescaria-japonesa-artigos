@@ -456,7 +456,7 @@ export default function ProductDetails() {
 
                   const finalPrice = selectedVariation 
                     ? sitePriceForVariation(selectedVariation, (product as any).min_sale_price)
-                    : (product.on_sale && product.sale_price ? product.sale_price : product.price);
+                    : effectiveProductPrice(product as any);
                   
                   addItem({
                     id: product.id,
