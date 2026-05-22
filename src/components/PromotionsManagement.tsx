@@ -20,6 +20,10 @@ interface Variation {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  cost: number;
+  freight_pct: number;
+  op_cost_pct: number;
+  tax_pct: number;
 }
 
 interface Product {
@@ -34,6 +38,10 @@ interface Product {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  cost: number;
+  freight_pct: number;
+  op_cost_pct: number;
+  tax_pct: number;
   variations: Variation[];
 }
 
@@ -86,7 +94,7 @@ export function PromotionsManagement() {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
       .from('products')
-      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty')
+      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
       .neq('category', 'Pendente Revisão')
       .order('name');
     if (e1) {
@@ -96,7 +104,7 @@ export function PromotionsManagement() {
     }
     const { data: vars, error: e2 } = await supabase
       .from('product_variations')
-      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty');
+      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
@@ -201,7 +209,11 @@ export function PromotionsManagement() {
     endsAt: string | null,
     onSale: boolean,
     limitQty: number | null,
-    soldQty: number
+    soldQty: number,
+    cost: number,
+    freightPct: number,
+    opCostPct: number,
+    taxPct: number
   ) => {
     const key = `${table}:${id}`;
     const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
@@ -209,6 +221,13 @@ export function PromotionsManagement() {
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
     const soldOut = limitQty != null && soldQty >= limitQty;
+    const fPct = Number(freightPct || 0) / 100;
+    const oPct = Number(opCostPct || 0) / 100;
+    const tPct = Number(taxPct || 0) / 100;
+    const totalCost = Number(cost || 0) + Number(cost || 0) * fPct + Number(cost || 0) * oPct + final * tPct;
+    const marginAbs = final - totalCost;
+    const marginPct = final > 0 ? (marginAbs / final) * 100 : 0;
+    const lossWarn = marginAbs < 0;
 
     return (
       <div className="space-y-3 p-3 rounded-md border bg-muted/30">
@@ -264,6 +283,23 @@ export function PromotionsManagement() {
             <div className="font-semibold text-green-600">
               R$ {final.toFixed(2)} <span className="text-xs">(-{discountPct}%)</span>
             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="rounded-md border bg-background px-3 py-2 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground text-xs">
+              Custo total (custo + frete + operacionais + imposto)
+            </span>
+            <span className="font-bold">R$ {totalCost.toFixed(2)}</span>
+          </div>
+          <div className={`rounded-md border px-3 py-2 flex items-center justify-between text-sm ${lossWarn ? 'bg-destructive/10 border-destructive/40' : 'bg-background'}`}>
+            <span className="text-muted-foreground text-xs">
+              {lossWarn ? '⚠️ Margem (prejuízo)' : 'Margem na promoção'}
+            </span>
+            <span className={`font-bold ${lossWarn ? 'text-destructive' : 'text-green-600'}`}>
+              R$ {marginAbs.toFixed(2)} ({marginPct.toFixed(1)}%)
+            </span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -371,7 +407,7 @@ export function PromotionsManagement() {
 
                   {!hasVars && (
                     <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty)}
+                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
                     </div>
                   )}
 
@@ -393,7 +429,7 @@ export function PromotionsManagement() {
                             </div>
                             {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty)}
+                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
                         </div>
                       ))}
                     </div>
