@@ -124,6 +124,30 @@ export function Header() {
   };
 
   const isHome = location.pathname === '/';
+  const isAdminArea =
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/pdv') ||
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/fechamento-caixa') ||
+    location.pathname.startsWith('/ferramentas-fiscais');
+
+  const adminShortcuts: { label: string; path: string; icon: any; adminOnly?: boolean }[] = [
+    { label: 'Painel', path: '/admin', icon: LayoutDashboard },
+    { label: 'Dashboard', path: '/dashboard', icon: BarChart3, adminOnly: true },
+    { label: 'PDV', path: '/pdv', icon: ShoppingCart },
+    { label: 'Catálogo', path: '/admin/catalogo', icon: Boxes, adminOnly: true },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList },
+    { label: 'Clientes', path: '/admin/clientes', icon: Users, adminOnly: true },
+    { label: 'Triagem', path: '/admin/triagem', icon: ScanLine, adminOnly: true },
+    { label: 'Análise', path: '/admin/analise', icon: BarChart3, adminOnly: true },
+    { label: 'Funcionários', path: '/admin/funcionarios', icon: UserCog, adminOnly: true },
+    { label: 'Vendas', path: '/pdv/sales-history', icon: History },
+    { label: 'Caixa', path: '/fechamento-caixa', icon: Wallet },
+    { label: 'Fiscal', path: '/ferramentas-fiscais', icon: Receipt, adminOnly: true },
+    { label: 'LGPD', path: '/admin/lgpd', icon: FileText, adminOnly: true },
+    { label: 'Erros', path: '/admin/erros', icon: AlertTriangle, adminOnly: true },
+  ];
+  const visibleShortcuts = adminShortcuts.filter((s) => isAdmin || !s.adminOnly);
 
   return (
     <header
