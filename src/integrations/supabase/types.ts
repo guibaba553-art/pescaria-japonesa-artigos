@@ -1603,10 +1603,13 @@ export type Database = {
           min_sale_price: number | null
           min_stock: number
           name: string
+          on_sale: boolean
           op_cost_pct: number
           price: number
           price_pdv: number | null
           product_id: string
+          sale_ends_at: string | null
+          sale_price: number | null
           sku: string | null
           stock: number
           tax_pct: number
@@ -1627,10 +1630,13 @@ export type Database = {
           min_sale_price?: number | null
           min_stock?: number
           name: string
+          on_sale?: boolean
           op_cost_pct?: number
           price?: number
           price_pdv?: number | null
           product_id: string
+          sale_ends_at?: string | null
+          sale_price?: number | null
           sku?: string | null
           stock?: number
           tax_pct?: number
@@ -1651,10 +1657,13 @@ export type Database = {
           min_sale_price?: number | null
           min_stock?: number
           name?: string
+          on_sale?: boolean
           op_cost_pct?: number
           price?: number
           price_pdv?: number | null
           product_id?: string
+          sale_ends_at?: string | null
+          sale_price?: number | null
           sku?: string | null
           stock?: number
           tax_pct?: number
