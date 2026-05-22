@@ -21,6 +21,9 @@ const DraftProducts = lazy(() =>
 const FeaturedManagement = lazy(() =>
   import('@/components/FeaturedManagement').then((m) => ({ default: m.FeaturedManagement }))
 );
+const PromotionsManagement = lazy(() =>
+  import('@/components/PromotionsManagement').then((m) => ({ default: m.PromotionsManagement }))
+);
 const SuppliersManagement = lazy(() =>
   import('@/components/SuppliersManagement').then((m) => ({ default: m.SuppliersManagement }))
 );
