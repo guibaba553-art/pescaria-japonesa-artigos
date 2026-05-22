@@ -200,8 +200,8 @@ export default function Products() {
         break;
       case 'price_desc':
         sorted.sort((a, b) => {
-          const pa = a.on_sale && a.sale_price ? a.sale_price : a.price;
-          const pb = b.on_sale && b.sale_price ? b.sale_price : b.price;
+          const pa = effectiveProductPrice(a as any);
+          const pb = effectiveProductPrice(b as any);
           return pb - pa;
         });
         break;
