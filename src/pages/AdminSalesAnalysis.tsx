@@ -680,6 +680,21 @@ export default function AdminSalesAnalysis() {
           .update({ status: 'cancelado' as any })
           .eq('id', cancelTarget.id);
         if (error) throw error;
+
+        // Liberar limite de promoções consumido pelo pedido
+        const { data: items } = await supabase
+          .from('order_items')
+          .select('product_id, variation_id, quantity')
+          .eq('order_id', cancelTarget.id);
+        if (items && items.length > 0) {
+          await supabase.rpc('release_promo_limits', {
+            p_items: items.map((i: any) => ({
+              product_id: i.product_id,
+              variation_id: i.variation_id,
+              quantity: i.quantity,
+            })),
+          });
+        }
       } else if (cancelTarget.kind === 'saved') {
         const { error } = await supabase
           .from('saved_sales')

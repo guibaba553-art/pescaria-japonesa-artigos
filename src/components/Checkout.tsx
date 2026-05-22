@@ -630,6 +630,21 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
       }
 
+      // Consome limite de promoções (apenas site) — bloqueia se exceder
+      const promoItems = items.map(item => ({
+        product_id: item.id,
+        variation_id: item.variationId || null,
+        quantity: item.quantity,
+      }));
+      const { error: promoError } = await supabase.rpc('consume_promo_limits', {
+        p_items: promoItems,
+      });
+      if (promoError) {
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        throw new Error(promoError.message || 'Limite de promoção atingido.');
+      }
+
       // Para Google Pay (via Mercado Pago Checkout Pro), redirecionamos
       if (paymentMethod === 'google_pay') {
         const { data: prefData, error: prefError } = await supabase.functions.invoke(
