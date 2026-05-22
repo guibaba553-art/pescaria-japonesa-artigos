@@ -199,13 +199,16 @@ export function PromotionsManagement() {
     basePrice: number,
     salePrice: number | null,
     endsAt: string | null,
-    onSale: boolean
+    onSale: boolean,
+    limitQty: number | null,
+    soldQty: number
   ) => {
     const key = `${table}:${id}`;
-    const draft = getDraft(key, basePrice, salePrice, endsAt);
+    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
+    const soldOut = limitQty != null && soldQty >= limitQty;
 
     return (
       <div className="space-y-3 p-3 rounded-md border bg-muted/30">
@@ -215,7 +218,7 @@ export function PromotionsManagement() {
               key={m}
               size="sm"
               variant={draft.mode === m ? 'default' : 'outline'}
-              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt)}
+              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty)}
             >
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
@@ -231,7 +234,7 @@ export function PromotionsManagement() {
               min={0}
               step={draft.mode === 'percent' ? 1 : 0.01}
               value={draft.amount}
-              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt)}
+              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
               className="w-32"
             />
           </div>
@@ -240,8 +243,20 @@ export function PromotionsManagement() {
             <Input
               type="datetime-local"
               value={draft.endsAt}
-              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt)}
+              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
               className="w-56"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              placeholder="Ex: 10"
+              value={draft.limitQty}
+              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              className="w-32"
             />
           </div>
           <div className="text-sm">
@@ -251,7 +266,7 @@ export function PromotionsManagement() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             {onSale ? 'Atualizar promoção' : 'Aplicar promoção'}
@@ -267,6 +282,12 @@ export function PromotionsManagement() {
             </Badge>
           )}
           {onSale && !endsAt && <Badge variant="secondary">Sem prazo</Badge>}
+          {onSale && limitQty != null && (
+            <Badge variant={soldOut ? 'destructive' : 'secondary'}>
+              {soldOut ? `Esgotado (${soldQty}/${limitQty})` : `${soldQty}/${limitQty} vendidos`}
+            </Badge>
+          )}
+          {onSale && limitQty == null && <Badge variant="secondary">Sem limite</Badge>}
         </div>
       </div>
     );
