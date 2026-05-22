@@ -202,7 +202,12 @@ export function PriceFormation() {
     if (selected) {
       const cost = Number(selected.cost ?? 0);
       const price = Number(selected.price ?? 0);
-      const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+      const fPct = Number(selected.freight_pct ?? 0);
+      const oPct = Number(selected.op_cost_pct ?? 0);
+      const tPct = Number(selected.tax_pct ?? 0);
+      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
+      // Margem PDV = markup sobre custo total (mesma fórmula da Margem do Site)
+      const margin = totalCost > 0 ? ((price - totalCost) / totalCost) * 100 : 0;
       setEditCost(String(cost));
       setEditPrice(String(price));
       setEditMargin(margin.toFixed(2));
@@ -211,11 +216,6 @@ export function PriceFormation() {
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
       setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
-      // Margem do site derivada do min_sale_price vs custo total atual
-      const fPct = Number(selected.freight_pct ?? 0);
-      const oPct = Number(selected.op_cost_pct ?? 0);
-      const tPct = Number(selected.tax_pct ?? 0);
-      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
       if (selected.min_sale_price != null && totalCost > 0) {
         const m = ((Number(selected.min_sale_price) - totalCost) / totalCost) * 100;
         setEditSiteMarginPct(m.toFixed(2));
@@ -270,32 +270,51 @@ export function PriceFormation() {
   const belowMin = liveMinSale > 0 && livePrice > 0 && livePrice < liveMinSale;
 
   // Margin → recompute price
+  // Fórmula unificada (mesma da Margem do Site): preço = custo_total × (1 + M)
+  // Resolvendo a circularidade do imposto que incide sobre o preço:
+  //   preço = (custo × (1 + f + o) × (1 + M)) / (1 − t × (1 + M))
   const handleMarginChange = (v: string) => {
     setEditMargin(v);
     const m = parseNum(v);
-    if (m >= 100 || m < 0) return;
-    const newPrice = liveCost / (1 - m / 100);
+    if (m < 0) return;
+    const cost = liveCost;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const M = m / 100;
+    const denom = 1 - t * (1 + M);
+    if (denom <= 0) return;
+    const newPrice = (cost * (1 + f + o) * (1 + M)) / denom;
     if (isFinite(newPrice) && newPrice > 0) {
       setEditPrice(newPrice.toFixed(2));
     }
   };
 
-  // Price → recompute margin
+  // Price → recompute margin (markup sobre custo total)
   const handlePriceChange = (v: string) => {
     setEditPrice(v);
     const p = parseNum(v);
-    if (p > 0) {
-      const m = ((p - liveCost) / p) * 100;
+    const cost = liveCost;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const totalCost = cost * (1 + f + o) + p * t;
+    if (p > 0 && totalCost > 0) {
+      const m = ((p - totalCost) / totalCost) * 100;
       setEditMargin(m.toFixed(2));
     }
   };
 
-  // Cost → recompute margin (price fixed)
+  // Cost → recompute margin (price fixed, markup sobre custo total)
   const handleCostChange = (v: string) => {
     setEditCost(v);
     const c = parseNum(v);
-    if (livePrice > 0) {
-      const m = ((livePrice - c) / livePrice) * 100;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const totalCost = c * (1 + f + o) + livePrice * t;
+    if (livePrice > 0 && totalCost > 0) {
+      const m = ((livePrice - totalCost) / totalCost) * 100;
       setEditMargin(m.toFixed(2));
     }
   };
@@ -852,7 +871,8 @@ export function PriceFormation() {
                       onChange={(e) => handleMarginChange(e.target.value)}
                     />
                     <div className="text-xs text-muted-foreground mt-1">
-                      Editar a margem recalcula o preço de venda automaticamente.
+                      Markup sobre o custo total. Preço = custo_total × (1 + margem/100). Mesma fórmula da Margem do Site.
+
                     </div>
                   </div>
 
