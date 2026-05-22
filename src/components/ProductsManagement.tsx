@@ -157,8 +157,8 @@ export function ProductsManagement() {
   useEffect(() => {
     loadProducts();
     loadStockDiscrepancies();
-    supabase.from('suppliers').select('id, name').order('name').then(({ data }) => {
-      if (data) setSuppliers(data as SupplierOpt[]);
+    supabase.from('suppliers').select('id, razao_social, nome_fantasia').eq('is_active', true).order('razao_social').then(({ data }) => {
+      if (data) setSuppliers((data as any[]).map((s) => ({ id: s.id, name: s.nome_fantasia || s.razao_social })));
     });
   }, []);
 
