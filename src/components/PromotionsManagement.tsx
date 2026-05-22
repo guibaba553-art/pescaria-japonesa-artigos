@@ -429,12 +429,16 @@ export function PromotionsManagement() {
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm truncate">{v.name}</div>
                               <div className="text-xs text-muted-foreground">
-                                R$ {Number(v.price).toFixed(2)} • Estoque: {v.stock}
+                                R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)}
+                                {Number(v.min_sale_price) > 0 && (
+                                  <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(site)</span>
+                                )}
+                                {' '}• Estoque: {v.stock}
                               </div>
                             </div>
                             {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
+                          {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
                         </div>
                       ))}
                     </div>
