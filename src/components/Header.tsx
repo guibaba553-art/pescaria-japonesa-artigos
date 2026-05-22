@@ -172,7 +172,7 @@ export function Header() {
         </button>
 
         {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xl hidden md:flex" ref={containerRef}>
+        <form onSubmit={handleSearch} className={`flex-1 max-w-xl ${isAdminArea ? 'hidden' : 'hidden md:flex'}`} ref={containerRef}>
           <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -356,8 +356,8 @@ export function Header() {
 
       {/* Atalhos admin (desktop) — visíveis em áreas admin para admin/funcionários */}
       {isAdminArea && !loading && (isAdmin || isEmployee) && (
-        <nav className="hidden lg:block border-t border-border/40 bg-muted/30">
-          <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
+        <nav className="hidden lg:block border-t border-border/60 bg-background">
+          <div className="container mx-auto h-12 flex items-center gap-6 overflow-x-auto">
             {visibleShortcuts.map((s) => {
               const Icon = s.icon;
               const active =
@@ -367,14 +367,17 @@ export function Header() {
                 <button
                   key={s.path}
                   onClick={() => navigate(s.path)}
-                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-full whitespace-nowrap ${
+                  className={`relative flex items-center gap-2 text-sm font-medium transition-colors py-3 whitespace-nowrap ${
                     active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />
                   {s.label}
+                  {active && (
+                    <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full" />
+                  )}
                 </button>
               );
             })}
