@@ -69,6 +69,21 @@ serve(async (req) => {
     // Liberar reservas de estoque
     await supabase.rpc('release_stock_reservation', { p_order_id: orderId });
 
+    // Liberar limite de promoções consumido
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('product_id, variation_id, quantity')
+      .eq('order_id', orderId);
+    if (items && items.length > 0) {
+      await supabase.rpc('release_promo_limits', {
+        p_items: items.map((i: any) => ({
+          product_id: i.product_id,
+          variation_id: i.variation_id,
+          quantity: i.quantity,
+        })),
+      });
+    }
+
     // Delete order_items first (FK), then order
     await supabase.from('order_items').delete().eq('order_id', orderId);
     const { error: delErr } = await supabase.from('orders').delete().eq('id', orderId);
