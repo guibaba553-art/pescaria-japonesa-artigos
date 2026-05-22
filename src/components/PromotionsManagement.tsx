@@ -115,7 +115,7 @@ export function PromotionsManagement() {
       arr.push(v as Variation);
       byProduct.set(v.product_id, arr);
     });
-    const merged: Product[] = ((prods as any[]) || []).map((p) => ({
+    const merged: Product[] = filteredProds.map((p) => ({
       ...p,
       variations: (byProduct.get(p.id) || []).sort((a, b) => a.name.localeCompare(b.name)),
     }));
