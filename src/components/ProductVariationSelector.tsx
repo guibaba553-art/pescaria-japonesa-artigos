@@ -3,6 +3,7 @@ import { ProductVariation } from "@/types/product";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Badge } from "./ui/badge";
+import { isPromoActive } from "@/utils/promoPrice";
 
 interface ProductVariationSelectorProps {
   variations: ProductVariation[];
@@ -10,12 +11,15 @@ interface ProductVariationSelectorProps {
   productMinSalePrice?: number | null;
 }
 
-// Preço exibido no site: prioriza min_sale_price da variação,
-// depois min_sale_price do produto pai, e por fim cai no price (PDV).
+// Preço exibido no site: prioriza promoção ativa da variação, depois min_sale_price
+// da variação, depois min_sale_price do produto pai, e por fim cai no price (PDV).
 export const sitePriceForVariation = (
   variation: ProductVariation,
   productMinSalePrice?: number | null
 ) => {
+  if (isPromoActive(variation as any)) {
+    return Number((variation as any).sale_price);
+  }
   const vMin = Number((variation as any).min_sale_price) || 0;
   if (vMin > 0) return vMin;
   const pMin = Number(productMinSalePrice) || 0;
