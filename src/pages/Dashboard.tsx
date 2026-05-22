@@ -139,8 +139,8 @@ export default function Dashboard() {
         { data: expenses },
       ] = await Promise.all([
         supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
-        supabase.from('products').select('id, name, stock, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price'),
-        supabase.from('product_variations').select('id, product_id, name, cost, freight_pct, op_cost_pct, tax_pct, min_sale_price'),
+        supabase.rpc('get_products_admin'),
+        supabase.rpc('get_product_variations_admin'),
         supabase.from('profiles').select('id'),
         supabase.from('expenses').select('amount'),
       ]);
