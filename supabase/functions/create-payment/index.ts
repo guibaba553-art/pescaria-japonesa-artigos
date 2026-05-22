@@ -226,10 +226,10 @@ serve(async (req) => {
 
     const [variationsRes, directProductsRes] = await Promise.all([
       variationIdsToFetch.size
-        ? supabase.from('product_variations').select(`${PROMO_VARIATION_COLS}, product_id`).in('id', Array.from(variationIdsToFetch))
+        ? supabase.from('product_variations').select(`id, ${PROMO_VARIATION_COLS}`).in('id', Array.from(variationIdsToFetch))
         : Promise.resolve({ data: [], error: null } as any),
       productIdsToFetch.size
-        ? supabase.from('products').select(PROMO_PRODUCT_COLS).in('id', Array.from(productIdsToFetch))
+        ? supabase.from('products').select(`id, ${PROMO_PRODUCT_COLS}`).in('id', Array.from(productIdsToFetch))
         : Promise.resolve({ data: [], error: null } as any),
     ]);
 
@@ -252,7 +252,7 @@ serve(async (req) => {
     if (parentIdsNeeded.size) {
       const { data: parents, error: parentsError } = await supabase
         .from('products')
-        .select(PROMO_PRODUCT_COLS)
+        .select(`id, ${PROMO_PRODUCT_COLS}`)
         .in('id', Array.from(parentIdsNeeded));
       if (parentsError) {
         console.error('Parent products fetch error:', parentsError);
