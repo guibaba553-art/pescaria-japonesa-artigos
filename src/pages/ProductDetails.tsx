@@ -321,7 +321,7 @@ export default function ProductDetails() {
                 })()
               ) : (
                 <div className="bg-muted/40 rounded-2xl p-5 mb-4">
-                  {product.on_sale && product.sale_price ? (
+                  {productPromoActive && product.sale_price ? (
                     <>
                       <p className="text-base line-through text-muted-foreground leading-none">
                         De R$ {product.price.toFixed(2).replace('.', ',')}
