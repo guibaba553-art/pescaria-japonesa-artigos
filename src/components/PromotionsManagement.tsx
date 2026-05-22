@@ -39,6 +39,7 @@ interface Draft {
   mode: Mode;
   amount: string;
   endsAt: string;
+  limitQty: string;
 }
 
 function toLocalDateTime(iso: string | null) {
@@ -48,15 +49,16 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft {
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
       endsAt: toLocalDateTime(endsAt),
+      limitQty: limitQty != null ? String(limitQty) : '',
     };
   }
-  return { mode: 'percent', amount: '10', endsAt: '' };
+  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '' };
 }
 
 function computeFinalPrice(basePrice: number, draft: Draft): number {
