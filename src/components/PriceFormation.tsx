@@ -871,7 +871,8 @@ export function PriceFormation() {
                       onChange={(e) => handleMarginChange(e.target.value)}
                     />
                     <div className="text-xs text-muted-foreground mt-1">
-                      Editar a margem recalcula o preço de venda automaticamente.
+                      Markup sobre o custo total. Preço = custo_total × (1 + margem/100). Mesma fórmula da Margem do Site.
+
                     </div>
                   </div>
 
