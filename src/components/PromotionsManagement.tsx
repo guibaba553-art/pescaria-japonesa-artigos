@@ -393,7 +393,7 @@ export function PromotionsManagement() {
                             </div>
                             {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale)}
+                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty)}
                         </div>
                       ))}
                     </div>
