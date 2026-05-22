@@ -134,12 +134,12 @@ export function PromotionsManagement() {
     (p) => p.on_sale || p.variations.some((v) => v.on_sale)
   ).length;
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, endsAt);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
   };
 
-  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null) => {
-    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt);
+  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null) => {
+    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
     setDrafts({ ...drafts, [key]: { ...current, ...patch } });
   };
 
