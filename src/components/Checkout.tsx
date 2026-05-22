@@ -75,6 +75,12 @@ const detectBrand = (cardNumber: string): string | null => {
   return null;
 };
 
+const debitBrandLabelsByMethodId: Record<string, string> = {
+  debelo: 'Elo',
+  debvisa: 'Visa',
+  debmaster: 'Mastercard',
+};
+
 const paymentMethodLabel = (m: SavedPaymentMethod['payment_method']) => {
   switch (m) {
     case 'pix': return 'PIX';
@@ -133,6 +139,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   const [saveForNext, setSaveForNext] = useState(true);
   const [savedMethods, setSavedMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedSavedId, setSelectedSavedId] = useState<string | null>(null);
+  const [supportedDebitBrands, setSupportedDebitBrands] = useState<string[] | null>(null);
 
   // Endereços salvos do usuário
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
@@ -227,6 +234,17 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
   // Sem desconto especial por método — total final = subtotal + frete
   const finalTotal = total + shippingCost;
   const cleanCardNumber = cardData.number.replace(/\D/g, '');
+  const detectedCardBrand = detectBrand(cleanCardNumber);
+  const debitBrandMismatch =
+    paymentMethod === 'debit' &&
+    supportedDebitBrands !== null &&
+    cleanCardNumber.length >= 6 &&
+    !!detectedCardBrand &&
+    !supportedDebitBrands.includes(detectedCardBrand);
+  const debitHint =
+    supportedDebitBrands && supportedDebitBrands.length > 0
+      ? `Débito disponível nesta loja: ${supportedDebitBrands.join(', ')}.`
+      : 'Débito indisponível nesta loja no momento.';
 
   const formatCurrency = (value: number) =>
     value.toLocaleString('pt-BR', {
@@ -272,6 +290,56 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     };
     document.body.appendChild(script);
     // Mantemos o script no DOM para reuso — não removemos no cleanup.
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let isActive = true;
+
+    const loadDebitBrands = async () => {
+      try {
+        const response = await fetch(
+          `https://api.mercadopago.com/v1/payment_methods?public_key=${APP_CONFIG.MERCADO_PAGO_PUBLIC_KEY}`,
+        );
+
+        if (!response.ok) {
+          throw new Error(`Payment methods API returned ${response.status}`);
+        }
+
+        const paymentMethods = await response.json();
+        const debitBrands = Array.from(
+          new Set(
+            (Array.isArray(paymentMethods) ? paymentMethods : [])
+              .filter((method: any) => method?.payment_type_id === 'debit_card')
+              .map((method: any) => {
+                if (typeof method?.id === 'string' && debitBrandLabelsByMethodId[method.id]) {
+                  return debitBrandLabelsByMethodId[method.id];
+                }
+
+                const name = String(method?.name ?? '').replace(/\s*d[eé]bito\s*/i, '').trim();
+                return name || null;
+              })
+              .filter(Boolean),
+          ),
+        ) as string[];
+
+        if (isActive) {
+          setSupportedDebitBrands(debitBrands);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar bandeiras de débito disponíveis:', error);
+        if (isActive) {
+          setSupportedDebitBrands(null);
+        }
+      }
+    };
+
+    loadDebitBrands();
+
+    return () => {
+      isActive = false;
+    };
   }, [open]);
 
   useEffect(() => {
