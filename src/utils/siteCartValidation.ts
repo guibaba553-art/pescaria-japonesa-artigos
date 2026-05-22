@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { effectiveProductPrice, effectiveVariationPrice } from './promoPrice';
 
 export interface SiteCartItem {
   id: string;
