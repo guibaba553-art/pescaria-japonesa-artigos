@@ -136,7 +136,8 @@ export default function ProductDetails() {
 
   const productUrl = `${window.location.origin}/produto/${product.id}`;
   const productImage = displayImages[0] || 'https://lovable.dev/opengraph-image-p98pqg.png';
-  const effectivePrice = product.on_sale && product.sale_price ? product.sale_price : product.price;
+  const productPromoActive = isPromoActive(product as any);
+  const effectivePrice = effectiveProductPrice(product as any);
   const seoTitle = `${product.name} | JAPAS Pesca`;
   const seoDescription = (product.short_description || product.description || `Compre ${product.name} na JAPAS Pesca - artigos de pesca em Sinop MT.`).slice(0, 160);
 
