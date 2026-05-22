@@ -6,7 +6,7 @@ import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
-import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart } from 'lucide-react';
+import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart, Boxes, ClipboardList, Users, BarChart3, ScanLine, UserCog, FileText, AlertTriangle, Wallet, Receipt, History } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
 
 interface Suggestion {
@@ -124,6 +124,30 @@ export function Header() {
   };
 
   const isHome = location.pathname === '/';
+  const isAdminArea =
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/pdv') ||
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/fechamento-caixa') ||
+    location.pathname.startsWith('/ferramentas-fiscais');
+
+  const adminShortcuts: { label: string; path: string; icon: any; adminOnly?: boolean }[] = [
+    { label: 'Painel', path: '/admin', icon: LayoutDashboard },
+    { label: 'Dashboard', path: '/dashboard', icon: BarChart3, adminOnly: true },
+    { label: 'PDV', path: '/pdv', icon: ShoppingCart },
+    { label: 'Catálogo', path: '/admin/catalogo', icon: Boxes, adminOnly: true },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList },
+    { label: 'Clientes', path: '/admin/clientes', icon: Users, adminOnly: true },
+    { label: 'Triagem', path: '/admin/triagem', icon: ScanLine, adminOnly: true },
+    { label: 'Análise', path: '/admin/analise', icon: BarChart3, adminOnly: true },
+    { label: 'Funcionários', path: '/admin/funcionarios', icon: UserCog, adminOnly: true },
+    { label: 'Vendas', path: '/pdv/sales-history', icon: History },
+    { label: 'Caixa', path: '/fechamento-caixa', icon: Wallet },
+    { label: 'Fiscal', path: '/ferramentas-fiscais', icon: Receipt, adminOnly: true },
+    { label: 'LGPD', path: '/admin/lgpd', icon: FileText, adminOnly: true },
+    { label: 'Erros', path: '/admin/erros', icon: AlertTriangle, adminOnly: true },
+  ];
+  const visibleShortcuts = adminShortcuts.filter((s) => isAdmin || !s.adminOnly);
 
   return (
     <header
@@ -307,8 +331,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Categorias bar (desktop) */}
-      {primaries.length > 0 && (
+      {/* Categorias bar (desktop) — escondida em áreas admin */}
+      {!isAdminArea && primaries.length > 0 && (
         <nav className="hidden lg:block border-t border-border/40">
           <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
             <button
@@ -326,6 +350,34 @@ export function Header() {
                 {cat.name}
               </button>
             ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Atalhos admin (desktop) — visíveis em áreas admin para admin/funcionários */}
+      {isAdminArea && !loading && (isAdmin || isEmployee) && (
+        <nav className="hidden lg:block border-t border-border/40 bg-muted/30">
+          <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
+            {visibleShortcuts.map((s) => {
+              const Icon = s.icon;
+              const active =
+                location.pathname === s.path ||
+                (s.path !== '/admin' && location.pathname.startsWith(s.path));
+              return (
+                <button
+                  key={s.path}
+                  onClick={() => navigate(s.path)}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-full whitespace-nowrap ${
+                    active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}
