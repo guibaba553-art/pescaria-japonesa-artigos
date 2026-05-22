@@ -82,6 +82,16 @@ serve(async (req) => {
           .select("product_id, variation_id, quantity")
           .eq("order_id", orderId);
 
+        // 1.6) Liberar slots de promoção consumidos para o pedido expirado
+        if (items && items.length > 0) {
+          const promoItems = (items as OrderItem[]).map((it) => ({
+            product_id: it.product_id,
+            variation_id: it.variation_id,
+            quantity: it.quantity,
+          }));
+          await supabase.rpc('release_promo_limits', { p_items: promoItems });
+        }
+
         for (const item of (items ?? []) as OrderItem[]) {
           // Check if stock was actually deducted (sale movement exists)
           const { data: existingSale } = await supabase
