@@ -31,7 +31,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     const { data, error } = await supabase
       .from('reviews')
       .select(`
-        *,
+        id, order_id, product_id, rating, comment, created_at,
         profiles (full_name)
       `)
       .eq('product_id', productId)
