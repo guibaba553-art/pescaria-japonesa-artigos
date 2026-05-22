@@ -8,6 +8,7 @@ import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Clock } from "lucide-react";
+import { effectiveProductPrice } from "@/utils/promoPrice";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -163,7 +164,7 @@ const FlashDealsCountdown = () => {
                     {
                       id: product.id,
                       name: product.name,
-                      price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                      price: effectiveProductPrice(product as any),
                       image_url: product.image_url,
                     },
                     qty,

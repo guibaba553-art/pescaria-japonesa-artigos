@@ -12,6 +12,7 @@ import { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { PUBLIC_PRODUCT_COLUMNS } from "@/utils/productColumns";
+import { effectiveProductPrice } from "@/utils/promoPrice";
 
 export function SearchSection() {
   const navigate = useNavigate();
@@ -79,9 +80,7 @@ export function SearchSection() {
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     
-    const finalPrice = product.on_sale && product.sale_price 
-      ? product.sale_price 
-      : product.price;
+    const finalPrice = effectiveProductPrice(product as any);
 
     addItem({
       id: product.id,
