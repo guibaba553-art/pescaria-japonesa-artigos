@@ -1057,29 +1057,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 </Label>
               </div>
 
-              <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="credit" id="credit" />
-                <Label htmlFor="credit" className="flex items-center gap-2 cursor-pointer flex-1">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="font-medium">Cartão de Crédito</p>
-                    <p className="text-sm text-muted-foreground">Parcelamento conforme cartão e valor</p>
-                  </div>
-                </Label>
-              </div>
+              {/* Cartão de Crédito e Débito temporariamente ocultos até liberação das bandeiras Visa/Master débito no Mercado Pago */}
 
-              <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
-                <RadioGroupItem value="debit" id="debit" />
-                <Label htmlFor="debit" className="flex items-center gap-2 cursor-pointer flex-1">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="font-medium">Cartão de Débito</p>
-                    <p className="text-sm text-muted-foreground">
-                      À vista{supportedDebitBrands?.length ? ` · ${debitHint}` : ''}
-                    </p>
-                  </div>
-                </Label>
-              </div>
 
               <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
                 <RadioGroupItem value="google_pay" id="google_pay" />
