@@ -357,7 +357,7 @@ export function Header() {
       {/* Atalhos admin (desktop) — visíveis em áreas admin para admin/funcionários */}
       {isAdminArea && !loading && (isAdmin || isEmployee) && (
         <nav className="hidden lg:block border-t border-border/60 bg-background">
-          <div className="container mx-auto h-12 flex items-center gap-6 overflow-x-auto scrollbar-hide">
+          <div className="container mx-auto h-12 flex items-center justify-between gap-1 xl:gap-2 overflow-x-auto scrollbar-hide">
             {visibleShortcuts.map((s) => {
               const Icon = s.icon;
               const active =
@@ -367,13 +367,13 @@ export function Header() {
                 <button
                   key={s.path}
                   onClick={() => navigate(s.path)}
-                  className={`relative flex items-center gap-2 text-sm font-medium transition-colors py-3 whitespace-nowrap ${
+                  className={`relative flex items-center gap-1.5 text-xs xl:text-sm font-medium transition-colors py-3 px-1 whitespace-nowrap ${
                     active
                       ? 'text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />
+                  <Icon className={`w-3.5 h-3.5 xl:w-4 xl:h-4 ${active ? 'text-primary' : ''}`} />
                   {s.label}
                   {active && (
                     <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary rounded-full" />
