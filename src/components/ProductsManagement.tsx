@@ -157,6 +157,9 @@ export function ProductsManagement() {
   useEffect(() => {
     loadProducts();
     loadStockDiscrepancies();
+    supabase.from('suppliers').select('id, name').order('name').then(({ data }) => {
+      if (data) setSuppliers(data as SupplierOpt[]);
+    });
   }, []);
 
   const loadStockDiscrepancies = async () => {
