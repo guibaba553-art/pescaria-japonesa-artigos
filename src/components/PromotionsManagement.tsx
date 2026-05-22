@@ -13,6 +13,7 @@ interface Variation {
   product_id: string;
   name: string;
   price: number;
+  min_sale_price: number | null;
   stock: number;
   image_url: string | null;
   on_sale: boolean;
@@ -31,6 +32,7 @@ interface Product {
   name: string;
   category: string;
   price: number;
+  min_sale_price: number | null;
   image_url: string | null;
   stock: number;
   on_sale: boolean;
@@ -94,7 +96,7 @@ export function PromotionsManagement() {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
       .from('products')
-      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
+      .select('id,name,category,price,min_sale_price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
       .neq('category', 'Pendente Revisão')
       .order('name');
     if (e1) {
@@ -104,7 +106,7 @@ export function PromotionsManagement() {
     }
     const { data: vars, error: e2 } = await supabase
       .from('product_variations')
-      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
+      .select('id,product_id,name,price,min_sale_price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
@@ -398,7 +400,10 @@ export function PromotionsManagement() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{p.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {p.category} • R$ {Number(p.price).toFixed(2)}
+                        {p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}
+                        {Number(p.min_sale_price) > 0 && (
+                          <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(preço site)</span>
+                        )}
                         {hasVars && ` • ${p.variations.length} variações`}
                       </div>
                     </div>
@@ -407,7 +412,7 @@ export function PromotionsManagement() {
 
                   {!hasVars && (
                     <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
+                      {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
                     </div>
                   )}
 
@@ -424,12 +429,16 @@ export function PromotionsManagement() {
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm truncate">{v.name}</div>
                               <div className="text-xs text-muted-foreground">
-                                R$ {Number(v.price).toFixed(2)} • Estoque: {v.stock}
+                                R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)}
+                                {Number(v.min_sale_price) > 0 && (
+                                  <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(site)</span>
+                                )}
+                                {' '}• Estoque: {v.stock}
                               </div>
                             </div>
                             {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
+                          {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
                         </div>
                       ))}
                     </div>
