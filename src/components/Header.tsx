@@ -29,6 +29,27 @@ export function Header() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [scrolled, setScrolled] = useState(false);
   const containerRef = useRef<HTMLFormElement>(null);
+  const [firstName, setFirstName] = useState<string>('');
+
+  // Busca o nome do usuário para saudação
+  useEffect(() => {
+    if (!user) { setFirstName(''); return; }
+    const fallback =
+      (user.user_metadata as any)?.full_name ||
+      user.email?.split('@')[0] ||
+      '';
+    setFirstName(String(fallback).trim().split(/\s+/)[0] || '');
+
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const name = data?.full_name?.trim();
+        if (name) setFirstName(name.split(/\s+/)[0]);
+      });
+  }, [user?.id]);
 
   // Scroll detection para header dinâmico
   useEffect(() => {
