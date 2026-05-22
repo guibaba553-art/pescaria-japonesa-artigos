@@ -41,7 +41,7 @@ export async function validateSiteCart(
     if (item.variationId) {
       const { data: variation } = await supabase
         .from('product_variations')
-        .select('id, price, stock, name, product_id')
+        .select('id, price, stock, name, product_id, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price')
         .eq('id', item.variationId)
         .maybeSingle();
 
@@ -58,8 +58,8 @@ export async function validateSiteCart(
 
       const { data: product } = await supabase
         .from('products')
-        .select('id, on_sale, sale_price, price')
-        .eq('id', variation.product_id)
+        .select('id, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, price, min_sale_price')
+        .eq('id', (variation as any).product_id)
         .maybeSingle();
 
       if (!product) {
@@ -73,21 +73,17 @@ export async function validateSiteCart(
         continue;
       }
 
-      if ((variation.stock ?? 0) < item.quantity) {
+      if (((variation as any).stock ?? 0) < item.quantity) {
         issues.push({
           cartItemKey: item.cartItemKey,
           name: item.name,
           reason: 'out_of_stock',
-          details: `Apenas ${variation.stock ?? 0} em estoque.`,
-          availableStock: variation.stock ?? 0,
+          details: `Apenas ${(variation as any).stock ?? 0} em estoque.`,
+          availableStock: (variation as any).stock ?? 0,
         });
       }
 
-      let expectedPrice = Number(variation.price);
-      if (product.on_sale && product.sale_price !== null && Number(product.price) > 0) {
-        const discount = 1 - (Number(product.sale_price) / Number(product.price));
-        expectedPrice = expectedPrice * (1 - discount);
-      }
+      const expectedPrice = effectiveVariationPrice(variation as any, product as any);
       if (Math.abs(expectedPrice - item.price) > 0.01) {
         issues.push({
           cartItemKey: item.cartItemKey,
@@ -100,7 +96,7 @@ export async function validateSiteCart(
     } else {
       const { data: product } = await supabase
         .from('products')
-        .select('id, price, sale_price, on_sale, stock')
+        .select('id, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, stock')
         .eq('id', item.id)
         .maybeSingle();
 
@@ -115,26 +111,24 @@ export async function validateSiteCart(
         continue;
       }
 
-      if ((product.stock ?? 0) < item.quantity) {
+      if (((product as any).stock ?? 0) < item.quantity) {
         issues.push({
           cartItemKey: item.cartItemKey,
           name: item.name,
           reason: 'out_of_stock',
-          details: `Apenas ${product.stock ?? 0} em estoque.`,
-          availableStock: product.stock ?? 0,
+          details: `Apenas ${(product as any).stock ?? 0} em estoque.`,
+          availableStock: (product as any).stock ?? 0,
         });
       }
 
-      const expectedPrice = product.on_sale && product.sale_price
-        ? Number(product.sale_price)
-        : Number(product.price);
+      const expectedPrice = effectiveProductPrice(product as any);
       if (Math.abs(expectedPrice - item.price) > 0.01) {
         issues.push({
           cartItemKey: item.cartItemKey,
           name: item.name,
           reason: 'price_changed',
           details: 'O preço foi atualizado.',
-          newPrice: expectedPrice,
+          newPrice: Number(expectedPrice.toFixed(2)),
         });
       }
     }
