@@ -400,7 +400,10 @@ export function PromotionsManagement() {
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{p.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {p.category} • R$ {Number(p.price).toFixed(2)}
+                        {p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}
+                        {Number(p.min_sale_price) > 0 && (
+                          <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(preço site)</span>
+                        )}
                         {hasVars && ` • ${p.variations.length} variações`}
                       </div>
                     </div>
@@ -409,7 +412,7 @@ export function PromotionsManagement() {
 
                   {!hasVars && (
                     <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
+                      {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
                     </div>
                   )}
 
