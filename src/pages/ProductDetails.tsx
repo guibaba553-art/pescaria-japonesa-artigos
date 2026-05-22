@@ -321,14 +321,14 @@ export default function ProductDetails() {
                 })()
               ) : (
                 <div className="bg-muted/40 rounded-2xl p-5 mb-4">
-                  {productPromoActive && product.sale_price ? (
+                  {productPromoActive && product.sale_price && effectivePrice === Number(product.sale_price) ? (
                     <>
                       <p className="text-base line-through text-muted-foreground leading-none">
                         De R$ {product.price.toFixed(2).replace('.', ',')}
                       </p>
                       <div className="flex items-baseline gap-3 mt-1">
                         <p className="text-4xl sm:text-5xl font-display font-black text-primary tracking-tight leading-none">
-                          R$ {product.sale_price.toFixed(2).replace('.', ',')}
+                          R$ {effectivePrice.toFixed(2).replace('.', ',')}
                         </p>
                         <span className="text-sm font-bold text-primary">
                           {Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
@@ -337,7 +337,7 @@ export default function ProductDetails() {
                     </>
                   ) : (
                     <p className="text-4xl sm:text-5xl font-display font-black text-primary tracking-tight leading-none">
-                      R$ {product.price.toFixed(2).replace('.', ',')}
+                      R$ {effectivePrice.toFixed(2).replace('.', ',')}
                     </p>
                   )}
 
