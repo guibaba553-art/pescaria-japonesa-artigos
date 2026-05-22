@@ -172,7 +172,7 @@ export function Header() {
         </button>
 
         {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-xl hidden md:flex" ref={containerRef}>
+        <form onSubmit={handleSearch} className={`flex-1 max-w-xl ${isAdminArea ? 'hidden' : 'hidden md:flex'}`} ref={containerRef}>
           <div className="relative w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
