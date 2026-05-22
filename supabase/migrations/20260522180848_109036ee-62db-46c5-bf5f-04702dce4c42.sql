@@ -1,0 +1,2 @@
+UPDATE public.cash_movements SET amount = 390 WHERE id = 'bbdba6e6-6713-4883-8a06-7253f77c887f';
+UPDATE public.cash_registers SET withdrawals = 390, expected_amount = expected_amount + 310 WHERE id = 'c04d759e-096e-49ec-bb06-200c8f88703c';
