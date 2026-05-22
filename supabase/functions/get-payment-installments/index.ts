@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
+const MERCADO_PAGO_PUBLIC_KEY = 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -106,22 +108,27 @@ serve(async (req) => {
       });
     }
 
-    let paymentMethodId = detectCardBrand(cleanCardNumber, data.paymentMethod);
-    if (!paymentMethodId) {
-      try {
-        const binResp = await fetch(
-          `https://api.mercadopago.com/v1/payment_methods/search?bin=${cleanCardNumber.substring(0, 8)}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
-        );
+    let paymentMethodId: string | null = null;
+    try {
+      const paymentMethodsUrl = new URL('https://api.mercadopago.com/v1/payment_methods/search');
+      paymentMethodsUrl.searchParams.set('bin', cleanCardNumber.substring(0, 6));
+      paymentMethodsUrl.searchParams.set('public_key', MERCADO_PAGO_PUBLIC_KEY);
 
-        if (binResp.ok) {
-          const binData = await binResp.json();
-          const results = Array.isArray(binData?.results) ? binData.results : [];
-          paymentMethodId = results.find((item: any) => item.payment_type_id === 'credit_card')?.id ?? results[0]?.id ?? null;
-        }
-      } catch (error) {
-        console.error('Failed to detect card brand via BIN API:', error);
+      const binResp = await fetch(paymentMethodsUrl.toString(), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (binResp.ok) {
+        const binData = await binResp.json();
+        const results = Array.isArray(binData?.results) ? binData.results : [];
+        paymentMethodId = results.find((item: any) => item.payment_type_id === 'credit_card')?.id ?? results[0]?.id ?? null;
       }
+    } catch (error) {
+      console.error('Failed to detect card brand via BIN API:', error);
+    }
+
+    if (!paymentMethodId) {
+      paymentMethodId = detectCardBrand(cleanCardNumber, data.paymentMethod);
     }
 
     if (!paymentMethodId) {

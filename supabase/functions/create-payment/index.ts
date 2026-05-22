@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { effectiveProductPrice, effectiveVariationPrice, PROMO_PRODUCT_COLS, PROMO_VARIATION_COLS } from '../_shared/promoPrice.ts';
 
+const MERCADO_PAGO_PUBLIC_KEY = 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -611,10 +613,13 @@ serve(async (req) => {
       // Só usamos detecção local como fallback se a BIN API falhar.
       try {
         const bin = cleanCardNumber.substring(0, 6);
-        const binResp = await fetch(
-          `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}`,
-          { headers: { 'Authorization': `Bearer ${accessToken}` } }
-        );
+        const paymentMethodsUrl = new URL('https://api.mercadopago.com/v1/payment_methods/search');
+        paymentMethodsUrl.searchParams.set('bin', bin);
+        paymentMethodsUrl.searchParams.set('public_key', MERCADO_PAGO_PUBLIC_KEY);
+
+        const binResp = await fetch(paymentMethodsUrl.toString(), {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
         if (binResp.ok) {
           const binData = await binResp.json();
           const results = binData?.results || [];
@@ -761,6 +766,8 @@ serve(async (req) => {
           console.error('Error fetching installment options:', installmentsError);
         }
       }
+
+      console.log('Resolved payment method for card payment:', paymentMethodId, 'requested type:', data.paymentMethod);
 
       const cardPayment = {
         transaction_amount: txAmount,
