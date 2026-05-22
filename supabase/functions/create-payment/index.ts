@@ -410,21 +410,39 @@ serve(async (req) => {
         },
       };
 
-      console.log('Creating PIX payment');
+      console.log('Creating PIX payment — calling Mercado Pago…');
 
-      const response = await fetch('https://api.mercadopago.com/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
-        },
-        body: JSON.stringify(pixPayment),
-      });
-
-      const responseData = await response.json();
-      
-      console.log('Mercado Pago PIX response status:', response.status);
+      let response: Response;
+      let responseData: any;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s
+        response = await fetch('https://api.mercadopago.com/v1/payments', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': `pix-${Date.now()}-${Math.random()}`,
+          },
+          body: JSON.stringify(pixPayment),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        responseData = await response.json();
+        console.log('Mercado Pago PIX response status:', response.status);
+      } catch (mpErr) {
+        const isAbort = (mpErr as any)?.name === 'AbortError';
+        console.error('Mercado Pago fetch failed:', isAbort ? 'TIMEOUT (20s)' : (mpErr as any)?.message || mpErr);
+        return new Response(
+          JSON.stringify({
+            error: isAbort
+              ? 'O Mercado Pago demorou para responder. Tente novamente em alguns segundos.'
+              : 'Falha ao contatar o Mercado Pago. Tente novamente.',
+            success: false,
+          }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       if (!response.ok) {
         console.error('Mercado Pago API Error - Status:', response.status, 'Body:', JSON.stringify(responseData));
