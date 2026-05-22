@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { effectiveProductPrice, effectiveVariationPrice, PROMO_PRODUCT_COLS, PROMO_VARIATION_COLS } from '../_shared/promoPrice.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -81,32 +82,33 @@ serve(async (req) => {
     for (const item of data.items) {
       let price: number;
       if (item.variationId) {
-        const { data: prod } = await supabase
-          .from('products').select('on_sale, sale_price, price').eq('id', item.id).single();
         const { data: variation } = await supabase
-          .from('product_variations').select('price').eq('id', item.variationId).eq('product_id', item.id).single();
-        if (!prod || !variation) {
-          return new Response(JSON.stringify({ error: 'Invalid product/variation' }), {
+          .from('product_variations').select(PROMO_VARIATION_COLS).eq('id', item.variationId).maybeSingle();
+        if (!variation) {
+          return new Response(JSON.stringify({ error: 'Invalid variation' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        let vp = Number(variation.price);
-        if (prod.on_sale && prod.sale_price !== null) {
-          const discount = 1 - (Number(prod.sale_price) / Number(prod.price));
-          vp = vp * (1 - discount);
-        }
-        price = vp;
-      } else {
         const { data: prod } = await supabase
-          .from('products').select('price, sale_price, on_sale').eq('id', item.id).single();
+          .from('products').select(PROMO_PRODUCT_COLS).eq('id', (variation as any).product_id).single();
         if (!prod) {
           return new Response(JSON.stringify({ error: 'Invalid product' }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        price = prod.on_sale && prod.sale_price ? Number(prod.sale_price) : Number(prod.price);
+        price = effectiveVariationPrice(variation as any, prod as any);
+      } else {
+        const { data: prod } = await supabase
+          .from('products').select(PROMO_PRODUCT_COLS).eq('id', item.id).single();
+        if (!prod) {
+          return new Response(JSON.stringify({ error: 'Invalid product' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        price = effectiveProductPrice(prod as any);
       }
       if (Math.abs(item.price - price) > 0.01) {
+        console.error('Price mismatch', { itemId: item.id, variationId: item.variationId, client: item.price, server: price });
         return new Response(JSON.stringify({ error: 'Price verification failed' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

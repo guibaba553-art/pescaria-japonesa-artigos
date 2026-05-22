@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { effectiveProductPrice, effectiveVariationPrice, PROMO_PRODUCT_COLS, PROMO_VARIATION_COLS } from '../_shared/promoPrice.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -220,12 +221,9 @@ serve(async (req) => {
       let dbPrice: number;
       
       if (item.variationId) {
-        // Buscar variação SEM amarrar ao item.id (carrinhos podem ter id de
-        // produto desatualizado). Usamos o product_id real da variação para
-        // aplicar regras de promoção corretamente.
         const { data: variation, error } = await supabase
           .from('product_variations')
-          .select('price, product_id')
+          .select(PROMO_VARIATION_COLS)
           .eq('id', item.variationId)
           .maybeSingle();
 
@@ -243,8 +241,8 @@ serve(async (req) => {
 
         const { data: product, error: productError } = await supabase
           .from('products')
-          .select('on_sale, sale_price, price')
-          .eq('id', variation.product_id)
+          .select(PROMO_PRODUCT_COLS)
+          .eq('id', (variation as any).product_id)
           .single();
 
         if (productError || !product) {
@@ -255,18 +253,11 @@ serve(async (req) => {
           );
         }
 
-        let variationPrice = Number(variation.price);
-        if (product.on_sale && product.sale_price !== null && Number(product.price) > 0) {
-          const discountPercent = 1 - (Number(product.sale_price) / Number(product.price));
-          variationPrice = variationPrice * (1 - discountPercent);
-        }
-
-        dbPrice = variationPrice;
+        dbPrice = effectiveVariationPrice(variation as any, product as any);
       } else {
-        // Verify product price
         const { data: product, error } = await supabase
           .from('products')
-          .select('price, sale_price, on_sale')
+          .select(PROMO_PRODUCT_COLS)
           .eq('id', item.id)
           .single();
         
@@ -278,7 +269,7 @@ serve(async (req) => {
           );
         }
         
-        dbPrice = product.on_sale && product.sale_price ? Number(product.sale_price) : Number(product.price);
+        dbPrice = effectiveProductPrice(product as any);
       }
       
       // Verify client-provided price matches database (allow 0.01 difference for rounding)
