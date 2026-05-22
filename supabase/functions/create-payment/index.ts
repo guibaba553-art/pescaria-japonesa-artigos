@@ -457,11 +457,11 @@ serve(async (req) => {
 
       console.log('PIX payment created successfully - ID:', responseData.id);
 
-      // Salvar dados do PIX no pedido
+      // Salvar dados do PIX no pedido EM BACKGROUND — não bloqueia a resposta ao cliente.
+      // (antes esse update fazia o usuário esperar mais ~300-800ms antes de ver o QR Code)
       if (data.orderId) {
         const pixExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        
-        const { error: updateError } = await supabase
+        const updatePromise = supabase
           .from('orders')
           .update({
             payment_id: responseData.id.toString(),
@@ -470,12 +470,16 @@ serve(async (req) => {
             ticket_url: responseData.point_of_interaction?.transaction_data?.ticket_url,
             pix_expiration: pixExpiration.toISOString()
           })
-          .eq('id', data.orderId);
-          
-        if (updateError) {
-          console.error('Error saving PIX data to order');
-        } else {
-          console.log('PIX data saved to order successfully');
+          .eq('id', data.orderId)
+          .then(({ error: updateError }) => {
+            if (updateError) console.error('Error saving PIX data to order');
+            else console.log('PIX data saved to order successfully');
+          });
+
+        // @ts-ignore — EdgeRuntime existe no Supabase Edge Functions
+        if (typeof EdgeRuntime !== 'undefined' && (EdgeRuntime as any).waitUntil) {
+          // @ts-ignore
+          (EdgeRuntime as any).waitUntil(updatePromise);
         }
       }
 
