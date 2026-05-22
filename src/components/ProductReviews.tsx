@@ -9,7 +9,7 @@ interface Review {
   rating: number;
   comment: string;
   created_at: string;
-  user_id: string;
+  user_id?: string;
   profiles: {
     full_name: string | null;
   } | null;
@@ -31,7 +31,7 @@ export function ProductReviews({ productId }: ProductReviewsProps) {
     const { data, error } = await supabase
       .from('reviews')
       .select(`
-        *,
+        id, order_id, product_id, rating, comment, created_at,
         profiles (full_name)
       `)
       .eq('product_id', productId)

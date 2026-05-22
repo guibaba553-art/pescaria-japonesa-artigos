@@ -95,18 +95,17 @@ export function PromotionsManagement() {
   const load = async () => {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
-      .from('products')
-      .select('id,name,category,price,min_sale_price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
-      .neq('category', 'Pendente Revisão')
-      .order('name');
+      .rpc('get_products_admin');
     if (e1) {
       toast({ title: 'Erro ao carregar produtos', description: e1.message, variant: 'destructive' });
       setLoading(false);
       return;
     }
+    const filteredProds = ((prods as any[]) || [])
+      .filter((p) => p.category !== 'Pendente Revisão')
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const { data: vars, error: e2 } = await supabase
-      .from('product_variations')
-      .select('id,product_id,name,price,min_sale_price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
+      .rpc('get_product_variations_admin');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
@@ -116,7 +115,7 @@ export function PromotionsManagement() {
       arr.push(v as Variation);
       byProduct.set(v.product_id, arr);
     });
-    const merged: Product[] = ((prods as any[]) || []).map((p) => ({
+    const merged: Product[] = filteredProds.map((p) => ({
       ...p,
       variations: (byProduct.get(p.id) || []).sort((a, b) => a.name.localeCompare(b.name)),
     }));
