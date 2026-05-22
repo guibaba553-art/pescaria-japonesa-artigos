@@ -86,7 +86,7 @@ export function PromotionsManagement() {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
       .from('products')
-      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at')
+      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty')
       .neq('category', 'Pendente Revisão')
       .order('name');
     if (e1) {
@@ -96,7 +96,7 @@ export function PromotionsManagement() {
     }
     const { data: vars, error: e2 } = await supabase
       .from('product_variations')
-      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at');
+      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
