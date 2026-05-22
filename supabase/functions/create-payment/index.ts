@@ -583,7 +583,9 @@ serve(async (req) => {
         return null;
       };
 
-      // Resolver payment_method_id: usar o do frontend, ou detectar localmente, ou via API MP
+      // Resolver payment_method_id: priorizar o valor retornado pelo SDK no crédito,
+      // consultar a BIN API com 6 dígitos e só cair no fallback local em último caso.
+      const cleanCardNumber = data.cardData.cardNumber.replace(/\D/g, '');
       let paymentMethodId = data.cardData.paymentMethodId;
 
       // Se o cliente pediu DÉBITO mas o frontend mandou um id de crédito (ex.: "visa"),
@@ -608,7 +610,7 @@ serve(async (req) => {
       // retornar ids (ex.: "debvisa") que a conta MP rejeita com "Invalid payment_method_id".
       // Só usamos detecção local como fallback se a BIN API falhar.
       try {
-        const bin = data.cardData.cardNumber.substring(0, 8);
+        const bin = cleanCardNumber.substring(0, 6);
         const binResp = await fetch(
           `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}`,
           { headers: { 'Authorization': `Bearer ${accessToken}` } }
@@ -645,6 +647,13 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error('Error detecting payment method via BIN:', e, '- usando fallback local');
+      }
+
+      if (!paymentMethodId && data.paymentMethod === 'credit') {
+        paymentMethodId = data.cardData.paymentMethodId;
+        if (paymentMethodId) {
+          console.log('Payment method preserved from card token (credit fallback):', paymentMethodId);
+        }
       }
 
       if (!paymentMethodId) {
