@@ -209,7 +209,11 @@ export function PromotionsManagement() {
     endsAt: string | null,
     onSale: boolean,
     limitQty: number | null,
-    soldQty: number
+    soldQty: number,
+    cost: number,
+    freightPct: number,
+    opCostPct: number,
+    taxPct: number
   ) => {
     const key = `${table}:${id}`;
     const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
@@ -217,6 +221,13 @@ export function PromotionsManagement() {
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
     const soldOut = limitQty != null && soldQty >= limitQty;
+    const fPct = Number(freightPct || 0) / 100;
+    const oPct = Number(opCostPct || 0) / 100;
+    const tPct = Number(taxPct || 0) / 100;
+    const totalCost = Number(cost || 0) + Number(cost || 0) * fPct + Number(cost || 0) * oPct + final * tPct;
+    const marginAbs = final - totalCost;
+    const marginPct = final > 0 ? (marginAbs / final) * 100 : 0;
+    const lossWarn = marginAbs < 0;
 
     return (
       <div className="space-y-3 p-3 rounded-md border bg-muted/30">
