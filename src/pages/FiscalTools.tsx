@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Wallet, DollarSign, FileBarChart } from "lucide-react";
+import { Header } from "@/components/Header";
 
 const NFEList = lazy(() =>
   import("@/components/NFEList").then((m) => ({ default: m.NFEList }))
@@ -159,37 +160,7 @@ export default function FiscalTools() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Sticky utility bar */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-primary" />
-            <span className="font-display font-bold text-sm">Ferramentas Fiscais</span>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/admin')} className="rounded-full">
-              <Package className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Admin</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/pdv')} className="rounded-full">
-              <ShoppingCart className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">PDV</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="rounded-full">
-              <BarChart3 className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="rounded-full">
-              <Home className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Loja</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={signOut} className="rounded-full">
-              <LogOut className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Sair</span>
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Commercial dark banner */}
       <div className="bg-foreground text-background py-8">
