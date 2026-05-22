@@ -116,7 +116,7 @@ export default function Products() {
     let min = Infinity;
     let max = -Infinity;
     for (const p of products) {
-      const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
+      const price = effectiveProductPrice(p as any);
       if (typeof price !== 'number' || !isFinite(price)) continue;
       if (price < min) min = price;
       if (price > max) max = price;
