@@ -640,8 +640,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         p_items: promoItems,
       });
       if (promoError) {
+        // Libera reserva de estoque antes de remover o pedido, senão fica órfã por 30 min
+        try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
         await supabase.from('order_items').delete().eq('order_id', orderData.id);
         await supabase.from('orders').delete().eq('id', orderData.id);
+        createdOrderId = null;
         throw new Error(promoError.message || 'Limite de promoção atingido.');
       }
 
