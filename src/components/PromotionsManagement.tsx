@@ -106,7 +106,7 @@ export function PromotionsManagement() {
     }
     const { data: vars, error: e2 } = await supabase
       .from('product_variations')
-      .select('id,product_id,name,price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
+      .select('id,product_id,name,price,min_sale_price,stock,image_url,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct');
     if (e2) {
       toast({ title: 'Erro ao carregar variações', description: e2.message, variant: 'destructive' });
     }
