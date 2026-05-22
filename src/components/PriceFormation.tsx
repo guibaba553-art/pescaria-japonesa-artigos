@@ -202,7 +202,12 @@ export function PriceFormation() {
     if (selected) {
       const cost = Number(selected.cost ?? 0);
       const price = Number(selected.price ?? 0);
-      const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+      const fPct = Number(selected.freight_pct ?? 0);
+      const oPct = Number(selected.op_cost_pct ?? 0);
+      const tPct = Number(selected.tax_pct ?? 0);
+      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
+      // Margem PDV = markup sobre custo total (mesma fórmula da Margem do Site)
+      const margin = totalCost > 0 ? ((price - totalCost) / totalCost) * 100 : 0;
       setEditCost(String(cost));
       setEditPrice(String(price));
       setEditMargin(margin.toFixed(2));
@@ -211,11 +216,6 @@ export function PriceFormation() {
       setEditOpCostPct(selected.op_cost_pct ? String(selected.op_cost_pct) : "");
       setEditTaxPct(selected.tax_pct ? String(selected.tax_pct) : "");
       setEditMinSale(selected.min_sale_price != null ? String(selected.min_sale_price) : "");
-      // Margem do site derivada do min_sale_price vs custo total atual
-      const fPct = Number(selected.freight_pct ?? 0);
-      const oPct = Number(selected.op_cost_pct ?? 0);
-      const tPct = Number(selected.tax_pct ?? 0);
-      const totalCost = cost + cost * (fPct / 100) + cost * (oPct / 100) + price * (tPct / 100);
       if (selected.min_sale_price != null && totalCost > 0) {
         const m = ((Number(selected.min_sale_price) - totalCost) / totalCost) * 100;
         setEditSiteMarginPct(m.toFixed(2));
