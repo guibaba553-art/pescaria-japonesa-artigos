@@ -542,6 +542,25 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         }
       }
 
+      // Limpa pedidos abandonados ANTERIORES deste usuário (mesmo carrinho ou outro)
+      // que ainda estão 'aguardando_pagamento' SEM payment_id — eles seguram reservas
+      // de estoque e bloqueiam novas tentativas com "Estoque indisponível".
+      try {
+        const { data: abandonedOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'aguardando_pagamento')
+          .is('payment_id', null);
+        for (const ab of abandonedOrders || []) {
+          try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
+          try { await supabase.from('order_items').delete().eq('order_id', ab.id); } catch {}
+          try { await supabase.from('orders').delete().eq('id', ab.id); } catch {}
+        }
+      } catch (cleanupErr) {
+        console.warn('Falha ao limpar pedidos abandonados (seguindo mesmo assim):', cleanupErr);
+      }
+
       // Validar carrinho ANTES de criar o pedido (produto/variação removidos, sem estoque, preço alterado)
       const { validateSiteCart } = await import('@/utils/siteCartValidation');
       const validation = await validateSiteCart(items);
