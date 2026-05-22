@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag, ShieldCheck } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag, ShieldCheck, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 
@@ -20,6 +20,9 @@ const DraftProducts = lazy(() =>
 );
 const FeaturedManagement = lazy(() =>
   import('@/components/FeaturedManagement').then((m) => ({ default: m.FeaturedManagement }))
+);
+const PromotionsManagement = lazy(() =>
+  import('@/components/PromotionsManagement').then((m) => ({ default: m.PromotionsManagement }))
 );
 const SuppliersManagement = lazy(() =>
   import('@/components/SuppliersManagement').then((m) => ({ default: m.SuppliersManagement }))
@@ -122,6 +125,9 @@ export default function AdminCatalog() {
             <TabsTrigger value="featured" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
               <Star className="w-4 h-4" /> Destaques
             </TabsTrigger>
+            <TabsTrigger value="promotions" className="gap-2 shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+              <Percent className="w-4 h-4" /> Promoções
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -148,6 +154,9 @@ export default function AdminCatalog() {
         </TabsContent>
         <TabsContent value="featured">
           <Suspense fallback={<TabFallback />}><FeaturedManagement /></Suspense>
+        </TabsContent>
+        <TabsContent value="promotions">
+          <Suspense fallback={<TabFallback />}><PromotionsManagement /></Suspense>
         </TabsContent>
       </Tabs>
     </AdminPageLayout>
