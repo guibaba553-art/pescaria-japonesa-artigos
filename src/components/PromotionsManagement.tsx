@@ -18,6 +18,8 @@ interface Variation {
   on_sale: boolean;
   sale_price: number | null;
   sale_ends_at: string | null;
+  sale_limit_qty: number | null;
+  sale_sold_qty: number;
 }
 
 interface Product {
@@ -30,6 +32,8 @@ interface Product {
   on_sale: boolean;
   sale_price: number | null;
   sale_ends_at: string | null;
+  sale_limit_qty: number | null;
+  sale_sold_qty: number;
   variations: Variation[];
 }
 
