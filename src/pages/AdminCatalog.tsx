@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag, ShieldCheck } from 'lucide-react';
+import { Loader2, Package, Tags, FileEdit, Star, Building2, Ticket, AlertTriangle, Tag, ShieldCheck, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 
