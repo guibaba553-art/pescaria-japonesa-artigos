@@ -52,7 +52,10 @@ interface Product {
   width_cm?: number | null;
   height_cm?: number | null;
   pdv_only?: boolean;
+  supplier_id?: string | null;
 }
+
+interface SupplierOpt { id: string; name: string; }
 
 type DimsCheck = Pick<Product, 'weight_grams' | 'length_cm' | 'width_cm' | 'height_cm'>;
 
