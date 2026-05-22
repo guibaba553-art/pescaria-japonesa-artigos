@@ -67,7 +67,7 @@ export default function Products() {
     let query = supabase
       .from('products')
       .select(`
-        id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty,
+        id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
         category, subcategory, brand, pound_test, size,
         image_url, stock, rating, featured, minimum_quantity,
         sold_by_weight, created_at,
