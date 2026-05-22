@@ -96,7 +96,7 @@ export function PromotionsManagement() {
     setLoading(true);
     const { data: prods, error: e1 } = await supabase
       .from('products')
-      .select('id,name,category,price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
+      .select('id,name,category,price,min_sale_price,image_url,stock,on_sale,sale_price,sale_ends_at,sale_limit_qty,sale_sold_qty,cost,freight_pct,op_cost_pct,tax_pct')
       .neq('category', 'Pendente Revisão')
       .order('name');
     if (e1) {
