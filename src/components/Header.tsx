@@ -131,23 +131,35 @@ export function Header() {
     location.pathname.startsWith('/fechamento-caixa') ||
     location.pathname.startsWith('/ferramentas-fiscais');
 
-  const adminShortcuts: { label: string; path: string; icon: any; adminOnly?: boolean }[] = [
+  // permKey: chave em EmployeePermissions exigida (omitido = sempre visível para staff; adminOnly = só admin)
+  const adminShortcuts: {
+    label: string;
+    path: string;
+    icon: any;
+    adminOnly?: boolean;
+    permKey?: keyof typeof permissions;
+  }[] = [
     { label: 'Painel', path: '/admin', icon: LayoutDashboard },
-    { label: 'Dashboard', path: '/dashboard', icon: BarChart3, adminOnly: true },
-    { label: 'PDV', path: '/pdv', icon: ShoppingCart },
-    { label: 'Catálogo', path: '/admin/catalogo', icon: Boxes, adminOnly: true },
-    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList },
+    { label: 'Dashboard', path: '/dashboard', icon: BarChart3, permKey: 'dashboard' },
+    { label: 'PDV', path: '/pdv', icon: ShoppingCart, permKey: 'pdv' },
+    { label: 'Catálogo', path: '/admin/catalogo', icon: Boxes, permKey: 'catalog' },
+    { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, permKey: 'orders' },
     { label: 'Clientes', path: '/admin/clientes', icon: Users, adminOnly: true },
-    { label: 'Triagem', path: '/admin/triagem', icon: ScanLine, adminOnly: true },
-    { label: 'Análise', path: '/admin/analise', icon: BarChart3, adminOnly: true },
+    { label: 'Triagem', path: '/admin/triagem', icon: ScanLine, permKey: 'triagem' },
+    { label: 'Análise', path: '/admin/analise', icon: BarChart3, permKey: 'sales_analysis' },
     { label: 'Funcionários', path: '/admin/funcionarios', icon: UserCog, adminOnly: true },
-    { label: 'Vendas', path: '/pdv/sales-history', icon: History },
-    { label: 'Caixa', path: '/fechamento-caixa', icon: Wallet },
-    { label: 'Fiscal', path: '/ferramentas-fiscais', icon: Receipt, adminOnly: true },
+    { label: 'Vendas', path: '/pdv/sales-history', icon: History, permKey: 'pdv' },
+    { label: 'Caixa', path: '/fechamento-caixa', icon: Wallet, permKey: 'cash_register' },
+    { label: 'Fiscal', path: '/ferramentas-fiscais', icon: Receipt, permKey: 'fiscal' },
     { label: 'LGPD', path: '/admin/lgpd', icon: FileText, adminOnly: true },
     { label: 'Erros', path: '/admin/erros', icon: AlertTriangle, adminOnly: true },
   ];
-  const visibleShortcuts = adminShortcuts.filter((s) => isAdmin || !s.adminOnly);
+  const visibleShortcuts = adminShortcuts.filter((s) => {
+    if (isAdmin) return true;
+    if (s.adminOnly) return false;
+    if (!s.permKey) return true;
+    return permissions[s.permKey] === true;
+  });
 
   return (
     <header
