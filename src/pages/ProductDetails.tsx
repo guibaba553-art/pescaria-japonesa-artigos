@@ -14,6 +14,7 @@ import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
+import { effectiveProductPrice, isPromoActive } from '@/utils/promoPrice';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
