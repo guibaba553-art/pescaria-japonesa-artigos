@@ -285,6 +285,23 @@ export function PromotionsManagement() {
             </div>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="rounded-md border bg-background px-3 py-2 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground text-xs">
+              Custo total (custo + frete + operacionais + imposto)
+            </span>
+            <span className="font-bold">R$ {totalCost.toFixed(2)}</span>
+          </div>
+          <div className={`rounded-md border px-3 py-2 flex items-center justify-between text-sm ${lossWarn ? 'bg-destructive/10 border-destructive/40' : 'bg-background'}`}>
+            <span className="text-muted-foreground text-xs">
+              {lossWarn ? '⚠️ Margem (prejuízo)' : 'Margem na promoção'}
+            </span>
+            <span className={`font-bold ${lossWarn ? 'text-destructive' : 'text-green-600'}`}>
+              R$ {marginAbs.toFixed(2)} ({marginPct.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
