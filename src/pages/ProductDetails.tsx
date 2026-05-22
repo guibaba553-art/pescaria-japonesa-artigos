@@ -14,6 +14,7 @@ import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
+import { effectiveProductPrice, isPromoActive } from '@/utils/promoPrice';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -135,7 +136,8 @@ export default function ProductDetails() {
 
   const productUrl = `${window.location.origin}/produto/${product.id}`;
   const productImage = displayImages[0] || 'https://lovable.dev/opengraph-image-p98pqg.png';
-  const effectivePrice = product.on_sale && product.sale_price ? product.sale_price : product.price;
+  const productPromoActive = isPromoActive(product as any);
+  const effectivePrice = effectiveProductPrice(product as any);
   const seoTitle = `${product.name} | JAPAS Pesca`;
   const seoDescription = (product.short_description || product.description || `Compre ${product.name} na JAPAS Pesca - artigos de pesca em Sinop MT.`).slice(0, 160);
 
@@ -220,7 +222,7 @@ export default function ProductDetails() {
                 className="w-full h-full object-cover animate-in fade-in slide-in-from-right-4 duration-300"
               />
 
-              {product.on_sale && product.sale_price && (
+              {productPromoActive && product.sale_price && (
                 <div className="absolute top-3 left-3">
                   <span className="inline-flex items-center px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-black tracking-tight shadow-lg">
                     −{Math.round(((product.price - product.sale_price) / product.price) * 100)}% OFF
@@ -319,7 +321,7 @@ export default function ProductDetails() {
                 })()
               ) : (
                 <div className="bg-muted/40 rounded-2xl p-5 mb-4">
-                  {product.on_sale && product.sale_price ? (
+                  {productPromoActive && product.sale_price ? (
                     <>
                       <p className="text-base line-through text-muted-foreground leading-none">
                         De R$ {product.price.toFixed(2).replace('.', ',')}
@@ -454,7 +456,7 @@ export default function ProductDetails() {
 
                   const finalPrice = selectedVariation 
                     ? sitePriceForVariation(selectedVariation, (product as any).min_sale_price)
-                    : (product.on_sale && product.sale_price ? product.sale_price : product.price);
+                    : effectiveProductPrice(product as any);
                   
                   addItem({
                     id: product.id,

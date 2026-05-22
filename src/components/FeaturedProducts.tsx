@@ -9,6 +9,7 @@ import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
+import { effectiveProductPrice } from "@/utils/promoPrice";
 import { useProductsRealtime } from "@/hooks/useProductsRealtime";
 
 const FeaturedProducts = () => {
@@ -112,7 +113,7 @@ const FeaturedProducts = () => {
                     addItem({
                       id: product.id,
                       name: product.name,
-                      price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                      price: effectiveProductPrice(product as any),
                       image_url: product.image_url
                     }, qty);
                     toast({

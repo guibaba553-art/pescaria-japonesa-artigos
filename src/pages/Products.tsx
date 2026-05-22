@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
+import { effectiveProductPrice } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories } from '@/hooks/useCategories';
@@ -66,11 +67,11 @@ export default function Products() {
     let query = supabase
       .from('products')
       .select(`
-        id, name, price, sale_price, on_sale, sale_ends_at,
+        id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty,
         category, subcategory, brand, pound_test, size,
         image_url, stock, rating, featured, minimum_quantity,
         sold_by_weight, created_at,
-        variations:product_variations(id, name, price, stock, image_url)
+        variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
       `)
       .eq('pdv_only', false)
       .gt('stock', 0)
@@ -115,7 +116,7 @@ export default function Products() {
     let min = Infinity;
     let max = -Infinity;
     for (const p of products) {
-      const price = p.on_sale && p.sale_price ? p.sale_price : p.price;
+      const price = effectiveProductPrice(p as any);
       if (typeof price !== 'number' || !isFinite(price)) continue;
       if (price < min) min = price;
       if (price > max) max = price;
@@ -181,7 +182,7 @@ export default function Products() {
       }
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
       if (priceRange) {
-        const effectivePrice = p.on_sale && p.sale_price ? p.sale_price : p.price;
+        const effectivePrice = effectiveProductPrice(p as any);
         if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;
       }
       return true;
@@ -192,15 +193,15 @@ export default function Products() {
     switch (sortBy) {
       case 'price_asc':
         sorted.sort((a, b) => {
-          const pa = a.on_sale && a.sale_price ? a.sale_price : a.price;
-          const pb = b.on_sale && b.sale_price ? b.sale_price : b.price;
+          const pa = effectiveProductPrice(a as any);
+          const pb = effectiveProductPrice(b as any);
           return pa - pb;
         });
         break;
       case 'price_desc':
         sorted.sort((a, b) => {
-          const pa = a.on_sale && a.sale_price ? a.sale_price : a.price;
-          const pb = b.on_sale && b.sale_price ? b.sale_price : b.price;
+          const pa = effectiveProductPrice(a as any);
+          const pb = effectiveProductPrice(b as any);
           return pb - pa;
         });
         break;
@@ -603,7 +604,7 @@ export default function Products() {
                         addItem({
                           id: product.id,
                           name: product.name,
-                          price: product.on_sale && product.sale_price ? product.sale_price : product.price,
+                          price: effectiveProductPrice(product as any),
                           image_url: product.image_url
                         }, qty);
                         toast({
