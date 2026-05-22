@@ -155,6 +155,9 @@ export default function AdminCatalog() {
         <TabsContent value="featured">
           <Suspense fallback={<TabFallback />}><FeaturedManagement /></Suspense>
         </TabsContent>
+        <TabsContent value="promotions">
+          <Suspense fallback={<TabFallback />}><PromotionsManagement /></Suspense>
+        </TabsContent>
       </Tabs>
     </AdminPageLayout>
   );
