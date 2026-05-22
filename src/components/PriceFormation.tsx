@@ -270,32 +270,51 @@ export function PriceFormation() {
   const belowMin = liveMinSale > 0 && livePrice > 0 && livePrice < liveMinSale;
 
   // Margin → recompute price
+  // Fórmula unificada (mesma da Margem do Site): preço = custo_total × (1 + M)
+  // Resolvendo a circularidade do imposto que incide sobre o preço:
+  //   preço = (custo × (1 + f + o) × (1 + M)) / (1 − t × (1 + M))
   const handleMarginChange = (v: string) => {
     setEditMargin(v);
     const m = parseNum(v);
-    if (m >= 100 || m < 0) return;
-    const newPrice = liveCost / (1 - m / 100);
+    if (m < 0) return;
+    const cost = liveCost;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const M = m / 100;
+    const denom = 1 - t * (1 + M);
+    if (denom <= 0) return;
+    const newPrice = (cost * (1 + f + o) * (1 + M)) / denom;
     if (isFinite(newPrice) && newPrice > 0) {
       setEditPrice(newPrice.toFixed(2));
     }
   };
 
-  // Price → recompute margin
+  // Price → recompute margin (markup sobre custo total)
   const handlePriceChange = (v: string) => {
     setEditPrice(v);
     const p = parseNum(v);
-    if (p > 0) {
-      const m = ((p - liveCost) / p) * 100;
+    const cost = liveCost;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const totalCost = cost * (1 + f + o) + p * t;
+    if (p > 0 && totalCost > 0) {
+      const m = ((p - totalCost) / totalCost) * 100;
       setEditMargin(m.toFixed(2));
     }
   };
 
-  // Cost → recompute margin (price fixed)
+  // Cost → recompute margin (price fixed, markup sobre custo total)
   const handleCostChange = (v: string) => {
     setEditCost(v);
     const c = parseNum(v);
-    if (livePrice > 0) {
-      const m = ((livePrice - c) / livePrice) * 100;
+    const f = liveFreightPct / 100;
+    const o = liveOpCostPct / 100;
+    const t = liveTaxPct / 100;
+    const totalCost = c * (1 + f + o) + livePrice * t;
+    if (livePrice > 0 && totalCost > 0) {
+      const m = ((livePrice - totalCost) / totalCost) * 100;
       setEditMargin(m.toFixed(2));
     }
   };
