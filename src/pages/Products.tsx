@@ -182,7 +182,7 @@ export default function Products() {
       }
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
       if (priceRange) {
-        const effectivePrice = p.on_sale && p.sale_price ? p.sale_price : p.price;
+        const effectivePrice = effectiveProductPrice(p as any);
         if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;
       }
       return true;
