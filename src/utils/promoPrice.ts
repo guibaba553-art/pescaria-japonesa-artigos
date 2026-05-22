@@ -39,8 +39,14 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
 }
 
 /** Preço efetivo de um produto SEM variação (ou do produto pai). */
-export function effectiveProductPrice(product: PromoFields): number {
+export function effectiveProductPrice(
+  product: PromoFields & { min_sale_price?: number | null },
+): number {
+  // Promo ativa tem prioridade
   if (isPromoActive(product)) return Number(product.sale_price);
+  // min_sale_price é o "preço exibido no site" quando definido (não é apenas piso)
+  const pMin = Number(product?.min_sale_price) || 0;
+  if (pMin > 0) return pMin;
   return Number(product.price ?? 0);
 }
 
