@@ -179,7 +179,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from(table)
-      .update({ on_sale: false, sale_price: null, sale_ends_at: null })
+      .update({ on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
