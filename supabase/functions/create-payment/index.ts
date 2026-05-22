@@ -603,46 +603,54 @@ serve(async (req) => {
         }
       }
 
+      // SEMPRE consultar a BIN API do Mercado Pago para obter o payment_method_id
+      // exatamente como a conta MP do lojista o reconhece. Detecção local pode
+      // retornar ids (ex.: "debvisa") que a conta MP rejeita com "Invalid payment_method_id".
+      // Só usamos detecção local como fallback se a BIN API falhar.
+      try {
+        const bin = data.cardData.cardNumber.substring(0, 8);
+        const binResp = await fetch(
+          `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}`,
+          { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+        if (binResp.ok) {
+          const binData = await binResp.json();
+          const results = binData?.results || [];
+          const wanted = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
+          const match = results.find((r: any) => r.payment_type_id === wanted);
+          if (!match && data.paymentMethod === 'debit') {
+            console.error('BIN API: cartão não habilitado para débito. Resultados:', JSON.stringify(results.map((r: any) => ({ id: r.id, type: r.payment_type_id }))));
+            return new Response(
+              JSON.stringify({
+                error: 'Este cartão não está habilitado para débito nesta loja. Selecione crédito ou use outro cartão.',
+                success: false,
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          if (!match && data.paymentMethod === 'credit') {
+            console.error('BIN API: cartão não habilitado para crédito. Resultados:', JSON.stringify(results.map((r: any) => ({ id: r.id, type: r.payment_type_id }))));
+            return new Response(
+              JSON.stringify({
+                error: 'Este cartão não está habilitado para crédito nesta loja. Use outro cartão.',
+                success: false,
+              }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          paymentMethodId = match?.id || results[0]?.id;
+          console.log('Payment method via BIN API:', paymentMethodId, 'type:', match?.payment_type_id);
+        } else {
+          console.error('BIN API returned status:', binResp.status, '- usando fallback local');
+        }
+      } catch (e) {
+        console.error('Error detecting payment method via BIN:', e, '- usando fallback local');
+      }
+
       if (!paymentMethodId) {
-        // Tentar detecção local primeiro (mais rápido e confiável)
         paymentMethodId = detectCardBrand(data.cardData.cardNumber, data.paymentMethod as 'credit' | 'debit');
         if (paymentMethodId) {
-          console.log('Payment method detected locally:', paymentMethodId);
-        }
-      }
-      
-      if (!paymentMethodId) {
-        // Fallback: API de BIN do Mercado Pago
-        try {
-          const bin = data.cardData.cardNumber.substring(0, 8);
-          const binResp = await fetch(
-            `https://api.mercadopago.com/v1/payment_methods/search?bin=${bin}`,
-            { headers: { 'Authorization': `Bearer ${accessToken}` } }
-          );
-          if (binResp.ok) {
-            const binData = await binResp.json();
-            const results = binData?.results || [];
-            const wanted = data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card';
-            const match = results.find((r: any) => r.payment_type_id === wanted);
-            // SEGURANÇA: se o usuário pediu débito e o BIN não retornou nenhuma
-            // opção de débito, NÃO caímos para crédito — abortamos com erro claro.
-            if (!match && data.paymentMethod === 'debit') {
-              console.error('BIN API: cartão não habilitado para débito. Resultados:', JSON.stringify(results.map((r: any) => ({ id: r.id, type: r.payment_type_id }))));
-              return new Response(
-                JSON.stringify({
-                  error: 'Este cartão não está habilitado para débito. Selecione crédito ou use outro cartão.',
-                  success: false,
-                }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
-            }
-            paymentMethodId = (match || results[0])?.id;
-            console.log('Payment method detected via BIN API:', paymentMethodId);
-          } else {
-            console.error('BIN API returned status:', binResp.status);
-          }
-        } catch (e) {
-          console.error('Error detecting payment method via BIN:', e);
+          console.log('Payment method detected locally (fallback):', paymentMethodId);
         }
       }
 
