@@ -331,8 +331,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Categorias bar (desktop) */}
-      {primaries.length > 0 && (
+      {/* Categorias bar (desktop) — escondida em áreas admin */}
+      {!isAdminArea && primaries.length > 0 && (
         <nav className="hidden lg:block border-t border-border/40">
           <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
             <button
@@ -350,6 +350,34 @@ export function Header() {
                 {cat.name}
               </button>
             ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Atalhos admin (desktop) — visíveis em áreas admin para admin/funcionários */}
+      {isAdminArea && !loading && (isAdmin || isEmployee) && (
+        <nav className="hidden lg:block border-t border-border/40 bg-muted/30">
+          <div className="container mx-auto h-11 flex items-center gap-1 overflow-x-auto">
+            {visibleShortcuts.map((s) => {
+              const Icon = s.icon;
+              const active =
+                location.pathname === s.path ||
+                (s.path !== '/admin' && location.pathname.startsWith(s.path));
+              return (
+                <button
+                  key={s.path}
+                  onClick={() => navigate(s.path)}
+                  className={`flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-full whitespace-nowrap ${
+                    active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </nav>
       )}
