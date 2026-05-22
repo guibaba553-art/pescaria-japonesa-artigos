@@ -397,7 +397,8 @@ export default function CashRegister() {
     setTimeout(() => w.print(), 250);
   };
 
-  const totalSales = salesSummary.cash + salesSummary.card + salesSummary.pix;
+  // Caixa é exclusivamente dinheiro: total considera somente vendas em dinheiro.
+  const totalSales = salesSummary.cash;
   const avgTicket = salesCount > 0 ? totalSales / salesCount : 0;
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
