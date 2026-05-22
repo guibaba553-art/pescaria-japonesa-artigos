@@ -20,7 +20,7 @@ interface Suggestion {
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut, isEmployee, isAdmin, canAccessPdv, loading } = useAuth();
+  const { user, signOut, isEmployee, isAdmin, canAccessPdv, permissions, loading } = useAuth();
   const { primaries } = useCategories();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
