@@ -206,40 +206,60 @@ export default function AdminCustomers() {
     }
   };
 
-  // Tenta corrigir automaticamente UM cliente via ViaCEP
+  // Tenta corrigir automaticamente UM cliente usando endereço de entrega salvo + ViaCEP
   const autoFixOne = async (c: Customer) => {
-    const cep = (c.cep || '').replace(/\D/g, '');
-    if (cep.length !== 8) {
-      toast({ title: 'CEP inválido', description: 'Edite o cliente e informe um CEP válido.', variant: 'destructive' });
-      return;
-    }
     setFixingId(c.id);
     try {
-      let d: any = null;
-      try {
-        const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        d = await r.json();
-      } catch {
-        toast({ title: 'Erro ao consultar CEP', variant: 'destructive' });
-        return;
-      }
-      if (!d || d.erro) {
-        toast({ title: 'CEP não encontrado no ViaCEP', variant: 'destructive' });
-        return;
+      const patch: Record<string, any> = {};
+
+      // 1) Tenta puxar do endereço de entrega cadastrado pelo cliente (user_addresses)
+      const { data: addrs } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', c.id)
+        .order('is_default', { ascending: false })
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      const addr = addrs?.[0];
+      if (addr) {
+        if (!c.cep || c.cep.replace(/\D/g, '').length !== 8) patch.cep = addr.cep;
+        if (!c.street?.trim() && addr.street) patch.street = addr.street;
+        if (!c.number?.trim() && addr.number) patch.number = addr.number;
+        if (!c.neighborhood?.trim() && addr.neighborhood) patch.neighborhood = addr.neighborhood;
+        if (!c.municipio?.trim() && addr.city) patch.municipio = addr.city;
+        if ((!c.uf?.trim() || c.uf.length !== 2) && addr.state) patch.uf = addr.state;
       }
 
-      const patch: Record<string, any> = {};
-      if (!c.municipio?.trim() && d.localidade) patch.municipio = d.localidade;
-      if ((!c.uf?.trim() || c.uf.length !== 2) && d.uf) patch.uf = d.uf;
-      if (((c.codigo_municipio_ibge || '').replace(/\D/g, '').length !== 7) && d.ibge) {
-        patch.codigo_municipio_ibge = d.ibge;
+      // 2) Completa o que faltar via ViaCEP (município, UF, IBGE, bairro, rua)
+      const effectiveCep = (patch.cep || c.cep || '').replace(/\D/g, '');
+      if (effectiveCep.length === 8) {
+        try {
+          const r = await fetch(`https://viacep.com.br/ws/${effectiveCep}/json/`);
+          const d = await r.json();
+          if (d && !d.erro) {
+            if (!patch.municipio && !c.municipio?.trim() && d.localidade) patch.municipio = d.localidade;
+            if (!patch.uf && (!c.uf?.trim() || c.uf.length !== 2) && d.uf) patch.uf = d.uf;
+            if (((c.codigo_municipio_ibge || '').replace(/\D/g, '').length !== 7) && d.ibge) {
+              patch.codigo_municipio_ibge = d.ibge;
+            }
+            if (!patch.neighborhood && !c.neighborhood?.trim() && d.bairro) patch.neighborhood = d.bairro;
+            if (!patch.street && !c.street?.trim() && d.logradouro) patch.street = d.logradouro;
+          }
+        } catch {
+          /* sem internet/viacep — segue só com user_addresses */
+        }
       }
-      if (!c.neighborhood?.trim() && d.bairro) patch.neighborhood = d.bairro;
-      if (!c.street?.trim() && d.logradouro) patch.street = d.logradouro;
+
       if (c.cnpj && !c.ie_indicador) patch.ie_indicador = '9';
 
       if (Object.keys(patch).length === 0) {
-        toast({ title: 'Nada para corrigir automaticamente', description: 'As pendências exigem edição manual.' });
+        const semCep = (c.cep || '').replace(/\D/g, '').length !== 8;
+        toast({
+          title: 'Nada para corrigir automaticamente',
+          description: semCep
+            ? 'Cliente sem CEP e sem endereço de entrega salvo. Edite manualmente.'
+            : 'As pendências exigem edição manual.',
+        });
         return;
       }
 
