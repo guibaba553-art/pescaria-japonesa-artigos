@@ -720,12 +720,49 @@ export default function AdminSalesAnalysis() {
     });
 
     try {
+      if (invoiceModel === 'nfe' && !invoiceCustomer) {
+        throw new Error('Selecione manualmente o cliente antes de emitir a NF-e.');
+      }
+
       // Pedido (site ou PDV): respeita o modelo escolhido (NF-e 55 ou NFC-e 65)
       if (row.kind === 'order') {
         // NF-e (modelo 55) — usa edge function emit-nfe
         if (invoiceModel === 'nfe') {
-          const { data, error } = await supabase.functions.invoke('emit-nfe', {
-            body: { orderId: row.id },
+          const { data, error } = await supabase.functions.invoke('emit-nfe-manual', {
+            body: {
+              finalidade: 1,
+              natureza_operacao: 'Venda de mercadoria',
+              presenca_comprador: row.source === 'pdv' ? 1 : 2,
+              forma_pagamento: '99',
+              destinatario: {
+                tipo: invoiceCustomer?.cnpj ? 'cnpj' : 'cpf',
+                documento: invoiceCustomer?.cnpj || invoiceCustomer?.cpf,
+                nome: invoiceCustomer?.company_name || invoiceCustomer?.full_name,
+                inscricao_estadual: invoiceCustomer?.inscricao_estadual || undefined,
+                indicador_ie: invoiceCustomer?.cnpj
+                  ? Number(invoiceCustomer?.ie_indicador || (invoiceCustomer?.inscricao_estadual ? 1 : 9))
+                  : undefined,
+                logradouro: invoiceCustomer?.street || undefined,
+                numero: invoiceCustomer?.number || undefined,
+                complemento: invoiceCustomer?.complemento || undefined,
+                bairro: invoiceCustomer?.neighborhood || undefined,
+                municipio: invoiceCustomer?.municipio || undefined,
+                uf: invoiceCustomer?.uf || undefined,
+                cep: invoiceCustomer?.cep || undefined,
+              },
+              items: (row.raw?.order_items || []).map((it: any) => ({
+                descricao: it.products?.name || 'Produto',
+                ncm: it.products?.ncm || '',
+                cfop: it.products?.cfop || '',
+                unidade: it.products?.unidade_comercial || 'UN',
+                quantidade: Number(it.quantity),
+                valor_unitario: Number(it.price_at_purchase),
+                cest: it.products?.cest || undefined,
+                csosn: it.products?.csosn || undefined,
+                origem: it.products?.origem || undefined,
+                codigo: it.product_id,
+              })),
+            },
           });
           if (error) {
             let msg: string | null = null;
@@ -762,15 +799,14 @@ export default function AdminSalesAnalysis() {
         if (orderErr) throw orderErr;
         if (!items || items.length === 0) throw new Error('Pedido sem itens');
 
-        const cust: any = (order as any).customers;
         const payload = {
           order_id: row.id,
           payment_method: 'dinheiro' as const,
           total_amount: Number((order as any).total_amount),
-          customer: cust ? {
-            cpf: cust.cpf || undefined,
-            cnpj: cust.cnpj || undefined,
-            nome: cust.company_name || cust.full_name || undefined,
+          customer: invoiceCustomer ? {
+            cpf: invoiceCustomer.cpf || undefined,
+            cnpj: invoiceCustomer.cnpj || undefined,
+            nome: invoiceCustomer.company_name || invoiceCustomer.full_name || undefined,
           } : undefined,
           items: items.map((it: any) => ({
             product_id: it.product_id,
@@ -836,7 +872,7 @@ export default function AdminSalesAnalysis() {
 
         // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
         if (invoiceModel === 'nfe') {
-          const cd: any = row.raw?.customer_data || null;
+          const cd: any = invoiceCustomer || null;
           if (!cd?.id) {
             throw new Error('Para emitir NF-e a partir de um orçamento é necessário ter um cliente vinculado (com endereço completo).');
           }
