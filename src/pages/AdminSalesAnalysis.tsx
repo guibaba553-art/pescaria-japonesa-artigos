@@ -146,82 +146,33 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
-  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('manual');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
-  const [changingCustomer, setChangingCustomer] = useState(false);
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
-    if (!invoiceTarget) return;
+    if (!invoiceTarget) {
+      setInvoiceCustomer(null);
+      return;
+    }
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
-    setCustomerMode('manual');
-    setChangingCustomer(false);
-  }, [invoiceTarget]);
-
-  // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
-  useEffect(() => {
-    if (!invoiceTarget) { setInvoiceCustomer(null); return; }
-    const customerId = invoiceTarget.kind === 'saved'
-      ? (invoiceTarget.raw?.customer_data?.id || null)
-      : (invoiceTarget.raw?.customer_id || null);
-    if (!customerId) { setInvoiceCustomer(null); return; }
-    supabase
-      .from('customers')
-      .select('id, full_name, company_name, cpf, cnpj, inscricao_estadual, ie_indicador, cep, street, number, neighborhood, municipio, uf')
-      .eq('id', customerId)
-      .maybeSingle()
-      .then(({ data }) => setInvoiceCustomer(data));
+    setInvoiceCustomer(null);
   }, [invoiceTarget]);
 
   const handleLinkCustomer = async (cust: any) => {
     if (!invoiceTarget) return;
     setLinkingCustomer(true);
-    if (invoiceTarget.kind === 'order') {
-      const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
-    } else {
-      // saved (orçamento) — grava em customer_data
-      const newCd = {
-        id: cust.id,
-        full_name: cust.full_name,
-        company_name: cust.company_name,
-        cpf: cust.cpf,
-        cnpj: cust.cnpj,
-      };
-      const { error } = await supabase.from('saved_sales').update({ customer_data: newCd }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: newCd } });
-    }
-    toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
-    setChangingCustomer(false);
-    fetchAll(true);
+    setLinkingCustomer(false);
+    toast.success('Cliente selecionado para esta emissão');
   };
 
   const handleUnlinkCustomer = async () => {
     if (!invoiceTarget) return;
-    setLinkingCustomer(true);
-    if (invoiceTarget.kind === 'order') {
-      const { error } = await supabase.from('orders').update({ customer_id: null }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: null } });
-    } else {
-      const { error } = await supabase.from('saved_sales').update({ customer_data: null }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: null } });
-    }
-    toast.success('Cliente removido');
     setInvoiceCustomer(null);
-    setChangingCustomer(true);
-    fetchAll(true);
+    toast.success('Cliente removido desta emissão');
   };
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
@@ -737,12 +688,19 @@ export default function AdminSalesAnalysis() {
     });
 
     try {
+      if (invoiceModel === 'nfe' && !invoiceCustomer) {
+        throw new Error('Selecione manualmente o cliente antes de emitir a NF-e.');
+      }
+
       // Pedido (site ou PDV): respeita o modelo escolhido (NF-e 55 ou NFC-e 65)
       if (row.kind === 'order') {
         // NF-e (modelo 55) — usa edge function emit-nfe
         if (invoiceModel === 'nfe') {
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
-            body: { orderId: row.id },
+            body: {
+              orderId: row.id,
+              manualCustomer: invoiceCustomer,
+            },
           });
           if (error) {
             let msg: string | null = null;
@@ -779,15 +737,14 @@ export default function AdminSalesAnalysis() {
         if (orderErr) throw orderErr;
         if (!items || items.length === 0) throw new Error('Pedido sem itens');
 
-        const cust: any = (order as any).customers;
         const payload = {
           order_id: row.id,
           payment_method: 'dinheiro' as const,
           total_amount: Number((order as any).total_amount),
-          customer: cust ? {
-            cpf: cust.cpf || undefined,
-            cnpj: cust.cnpj || undefined,
-            nome: cust.company_name || cust.full_name || undefined,
+          customer: invoiceCustomer ? {
+            cpf: invoiceCustomer.cpf || undefined,
+            cnpj: invoiceCustomer.cnpj || undefined,
+            nome: invoiceCustomer.company_name || invoiceCustomer.full_name || undefined,
           } : undefined,
           items: items.map((it: any) => ({
             product_id: it.product_id,
@@ -853,7 +810,7 @@ export default function AdminSalesAnalysis() {
 
         // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
         if (invoiceModel === 'nfe') {
-          const cd: any = row.raw?.customer_data || null;
+          const cd: any = invoiceCustomer || null;
           if (!cd?.id) {
             throw new Error('Para emitir NF-e a partir de um orçamento é necessário ter um cliente vinculado (com endereço completo).');
           }
@@ -881,7 +838,7 @@ export default function AdminSalesAnalysis() {
               delivery_type: 'pickup',
               shipping_address: addrStr,
               shipping_cep: customer?.cep || '00000000',
-              customer_id: cd.id,
+              customer_id: null,
               source: 'pdv',
               payment_method: row.raw?.payment_method || 'dinheiro',
             }])
@@ -903,7 +860,7 @@ export default function AdminSalesAnalysis() {
           if (itemsErr) throw itemsErr;
 
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
-            body: { orderId: newOrder.id },
+            body: { orderId: newOrder.id, manualCustomer: cd },
           });
           if (error) {
             let msg: string | null = null;
@@ -935,7 +892,7 @@ export default function AdminSalesAnalysis() {
           .in('id', productIds as string[]);
         const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
 
-        const cd: any = row.raw?.customer_data || null;
+        const cd: any = invoiceCustomer || null;
         const payload = {
           order_id: undefined,
           payment_method: (row.raw?.payment_method || 'dinheiro') as any,
@@ -1539,7 +1496,7 @@ export default function AdminSalesAnalysis() {
                           <div className="space-y-2">
                             {!invoiceCustomer && (
                               <p className="text-amber-700 dark:text-amber-400 font-medium text-sm">
-                                ⚠ Nenhum cliente vinculado. Selecione um cliente para emitir a nota.
+                                ⚠ Nenhum cliente selecionado. Escolha manualmente se quiser emitir com CPF/CNPJ.
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground">

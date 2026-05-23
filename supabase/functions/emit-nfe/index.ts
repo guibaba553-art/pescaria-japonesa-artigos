@@ -122,7 +122,7 @@ serve(async (req) => {
       console.log('[emit-nfe] Chamada interna via service_role (emissão automática)');
     }
 
-    const { orderId } = await req.json();
+    const { orderId, manualCustomer } = await req.json();
     if (!orderId) {
       return new Response(JSON.stringify({ error: 'ID do pedido é obrigatório' }), {
         status: 400,
@@ -195,6 +195,8 @@ serve(async (req) => {
       });
     }
 
+    const selectedCustomerId = manualCustomer?.id || order.customer_id || null;
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name, cpf')
@@ -225,8 +227,8 @@ serve(async (req) => {
     // nome, CPF/CNPJ e endereço completo (logradouro, número, bairro, município, UF e CEP).
     // Se o pedido tiver customer_id, usamos os dados estruturados de `customers`;
     // caso contrário, usamos o profile + shipping_address parseado.
-    let destNome = (profile?.full_name || '').trim();
-    let destCpf = cleanDoc(profile?.cpf);
+    let destNome = '';
+    let destCpf = '';
     let destCnpj = '';
     let destIE = '';
     const addr = parseAddress(order.shipping_address);
@@ -237,35 +239,52 @@ serve(async (req) => {
       return !s || s === '00000000' || s.toUpperCase() === 'NAO INFORMADO';
     };
 
-    // Prioridade 1: campos estruturados gravados no próprio pedido
-    if (!isBlank(order.shipping_street)) addr.logradouro = order.shipping_street;
-    if (!isBlank(order.shipping_number)) addr.numero = order.shipping_number;
-    if (!isBlank(order.shipping_complement)) addr.complemento = order.shipping_complement;
-    if (!isBlank(order.shipping_neighborhood)) addr.bairro = order.shipping_neighborhood;
-    if (!isBlank(order.shipping_city)) addr.municipio = order.shipping_city;
-    if (!isBlank(order.shipping_uf)) addr.uf = order.shipping_uf;
-    if (!isBlank(order.shipping_cep)) addr.cep = cleanDoc(order.shipping_cep);
-    if (!isBlank(order.shipping_recipient_name)) destNome = (order.shipping_recipient_name || '').trim();
+    if (manualCustomer) {
+      destNome = (manualCustomer.company_name || manualCustomer.full_name || manualCustomer.name || '').trim();
+      destCpf = cleanDoc(manualCustomer.cpf);
+      destCnpj = cleanDoc(manualCustomer.cnpj);
+      destIE = (manualCustomer.inscricao_estadual || '').trim();
+      if (!isBlank(manualCustomer.street)) addr.logradouro = manualCustomer.street;
+      if (!isBlank(manualCustomer.number)) addr.numero = manualCustomer.number;
+      if (!isBlank(manualCustomer.complemento)) addr.complemento = manualCustomer.complemento;
+      if (!isBlank(manualCustomer.neighborhood)) addr.bairro = manualCustomer.neighborhood;
+      if (!isBlank(manualCustomer.municipio)) addr.municipio = manualCustomer.municipio;
+      if (!isBlank(manualCustomer.uf)) addr.uf = manualCustomer.uf;
+      if (!isBlank(manualCustomer.cep)) addr.cep = cleanDoc(manualCustomer.cep);
+    } else {
+      destNome = (profile?.full_name || '').trim();
+      destCpf = cleanDoc(profile?.cpf);
 
-    // Prioridade 2: dados estruturados do customer
-    if (order.customer_id) {
-      const { data: cust } = await supabase
-        .from('customers')
-        .select('full_name, company_name, cpf, cnpj, inscricao_estadual, cep, street, number, neighborhood, municipio, uf, complemento')
-        .eq('id', order.customer_id)
-        .maybeSingle();
-      if (cust) {
-        destNome = (cust.company_name || cust.full_name || destNome || '').trim();
-        destCpf = cleanDoc(cust.cpf);
-        destCnpj = cleanDoc(cust.cnpj);
-        destIE = (cust.inscricao_estadual || '').trim();
-        if (isBlank(addr.logradouro) && !isBlank(cust.street)) addr.logradouro = cust.street!;
-        if (isBlank(addr.numero) && !isBlank(cust.number)) addr.numero = cust.number!;
-        if (isBlank(addr.bairro) && !isBlank(cust.neighborhood)) addr.bairro = cust.neighborhood!;
-        if (isBlank(addr.cep) && !isBlank(cust.cep)) addr.cep = cleanDoc(cust.cep);
-        if (isBlank(addr.municipio) && !isBlank(cust.municipio)) addr.municipio = cust.municipio!;
-        if (isBlank(addr.uf) && !isBlank(cust.uf)) addr.uf = cust.uf!;
-        if (isBlank(addr.complemento) && !isBlank(cust.complemento)) addr.complemento = cust.complemento!;
+      // Prioridade 1: campos estruturados gravados no próprio pedido
+      if (!isBlank(order.shipping_street)) addr.logradouro = order.shipping_street;
+      if (!isBlank(order.shipping_number)) addr.numero = order.shipping_number;
+      if (!isBlank(order.shipping_complement)) addr.complemento = order.shipping_complement;
+      if (!isBlank(order.shipping_neighborhood)) addr.bairro = order.shipping_neighborhood;
+      if (!isBlank(order.shipping_city)) addr.municipio = order.shipping_city;
+      if (!isBlank(order.shipping_uf)) addr.uf = order.shipping_uf;
+      if (!isBlank(order.shipping_cep)) addr.cep = cleanDoc(order.shipping_cep);
+      if (!isBlank(order.shipping_recipient_name)) destNome = (order.shipping_recipient_name || '').trim();
+
+      // Prioridade 2: dados estruturados do customer
+      if (order.customer_id) {
+        const { data: cust } = await supabase
+          .from('customers')
+          .select('full_name, company_name, cpf, cnpj, inscricao_estadual, cep, street, number, neighborhood, municipio, uf, complemento')
+          .eq('id', order.customer_id)
+          .maybeSingle();
+        if (cust) {
+          destNome = (cust.company_name || cust.full_name || destNome || '').trim();
+          destCpf = cleanDoc(cust.cpf);
+          destCnpj = cleanDoc(cust.cnpj);
+          destIE = (cust.inscricao_estadual || '').trim();
+          if (isBlank(addr.logradouro) && !isBlank(cust.street)) addr.logradouro = cust.street!;
+          if (isBlank(addr.numero) && !isBlank(cust.number)) addr.numero = cust.number!;
+          if (isBlank(addr.bairro) && !isBlank(cust.neighborhood)) addr.bairro = cust.neighborhood!;
+          if (isBlank(addr.cep) && !isBlank(cust.cep)) addr.cep = cleanDoc(cust.cep);
+          if (isBlank(addr.municipio) && !isBlank(cust.municipio)) addr.municipio = cust.municipio!;
+          if (isBlank(addr.uf) && !isBlank(cust.uf)) addr.uf = cust.uf!;
+          if (isBlank(addr.complemento) && !isBlank(cust.complemento)) addr.complemento = cust.complemento!;
+        }
       }
     }
 
@@ -327,7 +346,7 @@ serve(async (req) => {
             if (!destNome) destNome = (d.razao_social || d.nome || '').trim();
 
             // Persiste no cadastro do cliente para próximas emissões
-            if (order.customer_id) {
+            if (selectedCustomerId) {
               await supabase.from('customers').update({
                 street: addr.logradouro || null,
                 number: addr.numero || null,
@@ -335,7 +354,7 @@ serve(async (req) => {
                 municipio: addr.municipio || null,
                 uf: addr.uf || null,
                 cep: addr.cep || null,
-              }).eq('id', order.customer_id);
+              }).eq('id', selectedCustomerId);
             }
             missingClient = computeMissing();
           }
@@ -366,14 +385,14 @@ serve(async (req) => {
             if (isBlank(addr.uf) && v.uf) addr.uf = String(v.uf).trim().toUpperCase();
             if (isBlank(addr.complemento) && v.complemento) addr.complemento = String(v.complemento).trim();
 
-            if (order.customer_id) {
+            if (selectedCustomerId) {
               await supabase.from('customers').update({
                 street: addr.logradouro || null,
                 neighborhood: addr.bairro || null,
                 municipio: addr.municipio || null,
                 uf: addr.uf || null,
                 complemento: addr.complemento || null,
-              }).eq('id', order.customer_id);
+              }).eq('id', selectedCustomerId);
             }
             missingClient = computeMissing();
           }
@@ -388,8 +407,8 @@ serve(async (req) => {
       && !isBlank(addr.logradouro) && !isBlank(addr.bairro)
       && !isBlank(addr.municipio) && !isBlank(addr.uf) && addr.cep?.length === 8) {
       addr.numero = 'S/N';
-      if (order.customer_id) {
-        await supabase.from('customers').update({ number: 'S/N' }).eq('id', order.customer_id);
+      if (selectedCustomerId) {
+        await supabase.from('customers').update({ number: 'S/N' }).eq('id', selectedCustomerId);
       }
       missingClient = computeMissing();
     }
@@ -403,7 +422,7 @@ serve(async (req) => {
           error:
             'Dados do cliente incompletos para emissão de NF-e. Faltam: ' +
             missingClient.join(', ') +
-            '. Vincule um cliente completo ao pedido antes de emitir.',
+            '. Selecione manualmente um cliente completo antes de emitir.',
           missing_client_fields: missingClient,
         }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
