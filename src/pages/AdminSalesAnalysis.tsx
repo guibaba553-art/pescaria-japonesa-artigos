@@ -146,34 +146,19 @@ export default function AdminSalesAnalysis() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [emittingInvoice, setEmittingInvoice] = useState<Set<string>>(new Set());
   const [invoiceTarget, setInvoiceTarget] = useState<UnifiedRow | null>(null);
-  const [customerMode, setCustomerMode] = useState<'auto' | 'manual'>('manual');
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
-  const [changingCustomer, setChangingCustomer] = useState(false);
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
-    if (!invoiceTarget) return;
+    if (!invoiceTarget) {
+      setInvoiceCustomer(null);
+      return;
+    }
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
-    setCustomerMode('manual');
-    setChangingCustomer(false);
-  }, [invoiceTarget]);
-
-  // Carrega o cliente vinculado ao pedido/orçamento quando o diálogo de NF abre
-  useEffect(() => {
-    if (!invoiceTarget) { setInvoiceCustomer(null); return; }
-    const customerId = invoiceTarget.kind === 'saved'
-      ? (invoiceTarget.raw?.customer_data?.id || null)
-      : (invoiceTarget.raw?.customer_id || null);
-    if (!customerId) { setInvoiceCustomer(null); return; }
-    supabase
-      .from('customers')
-      .select('id, full_name, company_name, cpf, cnpj, inscricao_estadual, ie_indicador, cep, street, number, neighborhood, municipio, uf')
-      .eq('id', customerId)
-      .maybeSingle()
-      .then(({ data }) => setInvoiceCustomer(data));
+    setInvoiceCustomer(null);
   }, [invoiceTarget]);
 
   const handleLinkCustomer = async (cust: any) => {
@@ -200,7 +185,6 @@ export default function AdminSalesAnalysis() {
     }
     toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
-    setChangingCustomer(false);
     fetchAll(true);
   };
 
@@ -220,7 +204,6 @@ export default function AdminSalesAnalysis() {
     }
     toast.success('Cliente removido');
     setInvoiceCustomer(null);
-    setChangingCustomer(true);
     fetchAll(true);
   };
 
