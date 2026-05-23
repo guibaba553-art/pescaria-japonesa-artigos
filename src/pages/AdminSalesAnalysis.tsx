@@ -164,47 +164,15 @@ export default function AdminSalesAnalysis() {
   const handleLinkCustomer = async (cust: any) => {
     if (!invoiceTarget) return;
     setLinkingCustomer(true);
-    if (invoiceTarget.kind === 'order') {
-      const { error } = await supabase.from('orders').update({ customer_id: cust.id }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: cust.id } });
-    } else {
-      // saved (orçamento) — grava em customer_data
-      const newCd = {
-        id: cust.id,
-        full_name: cust.full_name,
-        company_name: cust.company_name,
-        cpf: cust.cpf,
-        cnpj: cust.cnpj,
-      };
-      const { error } = await supabase.from('saved_sales').update({ customer_data: newCd }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao vincular cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: newCd } });
-    }
-    toast.success('Cliente vinculado');
     setInvoiceCustomer(cust);
-    fetchAll(true);
+    setLinkingCustomer(false);
+    toast.success('Cliente selecionado para esta emissão');
   };
 
   const handleUnlinkCustomer = async () => {
     if (!invoiceTarget) return;
-    setLinkingCustomer(true);
-    if (invoiceTarget.kind === 'order') {
-      const { error } = await supabase.from('orders').update({ customer_id: null }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_id: null } });
-    } else {
-      const { error } = await supabase.from('saved_sales').update({ customer_data: null }).eq('id', invoiceTarget.id);
-      setLinkingCustomer(false);
-      if (error) { toast.error('Erro ao remover cliente: ' + error.message); return; }
-      setInvoiceTarget({ ...invoiceTarget, raw: { ...invoiceTarget.raw, customer_data: null } });
-    }
-    toast.success('Cliente removido');
     setInvoiceCustomer(null);
-    fetchAll(true);
+    toast.success('Cliente removido desta emissão');
   };
 
   const [dateMode, setDateMode] = useState<DateMode>('range');
@@ -728,40 +696,10 @@ export default function AdminSalesAnalysis() {
       if (row.kind === 'order') {
         // NF-e (modelo 55) — usa edge function emit-nfe
         if (invoiceModel === 'nfe') {
-          const { data, error } = await supabase.functions.invoke('emit-nfe-manual', {
+          const { data, error } = await supabase.functions.invoke('emit-nfe', {
             body: {
-              finalidade: 1,
-              natureza_operacao: 'Venda de mercadoria',
-              presenca_comprador: row.source === 'pdv' ? 1 : 2,
-              forma_pagamento: '99',
-              destinatario: {
-                tipo: invoiceCustomer?.cnpj ? 'cnpj' : 'cpf',
-                documento: invoiceCustomer?.cnpj || invoiceCustomer?.cpf,
-                nome: invoiceCustomer?.company_name || invoiceCustomer?.full_name,
-                inscricao_estadual: invoiceCustomer?.inscricao_estadual || undefined,
-                indicador_ie: invoiceCustomer?.cnpj
-                  ? Number(invoiceCustomer?.ie_indicador || (invoiceCustomer?.inscricao_estadual ? 1 : 9))
-                  : undefined,
-                logradouro: invoiceCustomer?.street || undefined,
-                numero: invoiceCustomer?.number || undefined,
-                complemento: invoiceCustomer?.complemento || undefined,
-                bairro: invoiceCustomer?.neighborhood || undefined,
-                municipio: invoiceCustomer?.municipio || undefined,
-                uf: invoiceCustomer?.uf || undefined,
-                cep: invoiceCustomer?.cep || undefined,
-              },
-              items: (row.raw?.order_items || []).map((it: any) => ({
-                descricao: it.products?.name || 'Produto',
-                ncm: it.products?.ncm || '',
-                cfop: it.products?.cfop || '',
-                unidade: it.products?.unidade_comercial || 'UN',
-                quantidade: Number(it.quantity),
-                valor_unitario: Number(it.price_at_purchase),
-                cest: it.products?.cest || undefined,
-                csosn: it.products?.csosn || undefined,
-                origem: it.products?.origem || undefined,
-                codigo: it.product_id,
-              })),
+              orderId: row.id,
+              manualCustomer: invoiceCustomer,
             },
           });
           if (error) {
@@ -900,7 +838,7 @@ export default function AdminSalesAnalysis() {
               delivery_type: 'pickup',
               shipping_address: addrStr,
               shipping_cep: customer?.cep || '00000000',
-              customer_id: cd.id,
+              customer_id: null,
               source: 'pdv',
               payment_method: row.raw?.payment_method || 'dinheiro',
             }])
@@ -922,7 +860,7 @@ export default function AdminSalesAnalysis() {
           if (itemsErr) throw itemsErr;
 
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
-            body: { orderId: newOrder.id },
+            body: { orderId: newOrder.id, manualCustomer: cd },
           });
           if (error) {
             let msg: string | null = null;
