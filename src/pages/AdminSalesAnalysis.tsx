@@ -892,7 +892,7 @@ export default function AdminSalesAnalysis() {
           .in('id', productIds as string[]);
         const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
 
-        const cd: any = row.raw?.customer_data || null;
+        const cd: any = invoiceCustomer || null;
         const payload = {
           order_id: undefined,
           payment_method: (row.raw?.payment_method || 'dinheiro') as any,
@@ -1496,7 +1496,7 @@ export default function AdminSalesAnalysis() {
                           <div className="space-y-2">
                             {!invoiceCustomer && (
                               <p className="text-amber-700 dark:text-amber-400 font-medium text-sm">
-                                ⚠ Nenhum cliente vinculado. Selecione um cliente para emitir a nota.
+                                ⚠ Nenhum cliente selecionado. Escolha manualmente se quiser emitir com CPF/CNPJ.
                               </p>
                             )}
                             <p className="text-xs text-muted-foreground">
