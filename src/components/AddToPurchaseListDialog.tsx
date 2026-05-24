@@ -80,25 +80,32 @@ export function AddToPurchaseListDialog({
     if (!open) return;
     setLoading(true);
     (async () => {
-      const [listsRes, sugg] = await Promise.all([
-        supabase.from('purchase_lists').select('id, name').order('created_at', { ascending: false }),
-        suggestQuantity(productId, currentStock, minStock),
-      ]);
-      const ls = (listsRes.data ?? []) as PurchaseList[];
-      setLists(ls);
-      setSuggested(sugg);
-      setQuantity(sugg);
-      if (ls.length === 0) {
-        setMode('new');
-        setNewListName('Lista de compras');
-      } else {
-        setMode('existing');
-        const preselect = defaultListId && ls.some((l) => l.id === defaultListId)
-          ? defaultListId
-          : ls[0].id;
-        setSelectedList(preselect);
+      try {
+        const suggestWithTimeout = Promise.race<number>([
+          suggestQuantity(productId, currentStock, minStock),
+          new Promise<number>((resolve) => setTimeout(() => resolve(Math.max(1, minStock - currentStock, 1)), 4000)),
+        ]);
+        const [listsRes, sugg] = await Promise.all([
+          supabase.from('purchase_lists').select('id, name').order('created_at', { ascending: false }),
+          suggestWithTimeout,
+        ]);
+        const ls = (listsRes.data ?? []) as PurchaseList[];
+        setLists(ls);
+        setSuggested(sugg);
+        setQuantity(sugg);
+        if (ls.length === 0) {
+          setMode('new');
+          setNewListName('Lista de compras');
+        } else {
+          setMode('existing');
+          const preselect = defaultListId && ls.some((l) => l.id === defaultListId)
+            ? defaultListId
+            : ls[0].id;
+          setSelectedList(preselect);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [open, productId, currentStock, minStock, defaultListId]);
 
