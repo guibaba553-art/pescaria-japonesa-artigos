@@ -99,6 +99,13 @@ export function PurchaseLists() {
       };
       (grouped[i.list_id] ||= []).push(row);
     });
+    Object.keys(grouped).forEach((k) => {
+      grouped[k].sort((a, b) => {
+        const an = (a.variation_name ? `${a.product_name} - ${a.variation_name}` : a.product_name).toLowerCase();
+        const bn = (b.variation_name ? `${b.product_name} - ${b.variation_name}` : b.product_name).toLowerCase();
+        return an.localeCompare(bn, 'pt-BR');
+      });
+    });
     setItemsByList(grouped);
     setExpanded((prev) => {
       const next = { ...prev };
