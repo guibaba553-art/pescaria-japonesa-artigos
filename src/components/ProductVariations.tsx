@@ -13,14 +13,14 @@ import { BarcodeInput } from "@/components/BarcodeInput";
 interface ProductVariationsProps {
   variations: ProductVariation[];
   onVariationsChange: (variations: ProductVariation[]) => void;
-  productMinSalePrice?: number | null;
+  hidePrice?: boolean;
 }
 
 /**
  * Componente para gerenciar variações de produto
  * Interface intuitiva para adicionar, editar e remover variações
  */
-export function ProductVariations({ variations, onVariationsChange, productMinSalePrice }: ProductVariationsProps) {
+export function ProductVariations({ variations, onVariationsChange, hidePrice }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
   const [upProcessing, setUpProcessing] = useState<string | null>(null);
@@ -153,7 +153,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
     if (!name) {
       return;
     }
-    if (isNaN(price) || price <= 0) {
+    if (!hidePrice && (isNaN(price) || price <= 0)) {
       return;
     }
     if (isNaN(stock) || stock < 0) {
@@ -239,8 +239,8 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
     const name = newVariation.name.trim();
     const price = parseFloat(newVariation.price);
     const stock = parseInt(newVariation.stock);
-    
-    return name && !isNaN(price) && price > 0 && !isNaN(stock) && stock >= 0;
+    const priceOk = hidePrice ? true : (!isNaN(price) && price > 0);
+    return name && priceOk && !isNaN(stock) && stock >= 0;
   };
 
   return (
@@ -280,6 +280,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                           placeholder="Ex: Tamanho M"
                         />
                       </div>
+                      {!hidePrice && (
                       <div>
                         <Label htmlFor={`pricepdv-${variation.id}`} className="text-xs">
                           Preço de venda — PDV (R$)
@@ -294,6 +295,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                           placeholder="Se vazio, usa o preço do site"
                         />
                       </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -322,24 +324,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                           placeholder="0"
                         />
                       </div>
-                      {(() => {
-                        const minVal = (variation as any).min_sale_price ?? productMinSalePrice ?? null;
-                        const fromProduct = (variation as any).min_sale_price == null && productMinSalePrice != null;
-                        if (minVal == null) return null;
-                        return (
-                          <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 flex flex-col justify-center">
-                            <Label className="text-[11px] text-amber-700 dark:text-amber-400">
-                              Preço Mínimo de Venda — Site
-                            </Label>
-                            <p className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                              {Number(minVal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {fromProduct ? 'Herdado do produto (Fiscal)' : 'Definido em Fiscal → Formação de Preço'}
-                            </p>
-                          </div>
-                        );
-                      })()}
+
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
@@ -507,9 +492,6 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                           />
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        💡 Se vazio, usa o peso/dimensões do produto principal
-                      </p>
                     </div>
                   </div>
                   <Button
@@ -545,6 +527,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                 onChange={(e) => setNewVariation({ ...newVariation, name: e.target.value })}
               />
             </div>
+            {!hidePrice && (
             <div>
               <Label htmlFor="new-var-price" className="text-xs">
                 Preço — Site (R$) *
@@ -559,6 +542,8 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                 onChange={(e) => setNewVariation({ ...newVariation, price: e.target.value })}
               />
             </div>
+            )}
+            {!hidePrice && (
             <div>
               <Label htmlFor="new-var-price-pdv" className="text-xs">
                 Preço de venda — PDV (R$)
@@ -573,6 +558,7 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                 onChange={(e) => setNewVariation({ ...newVariation, price_pdv: e.target.value })}
               />
             </div>
+            )}
             <div>
               <Label htmlFor="new-var-stock" className="text-xs">
                 Estoque *
@@ -745,9 +731,6 @@ export function ProductVariations({ variations, onVariationsChange, productMinSa
                 />
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              💡 Se vazio, usa o peso/dimensões do produto principal
-            </p>
           </div>
           
           <p className="text-xs text-muted-foreground">

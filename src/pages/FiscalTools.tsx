@@ -2,10 +2,9 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Home, Calculator, Receipt, Loader2, Package, ShoppingCart, BarChart3, LogOut, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Wallet, DollarSign, FileBarChart } from "lucide-react";
+import { Calculator, Receipt, Loader2, Settings, TrendingUp, ArrowDownToLine, FileSpreadsheet, Wallet, FileBarChart } from "lucide-react";
 import { Header } from "@/components/Header";
 
 const NFEList = lazy(() =>
@@ -28,9 +27,6 @@ const AccountantReport = lazy(() =>
 );
 const ExpenseTracker = lazy(() =>
   import("@/components/ExpenseTracker").then((m) => ({ default: m.ExpenseTracker }))
-);
-const PriceFormation = lazy(() =>
-  import("@/components/PriceFormation").then((m) => ({ default: m.PriceFormation }))
 );
 const DREReport = lazy(() =>
   import("@/components/DREReport").then((m) => ({ default: m.DREReport }))
@@ -199,10 +195,6 @@ export default function FiscalTools() {
               <FileBarChart className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">DRE</span>
             </TabsTrigger>
-            <TabsTrigger value="precos">
-              <DollarSign className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Formação de Preço</span>
-            </TabsTrigger>
             <TabsTrigger value="gastos">
               <Wallet className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Gastos e Entradas</span>
@@ -224,12 +216,6 @@ export default function FiscalTools() {
               <span className="hidden sm:inline">Sistema Fiscal</span>
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="precos">
-            <Suspense fallback={<FiscalTabFallback />}>
-              <PriceFormation />
-            </Suspense>
-          </TabsContent>
 
           <TabsContent value="dre">
             <Suspense fallback={<FiscalTabFallback />}>
