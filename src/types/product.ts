@@ -15,6 +15,11 @@ export interface ProductVariation {
   width_cm?: number | null;
   height_cm?: number | null;
   min_stock?: number;
+  cost?: number | null;
+  cost_group_id?: string | null;
+  freight_pct?: number | null;
+  op_cost_pct?: number | null;
+  tax_pct?: number | null;
   created_at?: string;
   updated_at?: string;
 }

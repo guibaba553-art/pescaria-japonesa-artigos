@@ -92,6 +92,12 @@ export function useProductVariations(productId?: string) {
       width_cm: parseOptionalMeasurementInput(v.width_cm, 'float'),
       height_cm: parseOptionalMeasurementInput(v.height_cm, 'float'),
       min_stock: v.min_stock != null ? Number(v.min_stock) : 0,
+      cost: v.cost != null ? Number(v.cost) : null,
+      min_sale_price: v.min_sale_price != null ? Number(v.min_sale_price) : null,
+      cost_group_id: (v as any).cost_group_id || null,
+      freight_pct: v.freight_pct != null ? Number(v.freight_pct) : 0,
+      op_cost_pct: v.op_cost_pct != null ? Number(v.op_cost_pct) : 0,
+      tax_pct: v.tax_pct != null ? Number(v.tax_pct) : 0,
     });
 
     try {
