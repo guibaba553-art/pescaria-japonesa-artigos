@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProductVariation } from '@/types/product';
 import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
+import { safeVariationPrice, buildVariationPayload } from '@/lib/pricing';
 
 /**
  * Hook centralizado para gerenciar variações de produtos
@@ -81,7 +82,7 @@ export function useProductVariations(productId?: string) {
     const buildPayload = (v: ProductVariation) => ({
       product_id: targetProductId,
       name: v.name.trim(),
-      price: Number(v.price),
+      price: safeVariationPrice(v.price),
       price_pdv: v.price_pdv != null && !isNaN(Number(v.price_pdv)) ? Number(v.price_pdv) : null,
       stock: Number(v.stock),
       description: v.description?.trim() || null,
@@ -98,6 +99,7 @@ export function useProductVariations(productId?: string) {
       freight_pct: v.freight_pct != null ? Number(v.freight_pct) : 0,
       op_cost_pct: v.op_cost_pct != null ? Number(v.op_cost_pct) : 0,
       tax_pct: v.tax_pct != null ? Number(v.tax_pct) : 0,
+      ...buildVariationPayload(v, targetProductId),
     });
 
     try {

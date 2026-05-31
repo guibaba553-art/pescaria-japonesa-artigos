@@ -20,6 +20,11 @@ export interface ProductVariation {
   freight_pct?: number | null;
   op_cost_pct?: number | null;
   tax_pct?: number | null;
+  on_sale?: boolean;
+  sale_price?: number | null;
+  sale_ends_at?: string | null;
+  sale_limit_qty?: number | null;
+  sale_sold_qty?: number | null;
   created_at?: string;
   updated_at?: string;
 }

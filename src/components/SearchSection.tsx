@@ -11,8 +11,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
-import { PUBLIC_PRODUCT_COLUMNS } from "@/utils/productColumns";
-import { effectiveProductPrice } from "@/utils/promoPrice";
+import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
 
 export function SearchSection() {
   const navigate = useNavigate();
@@ -44,7 +43,13 @@ export function SearchSection() {
 
     let query = supabase
       .from('products')
-      .select(PUBLIC_PRODUCT_COLUMNS)
+      .select(`
+        id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
+        category, subcategory, brand, pound_test, size,
+        image_url, stock, rating, featured, minimum_quantity,
+        sold_by_weight, created_at,
+        variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
+      `)
       .eq('pdv_only', false)
       .gt('stock', 0);
 
@@ -79,8 +84,14 @@ export function SearchSection() {
 
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    
-    const finalPrice = effectiveProductPrice(product as any);
+    // Se tem variações, redireciona para a página do produto (não dá pra adicionar direto)
+    const vars = (product as any).variations as any[] | undefined;
+    if (vars && vars.length > 0) {
+      navigate(`/produto/${product.id}`);
+      return;
+    }
+
+    const finalPrice = effectiveProductOrVariationPrice(product as any);
 
     addItem({
       id: product.id,
@@ -204,22 +215,13 @@ export function SearchSection() {
                             {product.short_description || product.description}
                           </p>
                           <div className="flex items-center justify-between">
-                            {product.on_sale && product.sale_price ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg font-bold text-red-600">
-                                  R$ {product.sale_price.toFixed(2)}
-                                </span>
-                                <span className="text-sm line-through text-muted-foreground">
-                                  R$ {product.price.toFixed(2)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-lg font-bold text-primary">
-                                R$ {product.price.toFixed(2)}
-                              </span>
-                            )}
+                            <span className="text-lg font-bold text-primary">
+                              {(product as any).variations?.length ? 'A partir de ' : ''}R$ {effectiveProductOrVariationPrice(product as any).toFixed(2)}
+                            </span>
                             <span className="text-xs text-muted-foreground">
-                              {product.stock} em estoque
+                              {(product as any).variations?.length
+                                ? `${(product as any).variations.length} opções`
+                                : `${product.stock} em estoque`}
                             </span>
                           </div>
                         </button>
@@ -227,10 +229,10 @@ export function SearchSection() {
                           size="sm"
                           onClick={(e) => handleAddToCart(e, product)}
                           className="self-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          disabled={product.stock === 0}
+                          disabled={product.stock === 0 && !(product as any).variations?.length}
                         >
                           <ShoppingCart className="h-4 w-4 mr-2" />
-                          Adicionar
+                          {(product as any).variations?.length ? 'Ver opções' : 'Adicionar'}
                         </Button>
                       </div>
                     ))}

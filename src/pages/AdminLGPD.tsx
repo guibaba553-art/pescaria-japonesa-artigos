@@ -242,8 +242,8 @@ export default function AdminLGPD() {
           </ul>
           <p className="text-sm text-muted-foreground mt-4">
             Os titulares exercem esses direitos via página{" "}
-            <a href="/meus-dados" className="text-primary underline">
-              /meus-dados
+            <a href="/conta" className="text-primary underline">
+              /conta
             </a>{" "}
             ou e-mail ao DPO.
           </p>

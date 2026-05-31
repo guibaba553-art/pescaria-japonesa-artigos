@@ -8,6 +8,7 @@ import { useCategories } from '@/hooks/useCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart, Boxes, ClipboardList, Users, BarChart3, ScanLine, UserCog, FileText, AlertTriangle, Wallet, Receipt, History } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
+import { effectiveProductOrVariationPrice } from '@/utils/promoPrice';
 
 interface Suggestion {
   id: string;
@@ -15,6 +16,7 @@ interface Suggestion {
   price: number;
   image_url: string | null;
   category: string;
+  variations?: { id: string; name: string; price: number; stock: number; image_url: string | null; on_sale?: boolean; sale_price?: number; sale_ends_at?: string; sale_limit_qty?: number; sale_sold_qty?: number; min_sale_price?: number }[];
 }
 
 export function Header() {
@@ -72,7 +74,7 @@ export function Header() {
     const timer = setTimeout(async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, image_url, category')
+        .select('id, name, price, image_url, category, min_sale_price, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)')
         .eq('pdv_only', false)
         .ilike('name', `%${query}%`)
         .limit(6);
@@ -241,7 +243,7 @@ export function Header() {
                               <p className="text-xs text-muted-foreground truncate">{s.category}</p>
                             </div>
                             <span className="text-sm font-semibold flex-shrink-0">
-                              R$ {Number(s.price).toFixed(2).replace('.', ',')}
+                              {(s as any).variations?.length ? 'A partir de ' : ''}R$ {effectiveProductOrVariationPrice(s as any).toFixed(2).replace('.', ',')}
                             </span>
                           </button>
                         </li>

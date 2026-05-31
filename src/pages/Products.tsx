@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
-import { effectiveProductPrice } from '@/utils/promoPrice';
+import { effectiveProductOrVariationPrice } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories } from '@/hooks/useCategories';
@@ -116,7 +116,7 @@ export default function Products() {
     let min = Infinity;
     let max = -Infinity;
     for (const p of products) {
-      const price = effectiveProductPrice(p as any);
+      const price = effectiveProductOrVariationPrice(p as any);
       if (typeof price !== 'number' || !isFinite(price)) continue;
       if (price < min) min = price;
       if (price > max) max = price;
@@ -182,7 +182,7 @@ export default function Products() {
       }
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
       if (priceRange) {
-        const effectivePrice = effectiveProductPrice(p as any);
+        const effectivePrice = effectiveProductOrVariationPrice(p as any);
         if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;
       }
       return true;
@@ -193,15 +193,15 @@ export default function Products() {
     switch (sortBy) {
       case 'price_asc':
         sorted.sort((a, b) => {
-          const pa = effectiveProductPrice(a as any);
-          const pb = effectiveProductPrice(b as any);
+          const pa = effectiveProductOrVariationPrice(a as any);
+          const pb = effectiveProductOrVariationPrice(b as any);
           return pa - pb;
         });
         break;
       case 'price_desc':
         sorted.sort((a, b) => {
-          const pa = effectiveProductPrice(a as any);
-          const pb = effectiveProductPrice(b as any);
+          const pa = effectiveProductOrVariationPrice(a as any);
+          const pb = effectiveProductOrVariationPrice(b as any);
           return pb - pa;
         });
         break;

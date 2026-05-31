@@ -14,7 +14,7 @@ import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
-import { effectiveProductPrice, isPromoActive } from '@/utils/promoPrice';
+import { effectiveProductPrice, isPromoActive, getProductDisplayImage } from '@/utils/promoPrice';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -464,7 +464,7 @@ export default function ProductDetails() {
                       ? `${product.name} - ${selectedVariation.name}`
                       : product.name,
                     price: finalPrice,
-                    image_url: product.image_url,
+                    image_url: getProductDisplayImage(product.image_url, selectedVariation as any),
                     variationId: selectedVariation?.id
                   }, quantity);
                   

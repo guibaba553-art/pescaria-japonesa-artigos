@@ -80,3 +80,40 @@ export function effectiveVariationPrice(
   }
   return vBase;
 }
+
+/**
+ * Preço efetivo considerando variações.
+ * Se o produto tem variações com preço > 0, retorna o menor preço efetivo
+ * entre elas (usando effectiveVariationPrice). Caso contrário, cai para
+ * effectiveProductPrice (preço do produto base).
+ */
+export function effectiveProductOrVariationPrice(
+  product: PromoFields & {
+    min_sale_price?: number | null;
+    variations?: (PromoFields & { min_sale_price?: number | null })[];
+  },
+): number {
+  const vars = product.variations;
+  if (vars && vars.length > 0) {
+    const prices = vars
+      .map((v) => effectiveVariationPrice(v, product))
+      .filter((p) => p > 0 && isFinite(p));
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+  }
+  return effectiveProductPrice(product);
+}
+
+/**
+ * Retorna a imagem correta para exibição/carrinho.
+ * Se há uma variação selecionada com imagem própria, usa a imagem da variação.
+ * Caso contrário, usa a imagem do produto base.
+ */
+export function getProductDisplayImage(
+  baseImageUrl: string | null,
+  selectedVariation?: { image_url?: string | null } | null,
+): string | null {
+  if (selectedVariation?.image_url) return selectedVariation.image_url;
+  return baseImageUrl;
+}

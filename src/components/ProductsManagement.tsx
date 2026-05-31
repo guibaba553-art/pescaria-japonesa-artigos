@@ -149,11 +149,14 @@ export function ProductsManagement() {
 
   const [variationDimsByProduct, setVariationDimsByProduct] = useState<Record<string, Array<{ weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>>>({});
 
+  const [variationSummaries, setVariationSummaries] = useState<Record<string, { minPrice: number; totalStock: number }>>({});
+
   const loadProducts = async () => {
     // Usa RPC para incluir campos sensíveis (custo, preço PDV, margens) visíveis apenas a admin/funcionário
-    const [{ data, error }, { data: vData, error: vError }] = await Promise.all([
+    const [{ data, error }, { data: vData, error: vError }, { data: vaData }] = await Promise.all([
       supabase.rpc('get_products_admin'),
       supabase.from('product_variations').select('product_id, weight_grams, length_cm, width_cm, height_cm'),
+      supabase.rpc('get_product_variations_admin'),
     ]);
     if (error) {
       toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
@@ -172,6 +175,24 @@ export function ProductsManagement() {
         });
       }
       setVariationDimsByProduct(map);
+    }
+    if (vaData) {
+      const summary: Record<string, { minPrice: number; totalStock: number }> = {};
+      for (const v of vaData as any[]) {
+        if (!summary[v.product_id]) {
+          summary[v.product_id] = { minPrice: Infinity, totalStock: 0 };
+        }
+        const vPrice = Number(v.price_pdv ?? v.price ?? 0);
+        if (vPrice > 0 && vPrice < summary[v.product_id].minPrice) {
+          summary[v.product_id].minPrice = vPrice;
+        }
+        summary[v.product_id].totalStock += Number(v.stock ?? 0);
+      }
+      // Replace Infinity with 0 for products with no valid variation prices
+      for (const key of Object.keys(summary)) {
+        if (!isFinite(summary[key].minPrice)) summary[key].minPrice = 0;
+      }
+      setVariationSummaries(summary);
     }
   };
 
@@ -198,11 +219,12 @@ export function ProductsManagement() {
     }
   };
 
+  const getStock = (p: Product) => variationSummaries[p.id]?.totalStock ?? (p.stock || 0);
   const visibleProducts = products.filter((p) => p.category !== 'Pendente Revisão');
-  const outOfStock = visibleProducts.filter((p) => p.stock === 0).length;
+  const outOfStock = visibleProducts.filter((p) => getStock(p) === 0).length;
   const onSaleCount = visibleProducts.filter((p) => p.on_sale).length;
   const featuredCount = visibleProducts.filter((p) => p.featured).length;
-  const totalStock = visibleProducts.reduce((sum, p) => sum + (p.stock || 0), 0);
+  const totalStock = visibleProducts.reduce((sum, p) => sum + getStock(p), 0);
   const noDimsCount = visibleProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id])).length;
   const pdvOnlyCount = visibleProducts.filter((p) => p.pdv_only).length;
 
@@ -216,7 +238,7 @@ export function ProductsManagement() {
   );
 
   let filteredProducts = visibleProducts;
-  if (filter === 'in-stock') filteredProducts = filteredProducts.filter((p) => p.stock > 0);
+  if (filter === 'in-stock') filteredProducts = filteredProducts.filter((p) => getStock(p) > 0);
   if (filter === 'out-of-stock') filteredProducts = filteredProducts.filter((p) => p.stock === 0);
   if (filter === 'on-sale') filteredProducts = filteredProducts.filter((p) => p.on_sale);
   if (filter === 'featured') filteredProducts = filteredProducts.filter((p) => p.featured);
@@ -320,9 +342,12 @@ export function ProductsManagement() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {filteredProducts.map((product) => {
                 const v = velocities[product.id];
-                const displayPrice = Number(product.price_pdv ?? product.price ?? 0);
+                const vs = variationSummaries[product.id];
+                const hasVars = vs && vs.totalStock > 0;
+                const displayPrice = hasVars ? vs.minPrice : Number(product.price_pdv ?? product.price ?? 0);
+                const displayStock = hasVars ? vs.totalStock : product.stock;
                 const accent =
-                  product.stock === 0 ? 'border-l-destructive'
+                  displayStock === 0 ? 'border-l-destructive'
                   : v?.status === 'critical' ? 'border-l-orange-500'
                   : product.on_sale ? 'border-l-emerald-500'
                   : product.featured ? 'border-l-amber-500'
@@ -372,8 +397,8 @@ export function ProductsManagement() {
                         {/* Badge de divergência de estoque desativado temporariamente */}
                         {product.featured && <Badge className="bg-amber-500/90 text-white border-0 text-[9px] px-1.5 py-0">⭐</Badge>}
                         {product.on_sale && <Badge className="bg-emerald-500/90 text-white border-0 text-[9px] px-1.5 py-0">🏷️</Badge>}
-                        {product.stock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
-                        {product.stock > 0 && v?.status === 'critical' && (
+                        {displayStock === 0 && <Badge variant="destructive" className="text-[9px] px-1.5 py-0">Esgotado</Badge>}
+                        {displayStock > 0 && v?.status === 'critical' && (
                           <Badge className="bg-orange-500/90 text-white border-0 text-[9px] px-1.5 py-0">Reestoque</Badge>
                         )}
                         {isMissingShippingDims(product, variationDimsByProduct[product.id]) && (
@@ -396,18 +421,17 @@ export function ProductsManagement() {
                       </div>
                       <div className="flex items-end justify-between gap-2 pt-0.5">
                         <div>
-                          {product.on_sale && product.sale_price ? (
-                            <>
-                              <p className="line-through text-[10px] text-muted-foreground">R$ {displayPrice.toFixed(2)}</p>
-                              <p className="text-sm font-bold text-emerald-600">R$ {product.sale_price.toFixed(2)}</p>
-                            </>
+                          {displayPrice > 0 ? (
+                            <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              {hasVars ? 'A partir de ' : ''}R$ {displayPrice.toFixed(2)}
+                            </p>
                           ) : (
-                            <p className="text-sm font-bold text-primary">R$ {displayPrice.toFixed(2)}</p>
+                            <p className="text-[10px] text-muted-foreground italic">Sem preço definido no PDV</p>
                           )}
                         </div>
                         <div className="text-right">
                           <p className="text-[9px] text-muted-foreground uppercase font-semibold">Estoque</p>
-                          <p className={`text-sm font-bold ${product.stock === 0 ? 'text-destructive' : ''}`}>{product.stock}</p>
+                          <p className={`text-sm font-bold ${displayStock === 0 ? 'text-destructive' : ''}`}>{displayStock}</p>
                         </div>
                       </div>
                       <div

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
 import { Product } from "@/types/product";
 import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
+import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
 import varasImg from "@/assets/category-varas.jpg";
 import molinetesImg from "@/assets/category-molinetes.jpg";
 import carretilhasImg from "@/assets/category-carretilhas.jpg";
@@ -58,9 +59,9 @@ const ProductMiniCard = ({
   highlight?: boolean;
 }) => {
   const navigate = useNavigate();
-  const onSale = product.on_sale && product.sale_price && product.sale_price < product.price;
-  const finalPrice = onSale ? product.sale_price! : product.price;
-  const discount = onSale
+  const hasVariations = (product as any).variations?.length > 0;
+  const finalPrice = effectiveProductOrVariationPrice(product as any);
+  const discount = product.on_sale && product.sale_price && product.sale_price < product.price
     ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
     : 0;
   const installment = finalPrice >= 50 ? Math.min(10, Math.floor(finalPrice / 30)) : 0;
@@ -99,10 +100,10 @@ const ProductMiniCard = ({
         </p>
         {/* Slot fixo p/ preço riscado — mantém altura uniforme entre cards */}
         <p className="text-[10px] text-muted-foreground line-through leading-none h-3">
-          {onSale ? formatPrice(product.price) : "\u00A0"}
+          {discount > 0 ? formatPrice(product.price) : "\u00A0"}
         </p>
         <p className="text-sm font-bold text-primary leading-tight">
-          {formatPrice(finalPrice)}
+          {hasVariations ? 'A partir de ' : ''}{formatPrice(finalPrice)}
         </p>
         {/* Slot fixo p/ parcelamento — mantém altura uniforme entre cards */}
         <p className="text-[9px] text-muted-foreground mt-0.5 h-3">

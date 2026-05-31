@@ -178,3 +178,74 @@ export function calcPricingBreakdown(
     marginOnSale,
   };
 }
+
+/** Converte string para número. Retorna NaN se inválido. */
+function toNum(s: string): number {
+  return Number(s.replace(',', '.'));
+}
+
+/**
+ * Determina se a precificação deve ficar bloqueada (desabilitada) na UI.
+ *
+ * Regras:
+ * - Custo deve ser > 0 (obrigatório)
+ * - Frete (%) deve estar preenchido e ser >= 0
+ * - Custos operacionais (%) deve estar preenchido e ser >= 0
+ *
+ * @param liveCost - Custo parseado (0 = vazio/não preenchido)
+ * @param freightPct - Valor bruto do campo Frete (%) como string
+ * @param opCostPct - Valor bruto do campo Custos operacionais (%) como string
+ * @returns true se a precificação deve ser bloqueada
+ */
+export function isPricingDisabled(liveCost: number, freightPct: string, opCostPct: string): boolean {
+  if (liveCost <= 0) return true;
+  if (freightPct === '' || toNum(freightPct) < 0) return true;
+  if (opCostPct === '' || toNum(opCostPct) < 0) return true;
+  return false;
+}
+
+/**
+ * Versão para variações: verifica se a precificação da variação está bloqueada.
+ * Diferente de isPricingDisabled, usa o custo individual da variação (já parseado)
+ * em vez do custo global do produto. As regras de frete e opcost são as mesmas.
+ *
+ * @param varCost - Custo da variação (já como número, 0 = não preenchido)
+ * @param freightPct - Valor bruto do campo Frete (%) como string
+ * @param opCostPct - Valor bruto do campo Custos operacionais (%) como string
+ * @returns true se a precificação da variação deve ser bloqueada
+ */
+export function isVariationPricingDisabled(varCost: number, freightPct: string, opCostPct: string): boolean {
+  if (varCost <= 0) return true;
+  if (freightPct === '' || toNum(freightPct) < 0) return true;
+  if (opCostPct === '' || toNum(opCostPct) < 0) return true;
+  return false;
+}
+
+/**
+ * Garante que o preço de uma variação seja um número válido para persistência.
+ * Converte NaN, null, undefined e negativos para 0.
+ *
+ * @param price - Valor bruto do campo price (pode ser number, string, null, NaN)
+ * @returns número >= 0
+ */
+export function safeVariationPrice(price: number | null | undefined | string): number {
+  const n = Number(price);
+  if (isNaN(n) || n < 0) return 0;
+  return n;
+}
+
+/**
+ * Extrai os campos de promoção de uma variação para o payload de persistência.
+ * Se on_sale for false, zera sale_price e sale_ends_at.
+ */
+export function buildVariationPayload(
+  v: { on_sale?: boolean; sale_price?: number | null; sale_ends_at?: string | null },
+  _productId: string,
+): { on_sale: boolean; sale_price: number | null; sale_ends_at: string | null } {
+  const onSale = v.on_sale === true;
+  return {
+    on_sale: onSale,
+    sale_price: onSale && v.sale_price != null ? Number(v.sale_price) : null,
+    sale_ends_at: onSale && v.sale_ends_at ? String(v.sale_ends_at) : null,
+  };
+}

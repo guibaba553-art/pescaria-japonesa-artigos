@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown } from 'lucide-react';
+import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
@@ -26,7 +26,7 @@ import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { upscaleImage } from '@/utils/upscaleImage';
-import { calcPrice, reverseMarginFromPrice, repriceAllVariations } from '@/lib/pricing';
+import { reverseMarginFromPrice, repriceAllVariations, isPricingDisabled, isVariationPricingDisabled } from '@/lib/pricing';
 import { resolveOptionalMeasurementUpdate } from '@/utils/productMeasurements';
 
 interface ProductEditProps {
@@ -167,7 +167,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
   const liveBaseCost = liveCost + liveFreight + liveOpCost;
   const liveTotalCost = liveBaseCost;
   // Site live values
-  const pricingDisabled = liveCost === 0 || liveFreightPct === 0 || liveOpCostPct === 0;
+  const pricingDisabled = isPricingDisabled(liveCost, freightPct, opCostPct);
   const siteMarginFilled = parseNum(siteMarginPct) > 0;
   const pdvMarginFilled = parseNum(editMargin) > 0;
   const pdvMarginNum = parseNum(editMargin);
@@ -807,18 +807,32 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                     <DialogTitle>
                       {isCreate ? 'Novo Produto' : 'Editar Produto'}
                     </DialogTitle>
-                    <button
-                      type="button"
-                      onClick={() => setFeatured(!featured)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 shrink-0 ${
-                        featured
-                          ? 'bg-amber-100 text-amber-800 border-amber-400 shadow-sm dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-600'
-                          : 'bg-background text-muted-foreground border-muted-foreground/20 hover:border-amber-300 hover:text-amber-700 dark:hover:text-amber-400'
-                      }`}
-                    >
-                      <Star className={`w-3.5 h-3.5 transition-colors ${featured ? 'fill-amber-500 text-amber-500' : ''}`} />
-                      {featured ? 'Destaque' : 'Destaque'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFeatured(!featured)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 shrink-0 ${
+                          featured
+                            ? 'bg-amber-100 text-amber-800 border-amber-400 shadow-sm dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-600'
+                            : 'bg-background text-muted-foreground border-muted-foreground/20 hover:border-amber-300 hover:text-amber-700 dark:hover:text-amber-400'
+                        }`}
+                      >
+                        <Star className={`w-3.5 h-3.5 transition-colors ${featured ? 'fill-amber-500 text-amber-500' : ''}`} />
+                        Destaque
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPdvOnly(!pdvOnly)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 shrink-0 ${
+                          pdvOnly
+                            ? 'bg-indigo-100 text-indigo-800 border-indigo-400 shadow-sm dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-600'
+                            : 'bg-background text-muted-foreground border-muted-foreground/20 hover:border-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400'
+                        }`}
+                      >
+                        <Store className={`w-3.5 h-3.5 transition-colors ${pdvOnly ? 'text-indigo-500' : ''}`} />
+                        Exclusivo PDV
+                      </button>
+                    </div>
                   </div>
                   <DialogDescription>
                     {isCreate
@@ -880,6 +894,53 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                           <Input id="pf-tax-var" type="number" step="0.01" min="0" value={taxPct} onChange={(e) => handleFormTaxPctChange(e.target.value)} placeholder="0,00" />
                         </div>
                       </div>
+                    </div>
+                    {/* PDV Pagamentos global */}
+                    <div className="space-y-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
+                      <div>
+                        <h3 className="text-sm font-bold uppercase tracking-wide">Preço PDV — Pagamentos</h3>
+                        <p className="text-xs text-muted-foreground">Percentuais globais. PIX/Dinheiro = base. Débito = +3%. Crédito = +4%.</p>
+                      </div>
+                      <div className="flex items-center justify-between rounded-md border bg-background p-2">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="pdv-no-markup-var" className="text-xs">Sem acréscimo no PDV</Label>
+                          <p className="text-[10px] text-muted-foreground">Mesmo preço em todos os métodos de pagamento</p>
+                        </div>
+                        <Switch id="pdv-no-markup-var" disabled={pricingDisabled} checked={pdvNoMarkup} onCheckedChange={setPdvNoMarkup} />
+                      </div>
+                      {pdvNoMarkup ? (
+                        (() => {
+                          const base = pricePdv ? parseFloat(pricePdv) : 0;
+                          const fmt2 = (v: number) => v.toFixed(2);
+                          return (
+                            <div className="rounded-md bg-background p-2 border space-y-1">
+                              <p className="text-[10px] uppercase text-muted-foreground">Dinheiro, pix, débito, crédito</p>
+                              <Input type="number" step="0.01" value={pricePdvPix} onChange={(e) => { const pct = e.target.value; setPricePdvPix(pct); setPricePdvCash(pct); setPricePdvDebit(pct); setPricePdvCredit(pct); }} placeholder="0" disabled={pricingDisabled} className="h-8 text-center text-sm font-bold" />
+                              <p className="text-[10px] text-muted-foreground">Porcentagem aplicada a todos os métodos</p>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        (() => {
+                        const base = pricePdv ? parseFloat(pricePdv) : 0;
+                        const fmt2 = (v: number) => v.toFixed(2);
+                        const pdvCell = (label: string, value: string, setValue: (v: string) => void, autoVal: number, pct?: string) => (
+                          <div className="rounded-md bg-background p-2 border space-y-1">
+                            <p className="text-[10px] uppercase text-muted-foreground">{label}{pct ? ` (${pct})` : ''}</p>
+                            <Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} placeholder={fmt2(autoVal)} disabled={pricingDisabled} className="h-8 text-center text-sm font-bold" />
+                            <p className="text-[10px] text-muted-foreground">auto: R$ {fmt2(autoVal)}</p>
+                          </div>
+                        );
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {pdvCell('PIX', pricePdvPix, setPricePdvPix, base, '0%')}
+                            {pdvCell('Dinheiro', pricePdvCash, setPricePdvCash, base, '0%')}
+                            {pdvCell('Débito', pricePdvDebit, setPricePdvDebit, base * 1.03, '+3%')}
+                            {pdvCell('Crédito', pricePdvCredit, setPricePdvCredit, base * 1.04, '+4%')}
+                          </div>
+                        );
+                      })()
+                      )}
                     </div>
                     {/* Per-variation cards */}
                     {variations
@@ -953,7 +1014,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                 <p className="text-xs font-semibold text-muted-foreground">Preço Site</p>
                                 <div>
                                   <Label className="text-[11px]">Lucro sobre custo (%)</Label>
-                                  <Input type="number" step="0.01" min="0" value={editSiteMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost + varCost * f + varCost * o; const newMin = calcPrice(base, m, liveTaxPct); setVariations(prev => prev.map(x => x.id === v.id ? { ...x, min_sale_price: isFinite(newMin) && newMin > 0 ? newMin : null, _editSiteMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={varCost === 0 || liveFreightPct === 0 || liveOpCostPct === 0} className="h-8 text-sm" />
+                                  <Input type="number" step="0.01" min="0" value={editSiteMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost + varCost * f + varCost * o; const newMin = calcPrice(base, m, liveTaxPct); setVariations(prev => prev.map(x => x.id === v.id ? { ...x, min_sale_price: isFinite(newMin) && newMin > 0 ? newMin : null, _editSiteMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
                                 </div>
 
                                 {siteMarginVarFilled && (
@@ -1003,7 +1064,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                 <p className="text-xs font-semibold text-muted-foreground">Preço PDV</p>
                                 <div>
                                   <Label className="text-[11px]">Lucro sobre custo (%)</Label>
-                                  <Input type="number" step="0.01" min="0" value={editMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost * (1 + f + o); const np = calcPrice(base, m, liveTaxPct); if (isFinite(np) && np > 0) setVariations(prev => prev.map(x => x.id === v.id ? { ...x, price_pdv: np, _editMargin: e.target.value } as any : x)); else setVariations(prev => prev.map(x => x.id === v.id ? { ...x, _editMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={varCost === 0 || liveFreightPct === 0 || liveOpCostPct === 0} className="h-8 text-sm" />
+                                  <Input type="number" step="0.01" min="0" value={editMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost * (1 + f + o); const np = calcPrice(base, m, liveTaxPct); if (isFinite(np) && np > 0) setVariations(prev => prev.map(x => x.id === v.id ? { ...x, price_pdv: np, _editMargin: e.target.value } as any : x)); else setVariations(prev => prev.map(x => x.id === v.id ? { ...x, _editMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
                                 </div>
 
                                 {pdvMarginVarFilled && (
@@ -1050,56 +1111,60 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                 </div>
                               </div>
                             </div>
+                            {/* Promoção da variação — linha inteira */}
+                            <div className="border-t pt-2.5 mt-1">
+                              {!v.on_sale ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setVariations(prev => prev.map(x => x.id === v.id ? { ...x, on_sale: true } as any : x))}
+                                  className="w-full text-left rounded-lg border border-dashed border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 p-3 hover:border-rose-400 hover:bg-rose-100/50 dark:hover:bg-rose-950/50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-rose-700 dark:text-rose-400">Promoção</span>
+                                    <span className="text-[10px] text-muted-foreground">— inativa</span>
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">Clique para definir um preço promocional para esta variação</p>
+                                </button>
+                              ) : (
+                                <div className="rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 p-3 space-y-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Promoção ativa</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setVariations(prev => prev.map(x => x.id === v.id ? { ...x, on_sale: false, sale_price: null, sale_ends_at: null } as any : x))}
+                                      className="text-[10px] text-destructive hover:underline font-medium"
+                                    >
+                                      Remover promoção
+                                    </button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <Label className="text-[10px]">Preço promocional (R$)</Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={(v as any).sale_price ?? ''}
+                                        onChange={(e) => setVariations(prev => prev.map(x => x.id === v.id ? { ...x, sale_price: e.target.value ? parseFloat(e.target.value) : null } as any : x))}
+                                        placeholder="0.00"
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-[10px]">Válido até</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        value={(v as any).sale_ends_at ? new Date((v as any).sale_ends_at).toISOString().slice(0, 16) : ''}
+                                        onChange={(e) => setVariations(prev => prev.map(x => x.id === v.id ? { ...x, sale_ends_at: e.target.value ? new Date(e.target.value).toISOString() : null } as any : x))}
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
-                    {/* PDV Pagamentos global */}
-                    <div className="space-y-3 p-4 border-2 border-primary/20 rounded-lg bg-primary/5">
-                      <div>
-                        <h3 className="text-sm font-bold uppercase tracking-wide">Preço PDV — Pagamentos</h3>
-                        <p className="text-xs text-muted-foreground">Percentuais globais. PIX/Dinheiro = base. Débito = +3%. Crédito = +4%.</p>
-                      </div>
-                      <div className="flex items-center justify-between rounded-md border bg-background p-2">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="pdv-no-markup-var" className="text-xs">Sem acréscimo no PDV</Label>
-                          <p className="text-[10px] text-muted-foreground">Mesmo preço em todos os métodos de pagamento</p>
-                        </div>
-                        <Switch id="pdv-no-markup-var" disabled={pricingDisabled} checked={pdvNoMarkup} onCheckedChange={setPdvNoMarkup} />
-                      </div>
-                      {pdvNoMarkup ? (
-                        (() => {
-                          const base = pricePdv ? parseFloat(pricePdv) : 0;
-                          const fmt2 = (v: number) => v.toFixed(2);
-                          return (
-                            <div className="rounded-md bg-background p-2 border space-y-1">
-                              <p className="text-[10px] uppercase text-muted-foreground">Dinheiro, pix, débito, crédito</p>
-                              <Input type="number" step="0.01" value={pricePdvPix} onChange={(e) => { const pct = e.target.value; setPricePdvPix(pct); setPricePdvCash(pct); setPricePdvDebit(pct); setPricePdvCredit(pct); }} placeholder="0" disabled={pricingDisabled} className="h-8 text-center text-sm font-bold" />
-                              <p className="text-[10px] text-muted-foreground">Porcentagem aplicada a todos os métodos</p>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        (() => {
-                        const base = pricePdv ? parseFloat(pricePdv) : 0;
-                        const fmt2 = (v: number) => v.toFixed(2);
-                        const pdvCell = (label: string, value: string, setValue: (v: string) => void, autoVal: number, pct?: string) => (
-                          <div className="rounded-md bg-background p-2 border space-y-1">
-                            <p className="text-[10px] uppercase text-muted-foreground">{label}{pct ? ` (${pct})` : ''}</p>
-                            <Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)} placeholder={fmt2(autoVal)} disabled={pricingDisabled} className="h-8 text-center text-sm font-bold" />
-                            <p className="text-[10px] text-muted-foreground">auto: R$ {fmt2(autoVal)}</p>
-                          </div>
-                        );
-                        return (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {pdvCell('PIX', pricePdvPix, setPricePdvPix, base, '0%')}
-                            {pdvCell('Dinheiro', pricePdvCash, setPricePdvCash, base, '0%')}
-                            {pdvCell('Débito', pricePdvDebit, setPricePdvDebit, base * 1.03, '+3%')}
-                            {pdvCell('Crédito', pricePdvCredit, setPricePdvCredit, base * 1.04, '+4%')}
-                          </div>
-                        );
-                      })()
-                      )}
-                    </div>
                   </>
                 ) : (
                   <>
@@ -1443,42 +1508,48 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                   </>
                 )}
 
-                {/* === Promoção === */}
-                <div className="space-y-4 border-t pt-4">
+                {/* === Promoção (apenas para produto sem variações) === */}
+                {(!hasVariations || variations.length === 0) && (
+                <div className="border-t pt-2.5 mt-1">
                   {!onSale ? (
                     <button
                       type="button"
-                      disabled={pricingDisabled} onClick={() => setOnSale(true)}
-                      className="w-full text-left rounded-lg border border-dashed border-muted-foreground/30 p-3 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                      disabled={pricingDisabled}
+                      onClick={() => setOnSale(true)}
+                      className="w-full text-left rounded-lg border border-dashed border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 p-3 hover:border-rose-400 hover:bg-rose-100/50 dark:hover:bg-rose-950/50 transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">Promoção</span>
-                        <span className="text-xs text-muted-foreground/60">— inativa</span>
+                        <span className="text-xs font-semibold text-rose-700 dark:text-rose-400">Promoção</span>
+                        <span className="text-[10px] text-muted-foreground">— inativa</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">Clique para configurar um preço promocional</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Clique para definir um preço promocional</p>
                     </button>
                   ) : (
-                    <>
+                    <div className="rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 p-3 space-y-2.5">
                       <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="on-sale">Produto em Promoção</Label>
-                          <p className="text-sm text-muted-foreground">Preço promocional ativo</p>
-                        </div>
-                        <Switch id="on-sale" disabled={pricingDisabled} checked={onSale} onCheckedChange={(v) => { setOnSale(v); if (!v) { setSalePrice(''); setSaleEndsAt(''); } }} />
+                        <span className="text-xs font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Promoção ativa</span>
+                        <button
+                          type="button"
+                          onClick={() => { setOnSale(false); setSalePrice(''); setSaleEndsAt(''); }}
+                          className="text-[10px] text-destructive hover:underline font-medium"
+                        >
+                          Remover promoção
+                        </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="sale-price">Preço Promocional (R$)</Label>
-                          <Input id="sale-price" type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="0.00" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px]" htmlFor="sale-price">Preço promocional (R$)</Label>
+                          <Input id="sale-price" type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="0.00" className="h-8 text-sm" />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="sale-ends">Promoção válida até</Label>
-                          <Input id="sale-ends" type="datetime-local" value={saleEndsAt} onChange={(e) => setSaleEndsAt(e.target.value)} />
+                        <div>
+                          <Label className="text-[10px]" htmlFor="sale-ends">Válido até</Label>
+                          <Input id="sale-ends" type="datetime-local" value={saleEndsAt} onChange={(e) => setSaleEndsAt(e.target.value)} className="h-8 text-sm" />
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
+                )}
 
 
               </TabsContent>
@@ -1764,25 +1835,6 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
             />
             ) : null}
 
-            {/* Linha 8: Configurações Especiais */}
-            <div className="space-y-4 border-t pt-4">
-              <h3 className="font-semibold">Configurações Especiais</h3>
-              
-              <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-                <div className="space-y-0.5">
-                  <Label htmlFor="pdv-only" className="text-amber-700 dark:text-amber-400">Exclusivo do PDV</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Não aparece no site — disponível apenas no Ponto de Venda
-                  </p>
-                </div>
-                <Switch
-                  id="pdv-only"
-                  checked={pdvOnly}
-                  onCheckedChange={setPdvOnly}
-                />
-              </div>
-
-            </div>
             </TabsContent>
           </Tabs>
 

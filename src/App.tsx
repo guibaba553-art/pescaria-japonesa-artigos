@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index"; // landing — keep eager for fast first paint
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
@@ -37,7 +37,6 @@ const TermosUso = lazy(() => import("./pages/TermosUso"));
 const PoliticaTrocas = lazy(() => import("./pages/PoliticaTrocas"));
 const PoliticaFrete = lazy(() => import("./pages/PoliticaFrete"));
 const AdminLGPD = lazy(() => import("./pages/AdminLGPD"));
-const MeusDados = lazy(() => import("./pages/MeusDados"));
 const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const StockMigration = lazy(() => import("./pages/StockMigration"));
@@ -103,7 +102,7 @@ const App = () => (
                 <Route path="/admin/migracao-estoque" element={<StockMigration />} />
                 <Route path="/admin/erros" element={<AdminErrors />} />
                 {/* Auditoria de estoque temporariamente desativada */}
-                <Route path="/meus-dados" element={<MeusDados />} />
+                <Route path="/meus-dados" element={<Navigate to="/conta" replace />} />
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />

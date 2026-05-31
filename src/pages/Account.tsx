@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard, Trash2, Mail } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 import { PickupQRDialog } from '@/components/PickupQRDialog';
@@ -19,6 +19,17 @@ import { MyProfile } from '@/components/MyProfile';
 import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface OrderItem {
   id: string;
@@ -249,6 +260,52 @@ export default function Account() {
       });
       setPixDialogOpen(true);
     }
+  };
+
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      const [profile, orders, reviews, messages] = await Promise.all([
+        supabase.from("profiles").select("full_name, cpf, cep, phone, created_at").eq("id", user.id).maybeSingle(),
+        supabase.from("orders").select("*, order_items(*)").eq("user_id", user.id),
+        supabase.from("reviews").select("*").eq("user_id", user.id),
+        supabase.from("chat_messages").select("*").eq("user_id", user.id),
+      ]);
+
+      const data = {
+        exported_at: new Date().toISOString(),
+        user: { id: user.id, email: user.email },
+        profile: profile.data,
+        orders: orders.data,
+        reviews: reviews.data,
+        messages: messages.data,
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `meus-dados-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Dados exportados com sucesso" });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Erro ao exportar dados", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteRequest = () => {
+    const subject = encodeURIComponent("Solicitação de Exclusão de Dados (LGPD)");
+    const body = encodeURIComponent(
+      `Solicito a exclusão dos meus dados pessoais nos termos do Art. 18 da LGPD.\n\nE-mail da conta: ${user?.email}\nID: ${user?.id}\n\nObservação: dados fiscais devem ser mantidos pelo prazo legal de 5 anos.`
+    );
+    window.location.href = `mailto:robertobaba2@gmail.com?subject=${subject}&body=${body}`;
   };
 
   if (loading || loadingOrders) {
@@ -578,10 +635,62 @@ export default function Account() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="dados" className="mt-6">
+          <TabsContent value="dados" className="mt-6 space-y-4">
             <Card className="rounded-2xl border-border">
               <CardContent className="p-6">
                 <MyProfile />
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base"><Download className="w-4 h-4" /> Baixar minhas informações</CardTitle>
+                <CardDescription>Receba um arquivo com todos os dados que temos sobre você.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleExportData} disabled={exporting} variant="outline" size="sm">
+                  {exporting ? "Preparando arquivo..." : "Baixar meus dados"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base"><Mail className="w-4 h-4" /> Falar com o responsável pelos dados</CardTitle>
+                <CardDescription>Roberto Baba — robertobaba2@gmail.com</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="mailto:robertobaba2@gmail.com?subject=Solicita%C3%A7%C3%A3o%20LGPD">Enviar e-mail</a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-destructive/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base text-destructive"><Trash2 className="w-4 h-4" /> Solicitar exclusão da conta</CardTitle>
+                <CardDescription>
+                  Sua conta e dados pessoais serão removidos. Dados fiscais são retidos por 5 anos (exigência legal).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">Solicitar exclusão</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirmar solicitação de exclusão?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Será aberto um e-mail para nosso Encarregado processar sua solicitação em até 15 dias úteis, conforme a LGPD.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteRequest}>Confirmar</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </TabsContent>

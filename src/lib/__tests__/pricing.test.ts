@@ -10,6 +10,10 @@ import {
   calcPricingBreakdown,
   calcVariationBreakdown,
   repriceAllVariations,
+  isPricingDisabled,
+  isVariationPricingDisabled,
+  safeVariationPrice,
+  buildVariationPayload,
   VariationPricing,
 } from '../pricing';
 
@@ -409,5 +413,169 @@ describe('repriceAllVariations', () => {
 
     // A margem armazenada (_editMargin) deve permanecer a mesma
     expect(repriced[0]._editMargin).toBe(String(originalMargin));
+  });
+});
+
+// ─── isPricingDisabled ─────────────────────────────────────
+describe('isPricingDisabled', () => {
+  it('deve bloquear quando custo é zero', () => {
+    expect(isPricingDisabled(0, '5', '3')).toBe(true);
+  });
+
+  it('não deve bloquear quando todos os campos estão preenchidos', () => {
+    expect(isPricingDisabled(100, '5', '3')).toBe(false);
+    expect(isPricingDisabled(0.01, '0', '0')).toBe(false);
+    expect(isPricingDisabled(50, '10', '2.5')).toBe(false);
+  });
+
+  it('deve bloquear quando frete não está preenchido (string vazia)', () => {
+    expect(isPricingDisabled(100, '', '3')).toBe(true);
+  });
+
+  it('deve bloquear quando custos operacionais não está preenchido (string vazia)', () => {
+    expect(isPricingDisabled(100, '5', '')).toBe(true);
+  });
+
+  it('deve bloquear quando ambos frete e opcost estão vazios', () => {
+    expect(isPricingDisabled(100, '', '')).toBe(true);
+  });
+
+  it('NÃO deve bloquear quando frete e opcost são zero explícito (preenchidos com "0")', () => {
+    // "0" é diferente de "" — o campo foi preenchido, só que com valor zero
+    expect(isPricingDisabled(100, '0', '0')).toBe(false);
+  });
+
+  it('deve aceitar frete zero e opcost positivo', () => {
+    expect(isPricingDisabled(100, '0', '5')).toBe(false);
+  });
+
+  it('deve aceitar frete positivo e opcost zero', () => {
+    expect(isPricingDisabled(100, '5', '0')).toBe(false);
+  });
+
+  it('custo negativo também deve bloquear (defensivo)', () => {
+    expect(isPricingDisabled(-5, '5', '3')).toBe(true);
+  });
+
+  it('deve bloquear quando frete tem valor negativo', () => {
+    expect(isPricingDisabled(100, '-5', '3')).toBe(true);
+  });
+
+  it('deve bloquear quando opcost tem valor negativo', () => {
+    expect(isPricingDisabled(100, '5', '-3')).toBe(true);
+  });
+});
+
+// ─── isVariationPricingDisabled ────────────────────────────
+describe('isVariationPricingDisabled', () => {
+  it('deve bloquear quando custo da variação é zero', () => {
+    expect(isVariationPricingDisabled(0, '5', '3')).toBe(true);
+  });
+
+  it('não deve bloquear quando todos os campos estão preenchidos', () => {
+    expect(isVariationPricingDisabled(50, '5', '3')).toBe(false);
+    expect(isVariationPricingDisabled(10, '0', '0')).toBe(false);
+  });
+
+  it('deve bloquear quando frete não está preenchido (string vazia)', () => {
+    expect(isVariationPricingDisabled(50, '', '3')).toBe(true);
+  });
+
+  it('deve bloquear quando custos operacionais não está preenchido (string vazia)', () => {
+    expect(isVariationPricingDisabled(50, '5', '')).toBe(true);
+  });
+
+  it('NÃO deve bloquear quando frete e opcost são zero explícito (preenchidos com "0")', () => {
+    // Este é o cenário que estava quebrado — o código antigo bloqueava com liveFreightPct === 0
+    expect(isVariationPricingDisabled(50, '0', '0')).toBe(false);
+  });
+
+  it('deve aceitar frete zero e opcost positivo (cenário do bug)', () => {
+    // Bug original: liveFreightPct === 0 bloqueava quando frete era "0"
+    expect(isVariationPricingDisabled(30, '0', '5')).toBe(false);
+  });
+
+  it('deve aceitar frete positivo e opcost zero (cenário do bug)', () => {
+    expect(isVariationPricingDisabled(30, '5', '0')).toBe(false);
+  });
+
+  it('deve bloquear quando frete tem valor negativo', () => {
+    expect(isVariationPricingDisabled(50, '-5', '3')).toBe(true);
+  });
+
+  it('deve bloquear quando opcost tem valor negativo', () => {
+    expect(isVariationPricingDisabled(50, '5', '-3')).toBe(true);
+  });
+});
+
+// ─── safeVariationPrice ────────────────────────────────────
+describe('safeVariationPrice', () => {
+  it('deve retornar o próprio número quando válido', () => {
+    expect(safeVariationPrice(10)).toBe(10);
+    expect(safeVariationPrice(99.90)).toBe(99.90);
+    expect(safeVariationPrice(0)).toBe(0);
+  });
+
+  it('deve converter NaN para 0 (caso do bug: parseFloat("") → NaN)', () => {
+    expect(safeVariationPrice(NaN)).toBe(0);
+  });
+
+  it('deve converter null/undefined para 0', () => {
+    expect(safeVariationPrice(null as any)).toBe(0);
+    expect(safeVariationPrice(undefined as any)).toBe(0);
+  });
+
+  it('deve converter string numérica para número', () => {
+    expect(safeVariationPrice('15.50' as any)).toBe(15.50);
+  });
+
+  it('deve converter string vazia para 0', () => {
+    expect(safeVariationPrice('' as any)).toBe(0);
+  });
+
+  it('deve tratar negativo como 0 (defensivo)', () => {
+    expect(safeVariationPrice(-5)).toBe(0);
+  });
+});
+
+// ─── buildVariationPayload ─────────────────────────────────
+describe('buildVariationPayload', () => {
+  it('deve incluir campos de promoção (on_sale, sale_price, sale_ends_at)', () => {
+    const result = buildVariationPayload({
+      on_sale: true,
+      sale_price: 8,
+      sale_ends_at: '2026-12-31T23:59:59.000Z',
+    }, 'prod-1');
+
+    expect(result.on_sale).toBe(true);
+    expect(result.sale_price).toBe(8);
+    expect(result.sale_ends_at).toBe('2026-12-31T23:59:59.000Z');
+  });
+
+  it('sale_price deve ser null quando on_sale é false', () => {
+    const result = buildVariationPayload({
+      on_sale: false,
+      sale_price: 8,
+    }, 'prod-1');
+
+    expect(result.on_sale).toBe(false);
+    expect(result.sale_price).toBeNull();
+  });
+
+  it('sale_ends_at deve ser null quando on_sale é false', () => {
+    const result = buildVariationPayload({
+      on_sale: false,
+      sale_ends_at: '2026-12-31T23:59:59.000Z',
+    }, 'prod-1');
+
+    expect(result.sale_ends_at).toBeNull();
+  });
+
+  it('valores padrão quando campos de promoção não estão definidos', () => {
+    const result = buildVariationPayload({}, 'prod-1');
+
+    expect(result.on_sale).toBe(false);
+    expect(result.sale_price).toBeNull();
+    expect(result.sale_ends_at).toBeNull();
   });
 });

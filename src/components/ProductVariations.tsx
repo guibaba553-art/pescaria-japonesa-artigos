@@ -146,7 +146,7 @@ export function ProductVariations({ variations, onVariationsChange, hidePrice }:
    */
   const addVariation = () => {
     const name = newVariation.name.trim();
-    const price = parseFloat(newVariation.price);
+    const price = hidePrice ? 0 : (parseFloat(newVariation.price) || 0);
     const stock = parseInt(newVariation.stock);
 
     // Validações

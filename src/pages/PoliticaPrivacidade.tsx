@@ -84,7 +84,7 @@ export default function PoliticaPrivacidade() {
               <li>Revogação do consentimento;</li>
               <li>Informações sobre compartilhamento.</li>
             </ul>
-            <p className="mt-3">Para exercer seus direitos, acesse <a href="/meus-dados" className="text-primary underline">Meus Dados</a> ou envie e-mail ao nosso Encarregado.</p>
+            <p className="mt-3">Para exercer seus direitos, acesse <a href="/conta" className="text-primary underline">Meus Dados</a> ou envie e-mail ao nosso Encarregado.</p>
           </section>
 
           <section>
