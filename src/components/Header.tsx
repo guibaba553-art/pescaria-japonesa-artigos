@@ -76,6 +76,7 @@ export function Header() {
         .from('products')
         .select('id, name, price, image_url, category, min_sale_price, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)')
         .eq('pdv_only', false)
+        .gt('stock', 0)
         .ilike('name', `%${query}%`)
         .limit(6);
 
