@@ -333,6 +333,7 @@ serve(async (req) => {
     return new Response(sped, {
       headers: {
         ...corsHeaders,
+        'Access-Control-Expose-Headers': 'X-NFe-Count, Content-Disposition',
         'Content-Type': 'text/plain; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'X-NFe-Count': String(nfList.length),
