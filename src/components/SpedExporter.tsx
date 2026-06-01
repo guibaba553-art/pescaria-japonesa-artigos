@@ -39,18 +39,43 @@ export function SpedExporter() {
       }
 
       const count = res.headers.get('X-NFe-Count') || '0';
-      const blob = await res.blob();
+      const text = await res.text();
+      if (!text || text.trim().length === 0) {
+        throw new Error('Arquivo SPED vazio — verifique se há NF-e autorizadas no período');
+      }
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const filename = `SPED_FISCAL_${startDate}_a_${endDate}.txt`;
+
       const dl = document.createElement('a');
-      dl.href = URL.createObjectURL(blob);
-      const cnpjStub = 'empresa';
-      dl.download = `SPED_FISCAL_${cnpjStub}_${startDate}_a_${endDate}.txt`;
+      dl.href = blobUrl;
+      dl.download = filename;
+      dl.rel = 'noopener';
+      dl.style.display = 'none';
       document.body.appendChild(dl);
       dl.click();
-      dl.remove();
+      setTimeout(() => {
+        dl.remove();
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+
+      // Fallback: se o iframe da pré-visualização bloquear o download, abre em nova aba
+      setTimeout(() => {
+        try {
+          const w = window.open(blobUrl, '_blank');
+          if (!w) {
+            toast({
+              title: 'Pop-up bloqueado',
+              description: 'Permita pop-ups para baixar o arquivo SPED.',
+              variant: 'destructive',
+            });
+          }
+        } catch {}
+      }, 100);
 
       toast({
         title: 'SPED gerado ✅',
-        description: `${count} NF-e incluída(s). Envie o arquivo .txt para sua contadora.`,
+        description: `${count} NF-e incluída(s). Se o download não começou, verifique a nova aba ou os pop-ups do navegador.`,
       });
     } catch (e: any) {
       toast({ title: 'Erro ao gerar SPED', description: e.message, variant: 'destructive' });
