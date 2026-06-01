@@ -195,8 +195,8 @@ describe('Variações — saveVariations (diff strategy)', () => {
       insert: mockInsert,
     }));
 
-    const toInsert = [{ name: 'Nova', price: 30, stock: 5, cost: 15 }] satisfies VarForm[];
-    await supabase.from('product_variations').insert(toInsert);
+    const toInsert = [{ product_id: 'prod-1', name: 'Nova', price: 30, stock: 5, cost: 15 }];
+    await supabase.from('product_variations').insert(toInsert as any);
 
     expect(mockInsert).toHaveBeenCalledWith(toInsert);
   });
