@@ -294,10 +294,12 @@ describe('Movimento de estoque', () => {
     expect.assertions(1);
     const expectedArgs = {
       p_product_id: 'prod-123',
-      p_delta: 10,
+      p_variation_id: null as any,
+      p_quantity_delta: 10,
+      p_movement_type: 'manual_adjust',
       p_reason: 'manual_adjust',
     };
-    await supabase.rpc('apply_stock_movement', expectedArgs);
+    await supabase.rpc('apply_stock_movement', expectedArgs as any);
     expect(mockRpc).toHaveBeenCalledWith('apply_stock_movement', expectedArgs);
   });
 });
