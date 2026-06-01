@@ -107,12 +107,12 @@ export interface VariationPricing {
  * Recalcula os preços de todas as variações quando frete, opcost ou imposto mudam.
  * Mantém a margem sobre custo atual de cada variação.
  */
-export function repriceAllVariations(
-  variations: VariationPricing[],
+export function repriceAllVariations<T extends Partial<VariationPricing>>(
+  variations: T[],
   newFreightPct: number,
   newOpCostPct: number,
   newTaxPct: number
-): VariationPricing[] {
+): T[] {
   return variations.map(v => {
     const varCost = Number(v.cost ?? 0);
     if (varCost === 0) return v;
@@ -128,7 +128,7 @@ export function repriceAllVariations(
       const nm = calcPrice(varBase, vmSite, newTaxPct);
       if (isFinite(nm) && nm > 0) updates.min_sale_price = nm;
     }
-    return Object.keys(updates).length > 0 ? { ...v, ...updates } : v;
+    return Object.keys(updates).length > 0 ? { ...v, ...updates } as T : v;
   });
 }
 

@@ -195,8 +195,8 @@ describe('Variações — saveVariations (diff strategy)', () => {
       insert: mockInsert,
     }));
 
-    const toInsert = [{ name: 'Nova', price: 30, stock: 5, cost: 15 }] satisfies VarForm[];
-    await supabase.from('product_variations').insert(toInsert);
+    const toInsert = [{ product_id: 'prod-1', name: 'Nova', price: 30, stock: 5, cost: 15 }];
+    await supabase.from('product_variations').insert(toInsert as any);
 
     expect(mockInsert).toHaveBeenCalledWith(toInsert);
   });
@@ -294,10 +294,12 @@ describe('Movimento de estoque', () => {
     expect.assertions(1);
     const expectedArgs = {
       p_product_id: 'prod-123',
-      p_delta: 10,
+      p_variation_id: null as any,
+      p_quantity_delta: 10,
+      p_movement_type: 'manual_adjust',
       p_reason: 'manual_adjust',
     };
-    await supabase.rpc('apply_stock_movement', expectedArgs);
+    await supabase.rpc('apply_stock_movement', expectedArgs as any);
     expect(mockRpc).toHaveBeenCalledWith('apply_stock_movement', expectedArgs);
   });
 });
@@ -375,7 +377,7 @@ describe('Save completo — precificação + variações', () => {
       tax_pct: 4,
     }];
 
-    const { error } = await supabase.from('product_variations').insert(variations);
+    const { error } = await supabase.from('product_variations').insert(variations as any);
     expect(error).toBeNull();
 
     const sent = mockInsert.mock.calls[0][0][0];

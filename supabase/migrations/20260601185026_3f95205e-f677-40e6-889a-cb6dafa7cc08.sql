@@ -1,0 +1,16 @@
+ALTER TABLE public.company_fiscal_data
+  ADD COLUMN IF NOT EXISTS ind_perfil text NOT NULL DEFAULT 'A',
+  ADD COLUMN IF NOT EXISTS ind_ativ text NOT NULL DEFAULT '1',
+  ADD COLUMN IF NOT EXISTS contador_nome text,
+  ADD COLUMN IF NOT EXISTS contador_cpf text,
+  ADD COLUMN IF NOT EXISTS contador_crc text,
+  ADD COLUMN IF NOT EXISTS contador_cnpj text,
+  ADD COLUMN IF NOT EXISTS contador_cep text,
+  ADD COLUMN IF NOT EXISTS contador_logradouro text,
+  ADD COLUMN IF NOT EXISTS contador_numero text,
+  ADD COLUMN IF NOT EXISTS contador_complemento text,
+  ADD COLUMN IF NOT EXISTS contador_bairro text,
+  ADD COLUMN IF NOT EXISTS contador_telefone text,
+  ADD COLUMN IF NOT EXISTS contador_fax text,
+  ADD COLUMN IF NOT EXISTS contador_email text,
+  ADD COLUMN IF NOT EXISTS contador_codigo_municipio text;
