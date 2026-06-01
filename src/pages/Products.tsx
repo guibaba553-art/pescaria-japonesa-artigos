@@ -604,7 +604,7 @@ export default function Products() {
                         addItem({
                           id: product.id,
                           name: product.name,
-                          price: effectiveProductPrice(product as any),
+                          price: effectiveProductOrVariationPrice(product as any),
                           image_url: product.image_url
                         }, qty);
                         toast({
