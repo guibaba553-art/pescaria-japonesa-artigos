@@ -377,7 +377,7 @@ describe('Save completo — precificação + variações', () => {
       tax_pct: 4,
     }];
 
-    const { error } = await supabase.from('product_variations').insert(variations);
+    const { error } = await supabase.from('product_variations').insert(variations as any);
     expect(error).toBeNull();
 
     const sent = mockInsert.mock.calls[0][0][0];
