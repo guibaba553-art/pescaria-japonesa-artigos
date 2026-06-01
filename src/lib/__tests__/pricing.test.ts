@@ -344,14 +344,14 @@ describe('repriceAllVariations', () => {
     // Mudar imposto de 0% para 10%
     const result = repriceAllVariations(variations, 0, 0, 10);
 
-    // Variação 1: base=10, margin=50%, tax=10% → calcPrice(10, 50, 10) = 15/0.9 = 16.666...
-    expect(result[0].price_pdv).toBeCloseTo(16.666667, 4);
-    // min_sale: calcPrice(10, 40, 10) = 14/0.9 = 15.555...
-    expect(result[0].min_sale_price).toBeCloseTo(15.555556, 4);
+    // Variação 1: base=10, margin=50%, tax=10% → calcPrice(10, 50, 10) = 15/0.9 = 16.666... → rounded 2 casas = 16.67
+    expect(result[0].price_pdv).toBeCloseTo(16.67, 4);
+    // min_sale: calcPrice(10, 40, 10) = 14/0.9 = 15.555... → rounded = 15.56
+    expect(result[0].min_sale_price).toBeCloseTo(15.56, 4);
 
-    // Variação 2: base=20, margin=50%, tax=10% → calcPrice(20, 50, 10) = 30/0.9 = 33.333...
-    expect(result[1].price_pdv).toBeCloseTo(33.333333, 4);
-    expect(result[1].min_sale_price).toBeCloseTo(31.111111, 4);
+    // Variação 2: base=20, margin=50%, tax=10% → calcPrice(20, 50, 10) = 30/0.9 = 33.333... → rounded = 33.33
+    expect(result[1].price_pdv).toBeCloseTo(33.33, 4);
+    expect(result[1].min_sale_price).toBeCloseTo(31.11, 4);
   });
 
   it('deve recalcular preços quando frete e opcost mudam', () => {
@@ -408,8 +408,8 @@ describe('repriceAllVariations', () => {
     const repriced = repriceAllVariations(variations, 0, 0, 5);
 
     // O preço deve aumentar para acomodar o imposto
-    // calcPrice(50, 25, 5) = 62.50 / 0.95 = 65.789...
-    expect(repriced[0].price_pdv).toBeCloseTo(65.789474, 4);
+    // calcPrice(50, 25, 5) = 62.50 / 0.95 = 65.789... → rounded 2 casas = 65.79
+    expect(repriced[0].price_pdv).toBeCloseTo(65.79, 4);
 
     // A margem armazenada (_editMargin) deve permanecer a mesma
     expect(repriced[0]._editMargin).toBe(String(originalMargin));

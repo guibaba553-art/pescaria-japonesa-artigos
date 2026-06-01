@@ -20,7 +20,7 @@ const prefetchProducts = () => {
 export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { itemCount } = useCart();
+  const { itemCount, lastAddedKey, clearLastAdded } = useCart();
   const { user, isEmployee, isAdmin } = useAuth();
   const { primaries } = useCategories();
   const [categoriesOpen, setCategoriesOpen] = useState(false);
@@ -38,6 +38,14 @@ export function MobileBottomNav() {
       return () => clearTimeout(t);
     }
   }, []);
+
+  // Abrir carrinho automaticamente ao adicionar item (apenas mobile)
+  useEffect(() => {
+    if (lastAddedKey && window.innerWidth < 768) {
+      setCartOpen(true);
+      clearLastAdded();
+    }
+  }, [lastAddedKey, clearLastAdded]);
 
   // Oculta em rotas internas/operacionais (PDV, Admin, Dashboard, Auth, etc.)
   const HIDDEN_PREFIXES = [

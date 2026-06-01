@@ -41,13 +41,7 @@ Deno.serve(async (req) => {
   try {
     const token = Deno.env.get('MELHOR_ENVIO_TOKEN');
     const frenetToken = Deno.env.get('FRENET_TOKEN');
-    if (!token && !frenetToken) {
-      console.error('No shipping provider configured');
-      return new Response(
-        JSON.stringify({ error: 'Shipping provider not configured', success: false }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Se nenhum provedor configurado, retorna apenas retirada na loja (não é erro)
 
     const rawData = await req.json();
     const validation = shippingRequestSchema.safeParse(rawData);

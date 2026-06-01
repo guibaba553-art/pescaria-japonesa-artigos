@@ -47,7 +47,7 @@ vi.mock('@/hooks/useCategories', () => ({
 }));
 
 vi.mock('@/hooks/useCart', () => ({
-  useCart: () => ({ items: [], addItem: vi.fn(), removeItem: vi.fn() }),
+  useCart: () => ({ items: [], addItem: vi.fn(), removeItem: vi.fn(), lastAddedKey: null, clearLastAdded: vi.fn(), itemCount: 0 }),
 }));
 
 // ─── Component under test ──────────────────────────────────

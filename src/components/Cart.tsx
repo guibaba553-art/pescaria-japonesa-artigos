@@ -1,5 +1,4 @@
-import { ShoppingCart, Trash2, Plus, Minus, ShieldCheck, Lock, RotateCcw } from 'lucide-react';
-import { useState, lazy, Suspense } from 'react';
+import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,17 +11,8 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useCart } from '@/hooks/useCart';
-import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { ShippingCalculator } from '@/components/ShippingCalculator';
 import { useToast } from '@/hooks/use-toast';
-
-// Checkout só é carregado quando o usuário clica em "Finalizar compra"
-// — evita baixar o SDK do Mercado Pago no carregamento inicial.
-const Checkout = lazy(() =>
-  import('@/components/Checkout').then((m) => ({ default: m.Checkout }))
-);
 
 interface CartProps {
   /** Quando fornecido, o Sheet é controlado externamente e o trigger interno é omitido. */
@@ -34,27 +24,11 @@ interface CartProps {
 
 export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
   const { items, removeItem, updateQuantity, clearCart, total, itemCount } = useCart();
-  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [shippingCost, setShippingCost] = useState(0);
-  const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number; codigo?: string } | null>(null);
-
   const handleCheckout = () => {
-    if (!user) {
-      toast({
-        title: "Login necessário",
-        description: "Você precisa fazer login para finalizar a compra",
-        variant: "destructive"
-      });
-      navigate('/auth');
-      return;
-    }
-    setCheckoutOpen(true);
+    navigate('/checkout');
   };
-
-  const installment = total / 10;
 
   const isControlled = open !== undefined;
 
@@ -77,15 +51,20 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0 flex flex-col">
         {/* Header */}
         <SheetHeader className="px-5 py-4 border-b border-border bg-muted/30">
-          <SheetTitle className="text-xl font-display font-black flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-primary" />
-            Seu carrinho
+          <SheetTitle className="text-2xl font-display font-black flex items-center gap-3">
+            <ShoppingCart className="w-5 h-5 text-primary shrink-0" />
+            <span>Seu carrinho</span>
+            {itemCount > 0 && (
+              <Badge variant="secondary" className="text-xs font-semibold rounded-full px-2">
+                {itemCount} {itemCount === 1 ? 'item' : 'itens'}
+              </Badge>
+            )}
           </SheetTitle>
-          <SheetDescription className="text-xs">
-            {itemCount === 0
-              ? 'Seu carrinho está vazio'
-              : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`}
-          </SheetDescription>
+          {itemCount === 0 && (
+            <SheetDescription className="text-xs pl-7">
+              Seu carrinho está vazio
+            </SheetDescription>
+          )}
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -174,43 +153,23 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
                 </div>
               ))}
 
-              <div className="pt-3">
-                <ShippingCalculator
-                  products={items.map((it) => ({ id: it.id, variationId: it.variationId, quantity: it.quantity, price: it.price }))}
-                  onSelectShipping={(option) => {
-                    setShippingCost(option.valor);
-                    setShippingInfo({ nome: option.nome, prazoEntrega: option.prazoEntrega, codigo: option.codigo });
-                  }}
-                />
-              </div>
             </div>
           )}
         </div>
 
         {/* Sticky bottom: total + CTA */}
         {items.length > 0 && (
-          <div className="border-t border-border bg-background p-5 space-y-3">
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>R$ {total.toFixed(2).replace('.', ',')}</span>
-              </div>
-              {shippingInfo && (
-                <div className="flex justify-between text-muted-foreground">
-                  <span>{shippingInfo.nome}</span>
-                  <span>R$ {shippingCost.toFixed(2).replace('.', ',')}</span>
-                </div>
-              )}
-              <Separator />
+          <div className="bg-background p-5 space-y-3">
+            <div className="bg-muted/60 rounded-xl p-4 space-y-2">
               <div className="flex justify-between items-baseline">
-                <span className="font-bold">Total</span>
-                <span className="text-2xl font-display font-black text-primary tracking-tight">
-                  R$ {(total + shippingCost).toFixed(2).replace('.', ',')}
+                <span className="text-lg font-bold">Subtotal</span>
+                <span className="text-3xl font-display font-black text-primary tracking-tight">
+                  R$ {total.toFixed(2).replace('.', ',')}
                 </span>
               </div>
               {total >= 50 && (
                 <p className="text-xs text-muted-foreground text-right">
-                  ou <strong className="text-foreground">10x de R$ {((total + shippingCost) / 10).toFixed(2).replace('.', ',')}</strong> sem juros
+                  ou <strong className="text-foreground">10x de R$ {(total / 10).toFixed(2).replace('.', ',')}</strong> sem juros
                 </p>
               )}
             </div>
@@ -218,39 +177,21 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
             <Button
               className="w-full h-12 rounded-full font-black text-base btn-press"
               onClick={handleCheckout}
-              disabled={!shippingInfo}
             >
-              {!shippingInfo ? 'Escolha o frete acima' : 'Finalizar compra com segurança'}
+              Finalizar compra
             </Button>
 
-            {/* Trust badges — reduzem ansiedade no momento de decisão */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="flex flex-col items-center gap-1 text-center">
-                <Lock className="w-3.5 h-3.5 text-success" />
-                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Pagamento<br/>seguro</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 text-center">
-                <RotateCcw className="w-3.5 h-3.5 text-success" />
-                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Troca grátis<br/>em 7 dias</span>
-              </div>
-              <div className="flex flex-col items-center gap-1 text-center">
-                <ShieldCheck className="w-3.5 h-3.5 text-success" />
-                <span className="text-[9px] font-semibold text-muted-foreground leading-tight">Loja física<br/>em Sinop/MT</span>
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              className="w-full h-11 rounded-full text-sm font-medium text-foreground/90 border-foreground/30 hover:bg-muted hover:text-foreground hover:border-foreground/50"
+              onClick={() => isControlled ? onOpenChange?.(false) : navigate('/produtos')}
+            >
+              Continuar comprando
+            </Button>
+
           </div>
         )}
       </SheetContent>
-      {user && checkoutOpen && (
-        <Suspense fallback={null}>
-          <Checkout
-            open={checkoutOpen}
-            onOpenChange={setCheckoutOpen}
-            shippingCost={shippingCost}
-            shippingInfo={shippingInfo}
-          />
-        </Suspense>
-      )}
     </Sheet>
   );
 }

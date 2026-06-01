@@ -19,14 +19,6 @@ const Hero = () => {
 
         <div className="container mx-auto relative z-10">
           <div className="max-w-2xl">
-            {/* Eyebrow promo tag */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary text-primary-foreground mb-3 sm:mb-5 shadow-lg animate-fade-in-down">
-              <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">
-                Mega liquidação · Até 60% OFF
-              </span>
-            </div>
-
             {/* Heading */}
             <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black text-background leading-[1.05] mb-3 sm:mb-4 animate-fade-in-up">
               O melhor da pesca,<br />
@@ -40,7 +32,7 @@ const Hero = () => {
             >
               Mais de 500 produtos com preços imbatíveis.
               <span className="font-bold text-background"> 10x sem juros</span> e
-              <span className="font-bold text-background"> envio em 24h</span> para todo Brasil.
+              <span className="font-bold text-background"> frete</span> para todo Brasil.
             </p>
 
             {/* CTAs */}
@@ -67,27 +59,7 @@ const Hero = () => {
               </Button>
             </div>
 
-            {/* Trust signals row */}
-            <div
-              className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-1.5 sm:gap-y-2 mt-5 sm:mt-7 text-[11px] sm:text-sm text-background/80 animate-fade-in-up"
-              style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="relative flex w-2 h-2">
-                  <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
-                  <span className="relative w-2 h-2 rounded-full bg-green-400" />
-                </span>
-                <span className="font-semibold">Loja online · respondendo agora</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
-                <span>4.9★ no Google</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary-glow" />
-                <span>+10 mil pescadores atendidos</span>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>
@@ -97,7 +69,7 @@ const Hero = () => {
         <div className="container mx-auto">
           <div className="flex items-center justify-center gap-2 text-[11px] sm:text-sm font-bold uppercase tracking-wider text-center px-2">
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current animate-pulse shrink-0" />
-            <span className="line-clamp-1">Envio em 24h úteis · 10x sem juros · Troca grátis em 7 dias</span>
+            <span className="line-clamp-1">Frete para todo Brasil · 10x sem juros · Troca grátis em 7 dias</span>
             <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current animate-pulse shrink-0" />
           </div>
         </div>

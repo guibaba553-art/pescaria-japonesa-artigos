@@ -8,7 +8,7 @@ import { Product } from "@/types/product";
 import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Clock } from "lucide-react";
-import { effectiveProductPrice } from "@/utils/promoPrice";
+import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -164,12 +164,11 @@ const FlashDealsCountdown = () => {
                     {
                       id: product.id,
                       name: product.name,
-                      price: effectiveProductPrice(product as any),
+                      price: effectiveProductOrVariationPrice(product as any),
                       image_url: product.image_url,
                     },
                     qty,
                   );
-                  toast({ title: "Adicionado ao carrinho", description: `${qty} × ${product.name}` });
                 }}
                 showDescription={false}
               />

@@ -243,12 +243,14 @@ describe('Variações — saveVariations (diff strategy)', () => {
     const result = repriceAllVariations(variations, 5, 3, 4);
 
     // Var 1: base = 10 * 1.08 = 10.8
-    expect(result[0].price_pdv).toBe(calcPrice(10.8, 50, 4));
-    expect(result[0].min_sale_price).toBe(calcPrice(10.8, 40, 4));
+    // calcPrice(10.8, 50, 4) = 16.875 → rounded 2 casas = 16.88
+    expect(result[0].price_pdv).toBe(16.88);
+    expect(result[0].min_sale_price).toBeCloseTo(calcPrice(10.8, 40, 4), 8);
 
     // Var 2: base = 20 * 1.08 = 21.6
-    expect(result[1].price_pdv).toBe(calcPrice(21.6, 50, 4));
-    expect(result[1].min_sale_price).toBe(calcPrice(21.6, 40, 4));
+    // calcPrice(21.6, 50, 4) = 33.75 → rounded 2 casas = 33.75
+    expect(result[1].price_pdv).toBeCloseTo(calcPrice(21.6, 50, 4), 8);
+    expect(result[1].min_sale_price).toBeCloseTo(calcPrice(21.6, 40, 4), 8);
   });
 });
 

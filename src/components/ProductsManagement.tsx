@@ -422,9 +422,20 @@ export function ProductsManagement() {
                       <div className="flex items-end justify-between gap-2 pt-0.5">
                         <div>
                           {displayPrice > 0 ? (
-                            <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                              {hasVars ? 'A partir de ' : ''}R$ {displayPrice.toFixed(2)}
-                            </p>
+                            product.on_sale && product.sale_price != null && product.sale_price > 0 ? (
+                              <div className="flex flex-col">
+                                <p className="text-sm text-orange-600/60 dark:text-orange-400/60 line-through">
+                                  R$ {displayPrice.toFixed(2)}
+                                </p>
+                                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                  {hasVars ? 'A partir de ' : ''}R$ {Number(product.sale_price).toFixed(2)}
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                                {hasVars ? 'A partir de ' : ''}R$ {displayPrice.toFixed(2)}
+                              </p>
+                            )
                           ) : (
                             <p className="text-[10px] text-muted-foreground italic">Sem preço definido no PDV</p>
                           )}

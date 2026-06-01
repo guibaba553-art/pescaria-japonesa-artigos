@@ -26,6 +26,7 @@ export default function Products() {
   const categoryParam = searchParams.get('category') || '';
   const subcategoryParam = searchParams.get('subcategory') || '';
   const searchParam = searchParams.get('search') || '';
+  const onSaleParam = searchParams.get('on_sale');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParam);
@@ -181,6 +182,7 @@ export default function Products() {
         if (!productMatches && !variationMatches) return false;
       }
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
+      if (onSaleParam === 'true' && !p.on_sale) return false;
       if (priceRange) {
         const effectivePrice = effectiveProductOrVariationPrice(p as any);
         if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;
@@ -607,10 +609,6 @@ export default function Products() {
                           price: effectiveProductOrVariationPrice(product as any),
                           image_url: product.image_url
                         }, qty);
-                        toast({
-                          title: 'Produto adicionado!',
-                          description: `${qty} unidade(s) adicionada(s) ao carrinho.`
-                        });
                       }}
                     />
                   ))}

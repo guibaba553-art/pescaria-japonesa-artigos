@@ -1,10 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
-import { ShoppingCart, Truck, Flame, Eye } from 'lucide-react';
+import { ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
-import { recentSales, viewersNow } from '@/utils/socialProof';
 import duckEasterEgg from '@/assets/duck-easter-egg.gif';
 
 interface ProductCardProps {
@@ -52,10 +51,10 @@ export function ProductCard({
   const productMin = Number((product as any).min_sale_price) || 0;
   const sitePriceFor = (basePrice: number, minSale: number) =>
     minSale > 0 ? minSale : basePrice;
-  const basePrice = sitePriceFor(
-    isOnSale ? product.sale_price! : product.price,
-    productMin,
-  );
+  // Preço SEM promoção (usado como referência para o tachado quando há sale_price)
+  const normalPrice = sitePriceFor(product.price, productMin);
+  // Preço efetivo: se está em promoção, usa sale_price; senão usa o preço normal do site
+  const basePrice = isOnSale ? Number(product.sale_price) : normalPrice;
   // Para produtos com variações, usa o menor preço de site entre as variações (min_sale_price quando definido)
   const variationMin = hasVariations
     ? Math.min(
@@ -72,12 +71,6 @@ export function ProductCard({
   // 10x sem juros (para conversão)
   const installment = finalPrice / 10;
   const showInstallment = finalPrice >= 50; // só mostra parcelamento acima de R$50
-
-  // Prova social (determinística, estável durante o dia)
-  const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
-  const viewers = viewersNow(product.id);
-  // Mostra "X vendidos" se houver, senão "Y pessoas vendo agora" para produtos populares
-  const showSocialProof = product.stock > 0;
 
   const formatPrice = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -156,7 +149,7 @@ export function ProductCard({
             <>
               {isOnSale ? (
                 <div className="text-xs text-muted-foreground line-through leading-none">
-                  {formatPrice(product.price)}
+                  {formatPrice(normalPrice)}
                 </div>
               ) : (
                 <div className="text-xs leading-none">&nbsp;</div>
@@ -183,25 +176,13 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Envio rápido + prova social — slot fixo para manter alinhamento */}
+        {/* Badge de estoque */}
         <div className="min-h-[28px] mb-2 flex items-center gap-2 flex-wrap">
-          {!hasVariations && (
-            <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-success-soft text-success text-[10px] font-bold uppercase tracking-wide">
-              <Truck className="w-3 h-3" />
-              Envio rápido
-            </div>
-          )}
-          {showSocialProof && sales !== null ? (
-            <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600">
-              <Flame className="w-3 h-3 fill-current" />
-              {sales} vendidos hoje
-            </div>
-          ) : showSocialProof ? (
+          {!hasVariations && product.stock > 0 && (
             <div className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-              <Eye className="w-3 h-3" />
               Em estoque
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* CTA */}

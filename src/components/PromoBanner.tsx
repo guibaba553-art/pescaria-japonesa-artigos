@@ -94,11 +94,11 @@ const PromoBanner = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-black uppercase tracking-wide">
-                  Envio rápido para todo Brasil
+                  Frete para todo Brasil
                 </p>
                 <p className="text-xs text-background/70 mt-0.5 leading-snug">
-                  Pedidos despachados em até 24h úteis. Frete calculado pelos
-                  Correios e transportadoras parceiras.
+                  Enviamos pelos Correios e transportadoras parceiras.
+                  O frete é calculado no carrinho.
                 </p>
               </div>
             </div>

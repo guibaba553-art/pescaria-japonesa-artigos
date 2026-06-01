@@ -27,6 +27,7 @@ import { BarcodeInput } from '@/components/BarcodeInput';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { upscaleImage } from '@/utils/upscaleImage';
 import { reverseMarginFromPrice, repriceAllVariations, isPricingDisabled, isVariationPricingDisabled } from '@/lib/pricing';
+import { sanitizeDecimalInput } from '@/lib/utils';
 import { resolveOptionalMeasurementUpdate } from '@/utils/productMeasurements';
 
 interface ProductEditProps {
@@ -178,6 +179,12 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
   const liveSiteMargin = siteMarginFilled ? (liveMinSale > 0 ? (liveSiteProfit / liveMinSale) * 100 : 0) : 0;
   const liveSiteMarkup = siteMarginFilled ? (liveBaseCost > 0 ? (liveSiteProfit / liveBaseCost) * 100 : 0) : 0;
 
+  // DEBUG: rastreia TUDO que muda siteMarginPct
+  useEffect(() => {
+    console.log('🔴 siteMarginPct MUDOU para:', siteMarginPct);
+    console.trace('🔴 stack trace da mudança');
+  }, [siteMarginPct]);
+
   // ── Carregar grupos de custo ──
   useEffect(() => {
     supabase.from('cost_groups').select('id, name, cost').order('name').then(({ data }) => {
@@ -259,8 +266,14 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
   };
 
   const handleFormTaxPctChange = (v: string) => {
+    // Salva margens atuais para garantir que não sejam alteradas
+    const savedSiteMargin = siteMarginPct;
+    const savedEditMargin = editMargin;
     setTaxPct(v);
     repriceFromPercents(liveFreightPct, liveOpCostPct, parseNum(v));
+    // Restaura margens explicitamente (proteção contra qualquer efeito colateral)
+    setSiteMarginPct(savedSiteMargin);
+    setEditMargin(savedEditMargin);
   };
 
   // Margem do Site (%) → recalcula Valor mínimo de venda
@@ -335,7 +348,48 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
       // Resetar flag e carregar variações antes de liberar o submit
       setVariationsLoaded(false);
       setHasVariations(false);
-      loadVariations(product.id).finally(() => setVariationsLoaded(true));
+      loadVariations(product.id).finally(() => {
+        setVariationsLoaded(true);
+        // Inicializa _editMargin e _editSiteMargin para variações recém-carregadas
+        // Usa os percentuais ORIGINAIS do produto (do banco) para extrair a margem
+        // com que cada variação foi salva — sem isso, repriceAllVariations pula
+        // variações que não têm _editMargin (pois parseFloat(undefined ?? '0') = 0),
+        // fazendo o preço não ser recalculado e a margem exibida ficar errada.
+        setVariations(prev => prev.map(v => {
+          const varCost = Number((v as any).cost ?? (product as any).cost ?? 0);
+          if (varCost <= 0) return v;
+
+          const f = Number((product as any).freight_pct ?? 0) / 100;
+          const o = Number((product as any).op_cost_pct ?? 0) / 100;
+          const t = Number((product as any).tax_pct ?? 0);
+          const varBase = varCost * (1 + f + o);
+
+          const updates: Record<string, any> = {};
+
+          // Arredonda price_pdv e min_sale_price para 2 casas decimais
+          // (valores vindos do banco podem ter precisão maior)
+          if (v.price_pdv != null) {
+            updates.price_pdv = Math.round(Number(v.price_pdv) * 100) / 100;
+          }
+          if (v.min_sale_price != null) {
+            updates.min_sale_price = Math.round(Number(v.min_sale_price) * 100) / 100;
+          }
+
+          // Inicializa _editMargin e _editSiteMargin se ainda não existirem
+          if ((v as any)._editMargin == null && varBase > 0 && Number(updates.price_pdv ?? v.price_pdv) > 0) {
+            updates._editMargin = reverseMarginFromPrice(
+              Number(updates.price_pdv ?? v.price_pdv), varBase, t
+            ).toFixed(2);
+          }
+          if ((v as any)._editSiteMargin == null && varBase > 0 && Number(updates.min_sale_price ?? v.min_sale_price) > 0) {
+            updates._editSiteMargin = reverseMarginFromPrice(
+              Number(updates.min_sale_price ?? v.min_sale_price), varBase, t
+            ).toFixed(2);
+          }
+
+          return Object.keys(updates).length > 0 ? { ...v, ...updates } : v;
+        }));
+      });
       
       // Resetar estados do formulário
       setName(product.name);
@@ -360,13 +414,13 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
       setBrand(product.brand || '');
       setPoundTest(product.pound_test || '');
       setSize(product.size || '');
-      setPricePdv((product as any).price_pdv?.toString() || '');
+      setPricePdv((product as any).price_pdv != null ? (Math.round(Number((product as any).price_pdv) * 100) / 100).toFixed(2) : '');
       setCost((product as any).cost?.toString() || '');
       setFreightPct((product as any).freight_pct?.toString() || '');
       setOpCostPct((product as any).op_cost_pct?.toString() || '');
       setTaxPct((product as any).tax_pct?.toString() || '');
       const msp = (product as any).min_sale_price;
-      setMinSalePrice(msp != null ? String(msp) : '');
+      setMinSalePrice(msp != null ? (Math.round(Number(msp) * 100) / 100).toFixed(2) : '');
       // Inicializa siteMarginPct a partir do min_sale_price salvo
       if (msp != null && msp > 0) {
         const c = Number((product as any).cost ?? 0);
@@ -946,7 +1000,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                     {variations
                       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
                       .map((v) => {
-                        const varCost = Number((v as any).cost ?? 0);
+                        const varCost = Number((v as any).cost ?? liveCost);
                         const varPricePdv = Number(v.price_pdv ?? 0);
                         const varMinSale = Number(v.min_sale_price ?? 0);
                         const f = liveFreightPct / 100;
@@ -954,14 +1008,6 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                         const t = liveTaxPct / 100;
                         const varBaseCost = varCost + varCost * f + varCost * o;
                         const varTotalCost = varBaseCost;
-                        const editMarginVarNum = parseNum((v as any)._editMargin ?? '0');
-                        const editSiteMarginVarNum = parseNum((v as any)._editSiteMargin ?? '0');
-                        const varProfit = varBaseCost * (editMarginVarNum / 100);
-                        const varMargin = varPricePdv > 0 ? (varProfit / varPricePdv) * 100 : 0;
-                        const varMarkup = varBaseCost > 0 ? (varProfit / varBaseCost) * 100 : 0;
-                        const varSiteProfit = varBaseCost * (editSiteMarginVarNum / 100);
-                        const varSiteMargin = varMinSale > 0 ? (varSiteProfit / varMinSale) * 100 : 0;
-                        const varSiteMarkup = varBaseCost > 0 ? (varSiteProfit / varBaseCost) * 100 : 0;
                         const editMarginVar = (v as any)._editMargin ?? (
                           varPricePdv > 0 && varBaseCost > 0
                             ? reverseMarginFromPrice(varPricePdv, varBaseCost, liveTaxPct).toFixed(2)
@@ -972,6 +1018,14 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                             ? reverseMarginFromPrice(varMinSale, varBaseCost, liveTaxPct).toFixed(2)
                             : ''
                         );
+                        const editMarginVarNum = parseNum(editMarginVar);
+                        const editSiteMarginVarNum = parseNum(editSiteMarginVar);
+                        const varProfit = varBaseCost * (editMarginVarNum / 100);
+                        const varMargin = varPricePdv > 0 ? (varProfit / varPricePdv) * 100 : 0;
+                        const varMarkup = varBaseCost > 0 ? (varProfit / varBaseCost) * 100 : 0;
+                        const varSiteProfit = varBaseCost * (editSiteMarginVarNum / 100);
+                        const varSiteMargin = varMinSale > 0 ? (varSiteProfit / varMinSale) * 100 : 0;
+                        const varSiteMarkup = varBaseCost > 0 ? (varSiteProfit / varBaseCost) * 100 : 0;
                         const siteMarginVarFilled = parseNum(editSiteMarginVar) > 0;
                         const pdvMarginVarFilled = parseNum(editMarginVar) > 0;
                         const displayVarProfit = pdvMarginVarFilled ? varProfit : 0;
@@ -1014,10 +1068,9 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                 <p className="text-xs font-semibold text-muted-foreground">Preço Site</p>
                                 <div>
                                   <Label className="text-[11px]">Lucro sobre custo (%)</Label>
-                                  <Input type="number" step="0.01" min="0" value={editSiteMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost + varCost * f + varCost * o; const newMin = calcPrice(base, m, liveTaxPct); setVariations(prev => prev.map(x => x.id === v.id ? { ...x, min_sale_price: isFinite(newMin) && newMin > 0 ? newMin : null, _editSiteMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
+                                  <Input type="number" step="0.01" min="0" value={editSiteMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost + varCost * f + varCost * o; const newMin = calcPrice(base, m, liveTaxPct); const rounded = isFinite(newMin) && newMin > 0 ? Math.round(newMin * 100) / 100 : newMin; setVariations(prev => prev.map(x => x.id === v.id ? { ...x, min_sale_price: rounded, _editSiteMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
                                 </div>
 
-                                {siteMarginVarFilled && (
                                 <div className="border-t pt-1.5">
                                   <button
                                     type="button"
@@ -1049,14 +1102,33 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                     </div>
                                     <div className="flex justify-between text-xs border-t pt-1 font-bold">
                                       <span>= Valor de venda do produto</span>
-                                      <span className="text-emerald-600 dark:text-emerald-400 text-sm font-extrabold">{fmtBRL(varMinSale)}</span>
+                                      <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={v._displayMinSalePrice ?? (v.min_sale_price != null ? String(v.min_sale_price) : '')}
+                                        onChange={(e) => {
+                                          const sanitized = sanitizeDecimalInput(e.target.value);
+                                          const newPrice = parseFloat(sanitized);
+                                          const rounded = isNaN(newPrice) ? null : Math.round(newPrice * 100) / 100;
+                                          setVariations(prev => prev.map(x => {
+                                            if (x.id !== v.id) return x;
+                                            const updated = { ...x, min_sale_price: rounded, _displayMinSalePrice: sanitized } as any;
+                                            if (rounded != null && rounded > 0 && varBaseCost > 0) {
+                                              updated._editSiteMargin = reverseMarginFromPrice(rounded, varBaseCost, liveTaxPct).toFixed(2);
+                                            } else {
+                                              updated._editSiteMargin = '0';
+                                            }
+                                            return updated;
+                                          }));
+                                        }}
+                                        className="w-24 text-right text-emerald-600 dark:text-emerald-400 text-sm font-extrabold bg-transparent border-0 border-b-2 border-emerald-300/50 focus:border-emerald-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus:shadow-none px-1 h-auto rounded-none"
+                                      />
                                     </div>
                                   </div>
                                   )}
                                 </div>
-                                )}
                                 <div className="border-t pt-1.5 space-y-0.5">
-                                  <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro</span><span className={displayVarSiteProfit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{fmtBRL(displayVarSiteProfit)}</span></div>
+                                  <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro por unidade</span><span className={displayVarSiteProfit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{fmtBRL(displayVarSiteProfit)}</span></div>
                                   <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro sobre a venda</span><span className={displayVarSiteMargin >= 30 ? 'text-green-600 font-bold' : displayVarSiteMargin >= 15 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold'}>{displayVarSiteMargin.toFixed(2)}%</span></div>
                                 </div>
                               </div>
@@ -1064,10 +1136,9 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                 <p className="text-xs font-semibold text-muted-foreground">Preço PDV</p>
                                 <div>
                                   <Label className="text-[11px]">Lucro sobre custo (%)</Label>
-                                  <Input type="number" step="0.01" min="0" value={editMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost * (1 + f + o); const np = calcPrice(base, m, liveTaxPct); if (isFinite(np) && np > 0) setVariations(prev => prev.map(x => x.id === v.id ? { ...x, price_pdv: np, _editMargin: e.target.value } as any : x)); else setVariations(prev => prev.map(x => x.id === v.id ? { ...x, _editMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
+                                  <Input type="number" step="0.01" min="0" value={editMarginVar} onChange={(e) => { const m = parseNum(e.target.value); const base = varCost * (1 + f + o); const np = calcPrice(base, m, liveTaxPct); const rounded = isFinite(np) && np > 0 ? Math.round(np * 100) / 100 : np; if (isFinite(np) && np > 0) setVariations(prev => prev.map(x => x.id === v.id ? { ...x, price_pdv: rounded, _editMargin: e.target.value } as any : x)); else setVariations(prev => prev.map(x => x.id === v.id ? { ...x, _editMargin: e.target.value } as any : x)); }} placeholder="0,00" disabled={isVariationPricingDisabled(varCost, freightPct, opCostPct)} className="h-8 text-sm" />
                                 </div>
 
-                                {pdvMarginVarFilled && (
                                 <div className="border-t pt-1.5">
                                   <button
                                     type="button"
@@ -1099,14 +1170,33 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                     </div>
                                     <div className="flex justify-between text-xs border-t pt-1 font-bold">
                                       <span>= Valor de venda do produto</span>
-                                      <span className="text-emerald-600 dark:text-emerald-400 text-sm font-extrabold">{fmtBRL(varPricePdv)}</span>
+                                      <Input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={v._displayPricePdv ?? (v.price_pdv != null ? String(v.price_pdv) : '')}
+                                        onChange={(e) => {
+                                          const sanitized = sanitizeDecimalInput(e.target.value);
+                                          const newPrice = parseFloat(sanitized);
+                                          const rounded = isNaN(newPrice) ? null : Math.round(newPrice * 100) / 100;
+                                          setVariations(prev => prev.map(x => {
+                                            if (x.id !== v.id) return x;
+                                            const updated = { ...x, price_pdv: rounded, _displayPricePdv: sanitized } as any;
+                                            if (rounded != null && rounded > 0 && varBaseCost > 0) {
+                                              updated._editMargin = reverseMarginFromPrice(rounded, varBaseCost, liveTaxPct).toFixed(2);
+                                            } else {
+                                              updated._editMargin = '0';
+                                            }
+                                            return updated;
+                                          }));
+                                        }}
+                                        className="w-24 text-right text-emerald-600 dark:text-emerald-400 text-sm font-extrabold bg-transparent border-0 border-b-2 border-emerald-300/50 focus:border-emerald-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus:shadow-none px-1 h-auto rounded-none"
+                                      />
                                     </div>
                                   </div>
                                   )}
                                 </div>
-                                )}
                                 <div className="border-t pt-1.5 space-y-0.5">
-                                  <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro</span><span className={displayVarProfit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{fmtBRL(displayVarProfit)}</span></div>
+                                  <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro por unidade</span><span className={displayVarProfit >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{fmtBRL(displayVarProfit)}</span></div>
                                   <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">Lucro sobre a venda</span><span className={displayVarMargin >= 30 ? 'text-green-600 font-bold' : displayVarMargin >= 15 ? 'text-yellow-600 font-bold' : 'text-red-600 font-bold'}>{displayVarMargin.toFixed(2)}%</span></div>
                                 </div>
                               </div>
@@ -1316,7 +1406,6 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                         disabled={pricingDisabled}
                       />
                     </div>
-                    {siteMarginFilled && (
                     <div className="border-t pt-3">
                       <button
                         type="button"
@@ -1348,12 +1437,26 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                         </div>
                         <div className="flex items-center justify-between text-sm border-t pt-2 font-bold">
                           <span>= Valor de venda do produto</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 text-base font-extrabold">{fmtBRL(liveMinSale)}</span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={minSalePrice}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setMinSalePrice(sanitized);
+                              const newPrice = parseFloat(sanitized);
+                              if (!isNaN(newPrice) && newPrice > 0 && liveBaseCost > 0) {
+                                setSiteMarginPct(reverseMarginFromPrice(newPrice, liveBaseCost, liveTaxPct).toFixed(2));
+                              } else {
+                                setSiteMarginPct('0');
+                              }
+                            }}
+                            className="w-28 text-right text-emerald-600 dark:text-emerald-400 text-base font-extrabold bg-transparent border-0 border-b-2 border-emerald-300/50 focus:border-emerald-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus:shadow-none px-1 h-auto rounded-none"
+                          />
                         </div>
                       </div>
                       )}
                     </div>
-                    )}
                     <div className="border-t pt-3 space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Lucro por unidade</span>
@@ -1449,7 +1552,6 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                       );
                     })()
                     )}
-                    {pdvMarginFilled && (
                     <div className="border-t pt-3">
                       <button
                         type="button"
@@ -1481,12 +1583,26 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                         </div>
                         <div className="flex items-center justify-between text-sm border-t pt-2 font-bold">
                           <span>= Valor de venda do produto</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 text-base font-extrabold">{fmtBRL(livePricePdv)}</span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={pricePdv}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setPricePdv(sanitized);
+                              const newPrice = parseFloat(sanitized);
+                              if (!isNaN(newPrice) && newPrice > 0 && liveBaseCost > 0) {
+                                setEditMargin(reverseMarginFromPrice(newPrice, liveBaseCost, liveTaxPct).toFixed(2));
+                              } else {
+                                setEditMargin('0');
+                              }
+                            }}
+                            className="w-28 text-right text-emerald-600 dark:text-emerald-400 text-base font-extrabold bg-transparent border-0 border-b-2 border-emerald-300/50 focus:border-emerald-500 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 focus-visible:ring-offset-0 focus:shadow-none px-1 h-auto rounded-none"
+                          />
                         </div>
                       </div>
                       )}
                     </div>
-                    )}
                     <div className="border-t pt-3 space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">Lucro por unidade</span>

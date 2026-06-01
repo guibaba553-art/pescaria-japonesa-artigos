@@ -99,11 +99,6 @@ export function SearchSection() {
       price: finalPrice,
       image_url: product.image_url
     }, 1);
-
-    toast({
-      title: 'Produto adicionado!',
-      description: `${product.name} foi adicionado ao carrinho.`
-    });
   };
 
   return (

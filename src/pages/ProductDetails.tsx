@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw, Flame } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
@@ -12,9 +12,9 @@ import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
-import { recentSales, viewersNow } from '@/utils/socialProof';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
 import { effectiveProductPrice, isPromoActive, getProductDisplayImage } from '@/utils/promoPrice';
+import { getStockMessage } from '@/utils/stockDisplay';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -176,13 +176,7 @@ export default function ProductDetails() {
                 : "https://schema.org/OutOfStock",
               "seller": { "@type": "Organization", "name": "JAPAS Pesca" }
             },
-            ...(product.rating ? {
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": product.rating,
-                "reviewCount": Math.max(1, Math.round(product.rating))
-              }
-            } : {})
+
           })}
         </script>
       </Helmet>
@@ -283,23 +277,7 @@ export default function ProductDetails() {
                 {product.name}
               </h1>
 
-              <div className="flex items-center gap-2 mb-5">
-                <div className="flex items-center gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.floor(product.rating)
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground/40"
-                      }`}
-                    />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {product.rating.toFixed(1)}
-                </span>
-              </div>
+
 
               {/* Preço comercial */}
               {variations.length > 0 ? (
@@ -353,27 +331,17 @@ export default function ProductDetails() {
                 </div>
               )}
 
-              {variations.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {product.stock > 5
-                    ? `${product.stock} unidades em estoque`
-                    : <span className="text-primary font-bold">⚡ Últimas {product.stock} unidades!</span>
-                  }
+              {variations.length === 0 && getStockMessage(product.stock) && (
+                <p className="text-sm text-orange-600 font-semibold">
+                  {getStockMessage(product.stock)}
+                </p>
+              )}
+              {variations.length > 0 && selectedVariation && getStockMessage(selectedVariation.stock) && (
+                <p className="text-sm text-orange-600 font-semibold">
+                  {getStockMessage(selectedVariation.stock)}
                 </p>
               )}
             </div>
-
-            {/* Descrição - apenas se não tiver variações OU se tiver uma variação selecionada */}
-            {(variations.length === 0 || selectedVariation) && (
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold">Descrição</h2>
-                <p className="text-base leading-relaxed whitespace-pre-line">
-                  {selectedVariation && selectedVariation.description 
-                    ? selectedVariation.description 
-                    : product.description}
-                </p>
-              </div>
-            )}
 
             {variations.length > 0 && (
               <div className="space-y-4 border-t pt-6">
@@ -467,11 +435,6 @@ export default function ProductDetails() {
                     image_url: getProductDisplayImage(product.image_url, selectedVariation as any),
                     variationId: selectedVariation?.id
                   }, quantity);
-                  
-                  toast({
-                    title: 'Produto adicionado!',
-                    description: `${quantity} unidade(s) adicionada(s) ao carrinho.`
-                  });
                 }}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
@@ -485,35 +448,11 @@ export default function ProductDetails() {
                 }
               </Button>
 
-              {/* Prova social + benefícios — empurram a decisão */}
-              {product.stock > 0 && (
-                <div className="space-y-2 pt-2">
-                  {(() => {
-                    const sales = recentSales(product.id, (product.rating ?? 0) >= 4);
-                    return (
-                      <div className="flex items-center gap-3 text-xs flex-wrap">
-                        {sales !== null && (
-                          <span className="inline-flex items-center gap-1 font-bold text-orange-600">
-                            <Flame className="w-3.5 h-3.5 fill-current" />
-                            {sales} vendidos nas últimas 24h
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
-                          <span className="relative flex w-2 h-2">
-                            <span className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
-                            <span className="relative w-2 h-2 rounded-full bg-green-500" />
-                          </span>
-                          Pronta entrega
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  {product.stock > 0 && product.stock <= 5 && (
-                    <div className="text-xs font-bold text-orange-600">
-                      ⚠️ Restam apenas {product.stock} em estoque — garanta o seu!
-                    </div>
-                  )}
-                </div>
+              {/* Resumo do produto */}
+              {product.short_description && (
+                <p className="text-sm text-muted-foreground leading-relaxed pt-1">
+                  {product.short_description}
+                </p>
               )}
 
               {/* Trust row */}
@@ -534,6 +473,18 @@ export default function ProductDetails() {
             </div>
           </div>
         </div>
+
+        {/* Seção de descrição */}
+        {(variations.length === 0 || selectedVariation) && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold mb-4">Descrição</h2>
+            <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+              {selectedVariation && selectedVariation.description
+                ? selectedVariation.description
+                : product.description}
+            </p>
+          </div>
+        )}
 
         {/* Seção de avaliações */}
         <div className="mt-12">

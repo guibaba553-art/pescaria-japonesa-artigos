@@ -81,9 +81,11 @@ interface MyAddressesProps {
   selectedId?: string;
   /** Reduz o título — útil para uso em diálogos/checkout */
   compact?: boolean;
+  /** Oculta o botão "Novo endereço" do header — útil quando o contexto pai já provê um */
+  hideAddButton?: boolean;
 }
 
-export function MyAddresses({ onSelect, selectedId, compact }: MyAddressesProps) {
+export function MyAddresses({ onSelect, selectedId, compact, hideAddButton = false }: MyAddressesProps) {
   const { user } = useAuth();
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +234,7 @@ export function MyAddresses({ onSelect, selectedId, compact }: MyAddressesProps)
             <p className="text-sm text-muted-foreground">Salve vários endereços para agilizar seu checkout.</p>
           </div>
         )}
+        {!hideAddButton && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openNew} className="rounded-full ml-auto" size="sm">
@@ -322,6 +325,7 @@ export function MyAddresses({ onSelect, selectedId, compact }: MyAddressesProps)
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {loading ? (

@@ -4,12 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, Store, Plus, MapPin, Check, Package } from 'lucide-react';
+import { Loader2, Truck, Store, MapPin, Check, Package } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
 import { useAuth } from '@/hooks/useAuth';
-import { AddressFormDialog } from '@/components/AddressFormDialog';
 import type { UserAddress } from '@/components/MyAddresses';
 import { packItems } from '@/utils/packShipment';
 
@@ -47,7 +46,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   const [addressOptions, setAddressOptions] = useState<Record<string, ShippingOption[]>>({});
   const [loadingAddressId, setLoadingAddressId] = useState<string | null>(null);
   const [expandedAddressId, setExpandedAddressId] = useState<string | null>(null);
-  const [newAddressOpen, setNewAddressOpen] = useState(false);
 
   // Opção de retirada na loja
   const pickupOption: ShippingOption = {
@@ -583,19 +581,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </Card>
       </div>
 
-      {/* Cadastrar novo endereço (abaixo de Retirar na Loja) */}
-      {user && (
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full rounded-full"
-          onClick={() => setNewAddressOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Cadastrar endereço
-        </Button>
-      )}
-
       {/* Cálculo de Frete por CEP avulso */}
       <div className="space-y-2">
         <Label htmlFor="cep">Ou calcule o frete para outro CEP</Label>
@@ -669,15 +654,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         );
       })()}
 
-      <AddressFormDialog
-        open={newAddressOpen}
-        onOpenChange={setNewAddressOpen}
-        onSaved={async (addr) => {
-          await loadSavedAddresses();
-          // Calcula frete automaticamente para o novo endereço
-          handleCalculateForAddress(addr);
-        }}
-      />
     </div>
   );
 }

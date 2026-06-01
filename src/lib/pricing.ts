@@ -122,11 +122,11 @@ export function repriceAllVariations<T extends Partial<VariationPricing>>(
     const updates: Partial<VariationPricing> = {};
     if (vmPdv > 0) {
       const np = calcPrice(varBase, vmPdv, newTaxPct);
-      if (isFinite(np) && np > 0) updates.price_pdv = np;
+      if (isFinite(np) && np > 0) updates.price_pdv = Math.round(np * 100) / 100;
     }
     if (vmSite > 0) {
       const nm = calcPrice(varBase, vmSite, newTaxPct);
-      if (isFinite(nm) && nm > 0) updates.min_sale_price = nm;
+      if (isFinite(nm) && nm > 0) updates.min_sale_price = Math.round(nm * 100) / 100;
     }
     return Object.keys(updates).length > 0 ? { ...v, ...updates } as T : v;
   });

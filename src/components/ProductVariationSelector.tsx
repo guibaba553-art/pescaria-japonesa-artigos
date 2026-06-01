@@ -109,15 +109,13 @@ export function ProductVariationSelector({
                     <div className="text-lg font-semibold text-primary">
                       R$ {sitePriceForVariation(variation, productMinSalePrice).toFixed(2)}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {isOutOfStock ? (
+                    {isOutOfStock && (
+                      <div className="text-xs text-muted-foreground">
                         <Badge variant="destructive" className="text-xs">
                           Esgotado
                         </Badge>
-                      ) : (
-                        `Estoque: ${variation.stock}`
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </label>
               </div>
@@ -134,28 +132,6 @@ export function ProductVariationSelector({
         </div>
       )}
 
-      {selectedVariation && (
-        <div className="p-4 bg-accent/50 rounded-md border-2 border-primary">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-medium">Selecionado:</span>
-              <div className="text-right">
-                <div className="font-semibold">
-                  {selectedVariation.name}
-                </div>
-                <div className="text-lg font-bold text-primary">
-                  R$ {sitePriceForVariation(selectedVariation, productMinSalePrice).toFixed(2)}
-                </div>
-              </div>
-            </div>
-            {selectedVariation.description && (
-              <p className="text-sm text-muted-foreground mt-2">
-                {selectedVariation.description}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

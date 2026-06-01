@@ -20,12 +20,15 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   itemCount: number;
+  lastAddedKey: string | null;
+  clearLastAdded: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Carregar carrinho do localStorage e VALIDAR contra o banco
@@ -168,10 +171,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        toast({
-          title: 'Quantidade atualizada',
-          description: `${product.name} - quantidade aumentada`
-        });
+        setLastAddedKey(cartItemKey);
         return currentItems.map((item) =>
           item.cartItemKey === cartItemKey
             ? { ...item, quantity: newQuantity }
@@ -179,10 +179,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      toast({
-        title: 'Produto adicionado!',
-        description: `${product.name} foi adicionado ao carrinho`
-      });
+      setLastAddedKey(cartItemKey);
 
       return [...currentItems, { ...product, quantity, cartItemKey }];
     });
@@ -190,10 +187,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeItem = (cartItemKey: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.cartItemKey !== cartItemKey));
-    toast({
-      title: 'Produto removido',
-      description: 'Item removido do carrinho'
-    });
   };
 
   const updateQuantity = (cartItemKey: string, quantity: number) => {
@@ -232,6 +225,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const clearLastAdded = () => setLastAddedKey(null);
+
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -244,7 +239,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         clearCart,
         total,
-        itemCount
+        itemCount,
+        lastAddedKey,
+        clearLastAdded,
       }}
     >
       {children}

@@ -245,13 +245,13 @@ export default function MobileHome() {
         >
           <div className="absolute inset-0 flex flex-col justify-center px-5">
             <span className="bg-foreground text-background text-[10px] font-bold w-fit px-2 py-0.5 rounded uppercase tracking-wider mb-2">
-              Mega Liquidação
+              Ofertas
             </span>
             <h2 className="text-primary-foreground text-2xl font-display font-black leading-tight">
-              Até <span className="text-foreground">60% OFF</span>
+              Produtos em promoção
             </h2>
             <p className="text-primary-foreground/90 text-xs mt-1">
-              Confira ofertas selecionadas
+              Confira nossas ofertas
             </p>
             <span className="mt-3 inline-flex items-center gap-1 bg-background text-foreground text-xs font-bold px-3 py-1.5 rounded-full w-fit">
               Ver agora <ChevronRight className="w-3 h-3" />

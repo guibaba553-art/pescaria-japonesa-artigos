@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Cart } from '@/components/Cart';
 import { useAuth } from '@/hooks/useAuth';
 import { useCategories } from '@/hooks/useCategories';
+import { useCart } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { LogIn, UserPlus, LogOut, UserCircle, Search, Loader2, Package, LayoutDashboard, ShoppingCart, Boxes, ClipboardList, Users, BarChart3, ScanLine, UserCog, FileText, AlertTriangle, Wallet, Receipt, History } from 'lucide-react';
 import japaLogo from '@/assets/japa-logo.png';
@@ -24,6 +26,8 @@ export function Header() {
   const location = useLocation();
   const { user, signOut, isEmployee, isAdmin, canAccessPdv, permissions, loading } = useAuth();
   const { primaries } = useCategories();
+  const { lastAddedKey, clearLastAdded, itemCount } = useCart();
+  const [cartOpen, setCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -60,6 +64,14 @@ export function Header() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Abrir carrinho automaticamente ao adicionar item (apenas desktop)
+  useEffect(() => {
+    if (lastAddedKey && window.innerWidth >= 768) {
+      setCartOpen(true);
+      clearLastAdded();
+    }
+  }, [lastAddedKey, clearLastAdded]);
 
   // Fetch suggestions com debounce
   useEffect(() => {
@@ -271,7 +283,20 @@ export function Header() {
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {/* Cart visível só no desktop — no mobile fica na bottom nav */}
           <div className="hidden md:block">
-            <Cart />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative rounded-full"
+              onClick={() => setCartOpen(true)}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 min-w-5 px-1 flex items-center justify-center p-0 text-[10px] font-black bg-primary text-primary-foreground border-2 border-background">
+                  {itemCount > 9 ? '9+' : itemCount}
+                </Badge>
+              )}
+            </Button>
+            <Cart open={cartOpen} onOpenChange={setCartOpen} hideTrigger />
           </div>
 
           {user ? (
