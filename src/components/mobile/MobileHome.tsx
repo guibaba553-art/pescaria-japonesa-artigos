@@ -61,7 +61,8 @@ const ProductMiniCard = ({
   const navigate = useNavigate();
   const hasVariations = (product as any).variations?.length > 0;
   const finalPrice = effectiveProductOrVariationPrice(product as any);
-  const discount = product.on_sale && product.sale_price && product.sale_price < product.price
+  const onSale = !!(product.on_sale && product.sale_price && product.sale_price < product.price);
+  const discount = onSale
     ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
     : 0;
   const installment = finalPrice >= 50 ? Math.min(10, Math.floor(finalPrice / 30)) : 0;
