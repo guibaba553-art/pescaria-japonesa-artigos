@@ -283,9 +283,24 @@ export type Database = {
           cnpj: string
           codigo_municipio: string | null
           complemento: string | null
+          contador_bairro: string | null
+          contador_cep: string | null
+          contador_cnpj: string | null
+          contador_codigo_municipio: string | null
+          contador_complemento: string | null
+          contador_cpf: string | null
+          contador_crc: string | null
+          contador_email: string | null
+          contador_fax: string | null
+          contador_logradouro: string | null
+          contador_nome: string | null
+          contador_numero: string | null
+          contador_telefone: string | null
           created_at: string
           email: string | null
           id: string
+          ind_ativ: string
+          ind_perfil: string
           inscricao_estadual: string
           inscricao_municipal: string | null
           logradouro: string
@@ -305,9 +320,24 @@ export type Database = {
           cnpj: string
           codigo_municipio?: string | null
           complemento?: string | null
+          contador_bairro?: string | null
+          contador_cep?: string | null
+          contador_cnpj?: string | null
+          contador_codigo_municipio?: string | null
+          contador_complemento?: string | null
+          contador_cpf?: string | null
+          contador_crc?: string | null
+          contador_email?: string | null
+          contador_fax?: string | null
+          contador_logradouro?: string | null
+          contador_nome?: string | null
+          contador_numero?: string | null
+          contador_telefone?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          ind_ativ?: string
+          ind_perfil?: string
           inscricao_estadual: string
           inscricao_municipal?: string | null
           logradouro: string
@@ -327,9 +357,24 @@ export type Database = {
           cnpj?: string
           codigo_municipio?: string | null
           complemento?: string | null
+          contador_bairro?: string | null
+          contador_cep?: string | null
+          contador_cnpj?: string | null
+          contador_codigo_municipio?: string | null
+          contador_complemento?: string | null
+          contador_cpf?: string | null
+          contador_crc?: string | null
+          contador_email?: string | null
+          contador_fax?: string | null
+          contador_logradouro?: string | null
+          contador_nome?: string | null
+          contador_numero?: string | null
+          contador_telefone?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          ind_ativ?: string
+          ind_perfil?: string
           inscricao_estadual?: string
           inscricao_municipal?: string | null
           logradouro?: string
