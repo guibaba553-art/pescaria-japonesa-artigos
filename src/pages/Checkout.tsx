@@ -6,7 +6,7 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Plus, Minus, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ShippingCalculator } from '@/components/ShippingCalculator';
@@ -34,7 +34,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col pt-20 lg:pt-32">
         <Header />
         <main className="flex-1 container mx-auto py-12 text-center">
           <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -48,18 +48,10 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20">
+    <div className="min-h-screen flex flex-col bg-muted/20 pt-20 lg:pt-32">
       <Header />
       <main className="flex-1 container mx-auto py-8">
         {/* Breadcrumb */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </button>
-
         <h1 className="text-2xl font-bold mb-6">Finalizar compra</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -128,7 +120,7 @@ export default function CheckoutPage() {
 
           {/* Coluna Direita: Resumo */}
           <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl border p-4 space-y-3 sticky top-20">
+            <div className="bg-card rounded-xl border p-4 space-y-3 sticky top-20 lg:top-32">
               <h2 className="font-semibold">Resumo</h2>
 
               {/* Calculadora de frete */}

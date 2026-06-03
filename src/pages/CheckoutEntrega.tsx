@@ -4,12 +4,21 @@ import { Header } from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
+import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Pencil, Plus, Trash2, CreditCard, Loader2, Store, Check, Truck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { MapPin, Pencil, Plus, Trash2, CreditCard, Loader2, Store, Check, Truck, Smartphone, Wallet, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { sanitizeNumericInput, formatCEP } from '@/utils/validation';
@@ -38,6 +47,18 @@ const emptyForm: FormState = {
   city: '',
   state: '',
 };
+
+interface SavedMethod {
+  id: string;
+  payment_method: string;
+  card_brand: string | null;
+  card_last4: string | null;
+  card_exp_month: string | null;
+  card_exp_year: string | null;
+  cardholder_name: string | null;
+  is_default: boolean;
+  last_used_at: string | null;
+}
 
 function addressToForm(a: UserAddress): FormState {
   return {
@@ -73,10 +94,31 @@ export default function CheckoutEntrega() {
     isPickup ? 'pickup' : ''
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card' | 'mercado_pago'>('pix');
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedMethod[]>([]);
 
   const selectedAddress = typeof selectedOption === 'string' && selectedOption !== 'pickup'
     ? addresses.find((a) => a.id === selectedOption) ?? null
     : null;
+  // Endereço atual em destaque (primary spot) — inicializa com o padrão
+  const [primaryAddressId, setPrimaryAddressId] = useState<string | null>(null);
+  useEffect(() => {
+    if (addresses.length > 0 && !primaryAddressId) {
+      const def = addresses.find((a) => a.is_default) ?? addresses[0];
+      if (def) setPrimaryAddressId(def.id);
+    }
+  }, [addresses]);
+  const primaryAddress = primaryAddressId ? addresses.find((a) => a.id === primaryAddressId) ?? null : null;
+  const hiddenAddresses = primaryAddress ? addresses.filter((a) => a.id !== primaryAddress.id) : [];
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string }>({
+    open: false,
+    qrCode: '',
+    qrCodeBase64: '',
+    orderId: '',
+  });
 
   // Dimensões dos produtos (para cálculo de frete)
   const [productDims, setProductDims] = useState<Record<string, { weight_grams: number | null; length_cm: number | null; width_cm: number | null; height_cm: number | null }>>({});
@@ -119,6 +161,7 @@ export default function CheckoutEntrega() {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }> | null>(null);
   const [shippingError, setShippingError] = useState(false);
+  const [selectedShippingOption, setSelectedShippingOption] = useState<{ codigo: string; nome: string; valor: number; prazoEntrega: number } | null>(null);
 
   const calculateShipping = useCallback(async (cepDestino: string) => {
     if (!/^\d{8}$/.test(cepDestino)) return;
@@ -156,7 +199,13 @@ export default function CheckoutEntrega() {
         setShippingError(true);
         setShippingOptions(null);
       } else {
-        setShippingOptions(data.options || []);
+        const opts = (data.options || []) as Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }>;
+        setShippingOptions(opts);
+        // Auto-seleciona a opção mais barata se nada foi selecionado ainda
+        const cheapest = [...opts]
+          .filter((o) => o.codigo !== 'RETIRADA' && !o.codigo.startsWith('frenet-'))
+          .sort((a, b) => a.valor - b.valor)[0];
+        if (cheapest) setSelectedShippingOption(cheapest);
       }
     } catch {
       setShippingError(true);
@@ -171,25 +220,28 @@ export default function CheckoutEntrega() {
     if (!selectedAddress) {
       setShippingOptions(null);
       setShippingError(false);
+      setSelectedShippingOption(null);
       return;
     }
     calculateShipping(selectedAddress.cep);
   }, [selectedAddress?.id, calculateShipping]);
 
-  // Frete exibido: pickup = 0, endereço = mais barato calculado, fallback = URL param
+  // Frete exibido: pickup = 0, endereço = opção selecionada (ou mais barato), fallback = URL param
   const cheapestShipping = shippingOptions
     ? [...shippingOptions].filter((o) => o.codigo !== 'RETIRADA' && !o.codigo.startsWith('frenet-')).sort((a, b) => a.valor - b.valor)[0]
     : null;
 
+  const activeShipping = selectedShippingOption ?? cheapestShipping;
+
   const displayFreteNome = selectedOption === 'pickup'
     ? 'Retirar na loja'
-    : cheapestShipping
-      ? cheapestShipping.nome
+    : activeShipping
+      ? activeShipping.nome
       : (shippingError ? 'Frete indisponível' : (freteNome || 'Frete'));
   const displayFreteValor = selectedOption === 'pickup'
     ? 0
-    : cheapestShipping
-      ? cheapestShipping.valor
+    : activeShipping
+      ? activeShipping.valor
       : (shippingError ? 0 : freteValor);
 
   const loadAddresses = async () => {
@@ -215,6 +267,18 @@ export default function CheckoutEntrega() {
   useEffect(() => {
     loadAddresses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Carrega cartões salvos
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('saved_payment_methods')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('is_default', { ascending: false })
+      .order('last_used_at', { ascending: false })
+      .then(({ data }) => setSavedCards((data as SavedMethod[]) || []));
   }, [user?.id]);
 
   const openNew = () => {
@@ -318,26 +382,237 @@ export default function CheckoutEntrega() {
     setDeletingId(null);
   };
 
+  const handleFinalizeOrder = async () => {
+    if (finalizing) return;
+    setFinalizing(true);
+
+    try {
+      // 1. Validar carrinho
+      const { validateSiteCart } = await import('@/utils/siteCartValidation');
+      const validation = await validateSiteCart(items);
+      if (!validation.valid) {
+        const orphan = validation.issues.find(
+          (i) => i.reason === 'product_not_found' || i.reason === 'variation_not_found',
+        );
+        if (orphan) {
+          toast.error(`${orphan.name}: ${orphan.details} Remova-o do carrinho e tente novamente.`);
+          return;
+        }
+        const oos = validation.issues.find((i) => i.reason === 'out_of_stock');
+        if (oos) {
+          toast.error(`${oos.name}: ${oos.details}`);
+          return;
+        }
+        const price = validation.issues.find((i) => i.reason === 'price_changed');
+        if (price) {
+          toast.error(`O preço de "${price.name}" foi atualizado. Atualize a página para ver o novo valor.`);
+          return;
+        }
+      }
+
+      // 2. Limpar pedidos abandonados anteriores
+      const { data: abandonedOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('status', 'aguardando_pagamento')
+        .is('payment_id', null);
+      for (const ab of abandonedOrders || []) {
+        try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
+        try { await supabase.from('order_items').delete().eq('order_id', ab.id); } catch {}
+        try { await supabase.from('orders').delete().eq('id', ab.id); } catch {}
+      }
+
+      // 3. Montar dados do pedido
+      const isPickup = selectedOption === 'pickup';
+      const address = isPickup ? null : selectedAddress;
+
+      const meServiceMatch = selectedShippingOption?.codigo?.match(/^me-(\d+)$/);
+      const meServiceId = meServiceMatch ? parseInt(meServiceMatch[1], 10) : null;
+
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user!.id,
+          total_amount: total + displayFreteValor,
+          shipping_cost: displayFreteValor,
+          shipping_address: address
+            ? `${address.street}, ${address.number}${address.complement ? ` — ${address.complement}` : ''} — ${address.neighborhood}, ${address.city}/${address.state}`
+            : 'Retirada na loja',
+          shipping_cep: address ? address.cep : SHIPPING_CONFIG.ORIGIN_CEP,
+          shipping_recipient_name: address?.recipient_name ?? null,
+          shipping_recipient_phone: address?.recipient_phone ?? null,
+          shipping_street: address?.street ?? null,
+          shipping_number: address?.number ?? null,
+          shipping_complement: address?.complement ?? null,
+          shipping_neighborhood: address?.neighborhood ?? null,
+          shipping_city: address?.city ?? null,
+          shipping_uf: address?.state ?? null,
+          status: 'aguardando_pagamento',
+          delivery_type: isPickup ? 'pickup' : 'delivery',
+          shipping_service_id: meServiceId,
+        })
+        .select()
+        .single();
+
+      if (orderError || !orderData) {
+        throw new Error(orderError?.message || 'Erro ao criar pedido');
+      }
+
+      // 4. Criar itens do pedido
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.id,
+        variation_id: item.variationId || null,
+        quantity: item.quantity,
+        price_at_purchase: item.price,
+      }));
+      await supabase.from('order_items').insert(orderItems);
+
+      // 5. Reservar estoque
+      const { error: resvError } = await supabase.rpc('reserve_stock_for_order', {
+        p_order_id: orderData.id,
+        p_items: items.map(item => ({
+          product_id: item.id,
+          variation_id: item.variationId || null,
+          quantity: item.quantity,
+        })),
+        p_ttl_minutes: 30,
+      });
+      if (resvError) {
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
+      }
+
+      // 6. Consumir limite de promoções
+      const { error: promoError } = await supabase.rpc('consume_promo_limits', {
+        p_items: items.map(item => ({
+          product_id: item.id,
+          variation_id: item.variationId || null,
+          quantity: item.quantity,
+        })),
+      });
+      if (promoError) {
+        try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+        await supabase.from('order_items').delete().eq('order_id', orderData.id);
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        throw new Error(promoError.message || 'Limite de promoção atingido.');
+      }
+
+      // 7. Processar pagamento conforme método selecionado
+      if (selectedPayment === 'pix') {
+        // PIX via AbacatePay Transparente
+        const amountInCents = Math.round((total + displayFreteValor) * 100);
+
+        // Busca dados completos do usuário para o customer
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, cpf, phone')
+          .eq('id', user!.id)
+          .single();
+
+        const { data: pixData, error: pixError } = await supabase.functions.invoke(
+          'create-abacatepay-pix',
+          {
+            body: {
+              orderId: orderData.id,
+              amount: amountInCents,
+              description: `Pedido ${orderData.id.substring(0, 8)}`,
+              customerName: profile?.full_name || selectedAddress?.recipient_name || user?.user_metadata?.name,
+              customerTaxId: profile?.cpf || undefined,
+              customerEmail: user?.email,
+              customerCellphone: profile?.phone || undefined,
+            },
+          }
+        );
+
+        if (pixError || !pixData?.success || !pixData?.data) {
+          try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+          await supabase.from('order_items').delete().eq('order_id', orderData.id);
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          throw new Error(pixData?.error || pixError?.message || 'Erro ao gerar PIX');
+        }
+
+        // Abre dialog com QR Code PIX
+        setPixDialog({
+          open: true,
+          qrCode: pixData.data.brCode || '',
+          qrCodeBase64: pixData.data.brCodeBase64 || '',
+          orderId: orderData.id,
+          expiresAt: pixData.data.expiresAt,
+        });
+        return;
+        return;
+      }
+
+      if (selectedPayment === 'credit_card' || selectedPayment === 'mercado_pago') {
+        // Checkout hospedado via AbacatePay
+        const isCardOnly = selectedPayment === 'credit_card';
+        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
+          'create-abacatepay-checkout',
+          {
+            body: {
+              orderId: orderData.id,
+              items: items.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                variationId: item.variationId,
+              })),
+              methods: isCardOnly ? ['CARD'] : ['PIX', 'CARD'],
+              successUrl: `${window.location.origin}/conta?payment=success`,
+              returnUrl: `${window.location.origin}/checkout/entrega`,
+            },
+          }
+        );
+
+        if (checkoutError || !checkoutData?.success || !checkoutData?.data?.url) {
+          try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+          await supabase.from('order_items').delete().eq('order_id', orderData.id);
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          throw new Error(checkoutData?.error || checkoutError?.message || 'Erro ao criar checkout');
+        }
+
+        // Redireciona para o checkout AbacatePay
+        window.location.href = checkoutData.data.url;
+        return;
+      }
+
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao finalizar pedido');
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   if (loading) return null;
   if (!user) {
     navigate('/auth?redirect=/checkout/entrega');
     return null;
   }
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col pt-20 lg:pt-32">
+        <Header />
+        <main className="flex-1 container mx-auto py-12 text-center">
+          <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Seu carrinho está vazio</h1>
+          <p className="text-muted-foreground mb-6">Adicione produtos antes de finalizar a compra.</p>
+          <Button onClick={() => navigate('/produtos')}>Ver produtos</Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const isEditing = editMode !== null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-muted/20">
+    <div className="min-h-screen flex flex-col bg-muted/20 pt-20 lg:pt-32">
       <Header />
       <main className="flex-1 container mx-auto py-8">
-        <button
-          onClick={() => navigate('/checkout')}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </button>
-
         <h1 className="text-2xl font-bold mb-6">Entrega e pagamento</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -381,68 +656,177 @@ export default function CheckoutEntrega() {
                     </CardContent>
                   </Card>
 
-                  {/* ---- ENDEREÇOS ---- */}
-                  {addresses.map((a) => (
-                    <Card
-                      key={a.id}
-                      className={`rounded-2xl cursor-pointer transition-all ${
-                        selectedOption === a.id
-                          ? 'border-primary ring-2 ring-primary/30'
-                          : 'border-border hover:border-primary/40'
-                      }`}
-                      onClick={() => setSelectedOption(a.id)}
+                  {/* ---- ENDEREÇO EM DESTAQUE ---- */}
+                  {primaryAddress && (() => {
+                    const a = primaryAddress;
+                    return (
+                      <Card
+                        key={a.id}
+                        className={`rounded-2xl cursor-pointer transition-all ${
+                          selectedOption === a.id
+                            ? 'border-primary ring-2 ring-primary/30'
+                            : 'border-border hover:border-primary/40'
+                        }`}
+                        onClick={() => setSelectedOption(a.id)}
+                      >
+                        <CardContent className="p-4 flex items-start gap-3">
+                          <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                            selectedOption === a.id ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                          }`}>
+                            {selectedOption === a.id && <Check className="w-3 h-3 text-primary-foreground" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
+                                <MapPin className="w-3 h-3" /> {a.label}
+                              </span>
+                              {a.is_default && (
+                                <span className="text-xs text-primary font-medium">Padrão</span>
+                              )}
+                            </div>
+                            <p className="font-semibold text-sm mt-1">{a.recipient_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {a.street}, {a.number}
+                              {a.complement ? ` — ${a.complement}` : ''}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {a.neighborhood} — {a.city}/{a.state} — CEP: {formatCEP(a.cep)}
+                            </p>
+                            <div className="flex gap-1 mt-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs rounded-full"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(a);
+                                }}
+                              >
+                                <Pencil className="w-3 h-3 mr-1" /> Editar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs rounded-full text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingId(a.id);
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" /> Excluir
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+
+                        {/* Opções de frete para este endereço (visível quando selecionado) */}
+                        {selectedOption === a.id && shippingOptions && !shippingLoading && (
+                          <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
+                            <p className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground">
+                              Opções de frete
+                            </p>
+                            {(() => {
+                              const delivery = [...shippingOptions].filter(
+                                (o) => o.codigo !== 'RETIRADA' && !o.codigo.startsWith('frenet-')
+                              );
+                              if (delivery.length === 0) {
+                                return (
+                                  <p className="text-sm text-muted-foreground py-2 text-center">
+                                    Nenhuma transportadora atende esse CEP no momento.
+                                  </p>
+                                );
+                              }
+                              const cheapest = [...delivery].sort((a, b) => a.valor - b.valor)[0];
+                              const fastest = [...delivery].sort((a, b) => a.prazoEntrega - b.prazoEntrega)[0];
+                              const sorted = [...delivery].sort((a, b) => {
+                                if (a.codigo === cheapest.codigo) return -1;
+                                if (b.codigo === cheapest.codigo) return 1;
+                                if (a.codigo === fastest.codigo) return -1;
+                                if (b.codigo === fastest.codigo) return 1;
+                                return a.valor - b.valor;
+                              });
+                              return sorted.map((option) => {
+                                const sel = selectedShippingOption?.codigo === option.codigo;
+                                const isCheapest = option.codigo === cheapest.codigo;
+                                const isFastest = option.codigo === fastest.codigo && !isCheapest;
+                                return (
+                                  <button
+                                    key={option.codigo}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedShippingOption(
+                                        sel ? null : option
+                                      );
+                                    }}
+                                    className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
+                                      sel
+                                        ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                                        : 'border-border hover:bg-accent'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div
+                                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                          sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                                        }`}
+                                      >
+                                        {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                                      </div>
+                                      <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <p className="text-sm font-medium truncate">{option.nome}</p>
+                                          {isCheapest && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                                              Mais barato
+                                            </span>
+                                          )}
+                                          {isFastest && (
+                                            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                                              Mais rápido
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          Entrega em {option.prazoEntrega} dias úteis
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p className="font-bold text-sm shrink-0">
+                                      R$ {option.valor.toFixed(2).replace('.', ',')}
+                                    </p>
+                                  </button>
+                                );
+                              });
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Loading state */}
+                        {selectedOption === a.id && shippingLoading && (
+                          <div className="border-t border-border px-4 pb-4 pt-3">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Calculando fretes...
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    );
+                  })()}
+
+                  {/* ---- BOTÃO SELECIONAR OUTRO ENDEREÇO ---- */}
+                  {hiddenAddresses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAddressDialogOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-accent/50 text-sm text-muted-foreground hover:text-foreground transition-all"
                     >
-                      <CardContent className="p-4 flex items-start gap-3">
-                        <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          selectedOption === a.id ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-                        }`}>
-                          {selectedOption === a.id && <Check className="w-3 h-3 text-primary-foreground" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
-                              <MapPin className="w-3 h-3" /> {a.label}
-                            </span>
-                            {a.is_default && (
-                              <span className="text-xs text-primary font-medium">Padrão</span>
-                            )}
-                          </div>
-                          <p className="font-semibold text-sm mt-1">{a.recipient_name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {a.street}, {a.number}
-                            {a.complement ? ` — ${a.complement}` : ''}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {a.neighborhood} — {a.city}/{a.state} — CEP: {formatCEP(a.cep)}
-                          </p>
-                          <div className="flex gap-1 mt-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs rounded-full"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEdit(a);
-                              }}
-                            >
-                              <Pencil className="w-3 h-3 mr-1" /> Editar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs rounded-full text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletingId(a.id);
-                              }}
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" /> Excluir
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      <MapPin className="w-4 h-4" />
+                      Selecionar outro endereço
+                    </button>
+                  )}
 
                   {/* ---- BOTÃO NOVO ENDEREÇO ---- */}
                   <Button
@@ -553,19 +937,179 @@ export default function CheckoutEntrega() {
               )}
             </div>
 
-            {/* Método de pagamento (placeholder) */}
+            {/* Método de pagamento */}
             <div className="bg-card rounded-xl border p-4">
-              <h2 className="font-semibold flex items-center gap-2 mb-3">
+              <h2 className="font-semibold flex items-center gap-2 mb-4">
                 <CreditCard className="w-4 h-4 text-primary" />
                 Método de pagamento
               </h2>
-              <p className="text-sm text-muted-foreground">Em breve</p>
+
+              <div className="space-y-3">
+                {/* PIX */}
+                <div
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                    selectedPayment === 'pix'
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                  onClick={() => setSelectedPayment('pix')}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      selectedPayment === 'pix' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {selectedPayment === 'pix' && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <Smartphone className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">PIX</p>
+                        <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                          Mais rápido
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Aprovação instantânea via QR Code</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cartão de Crédito */}
+                <div
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                    selectedPayment === 'credit_card'
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                  onClick={() => setSelectedPayment('credit_card')}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      selectedPayment === 'credit_card' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {selectedPayment === 'credit_card' && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <CreditCard className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold">Cartão de Crédito</p>
+                      <p className="text-sm text-muted-foreground">
+                        {savedCards.length > 0
+                          ? 'Selecione um cartão salvo'
+                          : 'Nenhum cartão salvo ainda'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Lista de cartões salvos (visível apenas quando selecionado) */}
+                  {selectedPayment === 'credit_card' && savedCards.length > 0 && (
+                    <div className="mt-3 pt-3 border-t space-y-2">
+                      {savedCards.map((card) => (
+                        <div
+                          key={card.id}
+                          className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                            selectedCardId === card.id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:bg-accent'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCardId(selectedCardId === card.id ? null : card.id);
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CreditCard className="w-4 h-4 text-primary shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {card.card_brand ?? 'Cartão'} •••• {card.card_last4 ?? '????'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {card.cardholder_name ?? '—'}
+                                  {card.card_exp_month && card.card_exp_year
+                                    ? ` · ${card.card_exp_month}/${card.card_exp_year.slice(-2)}`
+                                    : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {card.is_default && (
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                                  Padrão
+                                </span>
+                              )}
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                selectedCardId === card.id ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                              }`}>
+                                {selectedCardId === card.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Futuro: abrir cadastro de novo cartão
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Cadastrar novo cartão
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Estado vazio: sem cartões salvos */}
+                  {selectedPayment === 'credit_card' && savedCards.length === 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Futuro: abrir dialog para cadastrar cartão
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Cadastrar cartão
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mercado Pago */}
+                <div
+                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                    selectedPayment === 'mercado_pago'
+                      ? 'border-primary ring-2 ring-primary/30'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                  onClick={() => setSelectedPayment('mercado_pago')}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      selectedPayment === 'mercado_pago' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {selectedPayment === 'mercado_pago' && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <Wallet className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold">Mercado Pago</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pagamento via carteiras digitais — Google Pay, Apple Pay e mais
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Coluna Direita: Resumo */}
           <div className="lg:col-span-1">
-            <div className="bg-card rounded-xl border p-4 space-y-3 sticky top-20">
+            <div className="bg-card rounded-xl border p-4 space-y-3 sticky top-20 lg:top-32">
               <h2 className="font-semibold">Resumo</h2>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-muted-foreground">
@@ -601,14 +1145,88 @@ export default function CheckoutEntrega() {
                   </span>
                 </div>
               </div>
-              <Button className="w-full rounded-full font-bold" size="lg">
-                Finalizar pedido
+              <Button
+                className="w-full rounded-full font-bold"
+                size="lg"
+                onClick={handleFinalizeOrder}
+                disabled={finalizing}
+              >
+                {finalizing ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processando…
+                  </span>
+                ) : (
+                  'Finalizar pedido'
+                )}
               </Button>
             </div>
           </div>
         </div>
       </main>
       <Footer />
+
+      {/* PIX Dialog */}
+      <PixPaymentDialog
+        open={pixDialog.open}
+        onOpenChange={(open) => setPixDialog((prev) => ({ ...prev, open }))}
+        qrCode={pixDialog.qrCode}
+        qrCodeBase64={pixDialog.qrCodeBase64}
+        orderId={pixDialog.orderId}
+        expiresAt={pixDialog.expiresAt}
+      />
+
+      {/* Modal de seleção de endereço */}
+      <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecionar endereço</DialogTitle>
+            <DialogDescription>
+              Escolha um dos seus endereços para entrega.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+            {hiddenAddresses.map((a) => (
+              <div
+                key={a.id}
+                className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                  selectedOption === a.id
+                    ? 'border-primary ring-2 ring-primary/30'
+                    : 'border-border hover:border-primary/40'
+                }`}
+                onClick={() => {
+                  setSelectedOption(a.id);
+                  setPrimaryAddressId(a.id);
+                  setAddressDialogOpen(false);
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                    selectedOption === a.id ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                  }`}>
+                    {selectedOption === a.id && <Check className="w-3 h-3 text-primary-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
+                        <MapPin className="w-3 h-3" /> {a.label}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-sm mt-1">{a.recipient_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {a.street}, {a.number}
+                      {a.complement ? ` — ${a.complement}` : ''}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {a.neighborhood} — {a.city}/{a.state} — CEP: {formatCEP(a.cep)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Diálogo de confirmação de exclusão */}
       {deletingId && (

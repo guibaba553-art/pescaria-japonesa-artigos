@@ -153,7 +153,6 @@ serve(async (req) => {
         failure: data.failureUrl,
         pending: data.pendingUrl,
       },
-      auto_return: 'approved',
       external_reference: data.orderId,
       // Notification webhook (existing function)
       notification_url: `${supabaseUrl}/functions/v1/payment-webhook`,

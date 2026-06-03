@@ -19,7 +19,7 @@ BEGIN
     SELECT decrypted_secret INTO v_url
     FROM vault.decrypted_secrets WHERE name = 'project_url' LIMIT 1;
     IF v_url IS NULL THEN
-      v_url := 'https://qiwcngzbpxddowyqaulm.supabase.co';
+      v_url := 'http://127.0.0.1:54321';
     END IF;
 
     SELECT decrypted_secret INTO v_secret

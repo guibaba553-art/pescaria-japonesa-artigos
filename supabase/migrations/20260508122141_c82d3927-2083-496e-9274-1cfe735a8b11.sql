@@ -5,7 +5,7 @@ SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
 DECLARE
-  v_url text := 'https://qiwcngzbpxddowyqaulm.supabase.co';
+  v_url text := 'http://127.0.0.1:54321';
   v_key text;
   v_payload jsonb;
 BEGIN

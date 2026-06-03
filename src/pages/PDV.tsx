@@ -56,7 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPdvPrice, type PdvPaymentMethod } from '@/utils/pdvPricing';
+import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
@@ -81,6 +81,12 @@ interface ProductVariation {
   description?: string | null;
   sku?: string | null;
   image_url?: string | null;
+  // Promoções do catálogo
+  on_sale?: boolean | null;
+  sale_price?: number | null;
+  sale_ends_at?: string | null;
+  sale_limit_qty?: number | null;
+  sale_sold_qty?: number | null;
 }
 
 interface Product {
@@ -100,6 +106,12 @@ interface Product {
   price_debit_percent?: number | null;
   price_pix_percent?: number | null;
   price_cash_percent?: number | null;
+  // Promoções do catálogo
+  on_sale?: boolean | null;
+  sale_price?: number | null;
+  sale_ends_at?: string | null;
+  sale_limit_qty?: number | null;
+  sale_sold_qty?: number | null;
 }
 
 interface CartItem {
@@ -1219,6 +1231,11 @@ export default function PDV() {
           price_pdv_cash: (item.variation as any).price_pdv_cash ?? null,
           price_pdv_debit: (item.variation as any).price_pdv_debit ?? null,
           price_pdv_credit: (item.variation as any).price_pdv_credit ?? null,
+          on_sale: (item.variation as any).on_sale ?? item.product.on_sale ?? null,
+          sale_price: (item.variation as any).sale_price ?? item.product.sale_price ?? null,
+          sale_ends_at: (item.variation as any).sale_ends_at ?? item.product.sale_ends_at ?? null,
+          sale_limit_qty: (item.variation as any).sale_limit_qty ?? item.product.sale_limit_qty ?? null,
+          sale_sold_qty: (item.variation as any).sale_sold_qty ?? item.product.sale_sold_qty ?? null,
         },
         paymentMethod,
       );
@@ -1853,9 +1870,20 @@ export default function PDV() {
                           </div>
                            <div className="flex items-center justify-between">
                             <div className="flex flex-col">
-                              <span className="text-lg font-bold text-primary leading-none">
-                                R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
-                              </span>
+                              {isPdvPromoActive(product) ? (
+                                <>
+                                  <span className="text-[11px] text-muted-foreground line-through leading-none">
+                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  </span>
+                                  <span className="text-lg font-bold text-green-600 dark:text-green-400 leading-none">
+                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-lg font-bold text-primary leading-none">
+                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                </span>
+                              )}
                               <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
                                 {paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'debit' ? 'Débito' : paymentMethod === 'credit' ? 'Crédito' : 'PIX'}
                               </span>
@@ -2451,8 +2479,8 @@ export default function PDV() {
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-base font-bold text-primary">
-                        R$ {selectedProduct ? getPdvPrice({
+                      {selectedProduct ? (() => {
+                        const merged = {
                           ...selectedProduct,
                           price: Number(variation.price ?? 0),
                           price_pdv: (variation as any).price_pdv ?? selectedProduct.price_pdv ?? null,
@@ -2460,8 +2488,31 @@ export default function PDV() {
                           price_pdv_cash: (variation as any).price_pdv_cash ?? null,
                           price_pdv_debit: (variation as any).price_pdv_debit ?? null,
                           price_pdv_credit: (variation as any).price_pdv_credit ?? null,
-                        }, paymentMethod).toFixed(2) : Number((variation as any).price_pdv ?? variation.price).toFixed(2)}
-                      </span>
+                          on_sale: (variation as any).on_sale ?? selectedProduct.on_sale ?? null,
+                          sale_price: (variation as any).sale_price ?? selectedProduct.sale_price ?? null,
+                          sale_ends_at: (variation as any).sale_ends_at ?? selectedProduct.sale_ends_at ?? null,
+                          sale_limit_qty: (variation as any).sale_limit_qty ?? selectedProduct.sale_limit_qty ?? null,
+                          sale_sold_qty: (variation as any).sale_sold_qty ?? selectedProduct.sale_sold_qty ?? null,
+                        };
+                        return isPdvPromoActive(merged) ? (
+                          <div className="flex flex-col">
+                            <span className="text-[11px] text-muted-foreground line-through leading-none">
+                              R$ {getPdvOriginalPrice(merged, paymentMethod).toFixed(2)}
+                            </span>
+                            <span className="text-base font-bold text-green-600 dark:text-green-400">
+                              R$ {getPdvPrice(merged, paymentMethod).toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-base font-bold text-primary">
+                            R$ {getPdvPrice(merged, paymentMethod).toFixed(2)}
+                          </span>
+                        );
+                      })() : (
+                        <span className="text-base font-bold text-primary">
+                          R$ {Number((variation as any).price_pdv ?? variation.price).toFixed(2)}
+                        </span>
+                      )}
                       <Badge variant={variation.stock > 5 ? "secondary" : variation.stock > 0 ? "outline" : "destructive"} className="text-xs">
                         {variation.stock > 0 ? `${variation.stock} un` : 'Esgotado'}
                       </Badge>

@@ -27,6 +27,12 @@ export interface PdvPricingFields {
   price_debit_percent?: number | null;
   price_pix_percent?: number | null;
   price_cash_percent?: number | null;
+  // Promoções do catálogo — refletidas no PDV
+  on_sale?: boolean | null;
+  sale_price?: number | null;
+  sale_ends_at?: string | null;
+  sale_limit_qty?: number | null;
+  sale_sold_qty?: number | null;
 }
 
 // Acréscimos fixos por método (sobre o preço base = PIX)
@@ -64,8 +70,30 @@ export function isExemptFromMarkup(p: PdvPricingFields): boolean {
   return EXEMPT_KEYWORDS.some((kw) => name.includes(normalize(kw)));
 }
 
-/** Retorna o preço base do PDV (price_pdv ou, se ausente, o preço do site). */
+/** Verifica se a promoção do catálogo está ativa para uso no PDV. */
+export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): boolean {
+  if (!p.on_sale) return false;
+  if (p.sale_price == null) return false;
+  const base = Number(p.price ?? 0);
+  if (base <= 0) return false;
+  if (Number(p.sale_price) >= base) return false;
+  if (p.sale_ends_at) {
+    const ends = new Date(p.sale_ends_at);
+    if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
+  }
+  if (p.sale_limit_qty != null) {
+    const sold = Number(p.sale_sold_qty ?? 0);
+    if (sold >= Number(p.sale_limit_qty)) return false;
+  }
+  return true;
+}
+
+/** Retorna o preço base do PDV, considerando promoção ativa primeiro. */
 export function getPdvBasePrice(p: PdvPricingFields): number {
+  // Promoção ativa tem prioridade sobre price_pdv e price
+  if (isPdvPromoActive(p)) {
+    return Number(p.sale_price);
+  }
   return p.price_pdv != null && !isNaN(Number(p.price_pdv))
     ? Number(p.price_pdv)
     : Number(p.price);
@@ -100,11 +128,35 @@ export function getPdvPrice(p: PdvPricingFields, method: PdvPaymentMethod): numb
   return applyMethodMarkup(getPdvBasePrice(p), method, isExemptFromMarkup(p));
 }
 
+/** Retorna o preço original do PDV ignorando promoções (para exibir riscado). */
+export function getPdvOriginalPrice(p: PdvPricingFields, method: PdvPaymentMethod): number {
+  const manual = getManualOverride(p, method);
+  if (manual != null) return manual;
+  const base = p.price_pdv != null && !isNaN(Number(p.price_pdv))
+    ? Number(p.price_pdv)
+    : Number(p.price);
+  return applyMethodMarkup(base, method, isExemptFromMarkup(p));
+}
+
 /** Calcula o preço final de uma variação aplicando a fórmula do método. */
 export function getPdvPriceForVariation(
   parent: PdvPricingFields,
   variationPrice: number,
   method: PdvPaymentMethod,
+  variation?: PdvPricingFields,
 ): number {
+  // Promoção própria da variação tem prioridade
+  if (variation && isPdvPromoActive(variation)) {
+    return applyMethodMarkup(Number(variation.sale_price), method, isExemptFromMarkup(parent));
+  }
+  // Promoção do produto pai aplicada proporcionalmente
+  if (isPdvPromoActive(parent)) {
+    const baseP = Number(parent.price ?? 0);
+    if (baseP > 0) {
+      const discount = 1 - Number(parent.sale_price) / baseP;
+      const proportionalPrice = Number(variationPrice) * (1 - discount);
+      return applyMethodMarkup(proportionalPrice, method, isExemptFromMarkup(parent));
+    }
+  }
   return applyMethodMarkup(Number(variationPrice), method, isExemptFromMarkup(parent));
 }

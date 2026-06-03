@@ -9,7 +9,7 @@ SELECT cron.schedule(
   $$
   SELECT
     net.http_post(
-        url:='https://qiwcngzbpxddowyqaulm.supabase.co/functions/v1/cleanup-old-messages',
+        url:='http://127.0.0.1:54321/functions/v1/cleanup-old-messages',
         headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpd2NuZ3picHhkZG93eXFhdWxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNzAzMTEsImV4cCI6MjA3NjY0NjMxMX0.YF1a7IkhgFXbWpHaf3YffEUsDY8yUkyidKEt0H0eZgM"}'::jsonb
     ) as request_id;
   $$

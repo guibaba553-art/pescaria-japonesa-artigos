@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
-const MERCADO_PAGO_PUBLIC_KEY = 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485';
+const MERCADO_PAGO_PUBLIC_KEY = Deno.env.get('MERCADO_PAGO_PUBLIC_KEY') ?? 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

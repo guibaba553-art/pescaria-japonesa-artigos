@@ -45,7 +45,7 @@ export function PixPaymentDialog({
         });
 
         if (error) {
-          console.error('Erro ao verificar pagamento:', error);
+          // Polling não disponível para este gateway — apenas ignora
           setIsChecking(false);
           return;
         }
@@ -127,7 +127,7 @@ export function PixPaymentDialog({
               {/* QR Code Image */}
               <div className="flex justify-center p-4 bg-white rounded-lg relative">
                 <img
-                  src={`data:image/png;base64,${qrCodeBase64}`}
+                  src={qrCodeBase64.startsWith('data:') ? qrCodeBase64 : `data:image/png;base64,${qrCodeBase64}`}
                   alt="QR Code PIX"
                   className="w-64 h-64"
                 />
