@@ -2780,13 +2780,24 @@ export default function PDV() {
 
             <div className="space-y-2">
               <Label htmlFor="cep">CEP *</Label>
-              <Input
-                id="cep"
-                placeholder="00000-000"
-                value={customerForm.cep}
-                onChange={(e) => setCustomerForm({ ...customerForm, cep: e.target.value })}
-                maxLength={9}
-              />
+              <div className="relative">
+                <Input
+                  id="cep"
+                  placeholder="00000-000"
+                  value={customerForm.cep}
+                  onChange={(e) => {
+                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                    if (digits.length === 8) lookupCep(digits);
+                  }}
+                  maxLength={9}
+                  inputMode="numeric"
+                />
+                {cepLoading && (
+                  <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
             </div>
 
             <div className="space-y-2">
