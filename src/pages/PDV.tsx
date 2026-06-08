@@ -2796,8 +2796,22 @@ export default function PDV() {
                     setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
                     if (digits.length === 8) lookupCep(digits);
                   }}
+                  onBlur={(e) => {
+                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                    if (digits.length === 8) lookupCep(digits);
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData('text');
+                    const digits = sanitizeNumericInput(pasted).slice(0, 8);
+                    if (digits.length === 8) {
+                      e.preventDefault();
+                      setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                      lookupCep(digits);
+                    }
+                  }}
                   maxLength={9}
                   inputMode="numeric"
+                  autoComplete="postal-code"
                 />
                 {cepLoading && (
                   <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
