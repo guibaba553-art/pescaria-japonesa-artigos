@@ -1105,7 +1105,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                       <Input
                                         type="text"
                                         inputMode="decimal"
-                                        value={v._displayMinSalePrice ?? (v.min_sale_price != null ? String(v.min_sale_price) : '')}
+                                        value={(v as any)._displayMinSalePrice ?? (v.min_sale_price != null ? String(v.min_sale_price) : '')}
                                         onChange={(e) => {
                                           const sanitized = sanitizeDecimalInput(e.target.value);
                                           const newPrice = parseFloat(sanitized);
