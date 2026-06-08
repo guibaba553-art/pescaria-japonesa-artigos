@@ -321,7 +321,13 @@ export default function PDV() {
         municipio: d.localidade || prev.municipio,
         uf: (d.uf || prev.uf || '').toUpperCase(),
         complemento: prev.complemento || d.complemento || '',
+        // IBGE do município — usado em NF-e / NFC-e
+        codigo_municipio_ibge: d.ibge || prev.codigo_municipio_ibge,
       }));
+      toast({
+        title: 'Endereço encontrado',
+        description: `${d.logradouro || ''}${d.logradouro ? ', ' : ''}${d.bairro || ''} — ${d.localidade}/${d.uf}`,
+      });
     } catch (e) {
       console.warn('lookupCep falhou:', e);
     } finally {
