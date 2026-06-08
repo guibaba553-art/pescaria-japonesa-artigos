@@ -1173,7 +1173,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                                       <Input
                                         type="text"
                                         inputMode="decimal"
-                                        value={v._displayPricePdv ?? (v.price_pdv != null ? String(v.price_pdv) : '')}
+                                        value={(v as any)._displayPricePdv ?? (v.price_pdv != null ? String(v.price_pdv) : '')}
                                         onChange={(e) => {
                                           const sanitized = sanitizeDecimalInput(e.target.value);
                                           const newPrice = parseFloat(sanitized);
