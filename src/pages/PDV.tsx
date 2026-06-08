@@ -61,6 +61,7 @@ import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 import { Award } from 'lucide-react';
+import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
@@ -249,6 +250,84 @@ export default function PDV() {
     email: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
+  const [cpfLoading, setCpfLoading] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+
+  /**
+   * Busca cliente existente pelo CPF e auto-preenche o formulário.
+   * Também valida o CPF (dígitos verificadores).
+   * Obs.: não existe API pública gratuita p/ dados pessoais por CPF (LGPD).
+   */
+  const lookupCpf = async (digits: string) => {
+    if (digits.length !== 11) return;
+    if (!validateCPF(digits)) {
+      toast({ title: 'CPF inválido', description: 'Verifique os dígitos informados.', variant: 'destructive' });
+      return;
+    }
+    setCpfLoading(true);
+    try {
+      const fmt = formatCPF(digits);
+      // Tenta achar cliente já cadastrado (com CPF formatado ou só dígitos)
+      const { data: existing } = await supabase
+        .from('customers')
+        .select('*')
+        .or(`cpf.eq.${fmt},cpf.eq.${digits}`)
+        .maybeSingle();
+      if (existing) {
+        setCustomerForm((prev) => ({
+          ...prev,
+          full_name: existing.full_name || prev.full_name,
+          cpf: existing.cpf || fmt,
+          cep: existing.cep || prev.cep,
+          street: existing.street || prev.street,
+          number: existing.number || prev.number,
+          neighborhood: existing.neighborhood || prev.neighborhood,
+          complemento: existing.complemento || prev.complemento,
+          municipio: existing.municipio || prev.municipio,
+          uf: existing.uf || prev.uf,
+          inscricao_estadual: existing.inscricao_estadual || prev.inscricao_estadual,
+          email: existing.email || prev.email,
+        }));
+        toast({
+          title: 'Cliente já cadastrado',
+          description: `${existing.full_name} — dados carregados. Salvar irá selecioná-lo.`,
+        });
+      } else {
+        toast({ title: 'CPF válido', description: 'Não há cadastro prévio. Preencha os dados manualmente.' });
+      }
+    } catch (e: any) {
+      console.warn('lookupCpf falhou:', e);
+    } finally {
+      setCpfLoading(false);
+    }
+  };
+
+  /** Auto-preenche endereço pelo CEP via ViaCEP (gratuito). */
+  const lookupCep = async (digits: string) => {
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json();
+      if (d?.erro) {
+        toast({ title: 'CEP não encontrado', variant: 'destructive' });
+        return;
+      }
+      setCustomerForm((prev) => ({
+        ...prev,
+        cep: formatCEP(digits),
+        street: d.logradouro || prev.street,
+        neighborhood: d.bairro || prev.neighborhood,
+        municipio: d.localidade || prev.municipio,
+        uf: (d.uf || prev.uf || '').toUpperCase(),
+        complemento: prev.complemento || d.complemento || '',
+      }));
+    } catch (e) {
+      console.warn('lookupCep falhou:', e);
+    } finally {
+      setCepLoading(false);
+    }
+  };
 
   const lookupCnpj = async (digits: string) => {
     if (digits.length !== 14) {
@@ -2647,13 +2726,26 @@ export default function PDV() {
             {customerForm.doc_type === 'cpf' ? (
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF *</Label>
-                <Input
-                  id="cpf"
-                  placeholder="000.000.000-00"
-                  value={customerForm.cpf}
-                  onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
-                  maxLength={14}
-                />
+                <div className="relative">
+                  <Input
+                    id="cpf"
+                    placeholder="000.000.000-00"
+                    value={customerForm.cpf}
+                    onChange={(e) => {
+                      const digits = sanitizeNumericInput(e.target.value).slice(0, 11);
+                      setCustomerForm({ ...customerForm, cpf: formatCPF(digits) });
+                      if (digits.length === 11) lookupCpf(digits);
+                    }}
+                    maxLength={14}
+                    inputMode="numeric"
+                  />
+                  {cpfLoading && (
+                    <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Validamos o CPF e buscamos cadastro existente automaticamente.
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -2688,13 +2780,24 @@ export default function PDV() {
 
             <div className="space-y-2">
               <Label htmlFor="cep">CEP *</Label>
-              <Input
-                id="cep"
-                placeholder="00000-000"
-                value={customerForm.cep}
-                onChange={(e) => setCustomerForm({ ...customerForm, cep: e.target.value })}
-                maxLength={9}
-              />
+              <div className="relative">
+                <Input
+                  id="cep"
+                  placeholder="00000-000"
+                  value={customerForm.cep}
+                  onChange={(e) => {
+                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                    if (digits.length === 8) lookupCep(digits);
+                  }}
+                  maxLength={9}
+                  inputMode="numeric"
+                />
+                {cepLoading && (
+                  <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
             </div>
 
             <div className="space-y-2">
