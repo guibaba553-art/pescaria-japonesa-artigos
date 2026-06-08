@@ -2726,13 +2726,26 @@ export default function PDV() {
             {customerForm.doc_type === 'cpf' ? (
               <div className="space-y-2">
                 <Label htmlFor="cpf">CPF *</Label>
-                <Input
-                  id="cpf"
-                  placeholder="000.000.000-00"
-                  value={customerForm.cpf}
-                  onChange={(e) => setCustomerForm({ ...customerForm, cpf: e.target.value })}
-                  maxLength={14}
-                />
+                <div className="relative">
+                  <Input
+                    id="cpf"
+                    placeholder="000.000.000-00"
+                    value={customerForm.cpf}
+                    onChange={(e) => {
+                      const digits = sanitizeNumericInput(e.target.value).slice(0, 11);
+                      setCustomerForm({ ...customerForm, cpf: formatCPF(digits) });
+                      if (digits.length === 11) lookupCpf(digits);
+                    }}
+                    maxLength={14}
+                    inputMode="numeric"
+                  />
+                  {cpfLoading && (
+                    <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Validamos o CPF e buscamos cadastro existente automaticamente.
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
