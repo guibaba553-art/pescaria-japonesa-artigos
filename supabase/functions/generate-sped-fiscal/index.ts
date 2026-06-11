@@ -138,8 +138,9 @@ serve(async (req) => {
 
     // ---------- BLOCO 0 ----------
     const bloco0: string[] = [];
+    // Layout 0000: REG|COD_VER|COD_FIN|DT_INI|DT_FIN|NOME|CNPJ|CPF|UF|IE|COD_MUN|IM|SUFRAMA|IND_PERF|IND_ATIV
     bloco0.push(makeLine('0000', codVer, codFin, dtIni, dtFin,
-      company.razao_social, cnpjEmp, '', uf, ie, munCod, '', indPerfil, indAtiv));
+      company.razao_social, cnpjEmp, '', uf, ie, munCod, '', '', indPerfil, indAtiv));
     bloco0.push(makeLine('0001', nfList.length > 0 ? '0' : '0'));
     bloco0.push(makeLine('0005',
       company.nome_fantasia || company.razao_social,
