@@ -172,6 +172,7 @@ serve(async (req) => {
     }
 
     // 0150 — participantes (clientes das NF-e)
+    // Layout: REG|COD_PART|NOME|COD_PAIS|CNPJ|CPF|IE|COD_MUN|SUFRAMA|END|NUM|COMPL|BAIRRO
     const participantesCods = new Map<string, string>();
     let codCount = 1;
     customersById.forEach((c) => {
@@ -183,7 +184,8 @@ serve(async (req) => {
         c.company_name || c.full_name,
         '1058',
         isCnpj ? doc : '', isCnpj ? '' : doc, '',
-        '', c.street || '', c.number || '', '', c.neighborhood || ''));
+        '', '',
+        c.street || '', c.number || '', '', c.neighborhood || ''));
     });
 
     // 0190 / 0200 — só se houver itens
