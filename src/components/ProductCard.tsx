@@ -4,6 +4,7 @@ import { ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
+import { isPromoActive } from '@/utils/promoPrice';
 import duckEasterEgg from '@/assets/duck-easter-egg.gif';
 
 interface ProductCardProps {
@@ -45,7 +46,7 @@ export function ProductCard({
   };
 
   const hasVariations = product.variations && product.variations.length > 0;
-  const isOnSale = product.on_sale && product.sale_price;
+  const isOnSale = isPromoActive(product);
   // REGRA: no SITE o preço exibido é o "Valor mínimo de venda" (min_sale_price) quando definido.
   // O campo `price` é o preço médio usado no PDV — não é usado aqui no site (a menos que min_sale_price esteja vazio).
   const productMin = Number((product as any).min_sale_price) || 0;
@@ -226,7 +227,7 @@ export function ProductCard({
                     if (v > product.stock) return onQuantityChange(product.stock);
                     onQuantityChange(v);
                   }}
-                  className="h-full w-8 text-center text-sm font-semibold bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="h-full w-8 text-center text-sm font-semibold text-foreground bg-transparent border-0 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
                   type="button"

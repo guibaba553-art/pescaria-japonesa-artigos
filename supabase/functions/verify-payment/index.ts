@@ -8,8 +8,43 @@ const corsHeaders = {
 };
 
 const requestSchema = z.object({
-  orderId: z.string().uuid('Invalid order ID format')
+  orderId: z.string().uuid('Invalid order ID format'),
+  gateway: z.enum(['mercadopago', 'abacatepay', 'asaas']).optional().default('mercadopago'),
 });
+
+// Mapeamento de status AbacatePay para o formato interno
+function mapAbacatePayStatus(status: string): string {
+  switch (status) {
+    case 'PAID': return 'approved';
+    case 'PENDING': return 'pending';
+    case 'EXPIRED': return 'expired';
+    case 'CANCELLED': return 'cancelled';
+    case 'REFUNDED': return 'refunded';
+    default: return status.toLowerCase();
+  }
+}
+
+// Mapeamento de status Asaas para o formato interno
+function mapAsaasStatus(status: string): string {
+  switch (status) {
+    case 'CONFIRMED':
+    case 'RECEIVED':
+      return 'approved';
+    case 'PENDING':
+    case 'AWAITING_RISK_ANALYSIS':
+      return 'pending';
+    case 'OVERDUE':
+      return 'expired';
+    case 'REFUNDED':
+    case 'REFUND_REQUESTED':
+      return 'refunded';
+    case 'CANCELLED':
+    case 'DELETED':
+      return 'cancelled';
+    default:
+      return status.toLowerCase();
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,8 +70,8 @@ serve(async (req) => {
       );
     }
     
-    const { orderId } = validationResult.data;
-    console.log('Verificando pagamento para pedido:', orderId);
+    const { orderId, gateway } = validationResult.data;
+    console.log(`Verificando pagamento para pedido: ${orderId} (gateway: ${gateway})`);
     
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
@@ -68,7 +103,7 @@ serve(async (req) => {
     // Buscar o pedido e verificar autorização
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, payment_id, status, user_id')
+      .select('id, payment_id, status, user_id, payment_gateway, asaas_payment_id')
       .eq('id', orderId)
       .single();
 
@@ -96,44 +131,134 @@ serve(async (req) => {
       );
     }
 
-    if (!order.payment_id) {
-      console.error('Pedido não tem payment_id');
-      return new Response(
-        JSON.stringify({ error: 'Pedido sem ID de pagamento' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let paymentStatus: string;
+    let paymentData: Record<string, unknown>;
 
-    // Buscar status do pagamento no Mercado Pago
-    const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
-    console.log('Buscando pagamento no Mercado Pago:', order.payment_id);
-
-    const paymentResponse = await fetch(
-      `https://api.mercadopago.com/v1/payments/${order.payment_id}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
+    switch (gateway) {
+      case 'abacatepay': {
+        // BUG-002: Suporte a polling AbacatePay via GET /v2/transparents/check
+        if (!order.payment_id) {
+          return new Response(
+            JSON.stringify({ error: 'Pedido sem ID de pagamento AbacatePay' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
-      }
-    );
 
-    if (!paymentResponse.ok) {
-      console.error('Erro ao buscar pagamento no Mercado Pago:', paymentResponse.status);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao consultar Mercado Pago' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        const abacatepayApiKey = Deno.env.get('ABACATEPAY_API_KEY');
+        if (!abacatepayApiKey) {
+          throw new Error('ABACATEPAY_API_KEY not configured');
+        }
+
+        const response = await fetch(
+          `https://api.abacatepay.com/v2/transparents/check?id=${order.payment_id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${abacatepayApiKey}`,
+            }
+          }
+        );
+
+        if (!response.ok) {
+          console.error('Erro ao buscar pagamento no AbacatePay:', response.status);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao consultar AbacatePay' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const abacatepayData = await response.json();
+        paymentStatus = mapAbacatePayStatus(abacatepayData?.data?.status || '');
+        paymentData = abacatepayData?.data || {};
+        break;
+      }
+
+      case 'asaas': {
+        // Suporte a polling Asaas via GET /v3/payments/{id}
+        const asaasPaymentId = order.asaas_payment_id || order.payment_id;
+        if (!asaasPaymentId) {
+          return new Response(
+            JSON.stringify({ error: 'Pedido sem ID de pagamento Asaas' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const asaasApiKey = Deno.env.get('ASAAS_API_KEY');
+        if (!asaasApiKey) {
+          throw new Error('ASAAS_API_KEY not configured');
+        }
+
+        const asaasEnv = Deno.env.get('ASAAS_ENVIRONMENT') || 'sandbox';
+        const baseUrl = asaasEnv === 'production'
+          ? 'https://api.asaas.com'
+          : 'https://api-sandbox.asaas.com';
+
+        const response = await fetch(
+          `${baseUrl}/v3/payments/${asaasPaymentId}`,
+          {
+            headers: {
+              'access_token': asaasApiKey,
+              'User-Agent': 'JapasPesca/1.0.0',
+            }
+          }
+        );
+
+        if (!response.ok) {
+          console.error('Erro ao buscar pagamento no Asaas:', response.status);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao consultar Asaas' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const asaasData = await response.json();
+        paymentStatus = mapAsaasStatus(asaasData?.status || '');
+        paymentData = asaasData || {};
+        break;
+      }
+
+      default: {
+        // Legacy: Mercado Pago
+        if (!order.payment_id) {
+          return new Response(
+            JSON.stringify({ error: 'Pedido sem ID de pagamento' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+        const paymentResponse = await fetch(
+          `https://api.mercadopago.com/v1/payments/${order.payment_id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            }
+          }
+        );
+
+        if (!paymentResponse.ok) {
+          console.error('Erro ao buscar pagamento no Mercado Pago:', paymentResponse.status);
+          return new Response(
+            JSON.stringify({ error: 'Erro ao consultar Mercado Pago' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const mpData = await paymentResponse.json();
+        paymentStatus = mpData?.status || '';
+        paymentData = mpData || {};
+        break;
+      }
     }
 
-    const paymentData = await paymentResponse.json();
-    console.log('Status do pagamento:', paymentData.status);
+    console.log('Status do pagamento:', paymentStatus);
 
     // Se pagamento aprovado, atualizar o pedido
-    if (paymentData.status === 'approved' && order.status === 'aguardando_pagamento') {
+    if (paymentStatus === 'approved' && order.status === 'aguardando_pagamento') {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ status: 'em_preparo' })
-        .eq('id', order.id);
+        .eq('id', order.id)
+        .eq('status', 'aguardando_pagamento');
 
       if (updateError) {
         console.error('Erro ao atualizar pedido:', updateError);
@@ -145,26 +270,6 @@ serve(async (req) => {
 
       console.log('Pedido atualizado com sucesso');
 
-      // Subtrair estoque após pagamento aprovado
-      try {
-        const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ orderId: order.id })
-        });
-
-        if (stockResponse.ok) {
-          const stockData = await stockResponse.json();
-          console.log('Estoque subtraído:', stockData.message);
-        } else {
-          console.error('Erro ao subtrair estoque:', await stockResponse.text());
-        }
-      } catch (stockError) {
-        console.error('Erro ao chamar subtract-stock:', stockError);
-      }
 
       return new Response(
         JSON.stringify({ 
@@ -180,8 +285,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Status do pagamento: ${paymentData.status}`,
-        status: paymentData.status,
+        message: `Status do pagamento: ${paymentStatus}`,
+        status: paymentStatus,
         updated: false
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCategories } from "@/hooks/useCategories";
 import { Product } from "@/types/product";
 import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
-import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
+import { effectiveProductOrVariationPrice, isPromoActive } from "@/utils/promoPrice";
 import varasImg from "@/assets/category-varas.jpg";
 import molinetesImg from "@/assets/category-molinetes.jpg";
 import carretilhasImg from "@/assets/category-carretilhas.jpg";
@@ -61,7 +61,7 @@ const ProductMiniCard = ({
   const navigate = useNavigate();
   const hasVariations = (product as any).variations?.length > 0;
   const finalPrice = effectiveProductOrVariationPrice(product as any);
-  const onSale = !!(product.on_sale && product.sale_price && product.sale_price < product.price);
+  const onSale = isPromoActive(product);
   const discount = onSale
     ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
     : 0;
@@ -153,7 +153,12 @@ export default function MobileHome() {
         .not("sale_price", "is", null)
         .order("sale_ends_at", { ascending: true, nullsFirst: false })
         .limit(8);
-      if (!cancelled) setFlashDeals(((data as unknown) as Product[]) || []);
+      // Filter out expired promos (mesma lógica do FlashDealsCountdown)
+      const now = Date.now();
+      const valid = ((data as unknown as Product[]) || []).filter(
+        (p) => !p.sale_ends_at || new Date(p.sale_ends_at).getTime() > now,
+      );
+      if (!cancelled) setFlashDeals(valid);
     };
 
     const loadDeferred = async () => {

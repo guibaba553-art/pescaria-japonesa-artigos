@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
+import { isPromoActive } from '@/utils/promoPrice';
 
 interface Variation {
   id: string;
@@ -130,17 +131,17 @@ export function PromotionsManagement() {
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
       if (filter === 'on_sale') {
-        return p.on_sale || p.variations.some((v) => v.on_sale);
+        return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
       }
       if (filter === 'off') {
-        return !p.on_sale && !p.variations.some((v) => v.on_sale);
+        return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
       }
       return true;
     });
   }, [products, search, filter]);
 
   const onSaleCount = products.filter(
-    (p) => p.on_sale || p.variations.some((v) => v.on_sale)
+    (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
   ).length;
 
   const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft => {
@@ -222,6 +223,7 @@ export function PromotionsManagement() {
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
     const soldOut = limitQty != null && soldQty >= limitQty;
+    const isActuallyActive = onSale && !expired && !soldOut;
     const fPct = Number(freightPct || 0) / 100;
     const oPct = Number(opCostPct || 0) / 100;
     const tPct = Number(taxPct || 0) / 100;
@@ -306,7 +308,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap gap-2 items-center">
           <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-            {onSale ? 'Atualizar promoção' : 'Aplicar promoção'}
+            {isActuallyActive ? 'Atualizar promoção' : onSale ? 'Promoção expirada — aplicar nova' : 'Aplicar promoção'}
           </Button>
           {onSale && (
             <Button size="sm" variant="outline" onClick={() => remove(table, id)} disabled={saving[key]}>
@@ -377,7 +379,7 @@ export function PromotionsManagement() {
             {filtered.map((p) => {
               const hasVars = p.variations.length > 0;
               const isOpen = expanded[p.id] ?? false;
-              const anyOnSale = p.on_sale || p.variations.some((v) => v.on_sale);
+              const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
               return (
                 <div key={p.id} className="border rounded-lg overflow-hidden">
                   <div className="flex items-center gap-3 p-3 bg-card">
@@ -435,7 +437,7 @@ export function PromotionsManagement() {
                                 {' '}• Estoque: {v.stock}
                               </div>
                             </div>
-                            {v.on_sale && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
+                            {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
                           {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
                         </div>

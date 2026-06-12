@@ -33,6 +33,24 @@ export const APP_CONFIG = {
   MERCADO_PAGO_PUBLIC_KEY: import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY ?? 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485',
 } as const;
 
+export const ASAAS_CONFIG = {
+  ENVIRONMENT: import.meta.env.VITE_ASAAS_ENVIRONMENT ?? 'sandbox',
+  // NOTA: ASAAS_API_KEY nunca vai no frontend — apenas nas edge functions
+} as const;
+
+export const PAYMENT_CONFIG = {
+  PIX_EXPIRATION_MINUTES: 30,
+  STOCK_RESERVE_TTL_MINUTES: 30,
+  CARD_RETRY_MAX_ATTEMPTS: 3,
+  CARD_RETRY_WINDOW_MINUTES: 10,
+  PENDING_ORDER_CANCEL_HOURS: 24,
+  POLLING_INTERVAL_MS: 5000,
+  POLLING_MAX_MINUTES: 15,
+  ASAAS_TIMEOUT_MS: 60000,
+  MAX_INSTALLMENTS: 10,
+  MIN_INSTALLMENT_VALUE: 5,
+} as const;
+
 export const PRODUCT_CATEGORIES = [
   'Varas',
   'Molinetes e Carretilhas',
