@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { handlePaymentConfirmed } from "../_shared/stockHandler.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -308,9 +309,8 @@ serve(async (req) => {
 
 /**
  * Execute all post-payment actions after a payment is confirmed:
- * 1. Release stock reservation
- * 2. Subtract real stock (call subtract-stock function)
- * 3. Send transactional email for payment confirmation
+ * 1. Release stock reservation + subtract real stock (via shared handler)
+ * 2. Send transactional email for payment confirmation
  *
  * Errors are logged but never bubble up — the webhook must respond 200 quickly.
  */
@@ -321,42 +321,10 @@ async function executePostPaymentActions(
   orderId: string,
   payment: AsaasWebhookPayload["payment"],
 ): Promise<void> {
-  // 1. Release stock reservation
-  try {
-    await supabase.rpc("release_stock_reservation", { p_order_id: orderId });
-  } catch (err) {
-    console.error(`[asaas-webhook] Error releasing stock reservation for order ${orderId}:`, err);
-  }
+  // 1. Release stock reservation + subtract real stock via shared handler
+  await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, orderId);
 
-  // 2. Subtract real stock via internal function call
-  try {
-    const stockResponse = await fetch(
-      `${supabaseUrl}/functions/v1/subtract-stock`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${supabaseKey}`,
-          "Content-Type": "application/json",
-          "User-Agent": "JapasPesca/1.0.0",
-        },
-        body: JSON.stringify({ orderId }),
-      },
-    );
-
-    if (stockResponse.ok) {
-      const stockData = await stockResponse.json();
-      console.log(`[asaas-webhook] Stock subtraction result for order ${orderId}:`, stockData);
-    } else {
-      console.error(
-        `[asaas-webhook] Failed to subtract stock for order ${orderId}:`,
-        await stockResponse.text(),
-      );
-    }
-  } catch (err) {
-    console.error(`[asaas-webhook] Error calling subtract-stock for order ${orderId}:`, err);
-  }
-
-  // 3. Send transactional email for payment confirmation
+  // 2. Send transactional email for payment confirmation
   try {
     const { data: order } = await supabase
       .from("orders")

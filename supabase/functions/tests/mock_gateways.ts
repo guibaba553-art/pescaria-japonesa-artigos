@@ -11,9 +11,12 @@ type MockFn = (url: string, method: string, body: unknown) => { status: number; 
 
 let _asaasMock: MockFn | null = null;
 let _abacateMock: MockFn | null = null;
+let _internalMock: MockFn | null = null;
 
 export function mockAsaas(fn: MockFn | null) { _asaasMock = fn; }
 export function mockAbacatePay(fn: MockFn | null) { _abacateMock = fn; }
+/** Generic mock for any URL not caught by gateway mocks (e.g. internal edge functions) */
+export function mockInternalFn(fn: MockFn | null) { _internalMock = fn; }
 
 export function interceptFetch() {
   globalThis.fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
@@ -36,6 +39,12 @@ export function interceptFetch() {
       return new Response(JSON.stringify({ error: "AbacatePay mock not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
 
+    // Generic internal mock (for subtract-stock, etc.)
+    if (_internalMock) {
+      const r = _internalMock(url, method, body);
+      if (r) return new Response(JSON.stringify(r.body), { status: r.status, headers: { "Content-Type": "application/json" } });
+    }
+
     return _originalFetch(input, init);
   };
 }
@@ -56,7 +65,7 @@ function jsonStatus(status: number, body: unknown) { return { status, body }; }
 export const asaas = {
   tokenizeOk: (token = "tok_mock_abc") => jsonStatus(200, { creditCardToken: token, creditCardNumber: "4242", creditCardBrand: "VISA" }),
   tokenizeFail: (msg = "Cartão inválido") => jsonStatus(400, { errors: [{ code: "invalid_card", description: msg }] }),
-  paymentOk: (overrides: Record<string, unknown> = {}) => jsonStatus(200, { id: "pay_001", status: "CONFIRMED", value: 49.90, netValue: 47.41, installmentCount: 1, creditCardBrandName: "VISA", creditCard: { brand: "VISA", lastFourDigits: "4242" }, ...overrides }),
+  paymentOk: (overrides: Record<string, unknown> = {}) => jsonStatus(200, { id: "pay_001", status: "CONFIRMED", value: 49.90, netValue: 47.41, installmentCount: 1, creditCardBrandName: "VISA", creditCard: { brand: "VISA", lastFourDigits: "4242", creditCardToken: "tok_from_payment" }, ...overrides }),
   paymentFail: (msg = "Cartão recusado.") => jsonStatus(400, { errors: [{ code: "invalid_card", description: msg }] }),
   customerCreate: (id = "cus_mock_001") => jsonStatus(200, { id, name: "Test", email: "t@t.com", cpfCnpj: "123" }),
   customerGet: (id = "cus_mock_001") => jsonStatus(200, { id, name: "Test" }),

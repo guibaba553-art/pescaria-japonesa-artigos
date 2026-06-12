@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { handlePaymentConfirmed } from "../_shared/stockHandler.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -147,16 +148,8 @@ serve(async (req) => {
             })
             .eq("id", orderId);
 
-          // Release stock reservation and subtract real stock
-          try {
-            await supabase.rpc("release_stock_reservation", { p_order_id: orderId });
-          } catch (_) { /* ignore */ }
-
-          try {
-            await supabase.rpc("subtract_stock_for_order", { p_order_id: orderId });
-          } catch (err) {
-            console.error("Error subtracting stock:", err);
-          }
+          // Liberar reserva e decrementar estoque via shared handler
+          await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, orderId);
 
           console.log(`Order ${orderId} paid and processing`);
         }

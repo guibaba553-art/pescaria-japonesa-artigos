@@ -77,7 +77,7 @@ export default function CheckoutEntrega() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading } = useAuth();
-  const { items, total, itemCount } = useCart();
+  const { items, total, itemCount, clearCart } = useCart();
 
   const freteNome = searchParams.get('frete');
   const freteValor = parseFloat(searchParams.get('frete_valor') || '0');
@@ -121,6 +121,7 @@ export default function CheckoutEntrega() {
   const hiddenAddresses = primaryAddress ? addresses.filter((a) => a.id !== primaryAddress.id) : [];
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
   const [pixCloseConfirmOpen, setPixCloseConfirmOpen] = useState(false);
   const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string; gateway?: 'abacatepay' | 'asaas' }>({
@@ -267,8 +268,13 @@ export default function CheckoutEntrega() {
       setAddresses(data);
       // Auto-select default if nothing selected yet and not pickup
       if (!isPickup && !selectedOption) {
-        const def = data.find((a) => a.is_default) ?? data[0];
-        if (def) setSelectedOption(def.id);
+        if (data.length > 0) {
+          const def = data.find((a) => a.is_default) ?? data[0];
+          if (def) setSelectedOption(def.id);
+        } else {
+          // Sem endereços — auto-seleciona retirada na loja
+          setSelectedOption('pickup');
+        }
       }
     }
     setLoadingAddresses(false);
@@ -290,6 +296,13 @@ export default function CheckoutEntrega() {
       .order('last_used_at', { ascending: false })
       .then(({ data }) => setSavedCards((data as SavedMethod[]) || []));
   }, [user?.id]);
+
+  // Auto-seleciona o primeiro cartão salvo quando a lista carrega
+  useEffect(() => {
+    if (savedCards.length > 0 && !selectedCardId) {
+      setSelectedCardId(savedCards[0].id);
+    }
+  }, [savedCards]);
 
   const openNew = () => {
     setForm(emptyForm);
@@ -394,6 +407,17 @@ export default function CheckoutEntrega() {
 
   const handleFinalizeOrder = async () => {
     if (finalizing) return;
+
+    // ── Validações de formulário (backend guard) ──────────────
+    if (!selectedOption) {
+      toast.error('Selecione uma forma de entrega antes de finalizar o pedido.');
+      return;
+    }
+    if (!selectedPayment) {
+      toast.error('Selecione uma forma de pagamento antes de finalizar o pedido.');
+      return;
+    }
+
     setFinalizing(true);
     setProcessingStep('Validando dados...');
 
@@ -495,20 +519,16 @@ export default function CheckoutEntrega() {
       }));
       await supabase.from('order_items').insert(orderItems);
 
-      // 5. Reservar estoque
-      const { error: resvError } = await supabase.rpc('reserve_stock_for_order', {
-        p_order_id: orderData.id,
-        p_items: items.map(item => ({
-          product_id: item.id,
-          variation_id: item.variationId || null,
-          quantity: item.quantity,
-        })),
-        p_ttl_minutes: 30,
-      });
-      if (resvError) {
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
-        throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
+      // 5. Verificar disponibilidade de estoque (usa get_available_stock que considera reservas ativas)
+      setProcessingStep('Verificando estoque...');
+      for (const item of items) {
+        const { data: available, error: stockErr } = await supabase.rpc('get_available_stock', {
+          p_product_id: item.id,
+          p_variation_id: item.variationId || null,
+        });
+        if (stockErr || (available ?? 0) < item.quantity) {
+          throw new Error(`${item.name}: apenas ${available ?? 0} unidade(s) disponível(is) no estoque.`);
+        }
       }
 
       // 6. Consumir limite de promoções
@@ -520,13 +540,15 @@ export default function CheckoutEntrega() {
         })),
       });
       if (promoError) {
-        try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
         await supabase.from('order_items').delete().eq('order_id', orderData.id);
         await supabase.from('orders').delete().eq('id', orderData.id);
         throw new Error(promoError.message || 'Limite de promoção atingido.');
       }
 
-      // 7. Processar pagamento conforme método selecionado
+      // 7. Marcar pedido como colocado — impede duplicata se o usuário recarregar a página
+      setOrderPlaced(true);
+
+      // 8. Processar pagamento conforme método selecionado
       if (selectedPayment === 'pix') {
         setProcessingStep('Gerando QR Code PIX...');
         // PIX via AbacatePay Transparente com fallback Asaas
@@ -586,12 +608,43 @@ export default function CheckoutEntrega() {
             pixResult = asaasData.data;
             usedGateway = 'asaas';
           } catch (asaasErr) {
-            // Ambos falharam — fazer rollback
-            try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+            // Ambos falharam — fazer rollback (sem reserva para liberar)
+            await supabase.rpc('release_promo_limits', {
+              p_items: items.map(item => ({
+                product_id: item.id,
+                variation_id: item.variationId || null,
+                quantity: item.quantity,
+              })),
+            }).catch(() => {});
             await supabase.from('order_items').delete().eq('order_id', orderData.id);
             await supabase.from('orders').delete().eq('id', orderData.id);
             throw new Error('PIX temporariamente indisponível. Tente novamente mais tarde.');
           }
+        }
+
+        // Reservar estoque após PIX gerado com sucesso
+        setProcessingStep('Reservando estoque...');
+        const { error: resvError } = await supabase.rpc('reserve_stock_for_order', {
+          p_order_id: orderData.id,
+          p_items: items.map(item => ({
+            product_id: item.id,
+            variation_id: item.variationId || null,
+            quantity: item.quantity,
+          })),
+          p_ttl_minutes: 30,
+        });
+        if (resvError) {
+          // Race condition rara: estoque esgotou entre a verificação e a geração do QR
+          await supabase.rpc('release_promo_limits', {
+            p_items: items.map(item => ({
+              product_id: item.id,
+              variation_id: item.variationId || null,
+              quantity: item.quantity,
+            })),
+          }).catch(() => {});
+          await supabase.from('order_items').delete().eq('order_id', orderData.id);
+          await supabase.from('orders').delete().eq('id', orderData.id);
+          throw new Error('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
         }
 
         // Abre dialog com QR Code PIX
@@ -603,6 +656,9 @@ export default function CheckoutEntrega() {
           expiresAt: pixResult.expiresAt,
           gateway: usedGateway,
         });
+
+        // Limpar carrinho somente após PIX gerado com sucesso
+        clearCart();
         return;
       }
 
@@ -669,6 +725,7 @@ export default function CheckoutEntrega() {
 
           // Pagamento aprovado
           toast.success('Pagamento aprovado!');
+          clearCart();
 
           setProcessingStep('Redirecionando...');
           navigate('/conta');
@@ -694,7 +751,7 @@ export default function CheckoutEntrega() {
     navigate('/auth?redirect=/checkout/entrega');
     return null;
   }
-  if (items.length === 0) {
+  if (items.length === 0 && !orderPlaced) {
     return (
       <div className="min-h-screen flex flex-col pt-20 lg:pt-32">
         <Header />
@@ -1171,7 +1228,7 @@ export default function CheckoutEntrega() {
                 className="w-full rounded-full font-bold"
                 size="lg"
                 onClick={handleFinalizeOrder}
-                disabled={finalizing}
+                disabled={finalizing || selectedOption === ''}
               >
                 {finalizing ? (
                   <span className="flex items-center gap-2">
@@ -1245,6 +1302,7 @@ export default function CheckoutEntrega() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
+                clearCart();
                 setPixCloseConfirmOpen(false);
                 setPixDialog((prev) => ({ ...prev, open: false }));
                 navigate('/conta');
