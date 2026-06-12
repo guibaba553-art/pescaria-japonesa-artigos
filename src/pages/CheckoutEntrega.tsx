@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
+import { CreditCardForm, type CreditCardFormData, type CreditCardFormHandle, type SavedCard } from '@/components/CreditCardForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,9 +19,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { MapPin, Pencil, Plus, Trash2, CreditCard, Loader2, Store, Check, Truck, Smartphone, Wallet, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SavedMethod, PaymentOrder } from '@/types/payment';
 import { sanitizeNumericInput, formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG } from '@/config/constants';
@@ -47,18 +59,6 @@ const emptyForm: FormState = {
   city: '',
   state: '',
 };
-
-interface SavedMethod {
-  id: string;
-  payment_method: string;
-  card_brand: string | null;
-  card_last4: string | null;
-  card_exp_month: string | null;
-  card_exp_year: string | null;
-  cardholder_name: string | null;
-  is_default: boolean;
-  last_used_at: string | null;
-}
 
 function addressToForm(a: UserAddress): FormState {
   return {
@@ -94,9 +94,17 @@ export default function CheckoutEntrega() {
     isPickup ? 'pickup' : ''
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card' | 'mercado_pago'>('pix');
+  const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card'>('pix');
+  const handlePaymentChange = (method: 'pix' | 'credit_card') => {
+    setSelectedPayment(method);
+  };
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<SavedMethod[]>([]);
+  const creditCardRef = useRef<CreditCardFormHandle>(null);
+  const [installments, setInstallments] = useState(1);
+  const [shouldSaveCard, setShouldSaveCard] = useState(false);
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardError, setCardError] = useState<string | undefined>();
 
   const selectedAddress = typeof selectedOption === 'string' && selectedOption !== 'pickup'
     ? addresses.find((a) => a.id === selectedOption) ?? null
@@ -113,7 +121,9 @@ export default function CheckoutEntrega() {
   const hiddenAddresses = primaryAddress ? addresses.filter((a) => a.id !== primaryAddress.id) : [];
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
-  const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string }>({
+  const [processingStep, setProcessingStep] = useState('');
+  const [pixCloseConfirmOpen, setPixCloseConfirmOpen] = useState(false);
+  const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string; gateway?: 'abacatepay' | 'asaas' }>({
     open: false,
     qrCode: '',
     qrCodeBase64: '',
@@ -385,6 +395,7 @@ export default function CheckoutEntrega() {
   const handleFinalizeOrder = async () => {
     if (finalizing) return;
     setFinalizing(true);
+    setProcessingStep('Validando dados...');
 
     try {
       // 1. Validar carrinho
@@ -410,18 +421,33 @@ export default function CheckoutEntrega() {
         }
       }
 
-      // 2. Limpar pedidos abandonados anteriores
-      const { data: abandonedOrders } = await supabase
+      // 2. Limpar pedidos abandonados anteriores (apenas sem pagamento e criados há mais de 5 min)
+      // Usa condição WHERE no DELETE para evitar race condition entre SELECT e DELETE
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+      // Libera reserva de estoque dos pedidos abandonados
+      const { data: abandonedIds } = await supabase
         .from('orders')
         .select('id')
         .eq('user_id', user!.id)
         .eq('status', 'aguardando_pagamento')
-        .is('payment_id', null);
-      for (const ab of abandonedOrders || []) {
+        .is('payment_id', null)
+        .is('asaas_payment_id', null)
+        .lt('created_at', fiveMinutesAgo);
+      for (const ab of abandonedIds || []) {
         try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
         try { await supabase.from('order_items').delete().eq('order_id', ab.id); } catch {}
-        try { await supabase.from('orders').delete().eq('id', ab.id); } catch {}
       }
+
+      // DELETE único com WHERE — atômico, elimina race condition
+      await supabase
+        .from('orders')
+        .delete()
+        .eq('user_id', user!.id)
+        .eq('status', 'aguardando_pagamento')
+        .is('payment_id', null)
+        .is('asaas_payment_id', null)
+        .lt('created_at', fiveMinutesAgo);
 
       // 3. Montar dados do pedido
       const isPickup = selectedOption === 'pickup';
@@ -502,7 +528,8 @@ export default function CheckoutEntrega() {
 
       // 7. Processar pagamento conforme método selecionado
       if (selectedPayment === 'pix') {
-        // PIX via AbacatePay Transparente
+        setProcessingStep('Gerando QR Code PIX...');
+        // PIX via AbacatePay Transparente com fallback Asaas
         const amountInCents = Math.round((total + displayFreteValor) * 100);
 
         // Busca dados completos do usuário para o customer
@@ -512,72 +539,147 @@ export default function CheckoutEntrega() {
           .eq('id', user!.id)
           .single();
 
-        const { data: pixData, error: pixError } = await supabase.functions.invoke(
-          'create-abacatepay-pix',
-          {
-            body: {
-              orderId: orderData.id,
-              amount: amountInCents,
-              description: `Pedido ${orderData.id.substring(0, 8)}`,
-              customerName: profile?.full_name || selectedAddress?.recipient_name || user?.user_metadata?.name,
-              customerTaxId: profile?.cpf || undefined,
-              customerEmail: user?.email,
-              customerCellphone: profile?.phone || undefined,
-            },
-          }
-        );
+        // Tenta AbacatePay primeiro
+        let pixSuccess = false;
+        let pixResult: any = null;
+        let usedGateway: 'abacatepay' | 'asaas' = 'abacatepay';
 
-        if (pixError || !pixData?.success || !pixData?.data) {
-          try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
-          await supabase.from('order_items').delete().eq('order_id', orderData.id);
-          await supabase.from('orders').delete().eq('id', orderData.id);
-          throw new Error(pixData?.error || pixError?.message || 'Erro ao gerar PIX');
+        try {
+          const { data: pixData, error: pixError } = await supabase.functions.invoke(
+            'create-abacatepay-pix',
+            {
+              body: {
+                orderId: orderData.id,
+                amount: amountInCents,
+                description: `Pedido ${orderData.id.substring(0, 8)}`,
+                customerName: profile?.full_name || selectedAddress?.recipient_name || user?.user_metadata?.name,
+                customerTaxId: profile?.cpf || undefined,
+                customerEmail: user?.email,
+                customerCellphone: profile?.phone || undefined,
+              },
+            }
+          );
+
+          if (!pixError && pixData?.success && pixData?.data) {
+            pixSuccess = true;
+            pixResult = pixData.data;
+          }
+        } catch (abacatepayErr) {
+          console.error('AbacatePay PIX error, trying fallback');
+        }
+
+        // Fallback: se AbacatePay falhou, tenta Asaas
+        if (!pixSuccess) {
+          try {
+            const { data: asaasData, error: asaasError } = await supabase.functions.invoke(
+              'create-asaas-pix',
+              {
+                body: { orderId: orderData.id },
+              }
+            );
+
+            if (asaasError || !asaasData?.success) {
+              throw new Error(asaasData?.error || asaasError?.message || 'PIX temporariamente indisponível');
+            }
+
+            pixSuccess = true;
+            pixResult = asaasData.data;
+            usedGateway = 'asaas';
+          } catch (asaasErr) {
+            // Ambos falharam — fazer rollback
+            try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+            await supabase.from('order_items').delete().eq('order_id', orderData.id);
+            await supabase.from('orders').delete().eq('id', orderData.id);
+            throw new Error('PIX temporariamente indisponível. Tente novamente mais tarde.');
+          }
         }
 
         // Abre dialog com QR Code PIX
         setPixDialog({
           open: true,
-          qrCode: pixData.data.brCode || '',
-          qrCodeBase64: pixData.data.brCodeBase64 || '',
+          qrCode: pixResult.brCode || '',
+          qrCodeBase64: pixResult.brCodeBase64 || '',
           orderId: orderData.id,
-          expiresAt: pixData.data.expiresAt,
+          expiresAt: pixResult.expiresAt,
+          gateway: usedGateway,
         });
-        return;
         return;
       }
 
-      if (selectedPayment === 'credit_card' || selectedPayment === 'mercado_pago') {
-        // Checkout hospedado via AbacatePay
-        const isCardOnly = selectedPayment === 'credit_card';
-        const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
-          'create-abacatepay-checkout',
-          {
-            body: {
-              orderId: orderData.id,
-              items: items.map(item => ({
-                id: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                variationId: item.variationId,
-              })),
-              methods: isCardOnly ? ['CARD'] : ['PIX', 'CARD'],
-              successUrl: `${window.location.origin}/conta?payment=success`,
-              returnUrl: `${window.location.origin}/checkout/entrega`,
-            },
-          }
-        );
-
-        if (checkoutError || !checkoutData?.success || !checkoutData?.data?.url) {
-          try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
-          await supabase.from('order_items').delete().eq('order_id', orderData.id);
-          await supabase.from('orders').delete().eq('id', orderData.id);
-          throw new Error(checkoutData?.error || checkoutError?.message || 'Erro ao criar checkout');
+      if (selectedPayment === 'credit_card') {
+        setProcessingStep('Processando pagamento...');
+        // Obtém dados validados do formulário via ref — mostra erros inline se inválido
+        const cardData = creditCardRef.current?.getData();
+        if (!cardData) {
+          toast.error('Corrija os erros no formulário do cartão antes de continuar.');
+          return;
         }
 
-        // Redireciona para o checkout AbacatePay
-        window.location.href = checkoutData.data.url;
-        return;
+        setCardLoading(true);
+        setCardError(undefined);
+
+        try {
+          // Busca dados do perfil para customerData
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, cpf, phone')
+            .eq('id', user!.id)
+            .single();
+
+          // Capturar IP do cliente
+          let remoteIp = '';
+          try {
+            const ipResp = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResp.json();
+            remoteIp = ipData.ip;
+          } catch {
+            remoteIp = '127.0.0.1';
+          }
+
+          const { data: paymentResult, error: paymentError } = await supabase.functions.invoke(
+            'create-payment-asaas',
+            {
+              body: {
+                orderId: orderData.id,
+                installmentCount: cardData.installmentCount,
+                saveCard: cardData.saveCard,
+                creditCard: cardData.creditCard,
+                creditCardHolderInfo: cardData.creditCardHolderInfo,
+                creditCardToken: cardData.creditCardToken,
+                remoteIp,
+                customerData: {
+                  name: profile?.full_name || cardData.creditCardHolderInfo?.name || '',
+                  email: user?.email || '',
+                  cpfCnpj: profile?.cpf || cardData.creditCardHolderInfo?.cpfCnpj || '',
+                  phone: profile?.phone || cardData.creditCardHolderInfo?.phone || cardData.creditCardHolderInfo?.mobilePhone || '',
+                },
+              },
+            }
+          );
+
+          if (paymentError || !paymentResult?.success) {
+            // Cartão recusado — sem rollback
+            const attemptsLeft = paymentResult?.attemptsRemaining ?? 2;
+            setCardError(paymentResult?.error || 'Cartão recusado. Verifique os dados e tente novamente.');
+            toast.error(`Cartão recusado. ${attemptsLeft} tentativa(s) restante(s).`);
+
+            setCardLoading(false);
+            return;
+          }
+
+          // Pagamento aprovado
+          toast.success('Pagamento aprovado!');
+
+          setProcessingStep('Redirecionando...');
+          navigate('/conta');
+          return;
+        } catch (cardErr: any) {
+          setCardError(cardErr?.message || 'Erro ao processar pagamento');
+          toast.error('Erro ao processar pagamento. Tente novamente.');
+          return;
+        } finally {
+          setCardLoading(false);
+        }
       }
 
     } catch (err: any) {
@@ -952,7 +1054,7 @@ export default function CheckoutEntrega() {
                       ? 'border-primary ring-2 ring-primary/30'
                       : 'border-border hover:border-primary/40'
                   }`}
-                  onClick={() => setSelectedPayment('pix')}
+                  onClick={() => handlePaymentChange('pix')}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -973,14 +1075,14 @@ export default function CheckoutEntrega() {
                   </div>
                 </div>
 
-                {/* Cartão de Crédito */}
+                {/* Cartão de Crédito — Checkout Transparente Asaas */}
                 <div
                   className={`rounded-xl border p-4 cursor-pointer transition-all ${
                     selectedPayment === 'credit_card'
                       ? 'border-primary ring-2 ring-primary/30'
                       : 'border-border hover:border-primary/40'
                   }`}
-                  onClick={() => setSelectedPayment('credit_card')}
+                  onClick={() => handlePaymentChange('credit_card')}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
@@ -992,116 +1094,36 @@ export default function CheckoutEntrega() {
                     <div className="flex-1">
                       <p className="font-semibold">Cartão de Crédito</p>
                       <p className="text-sm text-muted-foreground">
-                        {savedCards.length > 0
-                          ? 'Selecione um cartão salvo'
-                          : 'Nenhum cartão salvo ainda'}
+                        Pagamento seguro com checkout transparente — até 10x sem juros
                       </p>
                     </div>
                   </div>
 
-                  {/* Lista de cartões salvos (visível apenas quando selecionado) */}
-                  {selectedPayment === 'credit_card' && savedCards.length > 0 && (
-                    <div className="mt-3 pt-3 border-t space-y-2">
-                      {savedCards.map((card) => (
-                        <div
-                          key={card.id}
-                          className={`rounded-lg border p-3 cursor-pointer transition-all ${
-                            selectedCardId === card.id
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:bg-accent'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCardId(selectedCardId === card.id ? null : card.id);
-                          }}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <CreditCard className="w-4 h-4 text-primary shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {card.card_brand ?? 'Cartão'} •••• {card.card_last4 ?? '????'}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {card.cardholder_name ?? '—'}
-                                  {card.card_exp_month && card.card_exp_year
-                                    ? ` · ${card.card_exp_month}/${card.card_exp_year.slice(-2)}`
-                                    : ''}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {card.is_default && (
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                                  Padrão
-                                </span>
-                              )}
-                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                selectedCardId === card.id ? 'border-primary bg-primary' : 'border-muted-foreground/30'
-                              }`}>
-                                {selectedCardId === card.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs rounded-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Futuro: abrir cadastro de novo cartão
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Cadastrar novo cartão
-                      </Button>
+                  {/* CreditCardForm — visível apenas quando selecionado */}
+                  {selectedPayment === 'credit_card' && (
+                    <div className="mt-3 pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+                      <CreditCardForm
+                        ref={creditCardRef}
+                        totalAmount={total + displayFreteValor}
+                        onInstallmentChange={setInstallments}
+                        saveCard={shouldSaveCard}
+                        onSaveCardChange={setShouldSaveCard}
+                        loading={cardLoading}
+                        savedCards={savedCards.map(c => ({
+                          id: c.id,
+                          cardBrand: c.card_brand,
+                          cardLast4: c.card_last4,
+                          cardExpMonth: c.card_exp_month,
+                          cardExpYear: c.card_exp_year,
+                          cardholderName: c.cardholder_name,
+                          asaasCreditCardToken: c.asaas_credit_card_token,
+                        }))}
+                        onSelectSavedCard={setSelectedCardId}
+                        selectedSavedCardId={selectedCardId}
+                        error={cardError}
+                      />
                     </div>
                   )}
-
-                  {/* Estado vazio: sem cartões salvos */}
-                  {selectedPayment === 'credit_card' && savedCards.length === 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Futuro: abrir dialog para cadastrar cartão
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Cadastrar cartão
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mercado Pago */}
-                <div
-                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                    selectedPayment === 'mercado_pago'
-                      ? 'border-primary ring-2 ring-primary/30'
-                      : 'border-border hover:border-primary/40'
-                  }`}
-                  onClick={() => setSelectedPayment('mercado_pago')}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      selectedPayment === 'mercado_pago' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-                    }`}>
-                      {selectedPayment === 'mercado_pago' && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                    <Wallet className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-semibold">Mercado Pago</p>
-                      <p className="text-sm text-muted-foreground">
-                        Pagamento via carteiras digitais — Google Pay, Apple Pay e mais
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1154,7 +1176,7 @@ export default function CheckoutEntrega() {
                 {finalizing ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Processando…
+                    {processingStep || 'Processando…'}
                   </span>
                 ) : (
                   'Finalizar pedido'
@@ -1169,12 +1191,70 @@ export default function CheckoutEntrega() {
       {/* PIX Dialog */}
       <PixPaymentDialog
         open={pixDialog.open}
-        onOpenChange={(open) => setPixDialog((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => {
+          if (!open && pixDialog.open) {
+            // User is trying to close — show confirmation
+            setPixCloseConfirmOpen(true);
+          } else {
+            setPixDialog((prev) => ({ ...prev, open }));
+          }
+        }}
         qrCode={pixDialog.qrCode}
         qrCodeBase64={pixDialog.qrCodeBase64}
         orderId={pixDialog.orderId}
         expiresAt={pixDialog.expiresAt}
+        gateway={pixDialog.gateway}
+        onRefreshPix={async () => {
+          setProcessingStep('Gerando novo PIX...');
+          try {
+            const gateway = pixDialog.gateway || 'abacatepay';
+            const fnName = gateway === 'asaas' ? 'create-asaas-pix' : 'create-abacatepay-pix';
+            const { data: newPix, error: pixError } = await supabase.functions.invoke(fnName, {
+              body: { orderId: pixDialog.orderId },
+            });
+            if (pixError || !newPix?.success) {
+              toast.error('Erro ao gerar novo PIX. Tente novamente.');
+              return;
+            }
+            setPixDialog({
+              open: true,
+              qrCode: newPix.data.brCode || '',
+              qrCodeBase64: newPix.data.brCodeBase64 || '',
+              orderId: pixDialog.orderId,
+              expiresAt: newPix.data.expiresAt,
+              gateway,
+            });
+          } catch {
+            toast.error('Erro ao gerar novo PIX.');
+          }
+        }}
       />
+
+      {/* Confirmação ao fechar PIX */}
+      <AlertDialog open={pixCloseConfirmOpen} onOpenChange={setPixCloseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pagamento pendente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Seu pedido foi criado e está aguardando pagamento. Deseja acompanhá-lo em /conta?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPixCloseConfirmOpen(false)}>
+              Continuar aqui
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setPixCloseConfirmOpen(false);
+                setPixDialog((prev) => ({ ...prev, open: false }));
+                navigate('/conta');
+              }}
+            >
+              Ir para /conta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Modal de seleção de endereço */}
       <Dialog open={addressDialogOpen} onOpenChange={setAddressDialogOpen}>

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { SavedMethod } from '@/types/payment';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,17 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CreditCard, Plus, Trash2, Star, Loader2, ShieldCheck } from 'lucide-react';
 
-interface SavedMethod {
-  id: string;
-  payment_method: string;
-  card_brand: string | null;
-  card_last4: string | null;
-  card_exp_month: string | null;
-  card_exp_year: string | null;
-  cardholder_name: string | null;
-  is_default: boolean;
-  last_used_at: string | null;
-}
+
 
 /**
  * Detecta a bandeira do cartão a partir dos primeiros dígitos (BIN).
@@ -138,7 +129,6 @@ function formatCardNumber(value: string): string {
 
 export function MyPaymentMethods() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [methods, setMethods] = useState<SavedMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -157,7 +147,7 @@ export function MyPaymentMethods() {
       .order('last_used_at', { ascending: false, nullsFirst: false });
 
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
     } else {
       setMethods((data as SavedMethod[]) ?? []);
     }
@@ -174,7 +164,7 @@ export function MyPaymentMethods() {
     const parsed = cardSchema.safeParse(form);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
-      toast({ title: 'Dados inválidos', description: first.message, variant: 'destructive' });
+      toast.error(first.message);
       return;
     }
     const fullNumber = parsed.data.card_number;
@@ -182,6 +172,32 @@ export function MyPaymentMethods() {
     const last4 = fullNumber.slice(-4);
 
     setSaving(true);
+
+    // Tokenizar cartão via edge function (Asaas)
+    const { data: tokenResult, error: tokenError } = await supabase.functions.invoke('tokenize-card', {
+      body: {
+        cardNumber: fullNumber,
+        holderName: parsed.data.cardholder_name,
+        expiryMonth: parsed.data.card_exp_month,
+        expiryYear: parsed.data.card_exp_year,
+      },
+    });
+
+    if (tokenError || !tokenResult?.success) {
+      setSaving(false);
+      toast.error(tokenResult?.error || tokenError?.message || 'Tente novamente.');
+      return;
+    }
+
+    const creditCardToken = tokenResult?.creditCardToken;
+
+    // Só salva se a tokenização retornou um token válido
+    if (!creditCardToken || typeof creditCardToken !== 'string' || creditCardToken.length < 10) {
+      setSaving(false);
+      toast.error('Falha ao tokenizar cartão. Tente novamente.');
+      return;
+    }
+
     const { error } = await supabase.from('saved_payment_methods').insert({
       user_id: user.id,
       payment_method: parsed.data.payment_method,
@@ -191,13 +207,14 @@ export function MyPaymentMethods() {
       card_exp_month: parsed.data.card_exp_month,
       card_exp_year: parsed.data.card_exp_year,
       is_default: parsed.data.is_default,
+      asaas_credit_card_token: creditCardToken,
     });
     setSaving(false);
     if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Forma de pagamento adicionada!' });
+    toast.success('Forma de pagamento adicionada!');
     setDialogOpen(false);
     setForm(DEFAULT_FORM);
     load();
@@ -206,10 +223,10 @@ export function MyPaymentMethods() {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('saved_payment_methods').delete().eq('id', id);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Forma de pagamento removida' });
+    toast.success('Forma de pagamento removida');
     setConfirmDelete(null);
     load();
   };
@@ -222,10 +239,10 @@ export function MyPaymentMethods() {
       .eq('id', id)
       .eq('user_id', user.id);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Definido como padrão' });
+    toast.success('Definido como padrão');
     load();
   };
 
