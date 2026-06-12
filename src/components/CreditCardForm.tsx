@@ -84,7 +84,7 @@ export interface CreditCardFormProps {
 /* -------------------------------------------------------------------------- */
 
 function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 19);
+  const digits = value.replace(/\D/g, "").slice(0, 16);
   return digits.replace(/(.{4})/g, "$1 ").trim();
 }
 
@@ -185,8 +185,15 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
   useEffect(() => {
     if (!hasSavedCards) {
       setMode("new");
+    } else if (selectedSavedCardIdProp) {
+      // Auto-switch to saved mode if a card is selected (handles async loading)
+      const card = savedCards.find(c => c.id === selectedSavedCardIdProp);
+      if (card?.asaasCreditCardToken) {
+        setMode("saved");
+        if (card.cardholderName) setHolderName(card.cardholderName);
+      }
     }
-  }, [hasSavedCards]);
+  }, [hasSavedCards, selectedSavedCardIdProp, savedCards]);
 
   /* -------- Internal selected card -------- */
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(
@@ -201,6 +208,8 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
       onSelectSavedCard?.(id);
       if (id === null) {
         setMode("new");
+        setSaveCard(true);
+        onSaveCardChange?.(true);
       } else {
         const card = savedCards.find(c => c.id === id);
         // Only enter saved mode if the card actually has a token
@@ -236,7 +245,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
   const [mobilePhone, setMobilePhone] = useState("");
 
   const [installmentCount, setInstallmentCount] = useState("1");
-  const [saveCard, setSaveCard] = useState(false);
+  const [saveCard, setSaveCard] = useState(true);
 
   const [errors, setErrors] = useState<string[]>([]);
   const touchedRef = useRef<Record<string, boolean>>({});
@@ -466,7 +475,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
 
   /* -------- Field change handlers -------- */
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 19);
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
     setCardNumber(raw);
     clearFieldError("cardNumber");
   };

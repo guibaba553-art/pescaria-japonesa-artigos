@@ -137,7 +137,7 @@ describe('validateCardNumber', () => {
     expect(result.brand).toBeNull();
   });
 
-  it('deve rejeitar número muito longo (> 19 dígitos)', () => {
+  it('deve rejeitar número muito longo (> 16 dígitos)', () => {
     const result = validateCardNumber('42424242424242424242');
     expect(result.valid).toBe(false);
     expect(result.brand).toBeNull();

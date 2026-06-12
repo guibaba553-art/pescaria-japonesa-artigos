@@ -1,7 +1,7 @@
 // Shared test helpers
 
-const SUPABASE_URL = "http://127.0.0.1:54321";
-const ANON_KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+export const SUPABASE_URL = "http://127.0.0.1:54321";
+export const ANON_KEY = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
 export const TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 let _jwt: string | null = null;

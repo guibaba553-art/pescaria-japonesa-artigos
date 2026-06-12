@@ -93,7 +93,7 @@ const cardSchema = z.object({
   card_number: z
     .string()
     .transform((v) => v.replace(/\D/g, ''))
-    .refine((v) => v.length >= 13 && v.length <= 19, 'Número de cartão inválido')
+    .refine((v) => v.length >= 13 && v.length <= 16, 'Número de cartão inválido')
     .refine(isValidLuhn, 'Número de cartão inválido (verifique os dígitos)'),
   cardholder_name: z.string().trim().min(2, 'Informe o nome no cartão').max(100),
   card_exp_month: z.string().regex(/^(0[1-9]|1[0-2])$/, 'Mês inválido (01-12)'),
@@ -123,7 +123,7 @@ const DEFAULT_FORM: CardForm = {
  * Formata número do cartão em grupos de 4 dígitos.
  */
 function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 19);
+  const digits = value.replace(/\D/g, '').slice(0, 16);
   return digits.replace(/(.{4})/g, '$1 ').trim();
 }
 
@@ -381,7 +381,7 @@ export function MyPaymentMethods() {
                   autoComplete="cc-number"
                   value={formatCardNumber(form.card_number)}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, card_number: e.target.value.replace(/\D/g, '').slice(0, 19) }))
+                    setForm((f) => ({ ...f, card_number: e.target.value.replace(/\D/g, '').slice(0, 16) }))
                   }
                   placeholder="0000 0000 0000 0000"
                   className="pr-24 font-mono tracking-wider"

@@ -185,7 +185,8 @@ serve(async (req) => {
 
       const brCode: string = qrCodeResult.payload || qrCodeResult.brCode || '';
       const brCodeBase64: string = qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
-      const expiresAt: string = qrCodeResult.expirationDate || qrCodeResult.expiresAt || '';
+      // Override Asaas expiration with our own 30 min window
+      const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
       // Update order with new payment data
       await supabase
@@ -195,12 +196,12 @@ serve(async (req) => {
           payment_gateway: 'asaas',
           qr_code: brCode,
           qr_code_base64: brCodeBase64,
-          pix_expiration: expiresAt || null,
+          pix_expiration: pixExpiration,
           pix_attempts: (currentOrder.pix_attempts || 0) + 1,
         })
         .eq('id', orderId);
 
-      return { id: asaasPaymentId, brCode, brCodeBase64, expiresAt };
+      return { id: asaasPaymentId, brCode, brCodeBase64, expiresAt: pixExpiration };
     }
 
     // ── Helper: create new AbacatePay PIX payment ───────────────────────────
@@ -268,6 +269,7 @@ serve(async (req) => {
       const charge = respData.data;
 
       // Update order with new payment data
+      const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
       await supabase
         .from('orders')
         .update({
@@ -275,7 +277,7 @@ serve(async (req) => {
           payment_gateway: 'abacatepay',
           qr_code: charge.brCode || null,
           qr_code_base64: charge.brCodeBase64 || null,
-          pix_expiration: charge.expiresAt || null,
+          pix_expiration: pixExpiration,
           pix_attempts: (currentOrder.pix_attempts || 0) + 1,
         })
         .eq('id', orderId);
@@ -284,7 +286,7 @@ serve(async (req) => {
         id: charge.id,
         brCode: charge.brCode,
         brCodeBase64: charge.brCodeBase64,
-        expiresAt: charge.expiresAt,
+        expiresAt: pixExpiration,
       };
     }
 
@@ -346,7 +348,8 @@ serve(async (req) => {
 
         const brCode: string = qrCodeResult.payload || qrCodeResult.brCode || '';
         const brCodeBase64: string = qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
-        const expiresAt: string = qrCodeResult.expirationDate || qrCodeResult.expiresAt || '';
+        // Override Asaas expiration with our own 30 min window
+        const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
         // Update stored QR data (might have refreshed expiry)
         if (brCode || brCodeBase64) {
@@ -355,7 +358,7 @@ serve(async (req) => {
             .update({
               qr_code: brCode || order.qr_code,
               qr_code_base64: brCodeBase64 || order.qr_code_base64,
-              pix_expiration: expiresAt || order.pix_expiration,
+              pix_expiration: pixExpiration,
             })
             .eq('id', orderId);
         }
@@ -367,7 +370,7 @@ serve(async (req) => {
               id: order.asaas_payment_id,
               brCode: brCode || order.qr_code,
               brCodeBase64: brCodeBase64 || order.qr_code_base64,
-              expiresAt: expiresAt || order.pix_expiration,
+              expiresAt: pixExpiration,
               refreshed: false,
             },
           }),

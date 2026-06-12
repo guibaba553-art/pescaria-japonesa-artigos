@@ -61,7 +61,7 @@ export function getBrandLabel(brand: string | null): string {
  */
 export function validateCardNumber(number: string): { valid: boolean; brand: string | null } {
   const cleaned = number.replace(/\D/g, '');
-  if (cleaned.length < 13 || cleaned.length > 19) return { valid: false, brand: null };
+  if (cleaned.length < 13 || cleaned.length > 16) return { valid: false, brand: null };
   const valid = luhnCheck(cleaned);
   const brand = valid ? detectBrand(cleaned) : null;
   return { valid, brand };

@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 interface OrderItem {
@@ -18,9 +18,13 @@ serve(async (req) => {
   }
 
   // SECURITY: Require CRON_SECRET to prevent unauthorized cancellations
+  // Aceita tanto Authorization: Bearer <secret> quanto x-cron-secret (usado por pg_cron)
   const cronSecret = Deno.env.get("CRON_SECRET");
   const authHeader = req.headers.get("authorization");
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const cronHeader = req.headers.get("x-cron-secret");
+  const isAuthorized = (!!cronSecret && authHeader === `Bearer ${cronSecret}`)
+    || (!!cronSecret && cronHeader === cronSecret);
+  if (!isAuthorized) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -32,14 +36,17 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Find orders awaiting payment older than 24h
+    // Find orders awaiting payment that are either:
+    //  - older than 24h (original cutoff), OR
+    //  - have an expired PIX (pix_expiration in the past)
+    const now = new Date().toISOString();
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: expiredOrders, error: fetchError } = await supabase
       .from("orders")
-      .select("id, user_id, total_amount, created_at, payment_id")
+      .select("id, user_id, total_amount, created_at, payment_id, pix_expiration")
       .eq("status", "aguardando_pagamento")
-      .lt("created_at", cutoff);
+      .or(`created_at.lt.${cutoff},pix_expiration.lt.${now}`);
 
     if (fetchError) {
       console.error("Failed to fetch expired orders", fetchError);

@@ -137,8 +137,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    // Save payment info on order
+    // Save payment info on order (use our own 30 min window, ignore gateway's expiresAt)
     const charge = respData.data;
+    const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
     await supabase
       .from("orders")
       .update({
@@ -146,7 +147,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payment_method: "pix",
         qr_code: charge.brCode || null,
         qr_code_base64: charge.brCodeBase64 || null,
-        pix_expiration: charge.expiresAt || null,
+        pix_expiration: pixExpiration,
         platform_fee: charge.platformFee || null, // BUG-004 fix
         pix_attempts: (order.pix_attempts || 0) + 1,
       })
@@ -159,7 +160,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           id: charge.id,
           brCode: charge.brCode,
           brCodeBase64: charge.brCodeBase64,
-          expiresAt: charge.expiresAt,
+          expiresAt: pixExpiration,
           amount: charge.amount,
         },
       }),

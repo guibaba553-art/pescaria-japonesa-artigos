@@ -106,28 +106,6 @@ describe('PixPaymentDialog — renderização', () => {
     expect(screen.getByText('Expirado')).toBeInTheDocument();
   });
 
-  it('deve exibir gateway Asaas quando gateway="asaas"', () => {
-    render(
-      <PixPaymentDialog
-        {...defaultProps}
-        gateway="asaas"
-      />
-    );
-
-    expect(screen.getByText('Processado via Asaas')).toBeInTheDocument();
-  });
-
-  it('NÃO deve exibir gateway Asaas quando gateway="abacatepay"', () => {
-    render(
-      <PixPaymentDialog
-        {...defaultProps}
-        gateway="abacatepay"
-      />
-    );
-
-    expect(screen.queryByText('Processado via Asaas')).not.toBeInTheDocument();
-  });
-
   it('deve exibir botão "Gerar novo PIX" quando expirado e onRefreshPix fornecido', () => {
     const past = new Date(Date.now() - 60 * 1000).toISOString();
     const onRefreshPix = vi.fn();
@@ -303,24 +281,6 @@ describe('PixPaymentDialog — polling', () => {
 
 // ─── Gateway-Specific Tests ────────────────────────────────
 describe('PixPaymentDialog — gateways', () => {
-  it('deve aceitar gateway como "abacatepay" ou "asaas"', () => {
-    const { rerender } = render(
-      <PixPaymentDialog
-        {...defaultProps}
-        gateway="abacatepay"
-      />
-    );
-    expect(screen.getByText('Pagamento via PIX')).toBeInTheDocument();
-
-    rerender(
-      <PixPaymentDialog
-        {...defaultProps}
-        gateway="asaas"
-      />
-    );
-    expect(screen.getByText('Processado via Asaas')).toBeInTheDocument();
-  });
-
   it('deve usar abacatepay como gateway padrão', () => {
     render(<PixPaymentDialog {...defaultProps} />);
 

@@ -27,6 +27,7 @@ export function Cart({ open, onOpenChange, hideTrigger }: CartProps = {}) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const handleCheckout = () => {
+    onOpenChange?.(false);
     navigate('/checkout');
   };
 

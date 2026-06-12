@@ -255,9 +255,11 @@ describe('CreditCardForm — callbacks', () => {
     );
 
     const checkbox = screen.getByText('Salvar cartão para compras futuras');
+    // Checkbox começa marcado (saveCard padrão = true), clicar desmarca
+    expect(checkbox).toBeInTheDocument();
     fireEvent.click(checkbox);
 
-    expect(onSaveCardChange).toHaveBeenCalledWith(true);
+    expect(onSaveCardChange).toHaveBeenCalledWith(false);
   });
 
   it('deve exibir erro externo quando prop error é passada', () => {
@@ -379,7 +381,7 @@ describe('CreditCardForm — validação de CPF', () => {
   });
 });
 describe('CreditCardForm — saveCard', () => {
-  it('deve iniciar com saveCard=false por padrão', () => {
+  it('deve iniciar com saveCard=true por padrão', () => {
     const ref = createRef<CreditCardFormHandle>();
 
     render(
@@ -390,9 +392,9 @@ describe('CreditCardForm — saveCard', () => {
       />
     );
 
-    // Verificar que a checkbox não está marcada
-    const checkboxLabels = screen.getAllByText('Salvar cartão para compras futuras');
-    expect(checkboxLabels.length).toBeGreaterThan(0);
+    // Verificar que a checkbox está marcada por padrão
+    const checkbox = screen.getByRole('checkbox', { name: /Salvar cartão para compras futuras/i });
+    expect(checkbox).toBeChecked();
   });
 
   it('deve aceitar saveCard=true via prop', () => {

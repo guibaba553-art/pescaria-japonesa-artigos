@@ -213,13 +213,6 @@ export function PixPaymentDialog({
             </div>
           )}
 
-          {/* Gateway indicator */}
-          {gateway === 'asaas' && !isPaid && (
-            <div className="text-xs text-center text-muted-foreground bg-blue-50 p-1 rounded">
-              Processado via Asaas
-            </div>
-          )}
-
           {/* Copy Code Button — só exibe se não expirou */}
           {!isExpired && !isPaid && (
             <div className="space-y-2">

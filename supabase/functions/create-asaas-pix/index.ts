@@ -191,11 +191,12 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Extract QR code data
-    // Asaas PIX QR Code endpoint returns { "encodedImage": "iVBOR...", "payload": "000201...", "expirationDate": "2025-01-01T23:59:59Z" }
+    // Asaas PIX QR Code endpoint returns { "encodedImage": "iVBOR...", "payload": "000201...", "expirationDate": "..." }
     // Docs: https://docs.asaas.com/reference/get-qr-code-for-pix-payments
+    // Note: Asaas expirationDate is up to 12 months — we override with our own 30 min window
     const brCode: string = qrCodeResult.payload || qrCodeResult.brCode || '';
     const brCodeBase64: string = qrCodeResult.encodedImage || qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
-    const expiresAt: string = qrCodeResult.expirationDate || qrCodeResult.expiresAt || '';
+    const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     // ── Save payment info on order ──────────────────────────────────────────
     await supabase
@@ -205,7 +206,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         payment_gateway: 'asaas',
         qr_code: brCode,
         qr_code_base64: brCodeBase64,
-        pix_expiration: expiresAt || null,
+        pix_expiration: pixExpiration,
         pix_attempts: (order.pix_attempts || 0) + 1,
       })
       .eq('id', orderId);
@@ -218,7 +219,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           id: asaasPaymentId,
           brCode,
           brCodeBase64,
-          expiresAt,
+          expiresAt: pixExpiration,
         },
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

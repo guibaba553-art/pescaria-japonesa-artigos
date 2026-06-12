@@ -470,8 +470,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     const cardNumber = cardData.number.replace(/\s/g, '');
     if (!cardNumber) {
       errors.push('Número do cartão é obrigatório');
-    } else if (!/^\d{13,19}$/.test(cardNumber)) {
-      errors.push('Número do cartão inválido (deve ter entre 13 e 19 dígitos)');
+    } else if (!/^\d{13,16}$/.test(cardNumber)) {
+      errors.push('Número do cartão inválido (deve ter entre 13 e 16 dígitos)');
     }
 
     // Validar nome
@@ -1167,8 +1167,13 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   id="cardNumber"
                   placeholder="0000 0000 0000 0000"
                   value={cardData.number}
-                  onChange={(e) => setCardData({ ...cardData, number: e.target.value })}
-                  maxLength={19}
+                  onChange={(e) =>
+                    setCardData({
+                      ...cardData,
+                      number: e.target.value.replace(/\D/g, "").slice(0, 16),
+                    })
+                  }
+                  maxLength={16}
                 />
               </div>
 

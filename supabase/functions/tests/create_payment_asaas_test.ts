@@ -3,7 +3,7 @@ Deno.env.set("DENO_TEST", "1");
 import { assertEquals, assertStringIncludes, assertExists, assert } from "jsr:@std/assert@^1";
 import { handleRequest } from "../create-payment-asaas/index.ts";
 import { interceptFetch, setupEnv, mockAsaas, asaas } from "./mock_gateways.ts";
-import { getJwt, createOrder, deleteOrder } from "./helpers.ts";
+import { getJwt, createOrder, deleteOrder, SUPABASE_URL, ANON_KEY, TEST_USER_ID } from "./helpers.ts";
 
 setupEnv();
 interceptFetch();
@@ -59,14 +59,13 @@ Deno.test("cobrança duplicada P29 → 400", async () => {
   assertStringIncludes((await r.json()).error, "já possui uma cobrança");
 });
 
-// ── Tokenization (mocked Asaas) ──
+// ── New card (raw data, no token) ──
 
-Deno.test("tokenização com customer.id (correção 2026-06-11)", async () => {
+Deno.test("novo cartão sem saveCard retorna cardInfo com token", async () => {
   const oid = await createOrder();
   mockAsaas((url) => {
     if (url.includes("/customers") && !url.includes("/customers/cus_")) return asaas.customerCreate("cus_001");
     if (url.includes("/customers/cus_")) return asaas.customerGet("cus_001");
-    if (url.includes("tokenizeCreditCard")) return asaas.tokenizeOk("tok_new");
     if (url.includes("/payments")) return asaas.paymentOk();
     return null;
   });
@@ -81,13 +80,56 @@ Deno.test("tokenização com customer.id (correção 2026-06-11)", async () => {
   await deleteOrder(oid);
   mockAsaas(null);
   assertEquals(r.status, 200);
+  const data = await r.json();
+  assertExists(data.cardInfo, "cardInfo deve estar presente");
+  assertEquals(data.cardInfo.creditCardToken, "tok_from_payment");
+  assertEquals(data.cardInfo.brand, "VISA");
+  assertEquals(data.cardInfo.last4, "4242");
 });
 
-Deno.test("tokeniza sem saveCard (correção 2026-06-11)", async () => {
+Deno.test("novo cartão com saveCard=true salva token na DB", async () => {
   const oid = await createOrder();
   mockAsaas((url) => {
     if (url.includes("/customers")) return asaas.customerCreate("cus_002");
-    if (url.includes("tokenizeCreditCard")) return asaas.tokenizeOk("tok_ns");
+    if (url.includes("/payments")) return asaas.paymentOk();
+    return null;
+  });
+
+  const r = await call({
+    orderId: oid, installmentCount: 1, saveCard: true, remoteIp: "127.0.0.1",
+    customerData: { name: "T", email: "t@t.com", cpfCnpj: "123", phone: "11" },
+    creditCard: { holderName: "JOÃO", number: "4111111111111111", expiryMonth: "12", expiryYear: "30", ccv: "123" },
+    creditCardHolderInfo: { name: "T", email: "t@t.com", cpfCnpj: "123", postalCode: "12345678", addressNumber: "100", phone: "11" },
+  });
+
+  // Verifica se o token foi salvo na DB
+  const jwt = await getJwt();
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/saved_payment_methods?user_id=eq.${TEST_USER_ID}&select=*`, {
+    headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` },
+  });
+  const saved = await q.json();
+  const found = (saved as any[])?.find((s: any) => s.asaas_credit_card_token === "tok_from_payment");
+
+  await deleteOrder(oid);
+  // Cleanup
+  if (found?.id) {
+    await fetch(`${SUPABASE_URL}/rest/v1/saved_payment_methods?id=eq.${found.id}`, {
+      method: "DELETE",
+      headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` },
+    });
+  }
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  assertExists(found, "Token deve ter sido salvo na saved_payment_methods");
+  assertEquals(found.card_last4, "4242");
+  assertEquals(found.card_brand, "VISA");
+});
+
+Deno.test("novo cartão com saveCard=false não salva token na DB", async () => {
+  const oid = await createOrder();
+  mockAsaas((url) => {
+    if (url.includes("/customers")) return asaas.customerCreate("cus_003");
     if (url.includes("/payments")) return asaas.paymentOk();
     return null;
   });
@@ -98,29 +140,20 @@ Deno.test("tokeniza sem saveCard (correção 2026-06-11)", async () => {
     creditCard: { holderName: "JOÃO", number: "4111111111111111", expiryMonth: "12", expiryYear: "30", ccv: "123" },
     creditCardHolderInfo: { name: "T", email: "t@t.com", cpfCnpj: "123", postalCode: "12345678", addressNumber: "100", phone: "11" },
   });
+
+  // Verifica que NÃO foi salvo na DB
+  const jwt = await getJwt();
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/saved_payment_methods?user_id=eq.${TEST_USER_ID}&select=*`, {
+    headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` },
+  });
+  const saved = await q.json();
+  const found = (saved as any[])?.find((s: any) => s.asaas_credit_card_token === "tok_from_payment");
+
   await deleteOrder(oid);
   mockAsaas(null);
+
   assertEquals(r.status, 200);
-});
-
-Deno.test("tokenização falha → erro", async () => {
-  const oid = await createOrder();
-  mockAsaas((url) => {
-    if (url.includes("/customers")) return asaas.customerCreate("cus_003");
-    if (url.includes("tokenizeCreditCard")) return asaas.tokenizeFail("Bandeira inválida");
-    return null;
-  });
-
-  const r = await call({
-    orderId: oid, installmentCount: 1, saveCard: false, remoteIp: "127.0.0.1",
-    customerData: { name: "T", email: "t@t.com", cpfCnpj: "123", phone: "11" },
-    creditCard: { holderName: "JOÃO", number: "4111111111111111", expiryMonth: "12", expiryYear: "30", ccv: "123" },
-    creditCardHolderInfo: { name: "T", email: "t@t.com", cpfCnpj: "123", postalCode: "12345678", addressNumber: "100", phone: "11" },
-  });
-  await deleteOrder(oid);
-  mockAsaas(null);
-  assertEquals(r.status, 400);
-  assertStringIncludes((await r.json()).error, "Pagamento temporariamente indisponível");
+  assertEquals(found, undefined, "Token não deve ter sido salvo quando saveCard=false");
 });
 
 // ── P09: validação skip com token ──
@@ -163,8 +196,7 @@ Deno.test("P01 lookup de token por UUID", async () => {
   mockAsaas((url) => {
     if (url.includes("/customers/cus_")) return asaas.customerGet("cus_005");
     if (url.includes("/customers")) return asaas.customerCreate("cus_005");
-    if (url.includes("/payments")) return asaas.paymentOk();
-    if (url.includes("tokenizeCreditCard")) return asaas.tokenizeOk("tok_from_lookup");
+    if (url.includes("/payments")) return asaas.paymentOk({ creditCard: { brand: "VISA", lastFourDigits: "4242", creditCardToken: "tok_db_xyz" } });
     return null;
   });
 

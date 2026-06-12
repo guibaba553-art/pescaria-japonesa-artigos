@@ -27,36 +27,31 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    try {
+      const savedCart = localStorage.getItem('cart');
+      if (!savedCart) return [];
+      const parsed = JSON.parse(savedCart) as CartItem[];
+      return parsed.map((item) => ({
+        ...item,
+        cartItemKey:
+          item.cartItemKey ||
+          (item.variationId ? `${item.id}-${item.variationId}` : item.id),
+      }));
+    } catch {
+      return [];
+    }
+  });
   const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Carregar carrinho do localStorage e VALIDAR contra o banco
+  // Validar carrinho contra o banco assincronamente na montagem
   // (remove itens cujo produto/variação não existem mais; atualiza preços que mudaram).
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (!savedCart) return;
-    let parsedCart: CartItem[] = [];
-    try {
-      parsedCart = JSON.parse(savedCart);
-    } catch (error) {
-      console.error('Error loading cart:', error);
-      setItems([]);
-      return;
-    }
-
-    const migrated = parsedCart.map((item) => ({
-      ...item,
-      cartItemKey:
-        item.cartItemKey ||
-        (item.variationId ? `${item.id}-${item.variationId}` : item.id),
-    }));
-    setItems(migrated);
-
     (async () => {
       try {
         const { validateSiteCart } = await import('@/utils/siteCartValidation');
-        const result = await validateSiteCart(migrated);
+        const result = await validateSiteCart(items);
         if (result.removeKeys.length > 0) {
           setItems((curr) => curr.filter((i) => !result.removeKeys.includes(i.cartItemKey)));
           toast({
@@ -219,10 +214,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => {
     setItems([]);
-    toast({
-      title: 'Carrinho limpo',
-      description: 'Todos os itens foram removidos'
-    });
   };
 
   const clearLastAdded = () => setLastAddedKey(null);
