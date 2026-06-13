@@ -292,14 +292,9 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   return (
     <div className="space-y-4">
       {hasItemsWithoutDims && (
-        <Card className="p-3 border-destructive/40 bg-destructive/5">
-          <p className="text-sm font-semibold text-destructive">
-            ⚠ Frete indisponível para este pedido
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Há itens sem peso/medidas cadastradas. Você ainda pode escolher <strong>Retirar na Loja</strong> ou contatar o vendedor.
-          </p>
-        </Card>
+        <p className="text-sm text-muted-foreground">
+          Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
+        </p>
       )}
 
       {packagePreview && packagePreview.length > 1 && (
