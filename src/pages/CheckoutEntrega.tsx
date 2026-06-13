@@ -925,21 +925,23 @@ export default function CheckoutEntrega() {
                                         sel ? null : option
                                       );
                                     }}
-                                    className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 ${
+                                    className={`w-full text-left rounded-lg border p-2.5 transition-all flex items-center justify-between gap-2 group ${
                                       sel
                                         ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
-                                        : 'border-border hover:bg-accent'
+                                        : 'border-border hover:bg-accent hover:text-accent-foreground'
                                     }`}
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
                                       <div
-                                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                          sel ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                          sel ? 'border-primary bg-primary' : 'border-muted-foreground/30 group-hover:border-accent-foreground/60'
                                         }`}
                                       >
                                         {sel && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                                       </div>
-                                      <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      <Truck className={`h-3.5 w-3.5 shrink-0 transition-colors ${
+                                        sel ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'
+                                      }`} />
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                           <p className="text-sm font-medium truncate">{option.nome}</p>
@@ -954,12 +956,16 @@ export default function CheckoutEntrega() {
                                             </span>
                                           )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className={`text-xs transition-colors ${
+                                          sel ? 'text-muted-foreground' : 'text-muted-foreground group-hover:text-accent-foreground/80'
+                                        }`}>
                                           Entrega em {option.prazoEntrega} dias úteis
                                         </p>
                                       </div>
                                     </div>
-                                    <p className="font-bold text-sm shrink-0">
+                                    <p className={`font-bold text-sm shrink-0 transition-colors ${
+                                      sel ? '' : 'group-hover:text-accent-foreground'
+                                    }`}>
                                       R$ {option.valor.toFixed(2).replace('.', ',')}
                                     </p>
                                   </button>
