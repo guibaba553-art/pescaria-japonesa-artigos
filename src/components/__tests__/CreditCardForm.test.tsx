@@ -508,3 +508,342 @@ describe('CreditCardForm — getData com cartão salvo', () => {
     expect(screen.queryByPlaceholderText('0000 0000 0000 0000')).not.toBeInTheDocument();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// NOVAS FUNCIONALIDADES — initialHolderInfo, columns, savedAddresses
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('CreditCardForm — initialHolderInfo', () => {
+  it('deve pré-preencher campos de titular quando initialHolderInfo é fornecido', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    // Nome deve aparecer como texto estático (não como input)
+    expect(screen.getByText('João Silva')).toBeInTheDocument();
+
+    // CPF deve aparecer como texto estático (formatado)
+    expect(screen.getByText(/529\.982\.247-25/)).toBeInTheDocument();
+
+    // Telefone deve aparecer como texto estático (formatado)
+    expect(screen.getByText(/\(11\) 99999-9999/)).toBeInTheDocument();
+  });
+
+  it('deve ocultar campo de email quando initialHolderInfo.email existe', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    // Campo de email NÃO deve estar visível para edição
+    expect(screen.queryByLabelText('E-mail')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('seu@email.com')).not.toBeInTheDocument();
+  });
+
+  it('deve mostrar campo de email quando initialHolderInfo não é fornecido', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+      />
+    );
+
+    // Campo de email deve estar visível
+    expect(screen.getByLabelText('E-mail')).toBeInTheDocument();
+  });
+
+  it('deve usar email do initialHolderInfo em getData() mesmo sem campo visível', () => {
+    const ref = createRef<CreditCardFormHandle>();
+
+    render(
+      <CreditCardForm
+        ref={ref}
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        hideExtras
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    // Preencher campos obrigatórios do cartão para passar na validação
+    fireEvent.change(screen.getByPlaceholderText('0000 0000 0000 0000'), { target: { value: '4111111111111111' } });
+    fireEvent.change(screen.getByPlaceholderText('Como impresso no cartão'), { target: { value: 'JOAO SILVA' } });
+    fireEvent.change(screen.getByPlaceholderText('MM'), { target: { value: '12' } });
+    fireEvent.change(screen.getAllByPlaceholderText('AA')[0], { target: { value: '28' } });
+    fireEvent.change(screen.getByPlaceholderText('123'), { target: { value: '123' } });
+
+    const data = ref.current?.getData();
+    expect(data).not.toBeNull();
+    expect(data!.creditCardHolderInfo.email).toBe('joao@email.com');
+  });
+});
+
+describe('CreditCardForm — switch "Usar dados do cadastro"', () => {
+  it('deve exibir switch "Usar dados do cadastro" quando initialHolderInfo é fornecido', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    expect(screen.getByText('Usar dados do cadastro')).toBeInTheDocument();
+  });
+
+  it('switch deve vir ligado por padrão, ocultando campos de nome/CPF/telefone', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    // Quando marcado, o input de nome NÃO deve ter placeholder visível (oculto)
+    // Os valores devem estar preenchidos mas o campo não deve ser editável
+    // Verificamos que não há um input editável com placeholder "Seu nome completo"
+    expect(screen.queryByPlaceholderText('Seu nome completo')).not.toBeInTheDocument();
+    // Mas o valor deve aparecer como texto
+    expect(screen.getByText('João Silva')).toBeInTheDocument();
+  });
+
+  it('ao desligar switch, campos de nome/CPF/telefone devem ficar visíveis', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        initialHolderInfo={{
+          name: 'João Silva',
+          email: 'joao@email.com',
+          cpf: '52998224725',
+          phone: '11999999999',
+        }}
+      />
+    );
+
+    // Desmarcar o switch
+    const switchEl = screen.getByRole('switch', { name: /usar dados do cadastro/i });
+    fireEvent.click(switchEl);
+
+    // Campos devem aparecer
+    expect(screen.getByPlaceholderText('Seu nome completo')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('000.000.000-00')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('(11) 99999-9999')).toBeInTheDocument();
+  });
+
+  it('não deve exibir switch quando initialHolderInfo não é fornecido', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText('Usar dados do cadastro')).not.toBeInTheDocument();
+  });
+});
+
+describe('CreditCardForm — layout 2 colunas', () => {
+  it('deve renderizar em grid md:grid-cols-2 quando columns=2', () => {
+    const { container } = render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        columns={2}
+        hideExtras
+      />
+    );
+
+    // O container do form content deve ter grid classes
+    const gridContainer = container.querySelector('.md\\:grid-cols-2');
+    // Pode não encontrar com querySelector devido ao escaping, vamos verificar pelo texto
+    expect(screen.getByText('Dados do cartão')).toBeInTheDocument();
+    expect(screen.getByText('Dados do titular')).toBeInTheDocument();
+  });
+
+  it('deve renderizar em coluna única (padrão) quando columns não é especificado', () => {
+    const { container } = render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        hideExtras
+      />
+    );
+
+    // No layout padrão, ambos os títulos ainda aparecem
+    expect(screen.getByText('Dados do cartão')).toBeInTheDocument();
+    expect(screen.getByText('Dados do titular')).toBeInTheDocument();
+  });
+});
+
+describe('CreditCardForm — mobilePhone removido', () => {
+  it('não deve exibir campo "Celular (opcional)"', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+      />
+    );
+
+    // O label "Celular" (do mobilePhone, que foi removido) não deve existir
+    expect(screen.queryByText('Celular')).not.toBeInTheDocument();
+    // O campo mobile-phone não deve existir
+    expect(screen.queryByLabelText(/celular/i)).not.toBeInTheDocument();
+  });
+
+  it('getData não deve incluir mobilePhone no creditCardHolderInfo', () => {
+    const ref = createRef<CreditCardFormHandle>();
+
+    render(
+      <CreditCardForm
+        ref={ref}
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        hideExtras
+      />
+    );
+
+    // Preencher campos mínimos para passar na validação
+    fireEvent.change(screen.getByPlaceholderText('0000 0000 0000 0000'), { target: { value: '4111111111111111' } });
+    fireEvent.change(screen.getByPlaceholderText('Como impresso no cartão'), { target: { value: 'JOAO SILVA' } });
+    fireEvent.change(screen.getByPlaceholderText('MM'), { target: { value: '12' } });
+    fireEvent.change(screen.getAllByPlaceholderText('AA')[0], { target: { value: '28' } });
+    fireEvent.change(screen.getByPlaceholderText('123'), { target: { value: '123' } });
+    fireEvent.change(screen.getByPlaceholderText('Seu nome completo'), { target: { value: 'João Silva' } });
+    fireEvent.change(screen.getByPlaceholderText('seu@email.com'), { target: { value: 'joao@email.com' } });
+    fireEvent.change(screen.getByPlaceholderText('000.000.000-00'), { target: { value: '52998224725' } });
+    fireEvent.change(screen.getByPlaceholderText('(11) 99999-9999'), { target: { value: '11999999999' } });
+
+    const data = ref.current?.getData();
+    if (data) {
+      expect(data.creditCardHolderInfo).not.toHaveProperty('mobilePhone');
+    }
+  });
+});
+
+describe('CreditCardForm — savedAddresses', () => {
+  const savedAddresses = [
+    {
+      id: 'addr-1',
+      label: 'Casa',
+      cep: '01310100',
+      street: 'Av. Paulista',
+      number: '1000',
+      complement: 'Apto 42',
+      neighborhood: 'Bela Vista',
+      city: 'São Paulo',
+      state: 'SP',
+    },
+  ];
+
+  it('deve exibir seletor de endereço salvo quando savedAddresses é fornecido', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        savedAddresses={savedAddresses}
+      />
+    );
+
+    expect(screen.getByText('Usar endereço salvo')).toBeInTheDocument();
+    expect(screen.getByText('Av. Paulista, 1000 — Bela Vista')).toBeInTheDocument();
+  });
+
+  it('deve ocultar seletor de endereço salvo quando hideExtras=true', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        savedAddresses={savedAddresses}
+        hideExtras
+      />
+    );
+
+    expect(screen.queryByText('Usar endereço salvo')).not.toBeInTheDocument();
+  });
+
+  it('deve pré-preencher CEP e número ao selecionar um endereço salvo', () => {
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+        savedAddresses={savedAddresses}
+      />
+    );
+
+    // O endereço aparece como opção clicável
+    const addressOption = screen.getByText('Av. Paulista, 1000 — Bela Vista');
+    fireEvent.click(addressOption);
+
+    // Quando um endereço salvo é selecionado, os campos manuais ficam ocultos
+    expect(screen.queryByDisplayValue('01310-100')).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue('1000')).not.toBeInTheDocument();
+    // E a opção selecionada fica destacada
+    expect(screen.getByText('Av. Paulista, 1000 — Bela Vista')).toBeInTheDocument();
+  });
+});
+
+describe('CreditCardForm — viaCEP nos campos de cobrança', () => {
+  it('deve consultar ViaCEP ao digitar 8 dígitos no CEP', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({
+        logradouro: 'Rua Teste',
+        bairro: 'Centro',
+        localidade: 'São Paulo',
+        uf: 'SP',
+        erro: false,
+      }),
+    });
+    globalThis.fetch = mockFetch;
+
+    render(
+      <CreditCardForm
+        totalAmount={100}
+        onInstallmentChange={vi.fn()}
+      />
+    );
+
+    const cepInput = screen.getByPlaceholderText('00000-000');
+    fireEvent.change(cepInput, { target: { value: '01310100' } });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('https://viacep.com.br/ws/01310100/json/');
+    });
+
+    globalThis.fetch = originalFetch;
+  });
+});

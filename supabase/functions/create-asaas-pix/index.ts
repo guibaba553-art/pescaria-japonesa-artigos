@@ -54,7 +54,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Validate order ownership ────────────────────────────────────────────
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, user_id, status, total_amount, asaas_payment_id, payment_id, pix_attempts')
+      .select('id, user_id, status, total_amount, asaas_payment_id, payment_id, pix_attempts, delivery_type, shipping_service_id')
       .eq('id', orderId)
       .single();
 
@@ -84,6 +84,14 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (order.asaas_payment_id && order.status === 'aguardando_pagamento') {
       return new Response(
         JSON.stringify({ error: 'Este pedido já possui um PIX em processamento.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ── Shipping validation (only for delivery orders) ─────────────────────
+    if (order.delivery_type === 'delivery' && !order.shipping_service_id) {
+      return new Response(
+        JSON.stringify({ error: 'Selecione um frete para entrega antes de finalizar o pedido.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle, useRef } from "react";
-import { CreditCard, Lock, AlertCircle } from "lucide-react";
+import { CreditCard, Lock, AlertCircle, MapPin } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { AddressFields } from "@/components/AddressFields";
 
 import {
   validateCardNumber,
@@ -52,7 +54,6 @@ export interface CreditCardFormData {
     addressNumber: string;
     addressComplement?: string;
     phone: string;
-    mobilePhone?: string;
   };
   installmentCount: number;
   saveCard: boolean;
@@ -66,6 +67,18 @@ export interface CreditCardFormHandle {
   getData: () => CreditCardFormData | null;
 }
 
+export interface SavedAddressOption {
+  id: string;
+  label?: string;
+  cep: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
 export interface CreditCardFormProps {
   totalAmount: number;
   onCardData?: (data: CreditCardFormData) => void;
@@ -77,6 +90,21 @@ export interface CreditCardFormProps {
   onSelectSavedCard?: (cardId: string | null) => void;
   selectedSavedCardId?: string | null;
   error?: string;
+  /** Hide address fields, installments, save-card checkbox, and hint — for inline save-card flows */
+  hideExtras?: boolean;
+  /** Render without the outer Card wrapper (for embedding in dialogs) */
+  variant?: 'card' | 'inline';
+  /** Pre-fill holder info from user profile */
+  initialHolderInfo?: {
+    name: string;
+    email: string;
+    cpf: string;
+    phone: string;
+  };
+  /** Layout columns: 1 (default) or 2 columns for card data vs holder info */
+  columns?: 1 | 2;
+  /** Saved addresses to allow quick-fill of billing address fields */
+  savedAddresses?: SavedAddressOption[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -174,6 +202,11 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     onSelectSavedCard,
     selectedSavedCardId: selectedSavedCardIdProp,
     error: externalError,
+    hideExtras = false,
+    variant = 'card',
+    initialHolderInfo,
+    columns = 1,
+    savedAddresses = [],
   }, ref) {
   /* -------- Mode -------- */
   const hasSavedCards = savedCards.length > 0;
@@ -225,7 +258,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
         }
       }
     },
-    [onSelectSavedCard, savedCards]
+    [onSelectSavedCard, onSaveCardChange, savedCards]
   );
 
   /* -------- Form fields -------- */
@@ -242,7 +275,6 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
   const [addressNumber, setAddressNumber] = useState("");
   const [addressComplement, setAddressComplement] = useState("");
   const [phone, setPhone] = useState("");
-  const [mobilePhone, setMobilePhone] = useState("");
 
   const [installmentCount, setInstallmentCount] = useState("1");
   const [saveCard, setSaveCard] = useState(true);
@@ -250,6 +282,31 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
   const [errors, setErrors] = useState<string[]>([]);
   const touchedRef = useRef<Record<string, boolean>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // "Usar dados do cadastro" state
+  const hasInitialInfo = !!initialHolderInfo;
+  const [useProfileData, setUseProfileData] = useState(true);
+
+  // Billing address state (synced with AddressFields)
+  const [billingAddress, setBillingAddress] = useState({
+    cep: "",
+    street: "",
+    number: "",
+    complement: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+  });
+
+  // Pre-fill from profile when initialHolderInfo changes or useProfileData toggles
+  useEffect(() => {
+    if (initialHolderInfo && useProfileData) {
+      setHolderName(initialHolderInfo.name);
+      setEmail(initialHolderInfo.email);
+      setCpfCnpj(initialHolderInfo.cpf);
+      setPhone(initialHolderInfo.phone);
+    }
+  }, [initialHolderInfo, useProfileData]);
 
   const markTouched = useCallback((field: string) => {
     touchedRef.current = { ...touchedRef.current, [field]: true };
@@ -295,40 +352,54 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
 
     // Holder info (only required for new cards — saved cards skip this)
     if (mode !== "saved") {
-      if (isTouched("holderName")) {
-        if (!holderName.trim() || holderName.trim().length < 3)
-          errs.push("Nome completo é obrigatório (mín. 3 caracteres).");
-      }
+      // When using profile data, skip holder field validation
+      // (they are pre-filled from profile and validated on submit)
+      if (!hasInitialInfo || !useProfileData) {
+        if (isTouched("holderName")) {
+          if (!holderName.trim() || holderName.trim().length < 3)
+            errs.push("Nome completo é obrigatório (mín. 3 caracteres).");
+        }
 
-      if (isTouched("email")) {
-        if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-          errs.push("E-mail inválido.");
-      }
+        if (isTouched("email")) {
+          if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+            errs.push("E-mail inválido.");
+        }
 
-      if (isTouched("cpf")) {
-        const cleanCpf = cpfCnpj.replace(/\D/g, "");
-        if (cleanCpf.length !== 11) {
-          errs.push("CPF deve ter 11 dígitos.");
-        } else if (!validateCPF(cleanCpf)) {
-          errs.push("CPF inválido. Verifique os dígitos.");
+        if (isTouched("cpf")) {
+          const cleanCpf = cpfCnpj.replace(/\D/g, "");
+          if (cleanCpf.length !== 11) {
+            errs.push("CPF deve ter 11 dígitos.");
+          } else if (!validateCPF(cleanCpf)) {
+            errs.push("CPF inválido. Verifique os dígitos.");
+          }
+        }
+
+        if (isTouched("phone")) {
+          const cleanPhone = phone.replace(/\D/g, "");
+          if (cleanPhone.length < 10 || cleanPhone.length > 11)
+            errs.push("Telefone inválido (mín. 10 dígitos com DDD).");
         }
       }
 
-      if (isTouched("cep")) {
-        const cleanCep = postalCode.replace(/\D/g, "");
-        if (cleanCep.length !== 8)
-          errs.push("CEP deve ter 8 dígitos.");
-      }
+      if (!hideExtras) {
+        if (isTouched("cep")) {
+          const cleanCep = postalCode.replace(/\D/g, "");
+          if (cleanCep.length !== 8)
+            errs.push("CEP deve ter 8 dígitos.");
+        }
 
-      if (isTouched("addressNumber")) {
-        if (!addressNumber.trim())
-          errs.push("Número do endereço é obrigatório.");
+        if (isTouched("addressNumber")) {
+          if (!addressNumber.trim())
+            errs.push("Número do endereço é obrigatório.");
+        }
       }
+    }
 
-      if (isTouched("phone")) {
-        const cleanPhone = phone.replace(/\D/g, "");
-        if (cleanPhone.length < 10 || cleanPhone.length > 11)
-          errs.push("Telefone inválido (mín. 10 dígitos com DDD).");
+    // Installment validation (only for new cards)
+    if (mode === "new" && !hideExtras) {
+      const count = parseInt(installmentCount, 10);
+      if (isNaN(count) || count < 1) {
+        errs.push("Selecione o número de parcelas.");
       }
     }
 
@@ -347,6 +418,10 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     postalCode,
     addressNumber,
     phone,
+    installmentCount,
+    hideExtras,
+    hasInitialInfo,
+    useProfileData,
   ]);
 
   const handleBlur = useCallback((field: string) => {
@@ -396,13 +471,29 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
 
   /* -------- Controlled saveCard -------- */
   const isSaveCardChecked = saveCardProp ?? saveCard;
-  const handleSaveCardChange = (checked: boolean) => {
+  const handleSaveCardChange = useCallback((checked: boolean) => {
     setSaveCard(checked);
     onSaveCardChange?.(checked);
-  };
+  }, [onSaveCardChange]);
 
   /* -------- Build form data -------- */
   const buildFormData = useCallback((): CreditCardFormData => {
+    const effectiveEmail = hasInitialInfo && useProfileData
+      ? initialHolderInfo!.email
+      : email;
+
+    const effectiveName = hasInitialInfo && useProfileData
+      ? initialHolderInfo!.name
+      : holderName;
+
+    const effectiveCpf = hasInitialInfo && useProfileData
+      ? initialHolderInfo!.cpf
+      : cpfCnpj;
+
+    const effectivePhone = hasInitialInfo && useProfileData
+      ? initialHolderInfo!.phone
+      : phone;
+
     const data: CreditCardFormData = {
       creditCard: {
         holderName: cardHolderName,
@@ -412,14 +503,13 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
         ccv: cvv,
       },
       creditCardHolderInfo: {
-        name: holderName.trim(),
-        email: email.trim(),
-        cpfCnpj: cpfCnpj.replace(/\D/g, ""),
+        name: effectiveName.trim(),
+        email: effectiveEmail.trim(),
+        cpfCnpj: effectiveCpf.replace(/\D/g, ""),
         postalCode: postalCode.replace(/\D/g, ""),
         addressNumber: addressNumber.trim(),
         addressComplement: addressComplement.trim() || undefined,
-        phone: phone.replace(/\D/g, ""),
-        mobilePhone: mobilePhone.replace(/\D/g, "") || undefined,
+        phone: effectivePhone.replace(/\D/g, ""),
       },
       installmentCount: parseInt(installmentCount, 10),
       saveCard: isSaveCardChecked,
@@ -447,12 +537,14 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     addressNumber,
     addressComplement,
     phone,
-    mobilePhone,
     installmentCount,
     isSaveCardChecked,
     mode,
     selectedId,
     savedCards,
+    hasInitialInfo,
+    useProfileData,
+    initialHolderInfo,
   ]);
 
   /* -------- Expose imperative handle for parent -------- */
@@ -503,22 +595,18 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     clearFieldError("cpf");
   };
 
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
-    setPostalCode(raw);
-    clearFieldError("cep");
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
     setPhone(raw);
     clearFieldError("phone");
   };
 
-  const handleMobilePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
-    setMobilePhone(raw);
-  };
+  /* -------- Sync billing address with postalCode/addressNumber/addressComplement -------- */
+  useEffect(() => {
+    setPostalCode(billingAddress.cep);
+    setAddressNumber(billingAddress.number);
+    setAddressComplement(billingAddress.complement);
+  }, [billingAddress.cep, billingAddress.number, billingAddress.complement]);
 
   /* -------- Installment change -------- */
   const handleInstallmentChange = (value: string) => {
@@ -526,87 +614,81 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     onInstallmentChange(parseInt(value, 10));
   };
 
-  /* -------- Render -------- */
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <CreditCard className="h-5 w-5" />
-          Cartão de Crédito
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* ---------- Saved Cards ---------- */}
-        {hasSavedCards && (
-          <div className="space-y-3">
-            <Label>Cartões salvos</Label>
-            <RadioGroup
-              value={selectedId ?? "new"}
-              onValueChange={(val) => {
-                if (val === "new") {
-                  handleSelectSavedCard(null);
-                } else {
-                  handleSelectSavedCard(val);
-                }
-              }}
-              className="gap-2"
-            >
-              {savedCards.map((sc) => (
-                <label
-                  key={sc.id}
-                  htmlFor={`saved-${sc.id}`}
-                  className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
-                    selectedId === sc.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border"
-                  }`}
-                >
-                  <RadioGroupItem value={sc.id} id={`saved-${sc.id}`} className="mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="font-medium text-sm">
-                        {sc.cardBrand ?? "Cartão"}
-                      </span>
-                      <span className="font-mono text-sm text-muted-foreground">
-                        •••• {sc.cardLast4 ?? "????"}
-                      </span>
-                      {sc.cardExpMonth && sc.cardExpYear && (
-                        <span className="text-xs text-muted-foreground">
-                          Val. {sc.cardExpMonth}/{sc.cardExpYear}
-                        </span>
-                      )}
-                    </div>
-                    {sc.cardholderName && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {sc.cardholderName}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              ))}
-
-              {/* Use new card option */}
+  /* -------- Content renderer -------- */
+  const content = (
+    <>
+      {/* ---------- Saved Cards ---------- */}
+      {hasSavedCards && (
+        <div className="space-y-3">
+          <Label>Cartões salvos</Label>
+          <RadioGroup
+            value={selectedId ?? "new"}
+            onValueChange={(val) => {
+              if (val === "new") {
+                handleSelectSavedCard(null);
+              } else {
+                handleSelectSavedCard(val);
+              }
+            }}
+            className="gap-2"
+          >
+            {savedCards.map((sc) => (
               <label
-                htmlFor="saved-new"
+                key={sc.id}
+                htmlFor={`saved-${sc.id}`}
                 className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
-                  selectedId === null || !hasSavedCards
+                  selectedId === sc.id
                     ? "border-primary bg-primary/5"
                     : "border-border"
                 }`}
               >
-                <RadioGroupItem value="new" id="saved-new" className="mt-0.5" />
-                <span className="flex-1 text-sm font-medium">
-                  Usar novo cartão
-                </span>
+                <RadioGroupItem value={sc.id} id={`saved-${sc.id}`} className="mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="font-medium text-sm">
+                      {sc.cardBrand ?? "Cartão"}
+                    </span>
+                    <span className="font-mono text-sm text-muted-foreground">
+                      •••• {sc.cardLast4 ?? "????"}
+                    </span>
+                    {sc.cardExpMonth && sc.cardExpYear && (
+                      <span className="text-xs text-muted-foreground">
+                        Val. {sc.cardExpMonth}/{sc.cardExpYear}
+                      </span>
+                    )}
+                  </div>
+                  {sc.cardholderName && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {sc.cardholderName}
+                    </p>
+                  )}
+                </div>
               </label>
-            </RadioGroup>
-          </div>
-        )}
+            ))}
 
-        {/* ---------- New Card Fields ---------- */}
-        {mode === "new" && (
-          <div className="space-y-4">
+            {/* Use new card option */}
+            <label
+              htmlFor="saved-new"
+              className={`flex items-start gap-3 rounded-lg border p-3 transition-colors cursor-pointer ${
+                selectedId === null || !hasSavedCards
+                  ? "border-primary bg-primary/5"
+                  : "border-border"
+              }`}
+            >
+              <RadioGroupItem value="new" id="saved-new" className="mt-0.5" />
+              <span className="flex-1 text-sm font-medium">
+                Usar novo cartão
+              </span>
+            </label>
+          </RadioGroup>
+        </div>
+      )}
+
+      {/* ---------- New Card Fields ---------- */}
+      {mode === "new" && (
+        <>
+          {/* Left column: card data */}
+          <div className={columns === 2 ? "space-y-4" : "space-y-4"}>
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Dados do cartão
             </h3>
@@ -693,206 +775,490 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
               </div>
             </div>
           </div>
+
+          {/* Right column or below: holder info */}
+          {mode !== "saved" && (
+            <div className={columns === 2 ? "space-y-4" : "space-y-4"}>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Dados do titular
+              </h3>
+
+              {/* "Usar dados do cadastro" switch */}
+              {hasInitialInfo && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={useProfileData}
+                    onCheckedChange={setUseProfileData}
+                    id="use-profile-data"
+                  />
+                  <Label htmlFor="use-profile-data" className="text-sm cursor-pointer">
+                    Usar dados do cadastro
+                  </Label>
+                </div>
+              )}
+
+              {hasInitialInfo && useProfileData ? (
+                /* Dados compactos quando usando dados do cadastro */
+                <div className="rounded-lg border bg-muted/20 px-3 py-2.5 text-sm space-y-1">
+                  {initialHolderInfo!.name && (
+                    <p className="text-foreground font-medium truncate">{initialHolderInfo!.name}</p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-muted-foreground">
+                    {initialHolderInfo!.cpf && (
+                      <span><span className="text-foreground/60">CPF:</span> <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></span>
+                    )}
+                    {initialHolderInfo!.phone && (
+                      <span><span className="text-foreground/60">Telefone:</span> <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Editable fields when not using profile data */
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="holder-name">Nome completo</Label>
+                    <Input
+                      id="holder-name"
+                      placeholder="Seu nome completo"
+                      autoComplete="name"
+                      value={holderName}
+                      onChange={(e) => setHolderName(e.target.value)}
+                      onBlur={() => handleBlur("holderName")}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  {/* Email: only show if initialHolderInfo.email is NOT provided */}
+                  {!hasInitialInfo && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => handleBlur("email")}
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      value={formatCPF(cpfCnpj)}
+                      onChange={handleCpfChange}
+                      onBlur={() => handleBlur("cpf")}
+                      autoComplete="off"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      inputMode="numeric"
+                      placeholder="(11) 99999-9999"
+                      value={formatPhone(phone)}
+                      onChange={handlePhoneChange}
+                      onBlur={() => handleBlur("phone")}
+                      autoComplete="tel"
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Billing address fields (only when hideExtras=false) */}
+              {!hideExtras && (
+                <AddressFields
+                  value={billingAddress}
+                  onChange={setBillingAddress}
+                  savedAddresses={savedAddresses}
+                  disabled={loading}
+                />
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ---------- Installments ---------- */}
+      {!hideExtras && (
+      <div className="space-y-1.5">
+        <Label htmlFor="installments">Parcelas</Label>
+        <Select
+          value={installmentCount}
+          onValueChange={handleInstallmentChange}
+          disabled={loading || installmentOptions.length === 0}
+        >
+          <SelectTrigger id="installments" className="w-full">
+            <SelectValue placeholder="Selecione o número de parcelas" />
+          </SelectTrigger>
+          <SelectContent>
+            {installmentOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {totalAmount < 5 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+            <AlertCircle className="h-3 w-3" />
+            Valor mínimo por parcela é R$ 5,00.
+          </p>
         )}
+      </div>
+      )}
 
-        {/* ---------- Holder Info — only for new cards ---------- */}
-        {mode !== "saved" && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Dados do titular
-          </h3>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="holder-name">Nome completo</Label>
-            <Input
-              id="holder-name"
-              placeholder="Seu nome completo"
-              autoComplete="name"
-              value={holderName}
-              onChange={(e) => setHolderName(e.target.value)}
-              onBlur={() => handleBlur("holderName")}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="seu@email.com"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => handleBlur("email")}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cpf">CPF</Label>
-            <Input
-              id="cpf"
-              inputMode="numeric"
-              placeholder="000.000.000-00"
-              value={formatCPF(cpfCnpj)}
-              onChange={handleCpfChange}
-              onBlur={() => handleBlur("cpf")}
-              autoComplete="off"
-              disabled={loading}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cep">CEP</Label>
-              <Input
-                id="cep"
-                inputMode="numeric"
-                placeholder="00000-000"
-                value={formatCEP(postalCode)}
-                onChange={handleCepChange}
-                onBlur={() => handleBlur("cep")}
-                autoComplete="postal-code"
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="address-number">Número</Label>
-              <Input
-                id="address-number"
-                placeholder="Nº"
-                value={addressNumber}
-                onChange={(e) => setAddressNumber(e.target.value)}
-                onBlur={() => handleBlur("addressNumber")}
-                autoComplete="off"
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="address-complement">
-              Complemento <span className="text-muted-foreground">(opcional)</span>
-            </Label>
-            <Input
-              id="address-complement"
-              placeholder="Apto, bloco, etc."
-              value={addressComplement}
-              onChange={(e) => setAddressComplement(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                inputMode="numeric"
-                placeholder="(11) 99999-9999"
-                value={formatPhone(phone)}
-                onChange={handlePhoneChange}
-                onBlur={() => handleBlur("phone")}
-                autoComplete="tel"
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="mobile-phone">
-                Celular <span className="text-muted-foreground">(opcional)</span>
-              </Label>
-              <Input
-                id="mobile-phone"
-                inputMode="numeric"
-                placeholder="(11) 99999-9999"
-                value={formatPhone(mobilePhone)}
-                onChange={handleMobilePhoneChange}
-                autoComplete="tel"
-                disabled={loading}
-              />
-            </div>
-          </div>
+      {/* ---------- Save Card Checkbox — only for new cards ---------- */}
+      {!hideExtras && mode === "new" && (
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="save-card"
+            checked={isSaveCardChecked}
+            onCheckedChange={(checked) => handleSaveCardChange(checked === true)}
+            disabled={loading}
+          />
+          <Label htmlFor="save-card" className="text-sm leading-tight cursor-pointer">
+            Salvar cartão para compras futuras
+          </Label>
         </div>
-        )}
+      )}
 
-        {/* ---------- Installments ---------- */}
-        <div className="space-y-1.5">
-          <Label htmlFor="installments">Parcelas</Label>
-          <Select
-            value={installmentCount}
-            onValueChange={handleInstallmentChange}
-            disabled={loading || installmentOptions.length === 0}
-          >
-            <SelectTrigger id="installments" className="w-full">
-              <SelectValue placeholder="Selecione o número de parcelas" />
-            </SelectTrigger>
-            <SelectContent>
-              {installmentOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
+      {/* ---------- Lock notice ---------- */}
+      <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+        <Lock className="h-4 w-4 shrink-0 mt-0.5" />
+        <p>
+          Seus dados são protegidos com criptografia. Nós nunca armazenamos o
+          número completo do cartão ou o CVV.
+        </p>
+      </div>
+
+      {/* ---------- Errors ---------- */}
+      {(errors.length > 0 || externalError) && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 space-y-1">
+          {externalError && (
+            <p className="text-sm text-destructive flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              {externalError}
+            </p>
+          )}
+          {errors.length > 0 && (
+            <ul className="list-disc list-inside text-sm text-destructive space-y-0.5">
+              {errors.map((err, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{err}</span>
+                </li>
               ))}
-            </SelectContent>
-          </Select>
-          {totalAmount < 5 && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <AlertCircle className="h-3 w-3" />
-              Valor mínimo por parcela é R$ 5,00.
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* ---------- Hint ---------- */}
+      {!hideExtras && (
+      <p className="text-xs text-center text-muted-foreground">
+        Revise os dados e clique em <strong>Finalizar Pedido</strong> no resumo ao lado.
+      </p>
+      )}
+    </>
+  );
+
+  if (variant === 'inline') {
+    // For 2-column layout, add grid wrapper
+    if (columns === 2 && mode === "new") {
+      return (
+        <div className="space-y-6">
+          <div className="md:grid md:grid-cols-2 md:gap-6">
+            {/* Column 1: card data */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Dados do cartão
+              </h3>
+              {/* Card holder name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="card-holder-name">Nome no cartão</Label>
+                <Input
+                  id="card-holder-name"
+                  placeholder="Como impresso no cartão"
+                  autoComplete="cc-name"
+                  value={cardHolderName}
+                  onChange={(e) => setCardHolderName(e.target.value.toUpperCase())}
+                  maxLength={100}
+                  disabled={loading}
+                />
+              </div>
+              {/* Card number */}
+              <div className="space-y-1.5">
+                <Label htmlFor="card-number">Número do cartão</Label>
+                <div className="relative">
+                  <Input
+                    id="card-number"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
+                    placeholder="0000 0000 0000 0000"
+                    value={formatCardNumber(cardNumber)}
+                    onChange={handleCardNumberChange}
+                    onBlur={() => handleBlur("cardNumber")}
+                    className="pr-24 font-mono tracking-wider"
+                    disabled={loading}
+                  />
+                  {cardBrand && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded border">
+                      {getBrandLabel(cardBrand)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Expiry + CVV */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="expiry-month">Validade</Label>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      id="expiry-month"
+                      inputMode="numeric"
+                      placeholder="MM"
+                      value={expiryMonth}
+                      onChange={handleExpiryMonthChange}
+                      maxLength={2}
+                      className="w-full font-mono text-center"
+                      disabled={loading}
+                    />
+                    <span className="text-muted-foreground text-sm">/</span>
+                    <Input
+                      id="expiry-year"
+                      inputMode="numeric"
+                      placeholder="AA"
+                      value={expiryYear}
+                      onChange={handleExpiryYearChange}
+                      onBlur={() => handleBlur("expiry")}
+                      maxLength={2}
+                      className="w-full font-mono text-center"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cvv">CVV</Label>
+                  <Input
+                    id="cvv"
+                    inputMode="numeric"
+                    autoComplete="cc-csc"
+                    placeholder="123"
+                    value={cvv}
+                    onChange={handleCvvChange}
+                    maxLength={4}
+                    className="font-mono text-center"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Column 2: holder info */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Dados do titular
+              </h3>
+
+              {/* "Usar dados do cadastro" switch */}
+              {hasInitialInfo && (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={useProfileData}
+                    onCheckedChange={setUseProfileData}
+                    id="use-profile-data-2col"
+                  />
+                  <Label htmlFor="use-profile-data-2col" className="text-sm cursor-pointer">
+                    Usar dados do cadastro
+                  </Label>
+                </div>
+              )}
+
+              {hasInitialInfo && useProfileData ? (
+                <div className="rounded-lg border bg-muted/20 px-3 py-2.5 text-sm space-y-1">
+                  {initialHolderInfo!.name && (
+                    <p className="text-foreground font-medium truncate">{initialHolderInfo!.name}</p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-muted-foreground">
+                    {initialHolderInfo!.cpf && (
+                      <span><span className="text-foreground/60">CPF:</span> <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></span>
+                    )}
+                    {initialHolderInfo!.phone && (
+                      <span><span className="text-foreground/60">Telefone:</span> <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="holder-name">Nome completo</Label>
+                    <Input
+                      id="holder-name"
+                      placeholder="Seu nome completo"
+                      autoComplete="name"
+                      value={holderName}
+                      onChange={(e) => setHolderName(e.target.value)}
+                      onBlur={() => handleBlur("holderName")}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  {!hasInitialInfo && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => handleBlur("email")}
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      value={formatCPF(cpfCnpj)}
+                      onChange={handleCpfChange}
+                      onBlur={() => handleBlur("cpf")}
+                      autoComplete="off"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      inputMode="numeric"
+                      placeholder="(11) 99999-9999"
+                      value={formatPhone(phone)}
+                      onChange={handlePhoneChange}
+                      onBlur={() => handleBlur("phone")}
+                      autoComplete="tel"
+                      disabled={loading}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Billing address fields */}
+              {!hideExtras && (
+                <AddressFields
+                  value={billingAddress}
+                  onChange={setBillingAddress}
+                  savedAddresses={savedAddresses}
+                  disabled={loading}
+                />
+              )}
+            </div>
+          </div>
+          {/* Shared bottom sections (installments, save card, lock, errors) */}
+          {!hideExtras && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="installments">Parcelas</Label>
+                <Select
+                  value={installmentCount}
+                  onValueChange={handleInstallmentChange}
+                  disabled={loading || installmentOptions.length === 0}
+                >
+                  <SelectTrigger id="installments" className="w-full">
+                    <SelectValue placeholder="Selecione o número de parcelas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {installmentOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {totalAmount < 5 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Valor mínimo por parcela é R$ 5,00.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="save-card"
+                  checked={isSaveCardChecked}
+                  onCheckedChange={(checked) => handleSaveCardChange(checked === true)}
+                  disabled={loading}
+                />
+                <Label htmlFor="save-card" className="text-sm leading-tight cursor-pointer">
+                  Salvar cartão para compras futuras
+                </Label>
+              </div>
+            </>
+          )}
+          <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+            <Lock className="h-4 w-4 shrink-0 mt-0.5" />
+            <p>
+              Seus dados são protegidos com criptografia. Nós nunca armazenamos o
+              número completo do cartão ou o CVV.
+            </p>
+          </div>
+          {(errors.length > 0 || externalError) && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 space-y-1">
+              {externalError && (
+                <p className="text-sm text-destructive flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  {externalError}
+                </p>
+              )}
+              {errors.length > 0 && (
+                <ul className="list-disc list-inside text-sm text-destructive space-y-0.5">
+                  {errors.map((err, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span>{err}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {!hideExtras && (
+            <p className="text-xs text-center text-muted-foreground">
+              Revise os dados e clique em <strong>Finalizar Pedido</strong> no resumo ao lado.
             </p>
           )}
         </div>
+      );
+    }
+    return <div className="space-y-6">{content}</div>;
+  }
 
-        {/* ---------- Save Card Checkbox — only for new cards ---------- */}
-        {mode === "new" && (
-          <div className="flex items-start gap-2">
-            <Checkbox
-              id="save-card"
-              checked={isSaveCardChecked}
-              onCheckedChange={(checked) => handleSaveCardChange(checked === true)}
-              disabled={loading}
-            />
-            <Label htmlFor="save-card" className="text-sm leading-tight cursor-pointer">
-              Salvar cartão para compras futuras
-            </Label>
-          </div>
-        )}
-
-        {/* ---------- Lock notice ---------- */}
-        <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-          <Lock className="h-4 w-4 shrink-0 mt-0.5" />
-          <p>
-            Seus dados são protegidos com criptografia. Nós nunca armazenamos o
-            número completo do cartão ou o CVV.
-          </p>
-        </div>
-
-        {/* ---------- Errors ---------- */}
-        {(errors.length > 0 || externalError) && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 space-y-1">
-            {externalError && (
-              <p className="text-sm text-destructive flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                {externalError}
-              </p>
-            )}
-            {errors.length > 0 && (
-              <ul className="list-disc list-inside text-sm text-destructive space-y-0.5">
-                {errors.map((err, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>{err}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* ---------- Hint ---------- */}
-        <p className="text-xs text-center text-muted-foreground">
-          Revise os dados e clique em <strong>Finalizar Pedido</strong> no resumo ao lado.
-        </p>
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <CreditCard className="h-5 w-5" />
+          Cartão de Crédito
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {content}
       </CardContent>
     </Card>
   );

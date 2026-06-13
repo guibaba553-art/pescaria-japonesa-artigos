@@ -12,10 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { sanitizeNumericInput, formatCEP } from "@/utils/validation";
 import type { UserAddress } from "@/components/MyAddresses";
+import { AddressFields } from "@/components/AddressFields";
 
 interface AddressFormDialogProps {
   open: boolean;
@@ -58,46 +57,35 @@ export function AddressFormDialog({ open, onOpenChange, onSaved, initialCep }: A
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
+  const [profileName, setProfileName] = useState("");
+
+  // Carregar nome do perfil
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.full_name) setProfileName(data.full_name);
+      });
+  }, [user]);
 
   // Resetar e (opcionalmente) pré-preencher CEP ao abrir
   useEffect(() => {
     if (open) {
       const cep = (initialCep || "").replace(/\D/g, "").slice(0, 8);
-      setForm({ ...emptyForm, cep });
-      if (cep.length === 8) lookupCep(cep);
+      setForm({ ...emptyForm, cep, recipient_name: profileName || "" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  const lookupCep = async (cep: string) => {
-    if (cep.length !== 8) return;
-    setCepLoading(true);
-    try {
-      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const d = await r.json();
-      if (!d.erro) {
-        setForm((p) => ({
-          ...p,
-          street: d.logradouro || p.street,
-          neighborhood: d.bairro || p.neighborhood,
-          city: d.localidade || p.city,
-          state: d.uf || p.state,
-        }));
-      }
-    } catch {
-      // silencioso
-    } finally {
-      setCepLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!user) {
       toast.error("Você precisa estar logado para salvar endereços");
       return;
     }
-    if (!form.recipient_name.trim()) return toast.error("Informe o destinatário");
     if (form.cep.length !== 8) return toast.error("CEP inválido");
     if (
       !form.street.trim() ||
@@ -113,7 +101,7 @@ export function AddressFormDialog({ open, onOpenChange, onSaved, initialCep }: A
     const payload = {
       user_id: user.id,
       label: form.label.trim() || "Endereço",
-      recipient_name: form.recipient_name.trim(),
+      recipient_name: form.recipient_name.trim() || profileName || "Cliente",
       recipient_phone: form.recipient_phone.trim() || null,
       cep: form.cep,
       street: form.street.trim(),
@@ -159,33 +147,6 @@ export function AddressFormDialog({ open, onOpenChange, onSaved, initialCep }: A
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Destinatário</Label>
-              <Input
-                value={form.recipient_name}
-                onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">CEP</Label>
-              <div className="relative">
-                <Input
-                  value={formatCEP(form.cep)}
-                  onChange={(e) => {
-                    const v = sanitizeNumericInput(e.target.value);
-                    setForm({ ...form, cep: v });
-                    if (v.length === 8) lookupCep(v);
-                  }}
-                  maxLength={9}
-                  placeholder="00000-000"
-                />
-                {cepLoading && (
-                  <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <div>
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">Telefone</Label>
               <Input
                 value={form.recipient_phone}
@@ -194,45 +155,21 @@ export function AddressFormDialog({ open, onOpenChange, onSaved, initialCep }: A
               />
             </div>
           </div>
-          <div className="grid grid-cols-[1fr_100px] gap-3">
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Rua</Label>
-              <Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Número</Label>
-              <Input value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Complemento</Label>
-            <Input
-              value={form.complement}
-              onChange={(e) => setForm({ ...form, complement: e.target.value })}
-              placeholder="Apto, bloco..."
-            />
-          </div>
-          <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bairro</Label>
-              <Input
-                value={form.neighborhood}
-                onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cidade</Label>
-              <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-            </div>
-            <div>
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground">UF</Label>
-              <Input
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
-                maxLength={2}
-              />
-            </div>
-          </div>
+
+          <AddressFields
+            value={{
+              cep: form.cep,
+              street: form.street,
+              number: form.number,
+              complement: form.complement,
+              neighborhood: form.neighborhood,
+              city: form.city,
+              state: form.state,
+            }}
+            onChange={(addr) => setForm({ ...form, ...addr })}
+            hideSavedAddresses
+          />
+
           <label className="flex items-center gap-2 text-sm pt-1 cursor-pointer">
             <input
               type="checkbox"

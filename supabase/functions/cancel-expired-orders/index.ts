@@ -12,7 +12,7 @@ interface OrderItem {
   quantity: number;
 }
 
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -34,13 +34,15 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Find orders awaiting payment that are either:
-    //  - older than 24h (original cutoff), OR
+    //  - older than 1h (orders with PIX not paid within 1h), OR
     //  - have an expired PIX (pix_expiration in the past)
     const now = new Date().toISOString();
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
     const { data: expiredOrders, error: fetchError } = await supabase
       .from("orders")
@@ -206,4 +208,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+serve((req) => handleRequest(req));

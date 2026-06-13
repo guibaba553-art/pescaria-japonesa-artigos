@@ -33,12 +33,14 @@ import { MapPin, Pencil, Plus, Trash2, CreditCard, Loader2, Store, Check, Truck,
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SavedMethod, PaymentOrder } from '@/types/payment';
-import { sanitizeNumericInput, formatCEP } from '@/utils/validation';
+import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG } from '@/config/constants';
 import type { UserAddress } from '@/components/MyAddresses';
+import { AddressFields } from '@/components/AddressFields';
 
 interface FormState {
+  label: string;
   recipient_name: string;
   cep: string;
   street: string;
@@ -50,6 +52,7 @@ interface FormState {
 }
 
 const emptyForm: FormState = {
+  label: 'Casa',
   recipient_name: '',
   cep: '',
   street: '',
@@ -62,6 +65,7 @@ const emptyForm: FormState = {
 
 function addressToForm(a: UserAddress): FormState {
   return {
+    label: a.label,
     recipient_name: a.recipient_name,
     cep: a.cep,
     street: a.street,
@@ -89,7 +93,6 @@ export default function CheckoutEntrega() {
   const [editMode, setEditMode] = useState<'new' | string | null>(null); // null = not editing, 'new' = new, string = address id
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState<'pickup' | string>(
     isPickup ? 'pickup' : ''
   );
@@ -105,6 +108,8 @@ export default function CheckoutEntrega() {
   const [shouldSaveCard, setShouldSaveCard] = useState(false);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError, setCardError] = useState<string | undefined>();
+  // Profile data for pre-filling card holder info
+  const [profileData, setProfileData] = useState<{ name: string; email: string; cpf: string; phone: string } | null>(null);
 
   const selectedAddress = typeof selectedOption === 'string' && selectedOption !== 'pickup'
     ? addresses.find((a) => a.id === selectedOption) ?? null
@@ -304,8 +309,28 @@ export default function CheckoutEntrega() {
     }
   }, [savedCards]);
 
+  // Load profile data for pre-filling card holder info
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('full_name, cpf, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setProfileData({
+            name: data.full_name || '',
+            email: user.email || '',
+            cpf: data.cpf || '',
+            phone: data.phone || '',
+          });
+        }
+      });
+  }, [user]);
+
   const openNew = () => {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, recipient_name: profileData?.name || '' });
     setEditMode('new');
   };
 
@@ -318,41 +343,19 @@ export default function CheckoutEntrega() {
     setEditMode(null);
   };
 
-  const lookupCep = async (cep: string) => {
-    if (cep.length !== 8) return;
-    setCepLoading(true);
-    try {
-      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const d = await r.json();
-      if (!d.erro) {
-        setForm((p) => ({
-          ...p,
-          street: d.logradouro || p.street,
-          neighborhood: d.bairro || p.neighborhood,
-          city: d.localidade || p.city,
-          state: d.uf || p.state,
-        }));
-      }
-    } catch {
-      // silencioso
-    } finally {
-      setCepLoading(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!user) return;
-    if (!form.recipient_name.trim()) return toast.error('Informe o destinatário');
     if (form.cep.length !== 8) return toast.error('CEP inválido');
     if (!form.street.trim() || !form.number.trim() || !form.neighborhood.trim() || !form.city.trim() || form.state.length !== 2) {
       return toast.error('Preencha o endereço completo');
     }
 
     setSaving(true);
+    const effectiveRecipient = profileData?.name || form.recipient_name.trim() || 'Cliente';
     const payload = {
       user_id: user.id,
-      label: 'Endereço',
-      recipient_name: form.recipient_name.trim(),
+      label: form.label.trim() || 'Endereço',
+      recipient_name: effectiveRecipient,
       recipient_phone: null,
       cep: form.cep,
       street: form.street.trim(),
@@ -411,6 +414,10 @@ export default function CheckoutEntrega() {
     // ── Validações de formulário (backend guard) ──────────────
     if (!selectedOption) {
       toast.error('Selecione uma forma de entrega antes de finalizar o pedido.');
+      return;
+    }
+    if (selectedOption !== 'pickup' && !selectedShippingOption) {
+      toast.error('Selecione um frete para entrega antes de finalizar o pedido.');
       return;
     }
     if (!selectedPayment) {
@@ -707,7 +714,7 @@ export default function CheckoutEntrega() {
                   name: profile?.full_name || cardData.creditCardHolderInfo?.name || '',
                   email: user?.email || '',
                   cpfCnpj: profile?.cpf || cardData.creditCardHolderInfo?.cpfCnpj || '',
-                  phone: profile?.phone || cardData.creditCardHolderInfo?.phone || cardData.creditCardHolderInfo?.mobilePhone || '',
+                  phone: profile?.phone || cardData.creditCardHolderInfo?.phone || '',
                 },
               },
             }
@@ -1007,83 +1014,26 @@ export default function CheckoutEntrega() {
                     {editMode !== null && editMode !== 'new' ? 'Editar endereço' : 'Novo endereço'}
                   </p>
                   <div>
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">CEP</Label>
-                    <div className="relative">
-                      <Input
-                        value={formatCEP(form.cep)}
-                        onChange={(e) => {
-                          const v = sanitizeNumericInput(e.target.value);
-                          setForm({ ...form, cep: v });
-                          if (v.length === 8) lookupCep(v);
-                        }}
-                        maxLength={9}
-                        placeholder="00000-000"
-                      />
-                      {cepLoading && (
-                        <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Destinatário</Label>
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Apelido</Label>
                     <Input
-                      value={form.recipient_name}
-                      onChange={(e) => setForm({ ...form, recipient_name: e.target.value })}
-                      placeholder="Nome"
+                      value={form.label}
+                      onChange={(e) => setForm({ ...form, label: e.target.value })}
+                      placeholder="Casa, Trabalho..."
                     />
                   </div>
-                  <div className="grid grid-cols-[1fr_100px] gap-3">
-                    <div>
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Endereço</Label>
-                      <Input
-                        value={form.street}
-                        onChange={(e) => setForm({ ...form, street: e.target.value })}
-                        placeholder="Endereço"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Número</Label>
-                      <Input
-                        value={form.number}
-                        onChange={(e) => setForm({ ...form, number: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Complemento</Label>
-                    <Input
-                      value={form.complement}
-                      onChange={(e) => setForm({ ...form, complement: e.target.value })}
-                      placeholder="Apto, bloco..."
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                    <Input
-                      value={form.neighborhood}
-                      onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
-                      placeholder="Bairro"
-                    />
-                  </div>
-                  <div className="grid grid-cols-[1fr_80px] gap-3">
-                    <div>
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                      <Input
-                        value={form.city}
-                        onChange={(e) => setForm({ ...form, city: e.target.value })}
-                        placeholder="Cidade"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Estado</Label>
-                      <Input
-                        value={form.state}
-                        onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
-                        maxLength={2}
-                        placeholder="UF"
-                      />
-                    </div>
-                  </div>
+                  <AddressFields
+                    value={{
+                      cep: form.cep,
+                      street: form.street,
+                      number: form.number,
+                      complement: form.complement,
+                      neighborhood: form.neighborhood,
+                      city: form.city,
+                      state: form.state,
+                    }}
+                    onChange={(addr) => setForm({ ...form, ...addr })}
+                    hideSavedAddresses
+                  />
                   <div className="flex gap-2 pt-1">
                     <Button onClick={handleSave} disabled={saving} className="rounded-full">
                       {saving ? 'Salvando...' : 'Salvar endereço'}
@@ -1178,6 +1128,17 @@ export default function CheckoutEntrega() {
                         onSelectSavedCard={setSelectedCardId}
                         selectedSavedCardId={selectedCardId}
                         error={cardError}
+                        initialHolderInfo={profileData ?? undefined}
+                        savedAddresses={addresses.map(a => ({
+                          id: a.id,
+                          cep: a.cep,
+                          street: a.street,
+                          number: a.number,
+                          complement: a.complement || undefined,
+                          neighborhood: a.neighborhood,
+                          city: a.city,
+                          state: a.state,
+                        }))}
                       />
                     </div>
                   )}
@@ -1228,7 +1189,7 @@ export default function CheckoutEntrega() {
                 className="w-full rounded-full font-bold"
                 size="lg"
                 onClick={handleFinalizeOrder}
-                disabled={finalizing || selectedOption === ''}
+                disabled={finalizing || selectedOption === '' || (selectedOption !== 'pickup' && !selectedShippingOption)}
               >
                 {finalizing ? (
                   <span className="flex items-center gap-2">

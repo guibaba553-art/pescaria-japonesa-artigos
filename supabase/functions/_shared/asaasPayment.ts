@@ -94,6 +94,13 @@ export async function processAsaasCreditCardPayment(
     );
   }
 
+  if (installmentCount < 1) {
+    return new Response(
+      JSON.stringify({ error: 'Número de parcelas inválido.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
   if (!creditCardToken && (!creditCard || !creditCardHolderInfo)) {
     return new Response(
       JSON.stringify({ error: 'Either creditCardToken or creditCard+creditCardHolderInfo must be provided' }),
@@ -121,7 +128,7 @@ export async function processAsaasCreditCardPayment(
   // ── Order validation ────────────────────────────────────────────────────
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('id, user_id, status, total_amount, payment_attempts, last_payment_attempt_at, asaas_payment_id')
+    .select('id, user_id, status, total_amount, payment_attempts, last_payment_attempt_at, asaas_payment_id, delivery_type, shipping_service_id')
     .eq('id', orderId)
     .single();
 
@@ -157,6 +164,14 @@ export async function processAsaasCreditCardPayment(
   if (order.status !== 'aguardando_pagamento') {
     return new Response(
       JSON.stringify({ error: 'Este pedido já foi pago.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
+  // ── Shipping validation (only for delivery orders) ────────────────────────
+  if (order.delivery_type === 'delivery' && !order.shipping_service_id) {
+    return new Response(
+      JSON.stringify({ error: 'Selecione um frete para entrega antes de finalizar o pedido.' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }

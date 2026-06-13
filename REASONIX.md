@@ -113,4 +113,11 @@ Routes are lazy-loaded in `src/App.tsx` via `React.lazy`. Each page is a functio
 
 ## Notes
 
-—
+### Skills (Reasonix)
+
+The following project skills are available in `.reasonix/skills/`:
+
+| Skill | Description |
+|-------|-------------|
+| `testing-practices` | Testing conventions (Vitest frontend, Deno Edge Functions, mocked external APIs) |
+| `abacatepay` | Integrate AbacatePay payments (Pix, card, subscriptions, webhooks, MRR, etc.) with full reference material (rules, examples, tools, tests, utils) bundled locally; also supports direct API interaction via curl (agent mode) |
