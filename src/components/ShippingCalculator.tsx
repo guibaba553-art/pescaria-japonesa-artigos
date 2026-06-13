@@ -291,12 +291,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   return (
     <div className="space-y-4">
-      {hasItemsWithoutDims && (
-        <p className="text-sm text-muted-foreground">
-          Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
-        </p>
-      )}
-
       {packagePreview && packagePreview.length > 1 && (
         <Card className="p-3 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
           <div className="flex items-start gap-2">
@@ -342,6 +336,11 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
             <p className="font-bold text-lg text-green-600">GRÁTIS</p>
           </div>
         </Card>
+        {hasItemsWithoutDims && (
+          <p className="text-sm text-muted-foreground">
+            Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
+          </p>
+        )}
       </div>
 
       {/* Cálculo de Frete por CEP avulso */}
