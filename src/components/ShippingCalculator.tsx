@@ -409,7 +409,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                       </div>
                     </div>
                     <p className="font-bold text-lg">
-                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
+                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2).replace('.', ',')}`}
                     </p>
                   </div>
                 </Card>
