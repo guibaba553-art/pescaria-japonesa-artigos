@@ -173,6 +173,33 @@ export default function CheckoutEntrega() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
+  // Verifica se todos os itens têm dimensões/peso para calcular frete
+  const dimsReady = (() => {
+    if (items.length === 0) return true;
+    return items.every((item) => {
+      const pidOk = !item.id || item.id in productDims;
+      const vidOk = !item.variationId || item.variationId in variationDims;
+      return pidOk && vidOk;
+    });
+  })();
+
+  const pickupOnly = dimsReady && items.some((item) => {
+    const pd = (item.id && productDims[item.id]) || null;
+    const vd = (item.variationId && variationDims[item.variationId]) || null;
+    const w = vd?.weight_grams ?? pd?.weight_grams ?? null;
+    const l = vd?.length_cm ?? pd?.length_cm ?? null;
+    const wd = vd?.width_cm ?? pd?.width_cm ?? null;
+    const h = vd?.height_cm ?? pd?.height_cm ?? null;
+    return !w || !l || !wd || !h;
+  });
+
+  // Força retirada quando os produtos só podem ser retirados na loja
+  useEffect(() => {
+    if (pickupOnly) {
+      setSelectedOption('pickup');
+    }
+  }, [pickupOnly]);
+
   // Frete calculado
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }> | null>(null);
@@ -823,7 +850,7 @@ export default function CheckoutEntrega() {
                   </Card>
 
                   {/* ---- ENDEREÇO EM DESTAQUE ---- */}
-                  {primaryAddress && (() => {
+                  {!pickupOnly && primaryAddress && (() => {
                     const a = primaryAddress;
                     return (
                       <Card
@@ -985,7 +1012,7 @@ export default function CheckoutEntrega() {
                   })()}
 
                   {/* ---- BOTÃO SELECIONAR OUTRO ENDEREÇO ---- */}
-                  {hiddenAddresses.length > 0 && (
+                  {!pickupOnly && hiddenAddresses.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setAddressDialogOpen(true)}
@@ -997,20 +1024,22 @@ export default function CheckoutEntrega() {
                   )}
 
                   {/* ---- BOTÃO NOVO ENDEREÇO ---- */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={openNew}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Cadastrar novo endereço
-                  </Button>
+                  {!pickupOnly && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={openNew}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Cadastrar novo endereço
+                    </Button>
+                  )}
                 </div>
               )}
 
               {/* ---- FORMULÁRIO INLINE ---- */}
-              {isEditing && (
+              {!pickupOnly && isEditing && (
                 <div className="mt-4 pt-4 border-t space-y-3">
                   <p className="text-sm font-semibold text-muted-foreground">
                     {editMode !== null && editMode !== 'new' ? 'Editar endereço' : 'Novo endereço'}
