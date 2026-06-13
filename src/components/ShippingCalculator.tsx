@@ -332,7 +332,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         <Label>Opções de Entrega</Label>
         <Card
           className={`p-3 cursor-pointer transition-all ${
-            selectedOption === 'RETIRADA' ? 'border-primary bg-primary/5 border-2' : 'hover:bg-accent'
+            selectedOption === 'RETIRADA' ? 'border-primary bg-primary/5 border-2' : 'hover:border-accent'
           }`}
           onClick={() => handleSelectOption(pickupOption)}
         >
@@ -382,7 +382,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                   className={`p-3 cursor-pointer transition-all ${
                     selectedOption === option.codigo
                       ? 'border-primary bg-primary/5 border-2'
-                      : 'hover:bg-accent'
+                      : 'hover:border-accent'
                   }`}
                   onClick={() => handleSelectOption(option)}
                 >
