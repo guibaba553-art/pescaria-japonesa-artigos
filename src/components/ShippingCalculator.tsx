@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Truck, Store, Package } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
 
@@ -337,9 +338,12 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
           </div>
         </Card>
         {hasItemsWithoutDims && (
-          <p className="text-sm text-muted-foreground">
-            Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
-          </p>
+          <>
+            <Separator />
+            <p className="text-sm text-muted-foreground">
+              Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
+            </p>
+          </>
         )}
       </div>
 
