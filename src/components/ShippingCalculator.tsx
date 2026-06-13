@@ -345,22 +345,24 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
       </div>
 
       {/* Cálculo de Frete por CEP avulso */}
-      <div className="space-y-2">
-        <Label htmlFor="cep">Ou calcule o frete para outro CEP</Label>
-        <div className="flex gap-2">
-          <Input
-            id="cep"
-            placeholder="00000-000"
-            value={formatCEP(cep)}
-            onChange={handleCepChange}
-            maxLength={9}
-            className="flex-1"
-          />
-          <Button onClick={calculateShipping} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Calcular'}
-          </Button>
+      {!hasItemsWithoutDims && (
+        <div className="space-y-2">
+          <Label htmlFor="cep">Ou calcule o frete para outro CEP</Label>
+          <div className="flex gap-2">
+            <Input
+              id="cep"
+              placeholder="00000-000"
+              value={formatCEP(cep)}
+              onChange={handleCepChange}
+              maxLength={9}
+              className="flex-1"
+            />
+            <Button onClick={calculateShipping} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Calcular'}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {options.length > 0 && (() => {
         const delivery = filterDeliveryOnly(options);
