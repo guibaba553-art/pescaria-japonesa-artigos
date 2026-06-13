@@ -339,10 +339,10 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </Card>
         {hasItemsWithoutDims && (
           <>
-            <Separator />
             <p className="text-sm text-muted-foreground">
               Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
             </p>
+            <Separator />
           </>
         )}
       </div>
