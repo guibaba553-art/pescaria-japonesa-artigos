@@ -83,7 +83,13 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
-    // ── Shipping validation (only for delivery orders) ─────────────────────
+    // ── Delivery/pickup validation ────────────────────────────────────────
+    if (!order.delivery_type || !['delivery', 'pickup'].includes(order.delivery_type)) {
+      return new Response(
+        JSON.stringify({ error: 'Selecione uma forma de entrega antes de finalizar o pedido.' }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     if (order.delivery_type === 'delivery' && !order.shipping_service_id) {
       return new Response(
         JSON.stringify({ error: 'Selecione um frete para entrega antes de finalizar o pedido.' }),

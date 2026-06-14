@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Check } from "lucide-react";
@@ -22,6 +22,7 @@ export interface SavedAddressOption {
   neighborhood: string;
   city: string;
   state: string;
+  is_default?: boolean;
 }
 
 export interface AddressFieldsProps {
@@ -32,6 +33,8 @@ export interface AddressFieldsProps {
   loading?: boolean;
   disabled?: boolean;
   hideSavedAddresses?: boolean;
+  /** When true, street/neighborhood/city/state are read-only (auto-filled from ViaCEP) */
+  readOnlyAddress?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -56,9 +59,22 @@ export function AddressFields({
   loading = false,
   disabled = false,
   hideSavedAddresses = false,
+  readOnlyAddress = false,
 }: AddressFieldsProps) {
   const [cepLoading, setCepLoading] = useState(false);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+
+  // Auto-select default address when savedAddresses are loaded and nothing is selected yet
+  useEffect(() => {
+    if (savedAddresses.length > 0 && selectedAddressId === null) {
+      const def = savedAddresses.find(a => a.is_default) ?? savedAddresses[0];
+      if (def) {
+        handleSelectAddress(def.id);
+      }
+    }
+    // Only run when savedAddresses length changes from 0 to >0
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedAddresses.length]);
 
   const update = (partial: Partial<AddressFieldsValue>) => {
     onChange({ ...value, ...partial });
@@ -204,65 +220,82 @@ export function AddressFields({
         </div>
 
         {/* Logradouro */}
-        <div className="space-y-1.5">
-          <Label htmlFor="address-street">Logradouro</Label>
-          <Input
-            id="address-street"
-            placeholder="Rua, Av..."
-            value={value.street}
-            onChange={(e) => update({ street: e.target.value })}
-            disabled={disabled || loading}
-          />
-        </div>
+        {readOnlyAddress ? (
+          value.street ? (
+            <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground space-y-0.5">
+              <p className="font-medium text-foreground">{value.street}</p>
+              <p>
+                {value.neighborhood && <>{value.neighborhood} — </>}
+                {value.city}/{value.state}
+              </p>
+              <p className="text-xs">CEP: {formatCEP(value.cep)}</p>
+            </div>
+          ) : null
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="address-street">Logradouro</Label>
+              <Input
+                id="address-street"
+                placeholder="Rua, Av..."
+                value={value.street}
+                onChange={(e) => update({ street: e.target.value })}
+                disabled={disabled || loading}
+              />
+            </div>
 
-        {/* Bairro + Cidade + UF */}
-        <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="address-neighborhood">Bairro</Label>
-            <Input
-              id="address-neighborhood"
-              placeholder="Bairro"
-              value={value.neighborhood}
-              onChange={(e) => update({ neighborhood: e.target.value })}
-              disabled={disabled || loading}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="address-city">Cidade</Label>
-            <Input
-              id="address-city"
-              placeholder="Cidade"
-              value={value.city}
-              onChange={(e) => update({ city: e.target.value })}
-              disabled={disabled || loading}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="address-state">UF</Label>
-            <Input
-              id="address-state"
-              placeholder="UF"
-              maxLength={2}
-              value={value.state.toUpperCase()}
-              onChange={(e) => update({ state: e.target.value.toUpperCase() })}
-              disabled={disabled || loading}
-            />
-          </div>
-        </div>
+            {/* Bairro + Cidade + UF */}
+            <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="address-neighborhood">Bairro</Label>
+                <Input
+                  id="address-neighborhood"
+                  placeholder="Bairro"
+                  value={value.neighborhood}
+                  onChange={(e) => update({ neighborhood: e.target.value })}
+                  disabled={disabled || loading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="address-city">Cidade</Label>
+                <Input
+                  id="address-city"
+                  placeholder="Cidade"
+                  value={value.city}
+                  onChange={(e) => update({ city: e.target.value })}
+                  disabled={disabled || loading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="address-state">UF</Label>
+                <Input
+                  id="address-state"
+                  placeholder="UF"
+                  maxLength={2}
+                  value={value.state.toUpperCase()}
+                  onChange={(e) => update({ state: e.target.value.toUpperCase() })}
+                  disabled={disabled || loading}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Complemento */}
-        <div className="space-y-1.5">
-          <Label htmlFor="address-complement">
-            Complemento <span className="text-muted-foreground">(opcional)</span>
-          </Label>
-          <Input
-            id="address-complement"
-            placeholder="Apto, bloco, etc."
-            value={value.complement}
-            onChange={(e) => update({ complement: e.target.value })}
-            disabled={disabled || loading}
-          />
-        </div>
+        {!readOnlyAddress && (
+          <div className="space-y-1.5">
+            <Label htmlFor="address-complement">
+              Complemento <span className="text-muted-foreground">(opcional)</span>
+            </Label>
+            <Input
+              id="address-complement"
+              placeholder="Apto, bloco, etc."
+              value={value.complement}
+              onChange={(e) => update({ complement: e.target.value })}
+              disabled={disabled || loading}
+            />
+          </div>
+        )}
       </>
       )}
     </div>

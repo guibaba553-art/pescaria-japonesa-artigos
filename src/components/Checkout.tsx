@@ -29,6 +29,7 @@ import { MapPin, Plus, Check } from 'lucide-react';
 import type { UserAddress } from '@/components/MyAddresses';
 import { MyAddresses } from '@/components/MyAddresses';
 import { formatCEP } from '@/utils/validation';
+import { getBrandLabel } from '@/lib/creditCardValidation';
 
 interface CheckoutProps {
   open: boolean;
@@ -1120,7 +1121,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                               <CreditCard className="w-5 h-5 text-primary shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm">
-                                  {m.card_brand ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
+                                  {getBrandLabel(m.card_brand) ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {m.cardholder_name ?? '—'}

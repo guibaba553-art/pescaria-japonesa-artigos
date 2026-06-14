@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle, useRef } from "react";
-import { CreditCard, Lock, AlertCircle, MapPin } from "lucide-react";
+import { CreditCard, Lock, AlertCircle, MapPin, Check, User } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
+
 import { AddressFields } from "@/components/AddressFields";
 
 import {
@@ -36,6 +36,7 @@ export interface SavedCard {
   cardExpYear: string | null;
   cardholderName: string | null;
   asaasCreditCardToken?: string;
+  is_default?: boolean;
 }
 
 export interface CreditCardFormData {
@@ -105,6 +106,8 @@ export interface CreditCardFormProps {
   columns?: 1 | 2;
   /** Saved addresses to allow quick-fill of billing address fields */
   savedAddresses?: SavedAddressOption[];
+  /** When hideExtras=true, still show a compact CEP + number section with a read-only ViaCEP address preview */
+  showBillingPreview?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -207,6 +210,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     initialHolderInfo,
     columns = 1,
     savedAddresses = [],
+    showBillingPreview = false,
   }, ref) {
   /* -------- Mode -------- */
   const hasSavedCards = savedCards.length > 0;
@@ -297,6 +301,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     city: "",
     state: "",
   });
+  const [cepLoading, setCepLoading] = useState(false);
 
   // Pre-fill from profile when initialHolderInfo changes or useProfileData toggles
   useEffect(() => {
@@ -381,7 +386,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
         }
       }
 
-      if (!hideExtras) {
+      if (!hideExtras || showBillingPreview) {
         if (isTouched("cep")) {
           const cleanCep = postalCode.replace(/\D/g, "");
           if (cleanCep.length !== 8)
@@ -420,6 +425,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     phone,
     installmentCount,
     hideExtras,
+    showBillingPreview,
     hasInitialInfo,
     useProfileData,
   ]);
@@ -608,6 +614,37 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     setAddressComplement(billingAddress.complement);
   }, [billingAddress.cep, billingAddress.number, billingAddress.complement]);
 
+  /* -------- CEP lookup (for showBillingPreview) -------- */
+  const lookupCep = useCallback(async (cep: string) => {
+    const digits = cep.replace(/\D/g, "");
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json();
+      if (!d.erro) {
+        setBillingAddress((prev) => ({
+          ...prev,
+          cep: digits,
+          street: d.logradouro || prev.street,
+          neighborhood: d.bairro || prev.neighborhood,
+          city: d.localidade || prev.city,
+          state: d.uf || prev.state,
+        }));
+      }
+    } catch {
+      // silencioso
+    } finally {
+      setCepLoading(false);
+    }
+  }, []);
+
+  const handleBillingCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+    setBillingAddress((prev) => ({ ...prev, cep: raw }));
+    if (raw.length === 8) lookupCep(raw);
+  };
+
   /* -------- Installment change -------- */
   const handleInstallmentChange = (value: string) => {
     setInstallmentCount(value);
@@ -646,7 +683,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span className="font-medium text-sm">
-                      {sc.cardBrand ?? "Cartão"}
+                      {getBrandLabel(sc.cardBrand) ?? "Cartão"}
                     </span>
                     <span className="font-mono text-sm text-muted-foreground">
                       •••• {sc.cardLast4 ?? "????"}
@@ -655,6 +692,9 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                       <span className="text-xs text-muted-foreground">
                         Val. {sc.cardExpMonth}/{sc.cardExpYear}
                       </span>
+                    )}
+                    {sc.is_default && (
+                      <span className="text-xs text-primary font-medium">Padrão</span>
                     )}
                   </div>
                   {sc.cardholderName && (
@@ -783,36 +823,58 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                 Dados do titular
               </h3>
 
-              {/* "Usar dados do cadastro" switch */}
+              {/* "Usar dados do cadastro" radio selector */}
               {hasInitialInfo && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={useProfileData}
-                    onCheckedChange={setUseProfileData}
-                    id="use-profile-data"
-                  />
-                  <Label htmlFor="use-profile-data" className="text-sm cursor-pointer">
-                    Usar dados do cadastro
-                  </Label>
+                <div className="space-y-1">
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border p-3 transition-colors cursor-pointer ${
+                      useProfileData
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                    onClick={() => setUseProfileData(true)}
+                  >
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      useProfileData ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {useProfileData && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        <User className="w-3 h-3 inline mr-1 text-muted-foreground" />
+                        {initialHolderInfo!.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {initialHolderInfo!.cpf && (
+                          <>CPF: <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></>
+                        )}
+                        {initialHolderInfo!.phone && (
+                          <> — Telefone: <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></>
+                        )}
+                      </p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border p-3 transition-colors cursor-pointer ${
+                      !useProfileData
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                    onClick={() => setUseProfileData(false)}
+                  >
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      !useProfileData ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {!useProfileData && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <span className="flex-1 text-sm font-medium">
+                      Digitar manualmente
+                    </span>
+                  </label>
                 </div>
               )}
 
-              {hasInitialInfo && useProfileData ? (
-                /* Dados compactos quando usando dados do cadastro */
-                <div className="rounded-lg border bg-muted/20 px-3 py-2.5 text-sm space-y-1">
-                  {initialHolderInfo!.name && (
-                    <p className="text-foreground font-medium truncate">{initialHolderInfo!.name}</p>
-                  )}
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-muted-foreground">
-                    {initialHolderInfo!.cpf && (
-                      <span><span className="text-foreground/60">CPF:</span> <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></span>
-                    )}
-                    {initialHolderInfo!.phone && (
-                      <span><span className="text-foreground/60">Telefone:</span> <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></span>
-                    )}
-                  </div>
-                </div>
-              ) : (
+              {(!hasInitialInfo || !useProfileData) && (
                 /* Editable fields when not using profile data */
                 <>
                   <div className="space-y-1.5">
@@ -877,12 +939,18 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
 
               {/* Billing address fields (only when hideExtras=false) */}
               {!hideExtras && (
-                <AddressFields
-                  value={billingAddress}
-                  onChange={setBillingAddress}
-                  savedAddresses={savedAddresses}
-                  disabled={loading}
-                />
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Endereço de Cobrança
+                  </h3>
+                  <AddressFields
+                    value={billingAddress}
+                    onChange={setBillingAddress}
+                    savedAddresses={savedAddresses}
+                    disabled={loading}
+                    readOnlyAddress
+                  />
+                </div>
               )}
             </div>
           )}
@@ -1070,35 +1138,58 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                 Dados do titular
               </h3>
 
-              {/* "Usar dados do cadastro" switch */}
+              {/* "Usar dados do cadastro" radio selector */}
               {hasInitialInfo && (
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={useProfileData}
-                    onCheckedChange={setUseProfileData}
-                    id="use-profile-data-2col"
-                  />
-                  <Label htmlFor="use-profile-data-2col" className="text-sm cursor-pointer">
-                    Usar dados do cadastro
-                  </Label>
+                <div className="space-y-1">
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border p-3 transition-colors cursor-pointer ${
+                      useProfileData
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                    onClick={() => setUseProfileData(true)}
+                  >
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      useProfileData ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {useProfileData && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        <User className="w-3 h-3 inline mr-1 text-muted-foreground" />
+                        {initialHolderInfo!.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {initialHolderInfo!.cpf && (
+                          <>CPF: <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></>
+                        )}
+                        {initialHolderInfo!.phone && (
+                          <> — Telefone: <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></>
+                        )}
+                      </p>
+                    </div>
+                  </label>
+                  <label
+                    className={`flex items-start gap-3 rounded-xl border p-3 transition-colors cursor-pointer ${
+                      !useProfileData
+                        ? "border-primary ring-2 ring-primary/30"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                    onClick={() => setUseProfileData(false)}
+                  >
+                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                      !useProfileData ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {!useProfileData && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                    <span className="flex-1 text-sm font-medium">
+                      Digitar manualmente
+                    </span>
+                  </label>
                 </div>
               )}
 
-              {hasInitialInfo && useProfileData ? (
-                <div className="rounded-lg border bg-muted/20 px-3 py-2.5 text-sm space-y-1">
-                  {initialHolderInfo!.name && (
-                    <p className="text-foreground font-medium truncate">{initialHolderInfo!.name}</p>
-                  )}
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-muted-foreground">
-                    {initialHolderInfo!.cpf && (
-                      <span><span className="text-foreground/60">CPF:</span> <span className="font-mono">{formatCPF(initialHolderInfo!.cpf)}</span></span>
-                    )}
-                    {initialHolderInfo!.phone && (
-                      <span><span className="text-foreground/60">Telefone:</span> <span className="font-mono">{formatPhone(initialHolderInfo!.phone)}</span></span>
-                    )}
-                  </div>
-                </div>
-              ) : (
+              {(!hasInitialInfo || !useProfileData) && (
                 <>
                   <div className="space-y-1.5">
                     <Label htmlFor="holder-name">Nome completo</Label>
@@ -1159,14 +1250,71 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                 </>
               )}
 
+              {/* Billing address preview (CEP + number + read-only ViaCEP result) */}
+              {hideExtras && showBillingPreview && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Endereço de Cobrança
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="billing-cep-preview">CEP</Label>
+                      <div className="relative">
+                        <Input
+                          id="billing-cep-preview"
+                          inputMode="numeric"
+                          placeholder="00000-000"
+                          value={formatCEP(billingAddress.cep)}
+                          onChange={handleBillingCepChange}
+                          onBlur={() => handleBlur("cep")}
+                          disabled={loading}
+                        />
+                        {cepLoading && (
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                            ...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="billing-number-preview">Número</Label>
+                      <Input
+                        id="billing-number-preview"
+                        placeholder="Nº"
+                        value={billingAddress.number}
+                        onChange={(e) => setBillingAddress((prev) => ({ ...prev, number: e.target.value }))}
+                        onBlur={() => handleBlur("addressNumber")}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                  {billingAddress.street && (
+                    <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground space-y-0.5">
+                      <p className="font-medium text-foreground">{billingAddress.street}</p>
+                      <p>
+                        {billingAddress.neighborhood && <>{billingAddress.neighborhood} — </>}
+                        {billingAddress.city}/{billingAddress.state}
+                      </p>
+                      <p className="text-xs">CEP: {formatCEP(billingAddress.cep)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Billing address fields */}
               {!hideExtras && (
-                <AddressFields
-                  value={billingAddress}
-                  onChange={setBillingAddress}
-                  savedAddresses={savedAddresses}
-                  disabled={loading}
-                />
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Endereço de Cobrança
+                  </h3>
+                  <AddressFields
+                    value={billingAddress}
+                    onChange={setBillingAddress}
+                    savedAddresses={savedAddresses}
+                    disabled={loading}
+                    readOnlyAddress
+                  />
+                </div>
               )}
             </div>
           </div>

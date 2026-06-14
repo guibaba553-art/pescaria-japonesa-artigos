@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index"; // landing — keep eager for fast first paint
 import { PageViewTracker } from "./components/PageViewTracker";
 import CookieBanner from "./components/CookieBanner";
@@ -48,6 +48,14 @@ const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
 const queryClient = new QueryClient();
 
+const ScrollToTop = () => {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
+  return null;
+};
+
 const RouteFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
@@ -74,6 +82,7 @@ const App = () => (
         <AuthProvider>
           <CartProvider>
             <PageViewTracker />
+            <ScrollToTop />
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Index />} />

@@ -154,6 +154,58 @@ curl -s -X POST -H "Authorization: Bearer $KEY" \
   "https://api.abacatepay.com/v2/transparents/simulate-payment?id=TRANSACTION_ID" | jq
 ```
 
+### Pagar um PIX copia-e-cola (DevMode — passo a passo)
+
+Quando o usuário fornece um **BR Code** (copia-e-cola) do AbacatePay DevMode, o fluxo para simular o pagamento é:
+
+**1. Extrair o transaction ID do BR Code**
+
+O BR Code contém a chave PIX do devmode: `devmode-pix-pix_char_<ID>`. O `<ID>` é o `transaction_id`. Exemplo:
+```
+00020101021126580014BR.GOV.BCB.PIX0136devmode-pix-pix_char_kZzwfuQcymJxT0rnqDgjugpT...
+                                   └──── transaction_id: pix_char_kZzwfuQcymJxT0rnqDgjugpT
+```
+
+**2. Localizar o pedido no banco (quando aplicável)**
+
+Se o projeto tiver banco local (Supabase), busque o pedido pelo `qr_code`:
+```bash
+psql "$DB_URL" -c "
+SELECT id, payment_id, status, payment_gateway
+FROM orders
+WHERE qr_code LIKE '%<parte-do-id>%';
+"
+```
+Isso confirma o `payment_id` e o status atual (`aguardando_pagamento`).
+
+**3. Simular o pagamento**
+```bash
+export ABACATEPAY_API_KEY="<sua-chave-dev>"
+curl -s -X POST -H "Authorization: Bearer $ABACATEPAY_API_KEY" \
+  "https://api.abacatepay.com/v2/transparents/simulate-payment?id=pix_char_<ID>" | jq
+```
+
+Resposta esperada (sucesso):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "pix_char_<ID>",
+    "amount": 15162,
+    "status": "PAID",
+    "devMode": true,
+    "brCode": "...",
+    "platformFee": 80,
+    "metadata": { "orderId": "<uuid>", "userId": "<uuid>" }
+  },
+  "error": null
+}
+```
+
+> ⚠️ Esse endpoint só funciona em **DevMode**. Em produção, o pagamento deve ser feito pelo usuário através do app do banco usando o BR Code / QR Code.
+>
+> 🔁 Após simular, se o webhook da AbacatePay estiver configurado, o pedido será atualizado automaticamente para `em_preparo`.
+
 ---
 
 ### Subscriptions

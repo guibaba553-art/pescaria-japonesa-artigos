@@ -44,15 +44,15 @@ export function detectBrand(number: string): string | null {
  */
 export function getBrandLabel(brand: string | null): string {
   const labels: Record<string, string> = {
-    visa: 'Visa',
-    mastercard: 'Mastercard',
-    elo: 'Elo',
-    amex: 'Amex',
-    discover: 'Discover',
-    hipercard: 'Hipercard',
-    diners: 'Diners',
+    visa: 'VISA',
+    mastercard: 'MASTERCARD',
+    elo: 'ELO',
+    amex: 'AMEX',
+    discover: 'DISCOVER',
+    hipercard: 'HIPERCARD',
+    diners: 'DINERS',
   };
-  return brand ? labels[brand] ?? brand : 'Desconhecido';
+  return brand ? labels[brand] ?? brand.toUpperCase() : 'Desconhecido';
 }
 
 /**

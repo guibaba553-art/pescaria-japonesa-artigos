@@ -62,7 +62,7 @@ describe('CreditCardForm — renderização', () => {
     );
 
     // Deve mostrar o cartão salvo
-    expect(screen.getByText('Visa')).toBeInTheDocument();
+    expect(screen.getByText('VISA')).toBeInTheDocument();
     const last4Text = screen.getByText(/4242/);
     expect(last4Text).toBeInTheDocument();
     expect(screen.getByText('João Silva')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('CreditCardForm — renderização', () => {
       />
     );
 
-    expect(screen.getByText('Visa')).toBeInTheDocument();
+    expect(screen.getByText('VISA')).toBeInTheDocument();
     expect(screen.getByText(/4242/)).toBeInTheDocument();
   });
 });
@@ -600,8 +600,8 @@ describe('CreditCardForm — initialHolderInfo', () => {
   });
 });
 
-describe('CreditCardForm — switch "Usar dados do cadastro"', () => {
-  it('deve exibir switch "Usar dados do cadastro" quando initialHolderInfo é fornecido', () => {
+describe('CreditCardForm — seleção "Dados do titular"', () => {
+  it('deve exibir os dados do titular no radio quando initialHolderInfo é fornecido', () => {
     render(
       <CreditCardForm
         totalAmount={100}
@@ -615,7 +615,10 @@ describe('CreditCardForm — switch "Usar dados do cadastro"', () => {
       />
     );
 
-    expect(screen.getByText('Usar dados do cadastro')).toBeInTheDocument();
+    // Deve mostrar o nome e dados no radio
+    expect(screen.getByText('João Silva')).toBeInTheDocument();
+    expect(screen.getByText(/529\.982\.247-25/)).toBeInTheDocument();
+    expect(screen.getByText(/\(11\) 99999-9999/)).toBeInTheDocument();
   });
 
   it('switch deve vir ligado por padrão, ocultando campos de nome/CPF/telefone', () => {
@@ -640,7 +643,7 @@ describe('CreditCardForm — switch "Usar dados do cadastro"', () => {
     expect(screen.getByText('João Silva')).toBeInTheDocument();
   });
 
-  it('ao desligar switch, campos de nome/CPF/telefone devem ficar visíveis', () => {
+  it('ao clicar em "Digitar manualmente", campos de nome/CPF/telefone devem ficar visíveis', () => {
     render(
       <CreditCardForm
         totalAmount={100}
@@ -654,9 +657,9 @@ describe('CreditCardForm — switch "Usar dados do cadastro"', () => {
       />
     );
 
-    // Desmarcar o switch
-    const switchEl = screen.getByRole('switch', { name: /usar dados do cadastro/i });
-    fireEvent.click(switchEl);
+    // Clicar em "Digitar manualmente"
+    const manualOption = screen.getByText('Digitar manualmente');
+    fireEvent.click(manualOption);
 
     // Campos devem aparecer
     expect(screen.getByPlaceholderText('Seu nome completo')).toBeInTheDocument();

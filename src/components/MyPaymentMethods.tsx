@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CreditCard, Plus, Trash2, Star, Loader2, ShieldCheck } from 'lucide-react';
 import { CreditCardForm, type CreditCardFormHandle } from '@/components/CreditCardForm';
-import { validateCardNumber } from '@/lib/creditCardValidation';
+import { validateCardNumber, getBrandLabel } from '@/lib/creditCardValidation';
 
 
 
@@ -105,7 +105,7 @@ export function MyPaymentMethods() {
 
     setSaving(true);
 
-    // Tokenizar cartão via edge function (Asaas) — agora envia ccv também
+    // Tokenizar cartão via edge function (Asaas)
     const { data: tokenResult, error: tokenError } = await supabase.functions.invoke('tokenize-card', {
       body: {
         cardNumber: fullNumber,
@@ -113,6 +113,8 @@ export function MyPaymentMethods() {
         expiryMonth: cardData.creditCard.expiryMonth,
         expiryYear: cardData.creditCard.expiryYear,
         ccv: cardData.creditCard.ccv,
+        postalCode: cardData.creditCardHolderInfo?.postalCode || '',
+        addressNumber: cardData.creditCardHolderInfo?.addressNumber || '',
       },
     });
 
@@ -228,7 +230,7 @@ export function MyPaymentMethods() {
                   </div>
                   <div>
                     <p className="font-semibold text-sm leading-tight">
-                      {m.card_brand ?? 'Cartão'}
+                      {getBrandLabel(m.card_brand) ?? 'Cartão'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {m.payment_method === 'debit_card' ? 'Débito' : 'Crédito'}
@@ -312,6 +314,7 @@ export function MyPaymentMethods() {
               totalAmount={0}
               onInstallmentChange={() => {}}
               hideExtras
+              showBillingPreview
               variant="inline"
               loading={saving}
               columns={2}

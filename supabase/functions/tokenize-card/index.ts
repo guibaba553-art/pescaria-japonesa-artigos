@@ -24,9 +24,12 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (authError || !user) return new Response(JSON.stringify({ error: 'Invalid auth' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     
     // Parse body
-    const { cardNumber, holderName, expiryMonth, expiryYear, ccv } = await req.json();
+    const { cardNumber, holderName, expiryMonth, expiryYear, ccv, postalCode, addressNumber } = await req.json();
     if (!cardNumber || !holderName || !expiryMonth || !expiryYear || !ccv) {
       return new Response(JSON.stringify({ error: 'Missing required fields: cardNumber, holderName, expiryMonth, expiryYear, ccv' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!postalCode || !addressNumber) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: postalCode, addressNumber' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
     // Asaas config
@@ -63,7 +66,11 @@ export async function handleRequest(req: Request): Promise<Response> {
           name: profile?.full_name || holderName,
           email: user.email || '',
           cpfCnpj: profile?.cpf || '',
+          postalCode: postalCode || '',
+          addressNumber: addressNumber || '',
+          addressComplement: null,
           phone: profile?.phone || '',
+          mobilePhone: profile?.phone || '',
         },
       }),
     });

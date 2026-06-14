@@ -88,16 +88,16 @@ describe('detectBrand', () => {
 
 // ─── getBrandLabel ──────────────────────────────────────────
 describe('getBrandLabel', () => {
-  it('Visa', () => expect(getBrandLabel('visa')).toBe('Visa'));
-  it('Mastercard', () => expect(getBrandLabel('mastercard')).toBe('Mastercard'));
-  it('Elo', () => expect(getBrandLabel('elo')).toBe('Elo'));
-  it('Amex', () => expect(getBrandLabel('amex')).toBe('Amex'));
-  it('Discover', () => expect(getBrandLabel('discover')).toBe('Discover'));
-  it('Hipercard', () => expect(getBrandLabel('hipercard')).toBe('Hipercard'));
-  it('Diners', () => expect(getBrandLabel('diners')).toBe('Diners'));
+  it('Visa', () => expect(getBrandLabel('visa')).toBe('VISA'));
+  it('Mastercard', () => expect(getBrandLabel('mastercard')).toBe('MASTERCARD'));
+  it('Elo', () => expect(getBrandLabel('elo')).toBe('ELO'));
+  it('Amex', () => expect(getBrandLabel('amex')).toBe('AMEX'));
+  it('Discover', () => expect(getBrandLabel('discover')).toBe('DISCOVER'));
+  it('Hipercard', () => expect(getBrandLabel('hipercard')).toBe('HIPERCARD'));
+  it('Diners', () => expect(getBrandLabel('diners')).toBe('DINERS'));
 
-  it('deve retornar o próprio nome para marca desconhecida', () => {
-    expect(getBrandLabel('unknown')).toBe('unknown');
+  it('deve retornar o próprio nome em maiúsculo para marca desconhecida', () => {
+    expect(getBrandLabel('unknown')).toBe('UNKNOWN');
   });
 
   it('deve retornar "Desconhecido" para null', () => {

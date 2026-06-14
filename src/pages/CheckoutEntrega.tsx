@@ -98,9 +98,6 @@ export default function CheckoutEntrega() {
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card'>('pix');
-  const handlePaymentChange = (method: 'pix' | 'credit_card') => {
-    setSelectedPayment(method);
-  };
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<SavedMethod[]>([]);
   const creditCardRef = useRef<CreditCardFormHandle>(null);
@@ -197,14 +194,21 @@ export default function CheckoutEntrega() {
   useEffect(() => {
     if (pickupOnly) {
       setSelectedOption('pickup');
+      setSelectedShippingOption(null);
     }
-  }, [pickupOnly]);
+  }, [pickupOnly, selectedOption]);
 
   // Frete calculado
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingOptions, setShippingOptions] = useState<Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }> | null>(null);
   const [shippingError, setShippingError] = useState(false);
   const [selectedShippingOption, setSelectedShippingOption] = useState<{ codigo: string; nome: string; valor: number; prazoEntrega: number } | null>(null);
+
+  // Desabilita opções de pagamento enquanto não houver forma de entrega definida
+  const paymentDeliveryReady = selectedOption !== '' && (selectedOption === 'pickup' || !!selectedShippingOption);
+  const handlePaymentChange = (method: 'pix' | 'credit_card') => {
+    setSelectedPayment(method);
+  };
 
   const calculateShipping = useCallback(async (cepDestino: string) => {
     if (!/^\d{8}$/.test(cepDestino)) return;
@@ -244,11 +248,6 @@ export default function CheckoutEntrega() {
       } else {
         const opts = (data.options || []) as Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }>;
         setShippingOptions(opts);
-        // Auto-seleciona a opção mais barata se nada foi selecionado ainda
-        const cheapest = [...opts]
-          .filter((o) => o.codigo !== 'RETIRADA' && !o.codigo.startsWith('frenet-'))
-          .sort((a, b) => a.valor - b.valor)[0];
-        if (cheapest) setSelectedShippingOption(cheapest);
       }
     } catch {
       setShippingError(true);
@@ -298,13 +297,14 @@ export default function CheckoutEntrega() {
       .order('created_at', { ascending: false });
     if (data) {
       setAddresses(data);
-      // Auto-select default if nothing selected yet and not pickup
-      if (!isPickup && !selectedOption) {
+      // Auto-select default address if nothing selected yet,
+      // not in pickup mode, and pickup is not forced by items
+      if (!isPickup && !selectedOption && !pickupOnly) {
         if (data.length > 0) {
           const def = data.find((a) => a.is_default) ?? data[0];
           if (def) setSelectedOption(def.id);
         } else {
-          // Sem endereços — auto-seleciona retirada na loja
+          // Sem endereços salvos — retirada é a única opção
           setSelectedOption('pickup');
         }
       }
@@ -439,7 +439,7 @@ export default function CheckoutEntrega() {
     if (finalizing) return;
 
     // ── Validações de formulário (backend guard) ──────────────
-    if (!selectedOption) {
+    if (!selectedOption || !paymentDeliveryReady) {
       toast.error('Selecione uma forma de entrega antes de finalizar o pedido.');
       return;
     }
@@ -691,8 +691,10 @@ export default function CheckoutEntrega() {
           gateway: usedGateway,
         });
 
-        // Limpar carrinho somente após PIX gerado com sucesso
-        clearCart();
+        // Carrinho NÃO é limpo aqui — mantém visível no background
+        // para o usuário ver o valor correto enquanto paga via PIX.
+        // Só será limpo quando o pagamento for confirmado (via onPaymentConfirmed)
+        // ou quando o usuário navegar para /conta.
         return;
       }
 
@@ -1155,6 +1157,7 @@ export default function CheckoutEntrega() {
                           cardExpYear: c.card_exp_year,
                           cardholderName: c.cardholder_name,
                           asaasCreditCardToken: c.asaas_credit_card_token,
+                          is_default: c.is_default,
                         }))}
                         onSelectSavedCard={setSelectedCardId}
                         selectedSavedCardId={selectedCardId}
@@ -1169,6 +1172,7 @@ export default function CheckoutEntrega() {
                           neighborhood: a.neighborhood,
                           city: a.city,
                           state: a.state,
+                          is_default: a.is_default,
                         }))}
                       />
                     </div>
@@ -1220,7 +1224,7 @@ export default function CheckoutEntrega() {
                 className="w-full rounded-full font-bold"
                 size="lg"
                 onClick={handleFinalizeOrder}
-                disabled={finalizing || selectedOption === '' || (selectedOption !== 'pickup' && !selectedShippingOption)}
+                disabled={finalizing || selectedOption === '' || (selectedOption !== 'pickup' && !selectedShippingOption) || !selectedPayment}
               >
                 {finalizing ? (
                   <span className="flex items-center gap-2">
@@ -1253,6 +1257,7 @@ export default function CheckoutEntrega() {
         orderId={pixDialog.orderId}
         expiresAt={pixDialog.expiresAt}
         gateway={pixDialog.gateway}
+        onPaymentConfirmed={() => clearCart()}
         onRefreshPix={async () => {
           setProcessingStep('Gerando novo PIX...');
           try {
@@ -1283,9 +1288,9 @@ export default function CheckoutEntrega() {
       <AlertDialog open={pixCloseConfirmOpen} onOpenChange={setPixCloseConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Pagamento pendente</AlertDialogTitle>
+            <AlertDialogTitle>Aguardando pagamento</AlertDialogTitle>
             <AlertDialogDescription>
-              Seu pedido foi criado e está aguardando pagamento. Deseja acompanhá-lo em /conta?
+              Seu pedido foi criado e está aguardando a confirmação do pagamento. Acompanhe o status pela sua conta.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1300,7 +1305,7 @@ export default function CheckoutEntrega() {
                 navigate('/conta');
               }}
             >
-              Ir para /conta
+              Ir para Minha Conta
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

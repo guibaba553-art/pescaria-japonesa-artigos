@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, Store, Package } from 'lucide-react';
+import { Loader2, Truck, Store } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
@@ -144,38 +144,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   const hasItemsWithoutDims = dimsReady && itemsMissingDims().length > 0;
 
-  // Pré-calcula como os itens serão empacotados (caixa/envelope/tubo) para
-  // avisar o cliente quando o pedido será enviado em vários volumes.
-  const packagePreview = (() => {
-    if (!products || products.length === 0 || !dimsReady || hasItemsWithoutDims) return null;
-    try {
-      const items = products.map((p, i) => {
-        const productD = (p.id && productDims[p.id]) || null;
-        const variationD = (p.variationId && variationDims[p.variationId]) || null;
-        return {
-          id: p.variationId || p.id || String(i + 1),
-          quantity: p.quantity,
-          width_cm: variationD?.width_cm ?? productD?.width_cm ?? null,
-          height_cm: variationD?.height_cm ?? productD?.height_cm ?? null,
-          length_cm: variationD?.length_cm ?? productD?.length_cm ?? null,
-          weight_grams: variationD?.weight_grams ?? productD?.weight_grams ?? null,
-        };
-      });
-      return packItems(items, 0);
-    } catch {
-      return null;
-    }
-  })();
-
-  const packagingLabel = (p: 'caixa_pequena' | 'caixa_grande' | 'envelope_bolha' | 'tubo') => {
-    switch (p) {
-      case 'caixa_pequena': return 'Caixa pequena (19×16×10)';
-      case 'caixa_grande': return 'Caixa grande (21×17×17)';
-      case 'envelope_bolha': return 'Envelope bolha';
-      case 'tubo': return 'Tubo (vara)';
-    }
-  };
-
   const buildMeProducts = () => {
     if (!products || products.length === 0) return undefined;
     const shipmentItems = products.map((p, i) => {
@@ -245,7 +213,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     const opts = await fetchShippingForCep(cep);
     if (opts) {
       setOptions(opts);
-      toast({ title: 'Frete calculado!', description: `${opts.length} opções disponíveis` });
     }
     setLoading(false);
   };
@@ -292,30 +259,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   return (
     <div className="space-y-4">
-      {packagePreview && packagePreview.length > 1 && (
-        <Card className="p-3 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
-          <div className="flex items-start gap-2">
-            <Package className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Este pedido será enviado em {packagePreview.length} volumes
-              </p>
-              <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
-                Itens longos (como varas) viajam em tubo separado das caixas. O frete já considera todos os volumes — o valor exibido é o total.
-              </p>
-              <ul className="text-xs text-amber-900/80 dark:text-amber-200/80 list-disc list-inside">
-                {packagePreview.map((pkg, i) => (
-                  <li key={pkg.id}>
-                    Volume {i + 1}: {packagingLabel(pkg.packaging)} · {pkg.weight.toFixed(2)}kg
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Card>
-      )}
-
-
 
       {/* Opção de Retirada na Loja */}
       <div className="space-y-2">

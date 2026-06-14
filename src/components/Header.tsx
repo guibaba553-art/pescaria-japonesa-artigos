@@ -281,13 +281,19 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {/* Cart visível só no desktop — no mobile fica na bottom nav */}
-          <div className="hidden md:block">
+          {/* Cart */}
+          <div className="md:inline-block">
             <Button
               variant="ghost"
               size="icon"
               className="relative rounded-full"
-              onClick={() => setCartOpen(true)}
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  navigate('/checkout');
+                } else {
+                  setCartOpen(true);
+                }
+              }}
             >
               <ShoppingCart className="h-5 w-5" />
               {itemCount > 0 && (

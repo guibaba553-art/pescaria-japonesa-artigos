@@ -17,6 +17,7 @@ interface PixPaymentDialogProps {
   orderId: string;
   gateway?: 'abacatepay' | 'asaas';
   onRefreshPix?: () => void;
+  onPaymentConfirmed?: () => void;
 }
 
 export function PixPaymentDialog({
@@ -29,6 +30,7 @@ export function PixPaymentDialog({
   orderId,
   gateway = 'abacatepay',
   onRefreshPix,
+  onPaymentConfirmed,
 }: PixPaymentDialogProps) {
   const navigate = useNavigate();
   const [isChecking, setIsChecking] = useState(false);
@@ -89,6 +91,8 @@ export function PixPaymentDialog({
         setIsPaid(true);
         setIsChecking(false);
         setHasNotified(true);
+
+        onPaymentConfirmed?.();
 
         toast.success('✅ Pagamento confirmado!', { description: 'Redirecionando...' });
 

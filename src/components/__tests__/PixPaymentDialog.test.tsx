@@ -16,6 +16,14 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+// Mock sonner toast para evitar comportamento real com fake timers
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 // Mock do supabase functions.invoke para polling
 const mockInvoke = vi.fn();
 
