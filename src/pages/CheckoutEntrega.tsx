@@ -94,7 +94,7 @@ export default function CheckoutEntrega() {
     isPickup ? 'pickup' : ''
   );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card' | 'mercado_pago'>('pix');
+  const [selectedPayment, setSelectedPayment] = useState<'pix' | 'credit_card'>('pix');
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<SavedMethod[]>([]);
 
@@ -546,7 +546,7 @@ export default function CheckoutEntrega() {
         return;
       }
 
-      if (selectedPayment === 'credit_card' || selectedPayment === 'mercado_pago') {
+      if (selectedPayment === 'credit_card') {
         // Checkout hospedado via AbacatePay
         const isCardOnly = selectedPayment === 'credit_card';
         const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
@@ -1079,30 +1079,6 @@ export default function CheckoutEntrega() {
                   )}
                 </div>
 
-                {/* Mercado Pago */}
-                <div
-                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                    selectedPayment === 'mercado_pago'
-                      ? 'border-primary ring-2 ring-primary/30'
-                      : 'border-border hover:border-primary/40'
-                  }`}
-                  onClick={() => setSelectedPayment('mercado_pago')}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      selectedPayment === 'mercado_pago' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
-                    }`}>
-                      {selectedPayment === 'mercado_pago' && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                    <Wallet className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-semibold">Mercado Pago</p>
-                      <p className="text-sm text-muted-foreground">
-                        Pagamento via carteiras digitais — Google Pay, Apple Pay e mais
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

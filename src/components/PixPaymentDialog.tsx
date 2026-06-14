@@ -39,7 +39,7 @@ export function PixPaymentDialog({
       setIsChecking(true);
       
       try {
-        // Chamar edge function que consulta o Mercado Pago diretamente
+        // Chamar edge function que consulta o gateway diretamente
         const { data: result, error } = await supabase.functions.invoke('verify-payment', {
           body: { orderId }
         });
@@ -165,7 +165,7 @@ export function PixPaymentDialog({
             </div>
           </div>
 
-          {/* Mercado Pago Link */}
+          {/* Link do pagamento */}
           {ticketUrl && (
             <Button
               variant="outline"
@@ -173,7 +173,7 @@ export function PixPaymentDialog({
               onClick={() => window.open(ticketUrl, '_blank')}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Abrir no Mercado Pago
+              Abrir link do pagamento
             </Button>
           )}
 

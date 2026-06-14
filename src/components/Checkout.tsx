@@ -281,7 +281,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       setMpLoaded(true);
     };
     script.onerror = () => {
-      console.error('Erro ao carregar SDK do Mercado Pago');
+      console.error('Erro ao carregar SDK de pagamento');
       toast({
         title: 'Erro ao carregar SDK',
         description: 'Não foi possível carregar o sistema de pagamento. Recarregue a página.',
@@ -735,7 +735,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error(promoError.message || 'Limite de promoção atingido.');
       }
 
-      // Para Google Pay (via Mercado Pago Checkout Pro), redirecionamos
+      // Para Google Pay, redirecionamos
       if (paymentMethod === 'google_pay') {
         const { data: prefData, error: prefError } = await supabase.functions.invoke(
           'create-checkout-preference',
@@ -768,7 +768,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
 
         toast({
           title: 'Redirecionando para o pagamento…',
-          description: 'Você será levado ao checkout seguro do Mercado Pago.',
+          description: 'Você será levado ao checkout seguro para finalizar o pagamento.',
         });
         // Salvar snapshot do carrinho e do orderId para poder restaurar/cancelar caso o usuário volte
         try {
@@ -887,7 +887,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       console.error('Payment error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao processar pagamento';
       
-      // Mapear erros comuns do Mercado Pago para mensagens amigáveis
+      // Mapear erros comuns de pagamento para mensagens amigáveis
       let friendlyMessage = errorMessage;
       if (errorMessage.includes('cc_rejected_bad_filled')) {
         friendlyMessage = 'Dados do cartão incorretos. Verifique número, nome, validade e CVV.';
@@ -902,7 +902,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         errorMessage.includes('PA_UNAUTHORIZED_RESULT_FROM_POLICIES') ||
         errorMessage.includes('Financial Identity Use Case')
       ) {
-        friendlyMessage = 'O PIX da loja não está configurado corretamente no Mercado Pago. É preciso usar a mesma conta da integração, com uma chave PIX ativa, em ambiente de produção.';
+        friendlyMessage = 'O PIX da loja não está configurado corretamente. É preciso usar a mesma conta da integração, com uma chave PIX ativa, em ambiente de produção.';
       }
 
       toast({
@@ -1057,7 +1057,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                 </Label>
               </div>
 
-              {/* Cartão de Crédito e Débito temporariamente ocultos até liberação das bandeiras Visa/Master débito no Mercado Pago */}
+              {/* Cartão de Crédito e Débito — liberação pendente de bandeiras Visa/Master débito */}
 
 
               <div className="flex items-center space-x-2 border rounded-lg p-4 cursor-pointer hover:bg-accent">
@@ -1067,7 +1067,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   <div className="flex-1">
                     <p className="font-medium">Google Pay / Outras carteiras</p>
                     <p className="text-sm text-muted-foreground">
-                      Checkout seguro do Mercado Pago — Google Pay aparece no Chrome/Android
+                      Checkout seguro — Google Pay aparece no Chrome/Android
                     </p>
                   </div>
                 </Label>
@@ -1228,7 +1228,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                         ? 'Consultando parcelamento disponível...'
                         : availableInstallments.length === 1
                           ? 'Para este cartão e valor, somente pagamento à vista está disponível.'
-                          : 'Mostrando apenas as parcelas aceitas pelo Mercado Pago para este cartão.'}
+                          : 'Mostrando apenas as parcelas aceitas para este cartão.'}
                   </p>
                 </div>
               )}
