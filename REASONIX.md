@@ -121,3 +121,7 @@ The following project skills are available in `.reasonix/skills/`:
 |-------|-------------|
 | `testing-practices` | Testing conventions (Vitest frontend, Deno Edge Functions, mocked external APIs) |
 | `abacatepay` | Integrate AbacatePay payments (Pix, card, subscriptions, webhooks, MRR, etc.) with full reference material (rules, examples, tools, tests, utils) bundled locally; also supports direct API interaction via curl (agent mode) |
+
+## Business rules
+
+- **Card number length (13-16 digits)**: Asaas, the credit card payment gateway, only accepts card numbers with 13 to 16 digits. Cards with 17-19 digits (Discover, Hipercard) are intentionally not supported. Validated in `src/lib/creditCardValidation.ts` and `src/components/Checkout.tsx`.

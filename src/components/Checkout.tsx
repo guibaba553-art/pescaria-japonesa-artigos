@@ -471,6 +471,8 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     const cardNumber = cardData.number.replace(/\s/g, '');
     if (!cardNumber) {
       errors.push('Número do cartão é obrigatório');
+    // Regra de negócio: Asaas só aceita cartões com 13-16 dígitos.
+    // Cartões Discover/Hipercard (17-19 dígitos) não são suportados.
     } else if (!/^\d{13,16}$/.test(cardNumber)) {
       errors.push('Número do cartão inválido (deve ter entre 13 e 16 dígitos)');
     }

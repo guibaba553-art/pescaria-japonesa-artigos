@@ -61,6 +61,8 @@ export function getBrandLabel(brand: string | null): string {
  */
 export function validateCardNumber(number: string): { valid: boolean; brand: string | null } {
   const cleaned = number.replace(/\D/g, '');
+  // Regra de negócio: Asaas (gateway de pagamento) só aceita cartões com 13-16 dígitos.
+  // Cartões Discover/Hipercard (17-19 dígitos) não são suportados.
   if (cleaned.length < 13 || cleaned.length > 16) return { valid: false, brand: null };
   const valid = luhnCheck(cleaned);
   const brand = valid ? detectBrand(cleaned) : null;

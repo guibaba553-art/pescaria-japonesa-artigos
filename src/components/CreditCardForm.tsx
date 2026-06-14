@@ -270,7 +270,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
   const [cardHolderName, setCardHolderName] = useState("");
   const [expiryMonth, setExpiryMonth] = useState("");
   const [expiryYear, setExpiryYear] = useState("");
-  const [cvv, setCvv] = useState("");
+  const [ccv, setCcv] = useState("");
 
   const [holderName, setHolderName] = useState("");
   const [email, setEmail] = useState("");
@@ -350,8 +350,8 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
       }
 
       // CVV
-      if (isTouched("cvv")) {
-        if (!validateCVV(cvv)) errs.push("CVV inválido (3 ou 4 dígitos).");
+      if (isTouched("ccv")) {
+        if (!validateCVV(ccv)) errs.push("CVV inválido (3 ou 4 dígitos).");
       }
     }
 
@@ -416,7 +416,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     cardHolderName,
     expiryMonth,
     expiryYear,
-    cvv,
+    ccv,
     holderName,
     email,
     cpfCnpj,
@@ -506,7 +506,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
         number: cardNumber.replace(/\D/g, ""),
         expiryMonth,
         expiryYear,
-        ccv: cvv,
+        ccv,
       },
       creditCardHolderInfo: {
         name: effectiveName.trim(),
@@ -535,7 +535,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     cardNumber,
     expiryMonth,
     expiryYear,
-    cvv,
+    ccv,
     holderName,
     email,
     cpfCnpj,
@@ -589,10 +589,10 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
     setExpiryYear(raw);
   };
 
-  const handleCvvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCcvChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    setCvv(raw);
-    clearFieldError("cvv");
+    setCcv(raw);
+    clearFieldError("ccv");
   };
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -800,14 +800,14 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cvv">CVV</Label>
+                <Label htmlFor="ccv">CVV</Label>
                 <Input
-                  id="cvv"
+                  id="ccv"
                   inputMode="numeric"
                   autoComplete="cc-csc"
                   placeholder="123"
-                  value={cvv}
-                  onChange={handleCvvChange}
+                  value={ccv}
+                  onChange={handleCcvChange}
                   maxLength={4}
                   className="font-mono text-center"
                   disabled={loading}
@@ -1117,14 +1117,14 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="cvv">CVV</Label>
+                  <Label htmlFor="ccv">CVV</Label>
                   <Input
-                    id="cvv"
+                    id="ccv"
                     inputMode="numeric"
                     autoComplete="cc-csc"
                     placeholder="123"
-                    value={cvv}
-                    onChange={handleCvvChange}
+                    value={ccv}
+                    onChange={handleCcvChange}
                     maxLength={4}
                     className="font-mono text-center"
                     disabled={loading}

@@ -12,10 +12,6 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
-}));
-
 // Mock sonner toast para evitar comportamento real com fake timers
 vi.mock('sonner', () => ({
   toast: {
