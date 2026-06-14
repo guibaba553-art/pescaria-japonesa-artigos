@@ -27,7 +27,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
+  resetPassword: (email: string, captchaToken?: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
   isEmployee: boolean;
   isAdmin: boolean;
@@ -295,10 +295,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = async (email: string, captchaToken?: string) => {
     const redirectUrl = `${window.location.origin}/reset-password`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
+      captchaToken,
     });
     
     if (error) {
