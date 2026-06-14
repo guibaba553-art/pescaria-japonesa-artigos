@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Subscribe to realtime changes on products and product_variations
  * and call `onChange` (debounced) whenever stock/price/etc changes.
- * Also refetches when the tab regains focus/visibility.
+ * Also refetches when the tab becomes visible again.
  */
 export function useProductsRealtime(onChange: () => void, channelName = 'products-stock') {
   const onChangeRef = useRef(onChange);
@@ -27,13 +27,11 @@ export function useProductsRealtime(onChange: () => void, channelName = 'product
       if (document.visibilityState === 'visible') schedule();
     };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', schedule);
 
     return () => {
       if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', schedule);
     };
   }, [channelName]);
 }

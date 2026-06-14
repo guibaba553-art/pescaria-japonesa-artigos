@@ -1177,6 +1177,24 @@ export default function CheckoutEntrega() {
                       />
                     </div>
                   )}
+
+                  {/* Estado vazio: sem cartões salvos */}
+                  {selectedPayment === 'credit_card' && savedCards.length === 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Futuro: abrir dialog para cadastrar cartão
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Cadastrar cartão
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

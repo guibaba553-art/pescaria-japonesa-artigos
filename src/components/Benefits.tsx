@@ -9,7 +9,7 @@ const benefits = [
   {
     icon: ShieldCheck,
     title: "Compra protegida",
-    description: "Pagamento seguro via Mercado Pago. Seus dados sempre protegidos.",
+    description: "Ambiente seguro. Seus dados sempre protegidos.",
   },
   {
     icon: MessageCircle,

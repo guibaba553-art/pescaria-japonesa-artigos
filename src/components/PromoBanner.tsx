@@ -1,4 +1,4 @@
-import { MessageCircle, MapPin, Truck, Phone } from "lucide-react";
+import { MessageCircle, MapPin, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
  * Substitui a antiga propaganda do "PIX 5% OFF".
  */
 const PromoBanner = () => {
-  const whatsappNumber = "5566992111712"; // Ajuste conforme necessário
+  const whatsappNumber = "5566999211712"; // Ajuste conforme necessário
   const whatsappMessage = encodeURIComponent(
     "Olá! Vim pelo site e quero tirar uma dúvida sobre um produto."
   );
@@ -55,17 +55,6 @@ const PromoBanner = () => {
                 >
                   <MessageCircle className="mr-2 w-4 h-4 sm:w-5 sm:h-5 fill-current" />
                   Chamar no WhatsApp
-                </a>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="h-12 px-6 rounded-full text-sm sm:text-base font-bold bg-background/10 backdrop-blur-md border-background/30 text-background hover:bg-background/20 hover:text-background btn-press w-full sm:w-auto"
-              >
-                <a href="tel:+5566992111712" aria-label="Ligar para a loja">
-                  <Phone className="mr-2 w-4 h-4 sm:w-5 sm:h-5" />
-                  Ligar agora
                 </a>
               </Button>
             </div>

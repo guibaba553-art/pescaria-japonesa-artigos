@@ -138,8 +138,9 @@ serve(async (req) => {
 
     // ---------- BLOCO 0 ----------
     const bloco0: string[] = [];
+    // Layout 0000: REG|COD_VER|COD_FIN|DT_INI|DT_FIN|NOME|CNPJ|CPF|UF|IE|COD_MUN|IM|SUFRAMA|IND_PERF|IND_ATIV
     bloco0.push(makeLine('0000', codVer, codFin, dtIni, dtFin,
-      company.razao_social, cnpjEmp, '', uf, ie, munCod, '', indPerfil, indAtiv));
+      company.razao_social, cnpjEmp, '', uf, ie, munCod, '', '', indPerfil, indAtiv));
     bloco0.push(makeLine('0001', nfList.length > 0 ? '0' : '0'));
     bloco0.push(makeLine('0005',
       company.nome_fantasia || company.razao_social,
@@ -171,6 +172,7 @@ serve(async (req) => {
     }
 
     // 0150 — participantes (clientes das NF-e)
+    // Layout: REG|COD_PART|NOME|COD_PAIS|CNPJ|CPF|IE|COD_MUN|SUFRAMA|END|NUM|COMPL|BAIRRO
     const participantesCods = new Map<string, string>();
     let codCount = 1;
     customersById.forEach((c) => {
@@ -182,7 +184,8 @@ serve(async (req) => {
         c.company_name || c.full_name,
         '1058',
         isCnpj ? doc : '', isCnpj ? '' : doc, '',
-        '', c.street || '', c.number || '', '', c.neighborhood || ''));
+        '', '',
+        c.street || '', c.number || '', '', c.neighborhood || ''));
     });
 
     // 0190 / 0200 — só se houver itens

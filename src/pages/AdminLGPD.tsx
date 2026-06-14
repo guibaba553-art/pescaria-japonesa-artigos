@@ -37,7 +37,7 @@ const ROPA: DataItem[] = [
     finalidade: "Processamento da compra, conciliação financeira, antifraude",
     baseLegal: "Execução de contrato (Art. 7º, V, LGPD) e obrigação legal",
     retencao: "5 anos (legislação fiscal)",
-    compartilhamento: "Mercado Pago (gateway de pagamento — não armazenamos dados de cartão)",
+    compartilhamento: "Gateway de pagamento (não armazenamos dados de cartão)",
   },
   {
     categoria: "Histórico de Pedidos",

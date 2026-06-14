@@ -83,7 +83,7 @@ const PAYMENT_LABEL: Record<string, string> = {
   cartao_debito: 'Débito',
   boleto: 'Boleto',
   transferencia: 'Transferência',
-  mercadopago: 'Mercado Pago',
+  mercadopago: 'Gateway',
 };
 
 function formatPayment(pm?: string | null): string {

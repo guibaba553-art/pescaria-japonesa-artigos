@@ -153,7 +153,7 @@ export default function Account() {
     }
   }, [user]);
 
-  // Tratar retorno do checkout do Mercado Pago (Google Pay / cartão)
+  // Tratar retorno do checkout (Google Pay / cartão)
   useEffect(() => {
     if (!user) return;
     const paymentParam = searchParams.get('payment');

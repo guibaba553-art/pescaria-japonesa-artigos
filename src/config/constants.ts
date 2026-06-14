@@ -26,9 +26,9 @@ export const VALIDATION_RULES = {
 export const APP_CONFIG = {
   STORE_NAME: 'JAPAS Pesca',
   CONTACT: {
-    phone: '5566992111712',
+    phone: '5566999211712',
     email: 'robertobaba2@gmail.com',
-    whatsapp: 'https://wa.me/5566992111712',
+    whatsapp: 'https://wa.me/5566999211712',
   },
   MERCADO_PAGO_PUBLIC_KEY: import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY ?? 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485',
 } as const;

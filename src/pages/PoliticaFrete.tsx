@@ -169,8 +169,8 @@ export default function PoliticaFrete() {
             <h2 className="text-2xl font-bold mb-3">Dúvidas</h2>
             <p>
               Fale com a gente no WhatsApp{" "}
-              <a href="https://wa.me/5566992111712" className="text-primary underline">
-                (66) 99211-1712
+              <a href="https://wa.me/5566999211712" className="text-primary underline">
+                (66) 99921-1712
               </a>{" "}
               ou pelo e-mail{" "}
               <a href="mailto:robertobaba2@gmail.com" className="text-primary underline">

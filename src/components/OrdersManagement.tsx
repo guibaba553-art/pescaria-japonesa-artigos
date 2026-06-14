@@ -563,7 +563,7 @@ const OrdersTable = ({
                           <AlertDialogTitle>Estornar pagamento ao cliente</AlertDialogTitle>
                           <AlertDialogDescription asChild>
                             <div>
-                              O valor será devolvido ao cliente diretamente pela <strong>Mercado Pago</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
+                              O valor será devolvido ao cliente diretamente pelo <strong>gateway de pagamento</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
                               <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
                                 <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
                                 <div><strong>Cliente:</strong> {customerName}</div>
@@ -1047,7 +1047,7 @@ export function OrdersManagement() {
   const verifyPayment = async (orderId: string) => {
     toast({
       title: 'Verificando pagamento...',
-      description: 'Consultando Mercado Pago'
+      description: 'Consultando gateway de pagamento'
     });
 
     try {
@@ -1145,7 +1145,7 @@ export function OrdersManagement() {
     setRefundingOrders(prev => new Set(prev).add(orderId));
     toast({
       title: 'Estornando pagamento...',
-      description: 'Solicitando estorno ao Mercado Pago. Aguarde.',
+      description: 'Solicitando estorno. Aguarde.',
     });
 
     try {
@@ -1170,7 +1170,7 @@ export function OrdersManagement() {
           title: data.status === 'approved' ? 'Estorno aprovado!' : 'Estorno em processamento',
           description: data.status === 'approved'
             ? `R$ ${Number(data.amount).toFixed(2)} foi devolvido ao cliente.`
-            : 'O Mercado Pago confirmará em breve. O cliente receberá o valor automaticamente.',
+            : 'O gateway confirmará em breve. O cliente receberá o valor automaticamente.',
         });
         loadOrders();
       } else {

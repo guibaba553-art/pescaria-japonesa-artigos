@@ -33,7 +33,7 @@ export default function PoliticaPrivacidade() {
             <h2 className="text-2xl font-bold mb-3">2. Dados que coletamos</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Cadastro:</strong> nome completo, CPF, e-mail, telefone, CEP, endereço.</li>
-              <li><strong>Pedidos:</strong> histórico de compras, endereço de entrega, dados de pagamento (processados pelo Mercado Pago — não armazenamos cartões).</li>
+              <li><strong>Pedidos:</strong> histórico de compras, endereço de entrega, dados de pagamento (processados por gateway de pagamento — não armazenamos cartões).</li>
               <li><strong>Navegação:</strong> páginas visitadas, dispositivo, navegador, referência de origem (mediante consentimento por cookies).</li>
               <li><strong>Comunicações:</strong> mensagens enviadas pelo chat ou e-mail.</li>
             </ul>
@@ -60,7 +60,7 @@ export default function PoliticaPrivacidade() {
             <h2 className="text-2xl font-bold mb-3">5. Compartilhamento</h2>
             <p>Compartilhamos dados apenas com:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Mercado Pago</strong> — processamento de pagamentos;</li>
+              <li><strong>Gateway de pagamento</strong> — processamento de pagamentos;</li>
               <li><strong>Focus NFe</strong> — emissão de notas fiscais;</li>
               <li><strong>Transportadoras</strong> — entrega dos pedidos;</li>
               <li><strong>Autoridades</strong> — quando exigido por lei.</li>
