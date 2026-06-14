@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Truck, Store, Package } from 'lucide-react';
+import { Loader2, Truck, Store } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
 
@@ -143,38 +144,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   const hasItemsWithoutDims = dimsReady && itemsMissingDims().length > 0;
 
-  // Pré-calcula como os itens serão empacotados (caixa/envelope/tubo) para
-  // avisar o cliente quando o pedido será enviado em vários volumes.
-  const packagePreview = (() => {
-    if (!products || products.length === 0 || !dimsReady || hasItemsWithoutDims) return null;
-    try {
-      const items = products.map((p, i) => {
-        const productD = (p.id && productDims[p.id]) || null;
-        const variationD = (p.variationId && variationDims[p.variationId]) || null;
-        return {
-          id: p.variationId || p.id || String(i + 1),
-          quantity: p.quantity,
-          width_cm: variationD?.width_cm ?? productD?.width_cm ?? null,
-          height_cm: variationD?.height_cm ?? productD?.height_cm ?? null,
-          length_cm: variationD?.length_cm ?? productD?.length_cm ?? null,
-          weight_grams: variationD?.weight_grams ?? productD?.weight_grams ?? null,
-        };
-      });
-      return packItems(items, 0);
-    } catch {
-      return null;
-    }
-  })();
-
-  const packagingLabel = (p: 'caixa_pequena' | 'caixa_grande' | 'envelope_bolha' | 'tubo') => {
-    switch (p) {
-      case 'caixa_pequena': return 'Caixa pequena (19×16×10)';
-      case 'caixa_grande': return 'Caixa grande (21×17×17)';
-      case 'envelope_bolha': return 'Envelope bolha';
-      case 'tubo': return 'Tubo (vara)';
-    }
-  };
-
   const buildMeProducts = () => {
     if (!products || products.length === 0) return undefined;
     const shipmentItems = products.map((p, i) => {
@@ -244,7 +213,6 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     const opts = await fetchShippingForCep(cep);
     if (opts) {
       setOptions(opts);
-      toast({ title: 'Frete calculado!', description: `${opts.length} opções disponíveis` });
     }
     setLoading(false);
   };
@@ -291,48 +259,13 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
 
   return (
     <div className="space-y-4">
-      {hasItemsWithoutDims && (
-        <Card className="p-3 border-destructive/40 bg-destructive/5">
-          <p className="text-sm font-semibold text-destructive">
-            ⚠ Frete indisponível para este pedido
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Há itens sem peso/medidas cadastradas. Você ainda pode escolher <strong>Retirar na Loja</strong> ou contatar o vendedor.
-          </p>
-        </Card>
-      )}
-
-      {packagePreview && packagePreview.length > 1 && (
-        <Card className="p-3 border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
-          <div className="flex items-start gap-2">
-            <Package className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                Este pedido será enviado em {packagePreview.length} volumes
-              </p>
-              <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
-                Itens longos (como varas) viajam em tubo separado das caixas. O frete já considera todos os volumes — o valor exibido é o total.
-              </p>
-              <ul className="text-xs text-amber-900/80 dark:text-amber-200/80 list-disc list-inside">
-                {packagePreview.map((pkg, i) => (
-                  <li key={pkg.id}>
-                    Volume {i + 1}: {packagingLabel(pkg.packaging)} · {pkg.weight.toFixed(2)}kg
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </Card>
-      )}
-
-
 
       {/* Opção de Retirada na Loja */}
       <div className="space-y-2">
         <Label>Opções de Entrega</Label>
         <Card
           className={`p-3 cursor-pointer transition-all ${
-            selectedOption === 'RETIRADA' ? 'border-primary bg-primary/5 border-2' : 'hover:bg-accent'
+            selectedOption === 'RETIRADA' ? 'border-primary bg-primary/5 border-2' : 'hover:border-accent'
           }`}
           onClick={() => handleSelectOption(pickupOption)}
         >
@@ -347,25 +280,35 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
             <p className="font-bold text-lg text-green-600">GRÁTIS</p>
           </div>
         </Card>
+        {hasItemsWithoutDims && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Este produto está disponível apenas para <strong>Retirada na Loja</strong>.
+            </p>
+            <Separator />
+          </>
+        )}
       </div>
 
       {/* Cálculo de Frete por CEP avulso */}
-      <div className="space-y-2">
-        <Label htmlFor="cep">Ou calcule o frete para outro CEP</Label>
-        <div className="flex gap-2">
-          <Input
-            id="cep"
-            placeholder="00000-000"
-            value={formatCEP(cep)}
-            onChange={handleCepChange}
-            maxLength={9}
-            className="flex-1"
-          />
-          <Button onClick={calculateShipping} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Calcular'}
-          </Button>
+      {!hasItemsWithoutDims && (
+        <div className="space-y-2">
+          <Label htmlFor="cep">Ou calcule o frete para outro CEP</Label>
+          <div className="flex gap-2">
+            <Input
+              id="cep"
+              placeholder="00000-000"
+              value={formatCEP(cep)}
+              onChange={handleCepChange}
+              maxLength={9}
+              className="flex-1"
+            />
+            <Button onClick={calculateShipping} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Calcular'}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {options.length > 0 && (() => {
         const delivery = filterDeliveryOnly(options);
@@ -382,7 +325,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                   className={`p-3 cursor-pointer transition-all ${
                     selectedOption === option.codigo
                       ? 'border-primary bg-primary/5 border-2'
-                      : 'hover:bg-accent'
+                      : 'hover:border-accent'
                   }`}
                   onClick={() => handleSelectOption(option)}
                 >
@@ -409,7 +352,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                       </div>
                     </div>
                     <p className="font-bold text-lg">
-                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2)}`}
+                      {option.valor === 0 ? 'GRÁTIS' : `R$ ${option.valor.toFixed(2).replace('.', ',')}`}
                     </p>
                   </div>
                 </Card>

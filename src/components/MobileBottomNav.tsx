@@ -164,7 +164,7 @@ export function MobileBottomNav() {
           <NavItem
             icon={ShoppingBag}
             label="Carrinho"
-            onClick={() => setCartOpen(true)}
+            onClick={() => navigate('/checkout')}
             badge={itemCount}
           />
           <NavItem

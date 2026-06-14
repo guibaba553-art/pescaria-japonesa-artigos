@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const [shippingInfo, setShippingInfo] = useState<{ nome: string; prazoEntrega: number; codigo?: string } | null>(null);
 
   const handleProsseguir = () => {
+    window.scrollTo(0, 0);
     if (!user) {
       navigate('/auth?redirect=/checkout');
       return;

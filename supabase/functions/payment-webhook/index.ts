@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { handlePaymentConfirmed } from '../_shared/stockHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -186,40 +187,13 @@ serve(async (req) => {
 
         console.log(`Order ${order.id} updated successfully to em_preparo`);
 
-        // Subtrair estoque após pagamento aprovado
-        let stockFailed = false;
-        let stockFailureDetails: any[] = [];
-        try {
-          const stockResponse = await fetch(`${supabaseUrl}/functions/v1/subtract-stock`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${supabaseKey}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ orderId: order.id })
-          });
-
-          if (stockResponse.ok) {
-            const stockData = await stockResponse.json();
-            console.log('Stock subtraction result:', stockData);
-            // subtract-stock retorna { success, processed, errors[], results[] }
-            // success === false significa que pelo menos UM item falhou (estoque insuficiente)
-            if (stockData.success === false && Array.isArray(stockData.errors) && stockData.errors.length > 0) {
-              stockFailed = true;
-              stockFailureDetails = stockData.errors;
-              console.error('[payment-webhook] STOCK INSUFFICIENT — auto-refund will be triggered', stockData.errors);
-            }
-          } else {
-            console.error('Failed to subtract stock:', await stockResponse.text());
-          }
-        } catch (stockError) {
-          console.error('Error calling subtract-stock function:', stockError);
-        }
+        // Subtrair estoque após pagamento aprovado via shared handler
+        const stockResult = await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, order.id);
 
         // ----- Estorno automático se estoque insuficiente -----
         // Race condition: dois clientes compraram a última unidade simultaneamente.
         // O 1º paga e leva; o 2º paga mas não tem produto → estornamos automaticamente.
-        if (stockFailed && !alreadyProcessed) {
+        if (!stockResult.stockSuccess && !alreadyProcessed) {
           console.log(`[payment-webhook] Iniciando estorno automático para pedido ${order.id}`);
           try {
             // 1) Estornar no Mercado Pago (chamada direta — webhook não tem JWT de admin)

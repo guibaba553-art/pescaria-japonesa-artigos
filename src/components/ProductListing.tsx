@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
 import { Product } from '@/types/product';
-import { effectiveProductOrVariationPrice } from '@/utils/promoPrice';
+import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories } from '@/hooks/useCategories';
@@ -199,7 +199,7 @@ export function ProductListing({
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
-      if (onSaleParam === 'true' && !p.on_sale) return false;
+      if (onSaleParam === 'true' && !isPromoActive(p)) return false;
       if (priceRange) {
         const effectivePrice = effectiveProductOrVariationPrice(p as any);
         if (effectivePrice < priceRange[0] || effectivePrice > priceRange[1]) return false;

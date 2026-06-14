@@ -29,6 +29,7 @@ import { MapPin, Plus, Check } from 'lucide-react';
 import type { UserAddress } from '@/components/MyAddresses';
 import { MyAddresses } from '@/components/MyAddresses';
 import { formatCEP } from '@/utils/validation';
+import { getBrandLabel } from '@/lib/creditCardValidation';
 
 interface CheckoutProps {
   open: boolean;
@@ -470,8 +471,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
     const cardNumber = cardData.number.replace(/\s/g, '');
     if (!cardNumber) {
       errors.push('Número do cartão é obrigatório');
-    } else if (!/^\d{13,19}$/.test(cardNumber)) {
-      errors.push('Número do cartão inválido (deve ter entre 13 e 19 dígitos)');
+    // Regra de negócio: Asaas só aceita cartões com 13-16 dígitos.
+    // Cartões Discover/Hipercard (17-19 dígitos) não são suportados.
+    } else if (!/^\d{13,16}$/.test(cardNumber)) {
+      errors.push('Número do cartão inválido (deve ter entre 13 e 16 dígitos)');
     }
 
     // Validar nome
@@ -1120,7 +1123,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                               <CreditCard className="w-5 h-5 text-primary shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm">
-                                  {m.card_brand ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
+                                  {getBrandLabel(m.card_brand) ?? 'Cartão'} •••• {m.card_last4 ?? '????'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {m.cardholder_name ?? '—'}
@@ -1167,8 +1170,13 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
                   id="cardNumber"
                   placeholder="0000 0000 0000 0000"
                   value={cardData.number}
-                  onChange={(e) => setCardData({ ...cardData, number: e.target.value })}
-                  maxLength={19}
+                  onChange={(e) =>
+                    setCardData({
+                      ...cardData,
+                      number: e.target.value.replace(/\D/g, "").slice(0, 16),
+                    })
+                  }
+                  maxLength={16}
                 />
               </div>
 

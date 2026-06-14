@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import { z } from 'zod';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { SavedMethod } from '@/types/payment';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -33,118 +32,43 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { CreditCard, Plus, Trash2, Star, Loader2, ShieldCheck } from 'lucide-react';
+import { CreditCardForm, type CreditCardFormHandle } from '@/components/CreditCardForm';
+import { validateCardNumber, getBrandLabel } from '@/lib/creditCardValidation';
 
-interface SavedMethod {
-  id: string;
-  payment_method: string;
-  card_brand: string | null;
-  card_last4: string | null;
-  card_exp_month: string | null;
-  card_exp_year: string | null;
-  cardholder_name: string | null;
-  is_default: boolean;
-  last_used_at: string | null;
-}
 
-/**
- * Detecta a bandeira do cartão a partir dos primeiros dígitos (BIN).
- * Baseado nos ranges oficiais de cada bandeira aceitos no Brasil.
- */
-function detectCardBrand(number: string): string | null {
-  const n = number.replace(/\D/g, '');
-  if (n.length < 4) return null;
 
-  // Elo (precisa vir antes de Visa/Master por causa de prefixos sobrepostos)
-  if (
-    /^(4011(78|79)|43(1274|8935)|45(1416|7393|763(1|2))|50(4175|6699|67[0-7][0-9]|9000)|627780|63(6297|6368)|65(0(0(3([1-3]|[5-9])|4([0-9])|5[0-1])|4(0[5-9]|[1-3][0-9])|5([0-2][0-9]|3[0-8])|9(2[1-9]|[3-6][0-9]|7[0-8])|7([0-2][0-9]|3[0-8]|4[0-3])|8(1[6-9]|[2-4][0-9]|5[0-9]|6[0-9]|7[0-2]))|16(5[2-9]|[6-7][0-9])|50(0[0-9]|1[0-9]|2[1-9]|[3-4][0-9]|5[0-8])))/.test(n)
-  )
-    return 'Elo';
-  // Hipercard
-  if (/^(606282|3841)/.test(n)) return 'Hipercard';
-  // Amex
-  if (/^3[47]/.test(n)) return 'Amex';
-  // Diners
-  if (/^3(0[0-5]|[68])/.test(n)) return 'Diners';
-  // Discover
-  if (/^(6011|65|64[4-9])/.test(n)) return 'Discover';
-  // JCB
-  if (/^35(2[89]|[3-8][0-9])/.test(n)) return 'JCB';
-  // Mastercard (51-55 ou 2221-2720)
-  if (/^(5[1-5]|2(2(2[1-9]|[3-9][0-9])|[3-6][0-9]{2}|7([01][0-9]|20)))/.test(n)) return 'Mastercard';
-  // Visa
-  if (/^4/.test(n)) return 'Visa';
-
-  return null;
-}
-
-/**
- * Validação Luhn (checksum de cartão de crédito).
- */
-function isValidLuhn(number: string): boolean {
-  const n = number.replace(/\D/g, '');
-  if (n.length < 13) return false;
-  let sum = 0;
-  let alt = false;
-  for (let i = n.length - 1; i >= 0; i--) {
-    let d = parseInt(n[i], 10);
-    if (alt) {
-      d *= 2;
-      if (d > 9) d -= 9;
-    }
-    sum += d;
-    alt = !alt;
-  }
-  return sum % 10 === 0;
-}
-
-const cardSchema = z.object({
-  payment_method: z.enum(['credit_card', 'debit_card']),
-  card_number: z
-    .string()
-    .transform((v) => v.replace(/\D/g, ''))
-    .refine((v) => v.length >= 13 && v.length <= 19, 'Número de cartão inválido')
-    .refine(isValidLuhn, 'Número de cartão inválido (verifique os dígitos)'),
-  cardholder_name: z.string().trim().min(2, 'Informe o nome no cartão').max(100),
-  card_exp_month: z.string().regex(/^(0[1-9]|1[0-2])$/, 'Mês inválido (01-12)'),
-  card_exp_year: z.string().regex(/^\d{2}$/, 'Ano com 2 dígitos (ex: 28)'),
-  is_default: z.boolean().default(false),
-});
-
-type CardForm = {
-  payment_method: 'credit_card' | 'debit_card';
-  card_number: string;
-  cardholder_name: string;
-  card_exp_month: string;
-  card_exp_year: string;
-  is_default: boolean;
-};
-
-const DEFAULT_FORM: CardForm = {
-  payment_method: 'credit_card',
-  card_number: '',
-  cardholder_name: '',
-  card_exp_month: '',
-  card_exp_year: '',
-  is_default: false,
-};
-
-/**
- * Formata número do cartão em grupos de 4 dígitos.
- */
-function formatCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 19);
-  return digits.replace(/(.{4})/g, '$1 ').trim();
-}
 
 export function MyPaymentMethods() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [methods, setMethods] = useState<SavedMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<CardForm>(DEFAULT_FORM);
+  const [paymentMethod, setPaymentMethod] = useState<'credit_card' | 'debit_card'>('credit_card');
+  const [isDefault, setIsDefault] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const creditCardRef = useRef<CreditCardFormHandle>(null);
+  const [profileInfo, setProfileInfo] = useState<{ name: string; email: string; cpf: string; phone: string } | null>(null);
+
+  // Load profile data for pre-fill
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('full_name, cpf, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setProfileInfo({
+            name: data.full_name || '',
+            email: user.email || '',
+            cpf: data.cpf || '',
+            phone: data.phone || '',
+          });
+        }
+      });
+  }, [user]);
 
   const load = async () => {
     if (!user) return;
@@ -157,7 +81,7 @@ export function MyPaymentMethods() {
       .order('last_used_at', { ascending: false, nullsFirst: false });
 
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
     } else {
       setMethods((data as SavedMethod[]) ?? []);
     }
@@ -171,45 +95,74 @@ export function MyPaymentMethods() {
 
   const handleSubmit = async () => {
     if (!user) return;
-    const parsed = cardSchema.safeParse(form);
-    if (!parsed.success) {
-      const first = parsed.error.issues[0];
-      toast({ title: 'Dados inválidos', description: first.message, variant: 'destructive' });
-      return;
-    }
-    const fullNumber = parsed.data.card_number;
-    const detectedBrand = detectCardBrand(fullNumber) ?? 'Outro';
+    const cardData = creditCardRef.current?.getData();
+    if (!cardData) return; // validation errors shown inline by CreditCardForm
+
+    const fullNumber = cardData.creditCard.number;
+    const { brand } = validateCardNumber(fullNumber);
+    const detectedBrand = brand ?? 'Outro';
     const last4 = fullNumber.slice(-4);
 
     setSaving(true);
+
+    // Tokenizar cartão via edge function (Asaas)
+    const { data: tokenResult, error: tokenError } = await supabase.functions.invoke('tokenize-card', {
+      body: {
+        cardNumber: fullNumber,
+        holderName: cardData.creditCard.holderName,
+        expiryMonth: cardData.creditCard.expiryMonth,
+        expiryYear: cardData.creditCard.expiryYear,
+        ccv: cardData.creditCard.ccv,
+        postalCode: cardData.creditCardHolderInfo?.postalCode || '',
+        addressNumber: cardData.creditCardHolderInfo?.addressNumber || '',
+      },
+    });
+
+    if (tokenError || !tokenResult?.success) {
+      setSaving(false);
+      toast.error(tokenResult?.error || tokenError?.message || 'Tente novamente.');
+      return;
+    }
+
+    const creditCardToken = tokenResult?.creditCardToken;
+
+    // Só salva se a tokenização retornou um token válido
+    if (!creditCardToken || typeof creditCardToken !== 'string' || creditCardToken.length < 10) {
+      setSaving(false);
+      toast.error('Falha ao tokenizar cartão. Tente novamente.');
+      return;
+    }
+
     const { error } = await supabase.from('saved_payment_methods').insert({
       user_id: user.id,
-      payment_method: parsed.data.payment_method,
-      card_brand: detectedBrand, // detectado automaticamente — não armazenamos o número completo
-      cardholder_name: parsed.data.cardholder_name,
+      payment_method: paymentMethod,
+      card_brand: detectedBrand,
+      cardholder_name: cardData.creditCard.holderName,
       card_last4: last4,
-      card_exp_month: parsed.data.card_exp_month,
-      card_exp_year: parsed.data.card_exp_year,
-      is_default: parsed.data.is_default,
+      card_exp_month: cardData.creditCard.expiryMonth,
+      card_exp_year: cardData.creditCard.expiryYear,
+      is_default: isDefault,
+      asaas_credit_card_token: creditCardToken,
     });
     setSaving(false);
     if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Forma de pagamento adicionada!' });
+    toast.success('Forma de pagamento adicionada!');
     setDialogOpen(false);
-    setForm(DEFAULT_FORM);
+    setPaymentMethod('credit_card');
+    setIsDefault(false);
     load();
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('saved_payment_methods').delete().eq('id', id);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Forma de pagamento removida' });
+    toast.success('Forma de pagamento removida');
     setConfirmDelete(null);
     load();
   };
@@ -222,10 +175,10 @@ export function MyPaymentMethods() {
       .eq('id', id)
       .eq('user_id', user.id);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      toast.error(error.message);
       return;
     }
-    toast({ title: 'Definido como padrão' });
+    toast.success('Definido como padrão');
     load();
   };
 
@@ -238,7 +191,7 @@ export function MyPaymentMethods() {
             Cartões salvos para checkout mais rápido.
           </p>
         </div>
-        <Button onClick={() => { setForm(DEFAULT_FORM); setDialogOpen(true); }} className="rounded-full">
+        <Button onClick={() => { setDialogOpen(true); }} className="rounded-full">
           <Plus className="w-4 h-4 mr-2" />
           Adicionar
         </Button>
@@ -277,7 +230,7 @@ export function MyPaymentMethods() {
                   </div>
                   <div>
                     <p className="font-semibold text-sm leading-tight">
-                      {m.card_brand ?? 'Cartão'}
+                      {getBrandLabel(m.card_brand) ?? 'Cartão'}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {m.payment_method === 'debit_card' ? 'Débito' : 'Crédito'}
@@ -331,20 +284,20 @@ export function MyPaymentMethods() {
 
       {/* Add dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Adicionar forma de pagamento</DialogTitle>
             <DialogDescription>
-              Cadastre os dados do cartão. Não pedimos número completo nem CVV.
+              Cadastre os dados do cartão para agilizar o checkout.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Tipo</Label>
               <Select
-                value={form.payment_method}
-                onValueChange={(v) => setForm((f) => ({ ...f, payment_method: v as 'credit_card' | 'debit_card' }))}
+                value={paymentMethod}
+                onValueChange={(v) => setPaymentMethod(v as 'credit_card' | 'debit_card')}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -356,80 +309,23 @@ export function MyPaymentMethods() {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Número do cartão</Label>
-              <div className="relative">
-                <Input
-                  inputMode="numeric"
-                  autoComplete="cc-number"
-                  value={formatCardNumber(form.card_number)}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, card_number: e.target.value.replace(/\D/g, '').slice(0, 19) }))
-                  }
-                  placeholder="0000 0000 0000 0000"
-                  className="pr-24 font-mono tracking-wider"
-                />
-                {(() => {
-                  const brand = detectCardBrand(form.card_number);
-                  if (!brand) return null;
-                  return (
-                    <Badge
-                      variant="secondary"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary/10 text-primary border-primary/20"
-                    >
-                      {brand}
-                    </Badge>
-                  );
-                })()}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Detectamos a bandeira automaticamente. Armazenamos apenas os 4 últimos dígitos.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Nome impresso no cartão</Label>
-              <Input
-                autoComplete="cc-name"
-                value={form.cardholder_name}
-                onChange={(e) => setForm((f) => ({ ...f, cardholder_name: e.target.value.toUpperCase() }))}
-                placeholder="JOÃO DA SILVA"
-                maxLength={100}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Validade (mês)</Label>
-                <Input
-                  inputMode="numeric"
-                  value={form.card_exp_month}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, card_exp_month: e.target.value.replace(/\D/g, '').slice(0, 2) }))
-                  }
-                  placeholder="MM"
-                  maxLength={2}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Validade (ano)</Label>
-                <Input
-                  inputMode="numeric"
-                  value={form.card_exp_year}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, card_exp_year: e.target.value.replace(/\D/g, '').slice(0, 2) }))
-                  }
-                  placeholder="AA"
-                  maxLength={2}
-                />
-              </div>
-            </div>
+            <CreditCardForm
+              ref={creditCardRef}
+              totalAmount={0}
+              onInstallmentChange={() => {}}
+              hideExtras
+              showBillingPreview
+              variant="inline"
+              loading={saving}
+              columns={2}
+              initialHolderInfo={profileInfo ?? undefined}
+            />
 
             <label className="flex items-center gap-2 cursor-pointer pt-1">
               <input
                 type="checkbox"
-                checked={form.is_default}
-                onChange={(e) => setForm((f) => ({ ...f, is_default: e.target.checked }))}
+                checked={isDefault}
+                onChange={(e) => setIsDefault(e.target.checked)}
                 className="h-4 w-4"
               />
               <span className="text-sm">Definir como forma de pagamento padrão</span>

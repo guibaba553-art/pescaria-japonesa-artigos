@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MapPin, Plus, Pencil, Trash2, Star, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { sanitizeNumericInput, formatCEP } from "@/utils/validation";
+import { formatCEP } from "@/utils/validation";
+import { AddressFields } from "@/components/AddressFields";
 
 export interface UserAddress {
   id: string;
@@ -92,8 +93,8 @@ export function MyAddresses({ onSelect, selectedId, compact, hideAddButton = fal
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState("");
 
   const load = async () => {
     if (!user) return;
@@ -114,11 +115,22 @@ export function MyAddresses({ onSelect, selectedId, compact, hideAddButton = fal
 
   useEffect(() => {
     load();
+    // Load profile name for auto-fill
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.full_name) setProfileName(data.full_name);
+        });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const openNew = () => {
-    setForm({ ...emptyForm, is_default: addresses.length === 0 });
+    setForm({ ...emptyForm, is_default: addresses.length === 0, recipient_name: profileName || emptyForm.recipient_name });
     setDialogOpen(true);
   };
 
@@ -138,28 +150,6 @@ export function MyAddresses({ onSelect, selectedId, compact, hideAddButton = fal
       is_default: a.is_default,
     });
     setDialogOpen(true);
-  };
-
-  const lookupCep = async (cep: string) => {
-    if (cep.length !== 8) return;
-    setCepLoading(true);
-    try {
-      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const d = await r.json();
-      if (!d.erro) {
-        setForm((p) => ({
-          ...p,
-          street: d.logradouro || p.street,
-          neighborhood: d.bairro || p.neighborhood,
-          city: d.localidade || p.city,
-          state: d.uf || p.state,
-        }));
-      }
-    } catch {
-      // silencioso
-    } finally {
-      setCepLoading(false);
-    }
   };
 
   const handleSave = async () => {
@@ -260,55 +250,29 @@ export function MyAddresses({ onSelect, selectedId, compact, hideAddButton = fal
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="addr-cep" className="text-xs uppercase tracking-wider text-muted-foreground">CEP</Label>
-                  <div className="relative">
-                    <Input
-                      id="addr-cep"
-                      value={formatCEP(form.cep)}
-                      onChange={(e) => {
-                        const v = sanitizeNumericInput(e.target.value);
-                        setForm({ ...form, cep: v });
-                        if (v.length === 8) lookupCep(v);
-                      }}
-                      maxLength={9}
-                      placeholder="00000-000"
-                    />
-                    {cepLoading && <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />}
-                  </div>
+                  <Label htmlFor="addr-label" className="text-xs uppercase tracking-wider text-muted-foreground">Apelido</Label>
+                  <Input id="addr-label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Casa, Trabalho..." />
                 </div>
                 <div>
                   <Label htmlFor="addr-phone" className="text-xs uppercase tracking-wider text-muted-foreground">Telefone</Label>
                   <Input id="addr-phone" value={form.recipient_phone} onChange={(e) => setForm({ ...form, recipient_phone: e.target.value })} placeholder="(00) 00000-0000" />
                 </div>
               </div>
-              <div className="grid grid-cols-[1fr_100px] gap-3">
-                <div>
-                  <Label htmlFor="addr-street" className="text-xs uppercase tracking-wider text-muted-foreground">Rua</Label>
-                  <Input id="addr-street" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="addr-number" className="text-xs uppercase tracking-wider text-muted-foreground">Número</Label>
-                  <Input id="addr-number" value={form.number} onChange={(e) => setForm({ ...form, number: e.target.value })} />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="addr-complement" className="text-xs uppercase tracking-wider text-muted-foreground">Complemento</Label>
-                <Input id="addr-complement" value={form.complement} onChange={(e) => setForm({ ...form, complement: e.target.value })} placeholder="Apto, bloco..." />
-              </div>
-              <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
-                <div>
-                  <Label htmlFor="addr-neighborhood" className="text-xs uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                  <Input id="addr-neighborhood" value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="addr-city" className="text-xs uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                  <Input id="addr-city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                </div>
-                <div>
-                  <Label htmlFor="addr-state" className="text-xs uppercase tracking-wider text-muted-foreground">UF</Label>
-                  <Input id="addr-state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })} maxLength={2} />
-                </div>
-              </div>
+
+              <AddressFields
+                value={{
+                  cep: form.cep,
+                  street: form.street,
+                  number: form.number,
+                  complement: form.complement,
+                  neighborhood: form.neighborhood,
+                  city: form.city,
+                  state: form.state,
+                }}
+                onChange={(addr) => setForm({ ...form, ...addr })}
+                hideSavedAddresses
+              />
+
               <label className="flex items-center gap-2 text-sm pt-1 cursor-pointer">
                 <input
                   type="checkbox"

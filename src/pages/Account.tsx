@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard, Trash2, Mail } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
+import { CreditCardForm, type CreditCardFormData } from '@/components/CreditCardForm';
 import { PickupQRDialog } from '@/components/PickupQRDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
@@ -19,6 +20,7 @@ import { MyProfile } from '@/components/MyProfile';
 import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
+import { PAYMENT_CONFIG } from '@/config/constants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,7 +94,6 @@ export default function Account() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const { clearCart } = useCart();
-  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -109,9 +110,14 @@ export default function Account() {
     ticketUrl?: string;
     expiresAt?: string;
     orderId: string;
+    gateway?: 'abacatepay' | 'asaas';
   } | null>(null);
   const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
   const [trackingDialog, setTrackingDialog] = useState<{ orderId: string; code: string } | null>(null);
+  const [refreshingPix, setRefreshingPix] = useState<string | null>(null);
+  const [retryCardOrderId, setRetryCardOrderId] = useState<string | null>(null);
+  const [retryCardData, setRetryCardData] = useState<CreditCardFormData | null>(null);
+  const [retryLoading, setRetryLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -170,10 +176,7 @@ export default function Account() {
     if (paymentParam === 'success') {
       // Pagamento confirmado — limpar carrinho e atualizar pedidos
       clearCart();
-      toast({
-        title: '✅ Pagamento confirmado!',
-        description: 'Seu pedido foi recebido e está sendo processado.',
-      });
+      toast.success('✅ Pagamento confirmado!', { description: 'Seu pedido foi recebido e está sendo processado.' });
       loadOrders();
       cleanup();
       return;
@@ -192,11 +195,10 @@ export default function Account() {
           console.error('Erro ao cancelar pedido pendente', err);
         }
       }
-      toast({
-        title: paymentParam === 'failure' ? '❌ Pagamento não concluído' : 'Pagamento cancelado',
-        description: 'Seus itens continuam no carrinho. Você pode tentar novamente quando quiser.',
-        variant: 'destructive',
-      });
+      toast.error(
+        paymentParam === 'failure' ? '❌ Pagamento não concluído' : 'Pagamento cancelado',
+        { description: 'Seus itens continuam no carrinho. Você pode tentar novamente quando quiser.' }
+      );
       loadOrders();
       cleanup();
     })();
@@ -256,9 +258,99 @@ export default function Account() {
         qrCodeBase64: order.qr_code_base64,
         ticketUrl: order.ticket_url || undefined,
         expiresAt: order.pix_expiration || undefined,
-        orderId: order.id
+        orderId: order.id,
+        gateway: (order as any).payment_gateway || 'abacatepay',
       });
       setPixDialogOpen(true);
+    }
+  };
+
+  const handleRefreshPix = async (orderId: string) => {
+    setRefreshingPix(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke('refresh-pix', {
+        body: { orderId },
+      });
+
+      if (error || !data?.success) {
+        toast.error('Erro ao gerar novo PIX', { description: data?.error || error?.message });
+        return;
+      }
+
+      // Atualiza os dados do pedido com o novo QR
+      if (data.data) {
+        setSelectedPixPayment({
+          qrCode: data.data.brCode || '',
+          qrCodeBase64: data.data.brCodeBase64 || '',
+          expiresAt: data.data.expiresAt,
+          orderId,
+          gateway: 'asaas',
+        });
+        setPixDialogOpen(true);
+      }
+
+      // Recarregar pedidos para atualizar lista
+      loadOrders();
+    } catch (err: any) {
+      toast.error('Erro ao gerar novo PIX', { description: err?.message });
+    } finally {
+      setRefreshingPix(null);
+    }
+  };
+
+  const handleRetryCard = async () => {
+    if (!retryCardOrderId || !retryCardData) return;
+
+    setRetryLoading(true);
+    try {
+      // Capturar IP do cliente
+      let remoteIp = '';
+      try {
+        const ipResp = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipResp.json();
+        remoteIp = ipData.ip;
+      } catch {
+        remoteIp = '127.0.0.1';
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('retry-payment-asaas', {
+        body: {
+          orderId: retryCardOrderId,
+          installmentCount: retryCardData.installmentCount,
+          saveCard: retryCardData.saveCard,
+          creditCard: retryCardData.creditCard,
+          creditCardHolderInfo: retryCardData.creditCardHolderInfo,
+          creditCardToken: retryCardData.creditCardToken || undefined,
+          remoteIp,
+          customerData: {
+            name: retryCardData.creditCardHolderInfo?.name || '',
+            email: retryCardData.creditCardHolderInfo?.email || '',
+            cpfCnpj: retryCardData.creditCardHolderInfo?.cpfCnpj || '',
+            phone: retryCardData.creditCardHolderInfo?.phone || retryCardData.creditCardHolderInfo?.mobilePhone || '',
+          },
+        },
+      });
+
+      if (error || !result?.success) {
+        const attemptsLeft = result?.attemptsRemaining ?? 0;
+        if (result?.maxAttemptsReached || attemptsLeft <= 0) {
+          toast.error('❌ Número máximo de tentativas atingido', { description: 'Pague com PIX para continuar.' });
+          setRetryCardOrderId(null);
+        } else {
+          toast.error('Cartão recusado', { description: `${attemptsLeft} tentativa(s) restante(s).` });
+        }
+        loadOrders();
+        return;
+      }
+
+      // Sucesso
+      toast.success('✅ Pagamento aprovado!');
+      setRetryCardOrderId(null);
+      loadOrders();
+    } catch (err: any) {
+      toast.error('Erro ao processar pagamento', { description: err?.message });
+    } finally {
+      setRetryLoading(false);
     }
   };
 
@@ -291,10 +383,10 @@ export default function Account() {
       a.download = `meus-dados-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Dados exportados com sucesso" });
+      toast.success('Dados exportados com sucesso');
     } catch (e) {
       console.error(e);
-      toast({ title: "Erro ao exportar dados", variant: "destructive" });
+      toast.error('Erro ao exportar dados');
     } finally {
       setExporting(false);
     }
@@ -400,15 +492,96 @@ export default function Account() {
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {cfg.label}
                         </Badge>
-                        {order.status === 'aguardando_pagamento' && order.qr_code && order.qr_code_base64 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenPixDialog(order)}
-                          >
-                            <QrCode className="w-4 h-4 mr-2" />
-                            Ver QR Code PIX
-                          </Button>
+                        {order.status === 'aguardando_pagamento' && (
+                          <>
+                            {/* PIX válido — mostrar QR */}
+                            {order.qr_code && order.qr_code_base64 && order.pix_expiration && new Date(order.pix_expiration) > new Date() && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenPixDialog(order)}
+                              >
+                                <QrCode className="w-4 h-4 mr-2" />
+                                Ver QR Code PIX
+                              </Button>
+                            )}
+                            {/* PIX expirado com tentativas restantes — regenerar */}
+                            {order.qr_code && order.pix_expiration && new Date(order.pix_expiration) <= new Date() && ((order as any).pix_attempts || 0) < 3 && (
+                              <div className="flex flex-col gap-2 items-end">
+                                <span className="text-xs text-red-500 font-medium">🔴 PIX expirado</span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRefreshPix(order.id)}
+                                  disabled={refreshingPix === order.id}
+                                >
+                                  {refreshingPix === order.id ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <QrCode className="w-4 h-4 mr-2" />
+                                  )}
+                                  Gerar novo PIX
+                                </Button>
+                              </div>
+                            )}
+                            {/* Cartão recusado com opções combinadas */}
+                            {(order as any).payment_attempts > 0 && (
+                              <div className="flex flex-col gap-2 items-end">
+                                <span className="text-xs text-orange-500 font-medium">
+                                  💳 Cartão recusado · {(order as any).payment_attempts} tentativa(s)
+                                </span>
+                                <div className="flex gap-2 flex-wrap justify-end">
+                                  {(order as any).payment_attempts < PAYMENT_CONFIG.CARD_RETRY_MAX_ATTEMPTS && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setRetryCardOrderId(order.id)}
+                                    >
+                                      <CreditCard className="w-4 h-4 mr-2" />
+                                      Tentar novamente
+                                    </Button>
+                                  )}
+                                  {(order.qr_code || ((order as any).pix_attempts || 0) < 3) && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleRefreshPix(order.id)}
+                                      disabled={refreshingPix === order.id}
+                                    >
+                                      {refreshingPix === order.id ? (
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      ) : (
+                                        <QrCode className="w-4 h-4 mr-2" />
+                                      )}
+                                      {order.qr_code ? 'Ver QR Code PIX' : 'Pagar com PIX'}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {/* Sem PIX e sem cartão recusado — gerar PIX se ainda pode */}
+                            {!order.qr_code && (order as any).payment_attempts === 0 && ((order as any).pix_attempts || 0) < 3 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRefreshPix(order.id)}
+                                disabled={refreshingPix === order.id}
+                              >
+                                {refreshingPix === order.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <QrCode className="w-4 h-4 mr-2" />
+                                )}
+                                Pagar com PIX
+                              </Button>
+                            )}
+                            {/* Todas as formas esgotadas */}
+                            {(order as any).payment_attempts >= PAYMENT_CONFIG.CARD_RETRY_MAX_ATTEMPTS && ((order as any).pix_attempts || 0) >= 3 && (
+                              <span className="text-xs text-muted-foreground font-medium">
+                                Número máximo de tentativas excedido
+                              </span>
+                            )}
+                          </>
                         )}
                         {order.delivery_type === 'pickup' && order.status === 'em_preparo' && (
                           <Button
@@ -496,7 +669,7 @@ export default function Account() {
                             variant="outline"
                             onClick={() => {
                               navigator.clipboard.writeText(order.tracking_code!);
-                              toast({ title: 'Código copiado!', description: 'Cole no site da transportadora.' });
+                              toast.success('Código copiado!', { description: 'Cole no site da transportadora.' });
                             }}
                           >
                             <Copy className="w-3 h-3 mr-1" /> Copiar
@@ -717,7 +890,33 @@ export default function Account() {
           ticketUrl={selectedPixPayment.ticketUrl}
           expiresAt={selectedPixPayment.expiresAt}
           orderId={selectedPixPayment.orderId}
+          gateway={selectedPixPayment.gateway}
+          onRefreshPix={() => handleRefreshPix(selectedPixPayment.orderId)}
         />
+      )}
+
+      {/* Diálogo de retentativa de cartão */}
+      {retryCardOrderId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => !retryLoading && setRetryCardOrderId(null)}>
+          <div className="bg-card rounded-xl border p-6 max-w-lg mx-4 shadow-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold mb-4">Tentar novamente com outro cartão</h3>
+            <CreditCardForm
+              totalAmount={orders.find(o => o.id === retryCardOrderId)?.total_amount || 0}
+              onCardData={setRetryCardData}
+              onInstallmentChange={() => {}}
+              loading={retryLoading}
+              error={undefined}
+            />
+            <div className="flex gap-2 mt-4 justify-end">
+              <Button variant="outline" onClick={() => setRetryCardOrderId(null)} disabled={retryLoading}>
+                Cancelar
+              </Button>
+              <Button onClick={handleRetryCard} disabled={retryLoading || !retryCardData}>
+                {retryLoading ? 'Processando...' : 'Tentar pagar'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pickupQROrderId && (
