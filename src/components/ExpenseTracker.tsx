@@ -494,15 +494,15 @@ function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry
   );
 }
 
-function ExpenseList({ entries, loading, onEdit, onDelete, onSkip, onOverride }: {
-  entries: MonthlyEntry[]; loading: boolean;
+function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride }: {
+  entries: MonthlyEntry[]; loading: boolean; emptyHint?: string;
   onEdit: (e: Expense) => void; onDelete: (id: string) => void;
   onSkip: (e: MonthlyEntry) => void; onOverride: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (entries.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
-      Nenhuma despesa neste mês. Clique em "Nova despesa" para adicionar.
+      {emptyHint || "Nenhuma despesa. Clique em \"Nova despesa\" para adicionar."}
     </CardContent></Card>
   );
   return (
