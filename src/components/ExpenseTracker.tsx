@@ -481,7 +481,7 @@ export function ExpenseTracker() {
               </TabsContent>
             ))}
             <TabsContent value="incomes">
-              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} loading={loading} />
+              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} pdvOrders={pdvOrders} loading={loading} />
             </TabsContent>
           </Tabs>
         </TabsContent>
