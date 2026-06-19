@@ -453,6 +453,125 @@ export function ExpenseTracker() {
   );
 }
 
+function MonthAgenda({
+  currentMonth,
+  selectedDay,
+  onSelectDay,
+  monthEntries,
+  incomes,
+  pdvReceivables,
+}: {
+  currentMonth: Date;
+  selectedDay: Date;
+  onSelectDay: (d: Date) => void;
+  monthEntries: MonthlyEntry[];
+  incomes: IncomeEntry[];
+  pdvReceivables: PdvReceivable[];
+}) {
+  const today = startOfDay(new Date());
+  const daysInMonth = getDaysInMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+
+  const rows = useMemo(() => {
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1);
+      const targetDay = day.getDate();
+
+      const dayExpenses = monthEntries.filter(entry => {
+        const start = parseISO(entry.expense.expense_date);
+        if (entry.expense.type === "variable") return isSameDay(start, day);
+        if (isAfter(start, day)) return false;
+        const end = entry.expense.end_date ? parseISO(entry.expense.end_date) : null;
+        if (end && isBefore(end, day)) return false;
+        const effectiveDay = Math.min(start.getDate(), monthEnd.getDate());
+        return targetDay === effectiveDay;
+      });
+
+      const ds = startOfDay(day);
+      const de = endOfDay(day);
+      const siteIn = incomes
+        .filter(i => {
+          const d = parseISO(i.created_at);
+          return d >= ds && d <= de;
+        })
+        .reduce((s, i) => s + i.total_amount, 0);
+
+      const key = format(day, "yyyy-MM-dd");
+      const pdvIn = pdvReceivables.filter(r => r.date === key).reduce((s, r) => s + r.total, 0);
+
+      const out = dayExpenses.reduce((s, e) => s + Number(e.effectiveAmount), 0);
+      const inc = siteIn + pdvIn;
+      return {
+        day,
+        out,
+        inc,
+        balance: inc - out,
+        count: dayExpenses.length + (siteIn > 0 ? 1 : 0) + (pdvIn > 0 ? 1 : 0),
+        past: day < today,
+      };
+    });
+  }, [currentMonth, daysInMonth, monthEntries, incomes, pdvReceivables, today, monthEnd]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CalendarIcon className="w-4 h-4" />
+          Agenda do mês — {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Entradas e saídas previstas por dia. Dias passados aparecem em laranja claro.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {rows.map(r => {
+            const isSel = isSameDay(r.day, selectedDay);
+            const isTd = isSameDay(r.day, today);
+            return (
+              <button
+                key={r.day.toISOString()}
+                onClick={() => onSelectDay(startOfDay(r.day))}
+                className={cn(
+                  "w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-muted/50 transition-colors",
+                  r.past && "bg-orange-100/40 dark:bg-orange-500/5",
+                  isSel && "ring-2 ring-primary ring-inset",
+                  isTd && !isSel && "bg-primary/5",
+                )}
+              >
+                <div className="w-14 shrink-0">
+                  <div className="text-lg font-bold leading-none">{format(r.day, "dd")}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground capitalize">
+                    {format(r.day, "EEE", { locale: ptBR })}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Entrada</div>
+                    <div className="font-semibold text-emerald-600">{r.inc > 0 ? fmtBRL(r.inc) : "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Saída</div>
+                    <div className="font-semibold text-red-600">{r.out > 0 ? fmtBRL(r.out) : "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Saldo</div>
+                    <div className={cn("font-semibold", r.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
+                      {r.inc === 0 && r.out === 0 ? "—" : fmtBRL(r.balance)}
+                    </div>
+                  </div>
+                </div>
+                {isTd && <Badge variant="secondary" className="text-[10px]">hoje</Badge>}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 
 function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
