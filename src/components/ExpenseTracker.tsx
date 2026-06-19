@@ -414,6 +414,17 @@ export function ExpenseTracker() {
         </Card>
       </div>
 
+      {/* Agenda do mês */}
+      <MonthAgenda
+        currentMonth={currentMonth}
+        selectedDay={selectedDay}
+        onSelectDay={setSelectedDay}
+        monthEntries={monthEntries}
+        incomes={incomes}
+        pdvReceivables={pdvReceivables}
+      />
+
+
       <Tabs defaultValue="all">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="all">Saídas do dia ({dayEntries.length})</TabsTrigger>
