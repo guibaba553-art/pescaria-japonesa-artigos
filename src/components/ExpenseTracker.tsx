@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement";
+import { applyCardFee } from "@/utils/cardFees";
 
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
@@ -192,13 +193,14 @@ export function ExpenseTracker() {
       );
       for (const parcel of schedule) {
         if (parcel.date < monthStart || parcel.date > monthEnd) continue;
+        const netAmount = applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1);
         const key = format(parcel.date, "yyyy-MM-dd");
         const cur = byDate.get(key);
         if (cur) {
-          cur.total += parcel.amount;
+          cur.total += netAmount;
           cur.count += 1;
         } else {
-          byDate.set(key, { date: key, total: parcel.amount, count: 1 });
+          byDate.set(key, { date: key, total: netAmount, count: 1 });
         }
       }
     }
