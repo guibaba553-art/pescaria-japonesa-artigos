@@ -91,7 +91,7 @@ export function ExpenseTracker() {
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, customer_name, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status")
         .eq("source", "site" as any)
         .gte("created_at", monthStart.toISOString())
         .lte("created_at", monthEnd.toISOString())
@@ -99,7 +99,7 @@ export function ExpenseTracker() {
         .order("created_at", { ascending: false }),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, customer_name, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status")
         .eq("source", "pdv" as any)
         .gte("created_at", pdvLookbackStart)
         .lte("created_at", monthEnd.toISOString())
