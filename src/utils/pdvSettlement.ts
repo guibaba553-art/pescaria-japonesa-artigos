@@ -58,9 +58,16 @@ function getHolidays(year: number): Set<string> {
 }
 
 export function isBusinessDay(d: Date): boolean {
+  // Apenas fins de semana são considerados não úteis para liquidação.
+  // Feriados NÃO pulam por si só — a data de liquidação cai normalmente neles
+  // (a menos que coincidam com sábado/domingo, que aí o próprio fim de semana empurra).
   const dow = d.getDay();
-  if (dow === 0 || dow === 6) return false;
-  return !getHolidays(d.getFullYear()).has(ymd(d));
+  return dow !== 0 && dow !== 6;
+}
+
+// Mantido apenas para referência / uso futuro; não é mais usado no cálculo.
+export function isHoliday(d: Date): boolean {
+  return getHolidays(d.getFullYear()).has(ymd(d));
 }
 
 function nextBusinessDay(d: Date): Date {
