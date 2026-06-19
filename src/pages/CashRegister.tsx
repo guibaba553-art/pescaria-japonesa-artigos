@@ -335,8 +335,7 @@ export default function CashRegister() {
         Number(currentRegister!.opening_amount || 0) +
         Number(activity.movementTotals.additions || 0) -
         Number(activity.movementTotals.withdrawals || 0) +
-        Number(activity.salesSummary.cash || 0) -
-        Number(activity.movementTotals.change || 0)
+        Number(activity.salesSummary.cash || 0)
       ).toFixed(2));
 
       const { error } = await supabase.from('cash_registers').update({
