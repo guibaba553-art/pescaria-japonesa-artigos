@@ -193,13 +193,14 @@ export function ExpenseTracker() {
       );
       for (const parcel of schedule) {
         if (parcel.date < monthStart || parcel.date > monthEnd) continue;
+        const netAmount = applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1);
         const key = format(parcel.date, "yyyy-MM-dd");
         const cur = byDate.get(key);
         if (cur) {
-          cur.total += parcel.amount;
+          cur.total += netAmount;
           cur.count += 1;
         } else {
-          byDate.set(key, { date: key, total: parcel.amount, count: 1 });
+          byDate.set(key, { date: key, total: netAmount, count: 1 });
         }
       }
     }
