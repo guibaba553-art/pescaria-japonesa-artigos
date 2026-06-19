@@ -315,7 +315,7 @@ export function ExpenseTracker() {
           <TabsTrigger value="all">Saídas ({monthEntries.length})</TabsTrigger>
           <TabsTrigger value="fixed">Fixas ({monthEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
           <TabsTrigger value="variable">Variáveis ({monthEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
-          <TabsTrigger value="incomes">Entradas ({incomes.length})</TabsTrigger>
+          <TabsTrigger value="incomes">Entradas ({incomes.length + pdvReceivables.length})</TabsTrigger>
         </TabsList>
         {(["all", "fixed", "variable"] as const).map(tab => (
           <TabsContent key={tab} value={tab}>
@@ -330,30 +330,47 @@ export function ExpenseTracker() {
           </TabsContent>
         ))}
         <TabsContent value="incomes">
-          <IncomeList incomes={incomes} loading={loading} />
+          <IncomeList incomes={incomes} pdvReceivables={pdvReceivables} loading={loading} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function IncomeList({ incomes, loading }: { incomes: IncomeEntry[]; loading: boolean }) {
+function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
-  if (incomes.length === 0) return (
+  if (incomes.length === 0 && pdvReceivables.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
       Nenhuma entrada (venda) neste mês.
     </CardContent></Card>
   );
   return (
     <div className="space-y-2">
+      {pdvReceivables.map(r => (
+        <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
+          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="default" className="text-[10px]">PDV</Badge>
+                <Badge variant="outline" className="text-[10px]">A receber</Badge>
+              </div>
+              <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
       {incomes.map(i => (
         <Card key={i.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={i.source === "pdv" ? "default" : "secondary"} className="text-[10px]">
-                  {i.source === "pdv" ? "PDV" : "Site"}
-                </Badge>
+                <Badge variant="secondary" className="text-[10px]">Site</Badge>
                 {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
               </div>
               <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
