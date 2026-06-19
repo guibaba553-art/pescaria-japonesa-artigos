@@ -1,9 +1,11 @@
 // Calcula a data em que o valor de uma venda do PDV entra no caixa,
-// conforme o método de pagamento:
+// conforme o método de pagamento (regras Stone):
 //   - PIX, Dinheiro: mesmo dia (inclui fim de semana e feriado)
-//   - Débito: D+1 (pula fim de semana e feriado)
-//   - Crédito: mesmo dia do mês seguinte (pula fim de semana e feriado)
+//   - Débito: D+1 (pula apenas sábado/domingo)
+//   - Crédito 1x: D+30 dias corridos (pula apenas sábado/domingo se cair em fds)
+//   - Crédito Nx: parcela i em D+(30*i) dias corridos (idem)
 import { addDays, addMonths } from "date-fns";
+
 
 // ---------- Feriados nacionais BR ----------
 // Calcula a Páscoa (Meeus/Jones/Butcher) e deriva feriados móveis.
