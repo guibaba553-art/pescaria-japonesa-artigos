@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getSettlementDate, normalizePaymentMethod } from "@/utils/pdvSettlement";
+import { getSettlementDate } from "@/utils/pdvSettlement";
 
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
