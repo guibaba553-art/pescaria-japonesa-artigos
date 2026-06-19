@@ -59,6 +59,7 @@ interface IncomeEntry {
   total_amount: number;
   customer_name?: string | null;
   payment_method?: string | null;
+  installments?: number | null;
 }
 
 interface PdvReceivable {
@@ -66,6 +67,7 @@ interface PdvReceivable {
   total: number;
   count: number;
 }
+
 
 export function ExpenseTracker() {
   const { toast } = useToast();
