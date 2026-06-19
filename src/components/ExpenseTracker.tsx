@@ -263,7 +263,7 @@ export function ExpenseTracker() {
 
   return (
     <div className="space-y-6">
-      {/* Navegação de mês (contexto) */}
+      {/* Navegação de mês + Nova despesa (contexto comum) */}
       <Card>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -316,140 +316,181 @@ export function ExpenseTracker() {
         </CardContent>
       </Card>
 
-      {/* Navegação de DIA (foco principal) */}
-      <Card className="border-primary/40">
-        <CardContent className="p-4 flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, -1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="default" className="min-w-[260px] justify-center font-semibold capitalize">
-                <CalendarIcon className="w-4 h-4 mr-2" />
-                {format(selectedDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="center">
-              <Calendar
-                mode="single"
-                selected={selectedDay}
-                onSelect={(d) => {
-                  if (!d) return;
-                  setSelectedDay(startOfDay(d));
-                  setCurrentMonth(startOfMonth(d));
-                }}
-                locale={ptBR}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={isToday ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => {
-              const t = startOfDay(new Date());
-              setSelectedDay(t);
-              setCurrentMonth(startOfMonth(t));
-            }}
-          >
-            Hoje
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* KPIs do DIA */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Entradas Site</span><TrendingUp className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomeSite)}</div>
-            <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Entradas PDV</span><TrendingUp className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomePdv)}</div>
-            <div className="text-[10px] text-muted-foreground mt-1">liquidando no dia</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Custos fixos</span><Repeat className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(dayTotals.fixed)}</div>
-            <div className="text-[10px] text-muted-foreground mt-1">que vencem no dia</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Custos variáveis</span><Zap className="w-4 h-4" />
-            </div>
-            <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(dayTotals.variable)}</div>
-            <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
-          </CardContent>
-        </Card>
-        <Card className={cn(dayTotals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Saldo do dia</span><Wallet className="w-4 h-4" />
-            </div>
-            <div className={cn("text-xl font-bold mt-2", dayTotals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
-              {fmtBRL(dayTotals.balance)}
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-1">
-              {fmtBRL(dayTotals.income)} − {fmtBRL(dayTotals.total)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Agenda do mês */}
-      <MonthAgenda
-        currentMonth={currentMonth}
-        selectedDay={selectedDay}
-        onSelectDay={setSelectedDay}
-        monthEntries={monthEntries}
-        incomes={incomes}
-        pdvReceivables={pdvReceivables}
-      />
-
-
-      <Tabs defaultValue="all">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="all">Saídas do dia ({dayEntries.length})</TabsTrigger>
-          <TabsTrigger value="fixed">Fixas ({dayEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
-          <TabsTrigger value="variable">Variáveis ({dayEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
-          <TabsTrigger value="incomes">Entradas ({dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
+      <Tabs defaultValue="day" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+          <TabsTrigger value="day">Visão do Dia</TabsTrigger>
+          <TabsTrigger value="month">Visão do Mês</TabsTrigger>
         </TabsList>
-        {(["all", "fixed", "variable"] as const).map(tab => (
-          <TabsContent key={tab} value={tab}>
-            <ExpenseList
-              entries={tab === "all" ? dayEntries : dayEntries.filter(e => e.expense.type === tab)}
-              loading={loading}
-              emptyHint={`Nenhuma despesa em ${format(selectedDay, "dd/MM", { locale: ptBR })}.`}
-              onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
-              onDelete={handleDelete}
-              onSkip={handleSkipMonth}
-              onOverride={handleOverrideAmount}
-            />
-          </TabsContent>
-        ))}
-        <TabsContent value="incomes">
-          <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} loading={loading} />
+
+        {/* ============ DIA ============ */}
+        <TabsContent value="day" className="space-y-6 mt-4">
+          {/* Navegação de DIA */}
+          <Card className="border-primary/40">
+            <CardContent className="p-4 flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, -1))}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="default" className="min-w-[260px] justify-center font-semibold capitalize">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {format(selectedDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDay}
+                    onSelect={(d) => {
+                      if (!d) return;
+                      setSelectedDay(startOfDay(d));
+                      setCurrentMonth(startOfMonth(d));
+                    }}
+                    locale={ptBR}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, 1))}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={isToday ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => {
+                  const t = startOfDay(new Date());
+                  setSelectedDay(t);
+                  setCurrentMonth(startOfMonth(t));
+                }}
+              >
+                Hoje
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* KPIs do DIA */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Entradas Site</span><TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomeSite)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Entradas PDV</span><TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomePdv)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">liquidando no dia</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Custos fixos</span><Repeat className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(dayTotals.fixed)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">que vencem no dia</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Custos variáveis</span><Zap className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(dayTotals.variable)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
+              </CardContent>
+            </Card>
+            <Card className={cn(dayTotals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Saldo do dia</span><Wallet className="w-4 h-4" />
+                </div>
+                <div className={cn("text-xl font-bold mt-2", dayTotals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
+                  {fmtBRL(dayTotals.balance)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {fmtBRL(dayTotals.income)} − {fmtBRL(dayTotals.total)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="all">
+            <TabsList className="flex-wrap h-auto">
+              <TabsTrigger value="all">Saídas do dia ({dayEntries.length})</TabsTrigger>
+              <TabsTrigger value="fixed">Fixas ({dayEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
+              <TabsTrigger value="variable">Variáveis ({dayEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
+              <TabsTrigger value="incomes">Entradas ({dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
+            </TabsList>
+            {(["all", "fixed", "variable"] as const).map(tab => (
+              <TabsContent key={tab} value={tab}>
+                <ExpenseList
+                  entries={tab === "all" ? dayEntries : dayEntries.filter(e => e.expense.type === tab)}
+                  loading={loading}
+                  emptyHint={`Nenhuma despesa em ${format(selectedDay, "dd/MM", { locale: ptBR })}.`}
+                  onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
+                  onDelete={handleDelete}
+                  onSkip={handleSkipMonth}
+                  onOverride={handleOverrideAmount}
+                />
+              </TabsContent>
+            ))}
+            <TabsContent value="incomes">
+              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} loading={loading} />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* ============ MÊS ============ */}
+        <TabsContent value="month" className="space-y-6 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Entradas do mês</span><TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(monthTotals.income)}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Saídas do mês</span><TrendingDown className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-red-600 mt-2">{fmtBRL(monthTotals.total)}</div>
+              </CardContent>
+            </Card>
+            <Card className={cn(monthTotals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Saldo do mês</span><Wallet className="w-4 h-4" />
+                </div>
+                <div className={cn("text-xl font-bold mt-2", monthTotals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
+                  {fmtBRL(monthTotals.balance)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <MonthAgenda
+            currentMonth={currentMonth}
+            selectedDay={selectedDay}
+            onSelectDay={setSelectedDay}
+            monthEntries={monthEntries}
+            incomes={incomes}
+            pdvReceivables={pdvReceivables}
+          />
         </TabsContent>
       </Tabs>
     </div>
+
   );
 }
 
