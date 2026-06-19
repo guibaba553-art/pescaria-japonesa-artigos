@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getSettlementDate } from "@/utils/pdvSettlement";
+import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement";
 
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
@@ -59,6 +59,7 @@ interface IncomeEntry {
   total_amount: number;
   customer_name?: string | null;
   payment_method?: string | null;
+  installments?: number | null;
 }
 
 interface PdvReceivable {
@@ -66,6 +67,7 @@ interface PdvReceivable {
   total: number;
   count: number;
 }
+
 
 export function ExpenseTracker() {
   const { toast } = useToast();
@@ -85,13 +87,14 @@ export function ExpenseTracker() {
     setLoading(true);
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const pdvLookbackStart = monthStart.toISOString();
+    // Olhar 12 meses para trás para capturar parcelas de crédito que caem neste mês
+    const pdvLookbackStart = startOfMonth(addMonths(monthStart, -12)).toISOString();
     const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status, installments")
         .eq("source", "site" as any)
         .gte("created_at", monthStart.toISOString())
         .lte("created_at", monthEnd.toISOString())
@@ -99,7 +102,7 @@ export function ExpenseTracker() {
         .order("created_at", { ascending: false }),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status, installments")
         .eq("source", "pdv" as any)
         .gte("created_at", pdvLookbackStart)
         .lte("created_at", monthEnd.toISOString())
@@ -115,6 +118,7 @@ export function ExpenseTracker() {
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
+      installments: o.installments ?? 1,
     });
     setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
     setPdvOrders(((pdvOrd ?? []) as any[]).map(mapOrder));
@@ -179,19 +183,27 @@ export function ExpenseTracker() {
     const byDate = new Map<string, PdvReceivable>();
     for (const o of pdvOrders) {
       const orderDate = parseISO(o.created_at);
-      const settle = getSettlementDate(orderDate, o.payment_method);
-      if (settle < monthStart || settle > monthEnd) continue;
-      const key = format(settle, "yyyy-MM-dd");
-      const cur = byDate.get(key);
-      if (cur) {
-        cur.total += o.total_amount;
-        cur.count += 1;
-      } else {
-        byDate.set(key, { date: key, total: o.total_amount, count: 1 });
+      const schedule = getSettlementSchedule(
+        orderDate,
+        o.payment_method,
+        o.total_amount,
+        o.installments ?? 1,
+      );
+      for (const parcel of schedule) {
+        if (parcel.date < monthStart || parcel.date > monthEnd) continue;
+        const key = format(parcel.date, "yyyy-MM-dd");
+        const cur = byDate.get(key);
+        if (cur) {
+          cur.total += parcel.amount;
+          cur.count += 1;
+        } else {
+          byDate.set(key, { date: key, total: parcel.amount, count: 1 });
+        }
       }
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [pdvOrders, currentMonth]);
+
 
   const dayIncomes = useMemo(() => {
     const ds = startOfDay(selectedDay);

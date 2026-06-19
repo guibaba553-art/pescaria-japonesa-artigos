@@ -102,3 +102,36 @@ export function getSettlementDate(orderDate: Date, paymentMethod?: string | null
       return base;
   }
 }
+
+/**
+ * Retorna a agenda de recebimentos (uma entrada por parcela).
+ * - Crédito Nx: N parcelas, uma por mês a partir de orderDate + 1 mês,
+ *   cada uma em dia útil. Valor = total / N (última parcela ajusta centavos).
+ * - Demais métodos: 1 única entrada na data de settlement padrão.
+ */
+export function getSettlementSchedule(
+  orderDate: Date,
+  paymentMethod: string | null | undefined,
+  total: number,
+  installments: number = 1,
+): Array<{ date: Date; amount: number }> {
+  const method = normalizePaymentMethod(paymentMethod);
+  const base = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+  const n = Math.max(1, Math.floor(installments || 1));
+
+  if (method !== "credit" || n <= 1) {
+    return [{ date: getSettlementDate(orderDate, paymentMethod), amount: total }];
+  }
+
+  const cents = Math.round(total * 100);
+  const per = Math.floor(cents / n);
+  const remainder = cents - per * n;
+  const schedule: Array<{ date: Date; amount: number }> = [];
+  for (let i = 1; i <= n; i++) {
+    const d = nextBusinessDay(addMonths(base, i));
+    const parcelCents = per + (i === n ? remainder : 0);
+    schedule.push({ date: d, amount: parcelCents / 100 });
+  }
+  return schedule;
+}
+
