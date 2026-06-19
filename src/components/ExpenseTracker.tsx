@@ -85,7 +85,7 @@ export function ExpenseTracker() {
     setLoading(true);
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const pdvLookbackStart = subDays(monthStart, 40).toISOString();
+    const pdvLookbackStart = monthStart.toISOString();
     const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
