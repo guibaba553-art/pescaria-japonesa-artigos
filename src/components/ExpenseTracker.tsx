@@ -87,13 +87,14 @@ export function ExpenseTracker() {
     setLoading(true);
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const pdvLookbackStart = monthStart.toISOString();
+    // Olhar 12 meses para trás para capturar parcelas de crédito que caem neste mês
+    const pdvLookbackStart = startOfMonth(addMonths(monthStart, -12)).toISOString();
     const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status, installments")
         .eq("source", "site" as any)
         .gte("created_at", monthStart.toISOString())
         .lte("created_at", monthEnd.toISOString())
@@ -101,7 +102,7 @@ export function ExpenseTracker() {
         .order("created_at", { ascending: false }),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status")
+        .select("id, source, created_at, total_amount, payment_method, status, installments")
         .eq("source", "pdv" as any)
         .gte("created_at", pdvLookbackStart)
         .lte("created_at", monthEnd.toISOString())
@@ -117,6 +118,7 @@ export function ExpenseTracker() {
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
+      installments: o.installments ?? 1,
     });
     setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
     setPdvOrders(((pdvOrd ?? []) as any[]).map(mapOrder));
