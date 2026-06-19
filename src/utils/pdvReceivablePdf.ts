@@ -28,7 +28,10 @@ export function generatePdvReceivablePdf(
     order: OrderLike;
     parcelIndex: number;
     parcelCount: number;
-    parcelAmount: number;
+    parcelGross: number;
+    feeRate: number;
+    feeAmount: number;
+    parcelNet: number;
   }> = [];
 
   for (const o of pdvOrders) {
@@ -39,13 +42,18 @@ export function generatePdvReceivablePdf(
       o.total_amount,
       o.installments ?? 1,
     );
+    const feeRate = getCardFeeRate(o.payment_method, o.installments ?? 1);
     schedule.forEach((p, idx) => {
       if (format(p.date, "yyyy-MM-dd") === receivableDate) {
+        const feeAmount = p.amount * feeRate;
         matches.push({
           order: o,
           parcelIndex: idx + 1,
           parcelCount: schedule.length,
-          parcelAmount: p.amount,
+          parcelGross: p.amount,
+          feeRate,
+          feeAmount,
+          parcelNet: p.amount - feeAmount,
         });
       }
     });
@@ -53,7 +61,9 @@ export function generatePdvReceivablePdf(
 
   matches.sort((a, b) => a.order.created_at.localeCompare(b.order.created_at));
 
-  const total = matches.reduce((s, m) => s + m.parcelAmount, 0);
+  const totalGross = matches.reduce((s, m) => s + m.parcelGross, 0);
+  const totalFee = matches.reduce((s, m) => s + m.feeAmount, 0);
+  const totalNet = matches.reduce((s, m) => s + m.parcelNet, 0);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
@@ -80,7 +90,7 @@ export function generatePdvReceivablePdf(
 
   // ===== Cards de resumo =====
   const cardsY = 110;
-  const cardW = (pageWidth - margin * 2 - 20) / 2;
+  const cardW = (pageWidth - margin * 2 - 30) / 3;
   const drawCard = (x: number, label: string, value: string, color: [number, number, number]) => {
     doc.setDrawColor(230);
     doc.setFillColor(249, 250, 251);
@@ -88,28 +98,30 @@ export function generatePdvReceivablePdf(
     doc.setTextColor(107, 114, 128);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(label.toUpperCase(), x + 14, cardsY + 20);
+    doc.text(label.toUpperCase(), x + 12, cardsY + 20);
     doc.setTextColor(...color);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(value, x + 14, cardsY + 46);
+    doc.setFontSize(15);
+    doc.text(value, x + 12, cardsY + 46);
   };
-  drawCard(margin, "Valor a receber", fmtBRL(total), [16, 185, 129]);
-  drawCard(margin + cardW + 20, "Vendas / parcelas", String(matches.length), [37, 99, 235]);
+  drawCard(margin, "Bruto", fmtBRL(totalGross), [37, 99, 235]);
+  drawCard(margin + cardW + 15, "Taxa maquininha", `- ${fmtBRL(totalFee)}`, [220, 38, 38]);
+  drawCard(margin + (cardW + 15) * 2, "Líquido a receber", fmtBRL(totalNet), [16, 185, 129]);
 
   // ===== Tabela =====
   autoTable(doc, {
     startY: cardsY + 80,
-    head: [["#", "Data da venda", "Pagamento", "Parcela", "Total da venda", "Valor a receber"]],
+    head: [["#", "Data da venda", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
     body: matches.map((m, i) => [
       String(i + 1),
       format(parseISO(m.order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
       m.order.payment_method || "—",
       m.parcelCount > 1 ? `${m.parcelIndex}/${m.parcelCount}` : "à vista",
-      fmtBRL(Number(m.order.total_amount)),
-      fmtBRL(m.parcelAmount),
+      fmtBRL(m.parcelGross),
+      m.feeRate > 0 ? `-${(m.feeRate * 100).toFixed(2).replace(".", ",")}%` : "—",
+      fmtBRL(m.parcelNet),
     ]),
-    foot: [["", "", "", "", "TOTAL", fmtBRL(total)]],
+    foot: [["", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
     theme: "striped",
     margin: { left: margin, right: margin },
     headStyles: {
@@ -122,15 +134,16 @@ export function generatePdvReceivablePdf(
       fillColor: [243, 244, 246],
       textColor: [17, 24, 39],
       fontStyle: "bold",
-      fontSize: 11,
+      fontSize: 10,
     },
     bodyStyles: { fontSize: 9, textColor: [31, 41, 55] },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     columnStyles: {
-      0: { halign: "center", cellWidth: 30 },
+      0: { halign: "center", cellWidth: 26 },
       3: { halign: "center" },
       4: { halign: "right" },
-      5: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
+      5: { halign: "right", textColor: [220, 38, 38] },
+      6: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
     },
     didDrawPage: () => {
       const pageHeight = doc.internal.pageSize.getHeight();
