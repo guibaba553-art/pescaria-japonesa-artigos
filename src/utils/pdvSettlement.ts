@@ -103,7 +103,8 @@ export function getSettlementDate(orderDate: Date, paymentMethod?: string | null
     case "credit":
       return nextBusinessDay(addDays(base, 30));
     case "debit":
-      return nextBusinessDay(addDays(base, 1));
+      // Stone débito: D+1 dia corrido (não pula fim de semana).
+      return addDays(base, 1);
     case "pix":
     case "cash":
     case "other":
