@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { format, addMonths, startOfMonth, endOfMonth, parseISO, isAfter, isBefore } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, parseISO, isAfter, isBefore, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getSettlementDate, normalizePaymentMethod } from "@/utils/pdvSettlement";
+
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
 const CATEGORIES_VARIABLE = ["Mercadoria", "Frete", "Embalagem", "Marketing", "Manutenção", "Combustível", "Impostos", "Taxas bancárias", "Comissões", "Reparos", "Outros"];
