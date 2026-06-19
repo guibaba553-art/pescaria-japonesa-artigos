@@ -424,15 +424,39 @@ export function ExpenseTracker() {
 
           <Tabs defaultValue="all">
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="all">Saídas do dia ({dayEntries.length})</TabsTrigger>
+              <TabsTrigger value="all">Todas do dia ({dayEntries.length + dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
+              <TabsTrigger value="expenses">Saídas do dia ({dayEntries.length})</TabsTrigger>
               <TabsTrigger value="fixed">Fixas ({dayEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
               <TabsTrigger value="variable">Variáveis ({dayEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
               <TabsTrigger value="incomes">Entradas ({dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
             </TabsList>
-            {(["all", "fixed", "variable"] as const).map(tab => (
+            <TabsContent value="all">
+              <UnifiedList
+                entries={dayEntries}
+                incomes={dayIncomes}
+                pdvReceivables={dayPdvReceivables}
+                loading={loading}
+                onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
+                onDelete={handleDelete}
+                onSkip={handleSkipMonth}
+                onOverride={handleOverrideAmount}
+              />
+            </TabsContent>
+            <TabsContent value="expenses">
+              <ExpenseList
+                entries={dayEntries}
+                loading={loading}
+                emptyHint={`Nenhuma despesa em ${format(selectedDay, "dd/MM", { locale: ptBR })}.`}
+                onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
+                onDelete={handleDelete}
+                onSkip={handleSkipMonth}
+                onOverride={handleOverrideAmount}
+              />
+            </TabsContent>
+            {(["fixed", "variable"] as const).map(tab => (
               <TabsContent key={tab} value={tab}>
                 <ExpenseList
-                  entries={tab === "all" ? dayEntries : dayEntries.filter(e => e.expense.type === tab)}
+                  entries={dayEntries.filter(e => e.expense.type === tab)}
                   loading={loading}
                   emptyHint={`Nenhuma despesa em ${format(selectedDay, "dd/MM", { locale: ptBR })}.`}
                   onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
