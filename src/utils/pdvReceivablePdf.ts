@@ -59,7 +59,11 @@ export function generatePdvReceivablePdf(
     });
   }
 
-  matches.sort((a, b) => a.order.created_at.localeCompare(b.order.created_at));
+  matches.sort((a, b) => {
+    const d = a.order.created_at.localeCompare(b.order.created_at);
+    if (d !== 0) return d;
+    return a.parcelIndex - b.parcelIndex;
+  });
 
   const totalGross = matches.reduce((s, m) => s + m.parcelGross, 0);
   const totalFee = matches.reduce((s, m) => s + m.feeAmount, 0);
