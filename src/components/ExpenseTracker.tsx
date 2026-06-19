@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { format, addMonths, startOfMonth, endOfMonth, parseISO, isAfter, isBefore } from "date-fns";
+import { format, addMonths, startOfMonth, endOfMonth, parseISO, isAfter, isBefore, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getSettlementDate } from "@/utils/pdvSettlement";
+
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
 const CATEGORIES_VARIABLE = ["Mercadoria", "Frete", "Embalagem", "Marketing", "Manutenção", "Combustível", "Impostos", "Taxas bancárias", "Comissões", "Reparos", "Outros"];
@@ -59,12 +61,19 @@ interface IncomeEntry {
   payment_method?: string | null;
 }
 
+interface PdvReceivable {
+  date: string; // yyyy-MM-dd (data prevista de entrada)
+  total: number;
+  count: number;
+}
+
 export function ExpenseTracker() {
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [overrides, setOverrides] = useState<Override[]>([]);
   const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
+  const [pdvOrders, setPdvOrders] = useState<IncomeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -73,29 +82,43 @@ export function ExpenseTracker() {
 
   const loadData = async () => {
     setLoading(true);
-    const monthStart = startOfMonth(currentMonth).toISOString();
-    const monthEnd = endOfMonth(currentMonth).toISOString();
-    const [{ data: exp }, { data: ov }, { data: ord }] = await Promise.all([
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    // Para receber: precisamos olhar PDV de até ~40 dias antes do início do mês
+    // (crédito do mês anterior cai neste mês). Site continua olhando só o mês.
+    const pdvLookbackStart = subDays(monthStart, 40).toISOString();
+    const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
         .select("id, source, created_at, total_amount, customer_name, payment_method, status")
-        .gte("created_at", monthStart)
-        .lte("created_at", monthEnd)
+        .eq("source", "site" as any)
+        .gte("created_at", monthStart.toISOString())
+        .lte("created_at", monthEnd.toISOString())
+        .neq("status", "cancelado" as any)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("orders")
+        .select("id, source, created_at, total_amount, customer_name, payment_method, status")
+        .eq("source", "pdv" as any)
+        .gte("created_at", pdvLookbackStart)
+        .lte("created_at", monthEnd.toISOString())
         .neq("status", "cancelado" as any)
         .order("created_at", { ascending: false }),
     ]);
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
-    setIncomes(((ord ?? []) as any[]).map((o) => ({
+    const mapOrder = (o: any): IncomeEntry => ({
       id: o.id,
       source: o.source === "pdv" ? "pdv" : "site",
       created_at: o.created_at,
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
-    })));
+    });
+    setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
+    setPdvOrders(((pdvOrd ?? []) as any[]).map(mapOrder));
     setLoading(false);
   };
   useEffect(() => { loadData(); }, [currentMonth]);
@@ -125,15 +148,37 @@ export function ExpenseTracker() {
     return result.sort((a, b) => a.expense.expense_date.localeCompare(b.expense.expense_date));
   }, [expenses, overrides, currentMonth, yearMonth]);
 
+  // Agrega vendas do PDV por data prevista de entrada (settlement) dentro do mês atual
+  const pdvReceivables: PdvReceivable[] = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const byDate = new Map<string, PdvReceivable>();
+    for (const o of pdvOrders) {
+      const orderDate = parseISO(o.created_at);
+      const settle = getSettlementDate(orderDate, o.payment_method);
+      if (settle < monthStart || settle > monthEnd) continue;
+      const key = format(settle, "yyyy-MM-dd");
+      const cur = byDate.get(key);
+      if (cur) {
+        cur.total += o.total_amount;
+        cur.count += 1;
+      } else {
+        byDate.set(key, { date: key, total: o.total_amount, count: 1 });
+      }
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [pdvOrders, currentMonth]);
+
   const totals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = monthEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
-    const incomeSite = incomes.filter(i => i.source === "site").reduce((s, i) => s + i.total_amount, 0);
-    const incomePdv = incomes.filter(i => i.source === "pdv").reduce((s, i) => s + i.total_amount, 0);
+    const incomeSite = incomes.reduce((s, i) => s + i.total_amount, 0);
+    const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
     const income = incomeSite + incomePdv;
     const expensesTotal = fixed + variable;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
-  }, [monthEntries, incomes]);
+  }, [monthEntries, incomes, pdvReceivables]);
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
@@ -270,7 +315,7 @@ export function ExpenseTracker() {
           <TabsTrigger value="all">Saídas ({monthEntries.length})</TabsTrigger>
           <TabsTrigger value="fixed">Fixas ({monthEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
           <TabsTrigger value="variable">Variáveis ({monthEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
-          <TabsTrigger value="incomes">Entradas ({incomes.length})</TabsTrigger>
+          <TabsTrigger value="incomes">Entradas ({incomes.length + pdvReceivables.length})</TabsTrigger>
         </TabsList>
         {(["all", "fixed", "variable"] as const).map(tab => (
           <TabsContent key={tab} value={tab}>
@@ -285,30 +330,47 @@ export function ExpenseTracker() {
           </TabsContent>
         ))}
         <TabsContent value="incomes">
-          <IncomeList incomes={incomes} loading={loading} />
+          <IncomeList incomes={incomes} pdvReceivables={pdvReceivables} loading={loading} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function IncomeList({ incomes, loading }: { incomes: IncomeEntry[]; loading: boolean }) {
+function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
-  if (incomes.length === 0) return (
+  if (incomes.length === 0 && pdvReceivables.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
       Nenhuma entrada (venda) neste mês.
     </CardContent></Card>
   );
   return (
     <div className="space-y-2">
+      {pdvReceivables.map(r => (
+        <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
+          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="default" className="text-[10px]">PDV</Badge>
+                <Badge variant="outline" className="text-[10px]">A receber</Badge>
+              </div>
+              <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
       {incomes.map(i => (
         <Card key={i.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={i.source === "pdv" ? "default" : "secondary"} className="text-[10px]">
-                  {i.source === "pdv" ? "PDV" : "Site"}
-                </Badge>
+                <Badge variant="secondary" className="text-[10px]">Site</Badge>
                 {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
               </div>
               <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
