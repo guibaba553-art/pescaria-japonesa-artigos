@@ -448,6 +448,7 @@ export function ExpenseTracker() {
                 entries={dayEntries}
                 incomes={dayIncomes}
                 pdvReceivables={dayPdvReceivables}
+                pdvOrders={pdvOrders}
                 loading={loading}
                 onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
                 onDelete={handleDelete}
