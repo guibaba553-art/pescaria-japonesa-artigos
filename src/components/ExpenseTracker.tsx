@@ -70,6 +70,7 @@ interface PdvReceivable {
 export function ExpenseTracker() {
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedDay, setSelectedDay] = useState<Date>(startOfDay(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [overrides, setOverrides] = useState<Override[]>([]);
   const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
@@ -84,8 +85,6 @@ export function ExpenseTracker() {
     setLoading(true);
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    // Para receber: precisamos olhar PDV de até ~40 dias antes do início do mês
-    // (crédito do mês anterior cai neste mês). Site continua olhando só o mês.
     const pdvLookbackStart = subDays(monthStart, 40).toISOString();
     const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
@@ -123,7 +122,16 @@ export function ExpenseTracker() {
   };
   useEffect(() => { loadData(); }, [currentMonth]);
 
-  // Calcular entradas do mês
+  useEffect(() => {
+    const ms = startOfMonth(currentMonth);
+    const me = endOfMonth(currentMonth);
+    if (selectedDay < ms || selectedDay > me) {
+      const today = startOfDay(new Date());
+      setSelectedDay(today >= ms && today <= me ? today : ms);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMonth]);
+
   const monthEntries: MonthlyEntry[] = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -132,14 +140,12 @@ export function ExpenseTracker() {
       const start = parseISO(e.expense_date);
       const end = e.end_date ? parseISO(e.end_date) : null;
       if (e.type === "fixed") {
-        // Aparece em todo mês entre start e end
         if (isAfter(start, monthEnd)) continue;
         if (end && isBefore(end, monthStart)) continue;
         const ov = overrides.find(o => o.expense_id === e.id && o.year_month === yearMonth);
         if (ov?.skipped) continue;
         result.push({ expense: e, effectiveAmount: ov?.amount ?? e.amount, override: ov, isRecurring: true });
       } else {
-        // Variável: só no mês exato
         if (start >= monthStart && start <= monthEnd) {
           result.push({ expense: e, effectiveAmount: e.amount, isRecurring: false });
         }
@@ -148,7 +154,25 @@ export function ExpenseTracker() {
     return result.sort((a, b) => a.expense.expense_date.localeCompare(b.expense.expense_date));
   }, [expenses, overrides, currentMonth, yearMonth]);
 
-  // Agrega vendas do PDV por data prevista de entrada (settlement) dentro do mês atual
+  // Despesas que caem NO DIA selecionado
+  const dayEntries: MonthlyEntry[] = useMemo(() => {
+    const targetDay = selectedDay.getDate();
+    const monthEndSel = endOfMonth(selectedDay);
+    return monthEntries.filter(entry => {
+      const start = parseISO(entry.expense.expense_date);
+      if (entry.expense.type === "variable") {
+        return isSameDay(start, selectedDay);
+      }
+      if (isAfter(start, selectedDay)) return false;
+      const end = entry.expense.end_date ? parseISO(entry.expense.end_date) : null;
+      if (end && isBefore(end, selectedDay)) return false;
+      // Se o dia de vencimento original (ex: 31) não existe no mês corrente,
+      // marca como vencido no último dia útil do mês.
+      const effectiveDay = Math.min(start.getDate(), monthEndSel.getDate());
+      return targetDay === effectiveDay;
+    });
+  }, [monthEntries, selectedDay]);
+
   const pdvReceivables: PdvReceivable[] = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -169,16 +193,39 @@ export function ExpenseTracker() {
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [pdvOrders, currentMonth]);
 
-  const totals = useMemo(() => {
+  const dayIncomes = useMemo(() => {
+    const ds = startOfDay(selectedDay);
+    const de = endOfDay(selectedDay);
+    return incomes.filter(i => {
+      const d = parseISO(i.created_at);
+      return d >= ds && d <= de;
+    });
+  }, [incomes, selectedDay]);
+
+  const dayPdvReceivables = useMemo(() => {
+    const key = format(selectedDay, "yyyy-MM-dd");
+    return pdvReceivables.filter(r => r.date === key);
+  }, [pdvReceivables, selectedDay]);
+
+  const dayTotals = useMemo(() => {
+    const fixed = dayEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
+    const variable = dayEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
+    const incomeSite = dayIncomes.reduce((s, i) => s + i.total_amount, 0);
+    const incomePdv = dayPdvReceivables.reduce((s, r) => s + r.total, 0);
+    const expensesTotal = fixed + variable;
+    const income = incomeSite + incomePdv;
+    return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
+  }, [dayEntries, dayIncomes, dayPdvReceivables]);
+
+  const monthTotals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = monthEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const incomeSite = incomes.reduce((s, i) => s + i.total_amount, 0);
     const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
-    const income = incomeSite + incomePdv;
     const expensesTotal = fixed + variable;
-    return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
+    const income = incomeSite + incomePdv;
+    return { total: expensesTotal, income, balance: income - expensesTotal };
   }, [monthEntries, incomes, pdvReceivables]);
-
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
@@ -212,18 +259,20 @@ export function ExpenseTracker() {
     loadData();
   };
 
+  const isToday = isSameDay(selectedDay, new Date());
+
   return (
     <div className="space-y-6">
-      {/* Header com navegação de mês */}
+      {/* Navegação de mês (contexto) */}
       <Card>
         <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="min-w-[220px] justify-center font-semibold capitalize">
+                <Button variant="outline" className="min-w-[200px] justify-center font-semibold capitalize">
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
                 </Button>
@@ -242,7 +291,13 @@ export function ExpenseTracker() {
             <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
               <ChevronRight className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(startOfMonth(new Date()))}>Hoje</Button>
+            <span className="text-xs text-muted-foreground ml-2 hidden md:inline">
+              Mês: <strong>{fmtBRL(monthTotals.income)}</strong> ent −{" "}
+              <strong>{fmtBRL(monthTotals.total)}</strong> sai ={" "}
+              <strong className={monthTotals.balance >= 0 ? "text-emerald-600" : "text-red-600"}>
+                {fmtBRL(monthTotals.balance)}
+              </strong>
+            </span>
           </div>
 
           <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) setEditing(null); }}>
@@ -254,21 +309,67 @@ export function ExpenseTracker() {
             <ExpenseDialog
               key={editing?.id ?? "new"}
               expense={editing}
-              defaultDate={currentMonth}
+              defaultDate={selectedDay}
               onSaved={() => { setDialogOpen(false); setEditing(null); loadData(); }}
             />
           </Dialog>
         </CardContent>
       </Card>
 
-      {/* KPIs do mês */}
+      {/* Navegação de DIA (foco principal) */}
+      <Card className="border-primary/40">
+        <CardContent className="p-4 flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, -1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="default" className="min-w-[260px] justify-center font-semibold capitalize">
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                {format(selectedDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={selectedDay}
+                onSelect={(d) => {
+                  if (!d) return;
+                  setSelectedDay(startOfDay(d));
+                  setCurrentMonth(startOfMonth(d));
+                }}
+                locale={ptBR}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="icon" onClick={() => setSelectedDay(addDays(selectedDay, 1))}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={isToday ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => {
+              const t = startOfDay(new Date());
+              setSelectedDay(t);
+              setCurrentMonth(startOfMonth(t));
+            }}
+          >
+            Hoje
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* KPIs do DIA */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Entradas Site</span><TrendingUp className="w-4 h-4" />
             </div>
-            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(totals.incomeSite)}</div>
+            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomeSite)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
           </CardContent>
         </Card>
         <Card>
@@ -276,7 +377,8 @@ export function ExpenseTracker() {
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Entradas PDV</span><TrendingUp className="w-4 h-4" />
             </div>
-            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(totals.incomePdv)}</div>
+            <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(dayTotals.incomePdv)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">liquidando no dia</div>
           </CardContent>
         </Card>
         <Card>
@@ -284,7 +386,8 @@ export function ExpenseTracker() {
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Custos fixos</span><Repeat className="w-4 h-4" />
             </div>
-            <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(totals.fixed)}</div>
+            <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(dayTotals.fixed)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">que vencem no dia</div>
           </CardContent>
         </Card>
         <Card>
@@ -292,19 +395,20 @@ export function ExpenseTracker() {
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
               <span>Custos variáveis</span><Zap className="w-4 h-4" />
             </div>
-            <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(totals.variable)}</div>
+            <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(dayTotals.variable)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">no dia</div>
           </CardContent>
         </Card>
-        <Card className={cn(totals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
+        <Card className={cn(dayTotals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-              <span>Saldo do mês</span><Wallet className="w-4 h-4" />
+              <span>Saldo do dia</span><Wallet className="w-4 h-4" />
             </div>
-            <div className={cn("text-xl font-bold mt-2", totals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
-              {fmtBRL(totals.balance)}
+            <div className={cn("text-xl font-bold mt-2", dayTotals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
+              {fmtBRL(dayTotals.balance)}
             </div>
             <div className="text-[10px] text-muted-foreground mt-1">
-              Entradas {fmtBRL(totals.income)} − Saídas {fmtBRL(totals.total)}
+              {fmtBRL(dayTotals.income)} − {fmtBRL(dayTotals.total)}
             </div>
           </CardContent>
         </Card>
@@ -312,16 +416,17 @@ export function ExpenseTracker() {
 
       <Tabs defaultValue="all">
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="all">Saídas ({monthEntries.length})</TabsTrigger>
-          <TabsTrigger value="fixed">Fixas ({monthEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
-          <TabsTrigger value="variable">Variáveis ({monthEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
-          <TabsTrigger value="incomes">Entradas ({incomes.length + pdvReceivables.length})</TabsTrigger>
+          <TabsTrigger value="all">Saídas do dia ({dayEntries.length})</TabsTrigger>
+          <TabsTrigger value="fixed">Fixas ({dayEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
+          <TabsTrigger value="variable">Variáveis ({dayEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
+          <TabsTrigger value="incomes">Entradas ({dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
         </TabsList>
         {(["all", "fixed", "variable"] as const).map(tab => (
           <TabsContent key={tab} value={tab}>
             <ExpenseList
-              entries={tab === "all" ? monthEntries : monthEntries.filter(e => e.expense.type === tab)}
+              entries={tab === "all" ? dayEntries : dayEntries.filter(e => e.expense.type === tab)}
               loading={loading}
+              emptyHint={`Nenhuma despesa em ${format(selectedDay, "dd/MM", { locale: ptBR })}.`}
               onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
               onDelete={handleDelete}
               onSkip={handleSkipMonth}
@@ -330,12 +435,13 @@ export function ExpenseTracker() {
           </TabsContent>
         ))}
         <TabsContent value="incomes">
-          <IncomeList incomes={incomes} pdvReceivables={pdvReceivables} loading={loading} />
+          <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} loading={loading} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
+
 
 function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
