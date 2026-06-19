@@ -183,19 +183,27 @@ export function ExpenseTracker() {
     const byDate = new Map<string, PdvReceivable>();
     for (const o of pdvOrders) {
       const orderDate = parseISO(o.created_at);
-      const settle = getSettlementDate(orderDate, o.payment_method);
-      if (settle < monthStart || settle > monthEnd) continue;
-      const key = format(settle, "yyyy-MM-dd");
-      const cur = byDate.get(key);
-      if (cur) {
-        cur.total += o.total_amount;
-        cur.count += 1;
-      } else {
-        byDate.set(key, { date: key, total: o.total_amount, count: 1 });
+      const schedule = getSettlementSchedule(
+        orderDate,
+        o.payment_method,
+        o.total_amount,
+        o.installments ?? 1,
+      );
+      for (const parcel of schedule) {
+        if (parcel.date < monthStart || parcel.date > monthEnd) continue;
+        const key = format(parcel.date, "yyyy-MM-dd");
+        const cur = byDate.get(key);
+        if (cur) {
+          cur.total += parcel.amount;
+          cur.count += 1;
+        } else {
+          byDate.set(key, { date: key, total: parcel.amount, count: 1 });
+        }
       }
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [pdvOrders, currentMonth]);
+
 
   const dayIncomes = useMemo(() => {
     const ds = startOfDay(selectedDay);
