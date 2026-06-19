@@ -635,6 +635,126 @@ function MonthAgenda({
     </Card>
   );
 }
+function UnifiedList({
+  entries, incomes, pdvReceivables, loading,
+  onEdit, onDelete, onSkip, onOverride,
+}: {
+  entries: MonthlyEntry[];
+  incomes: IncomeEntry[];
+  pdvReceivables: PdvReceivable[];
+  loading: boolean;
+  onEdit: (e: Expense) => void;
+  onDelete: (id: string) => void;
+  onSkip: (e: MonthlyEntry) => void;
+  onOverride: (e: MonthlyEntry) => void;
+}) {
+  if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
+  const hasAny = entries.length > 0 || incomes.length > 0 || pdvReceivables.length > 0;
+  if (!hasAny) return (
+    <Card><CardContent className="p-8 text-center text-muted-foreground">
+      Nenhuma transação neste dia.
+    </CardContent></Card>
+  );
+
+  const items: React.ReactNode[] = [];
+
+  pdvReceivables.forEach(r => {
+    items.push(
+      <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
+        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="default" className="text-[10px]">PDV</Badge>
+              <Badge variant="outline" className="text-[10px]">Entrada</Badge>
+            </div>
+            <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  });
+
+  incomes.forEach(i => {
+    items.push(
+      <Card key={`inc-${i.id}`} className="hover:shadow-md transition-shadow">
+        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="text-[10px]">Site</Badge>
+              <Badge variant="outline" className="text-[10px]">Entrada</Badge>
+              {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
+            </div>
+            <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(i.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })} • Pedido #{i.id.slice(0, 8)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-emerald-600">{fmtBRL(i.total_amount)}</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  });
+
+  entries.forEach(entry => {
+    items.push(
+      <Card key={`out-${entry.expense.id + (entry.override?.id ?? "")}`} className="hover:shadow-md transition-shadow">
+        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant={entry.expense.type === "fixed" ? "default" : "secondary"} className="text-[10px]">
+                {entry.expense.type === "fixed" ? <><Repeat className="w-3 h-3 mr-1" />Fixa</> : <><Zap className="w-3 h-3 mr-1" />Variável</>}
+              </Badge>
+              <Badge variant="outline" className="text-[10px]">Saída</Badge>
+              <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
+              {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
+            </div>
+            <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(entry.expense.expense_date), "dd/MM/yyyy", { locale: ptBR })}
+              {entry.expense.supplier && <> • {entry.expense.supplier}</>}
+              {entry.expense.payment_method && <> • {entry.expense.payment_method}</>}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-bold text-red-600">{fmtBRL(Number(entry.effectiveAmount))}</div>
+            {entry.expense.type === "fixed" && entry.override?.amount != null && (
+              <div className="text-[10px] text-muted-foreground line-through">{fmtBRL(entry.expense.amount)}</div>
+            )}
+          </div>
+          <div className="flex gap-1">
+            {entry.expense.type === "fixed" && (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => onOverride(entry)} title="Ajustar valor neste mês">
+                  <TrendingUp className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onSkip(entry)} title="Pular este mês">
+                  <TrendingDown className="w-4 h-4" />
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => onEdit(entry.expense)}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(entry.expense.id)}>
+              <Trash2 className="w-4 h-4 text-red-600" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  });
+
+  return <div className="space-y-2">{items}</div>;
+}
+
 
 
 
