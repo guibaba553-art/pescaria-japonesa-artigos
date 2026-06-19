@@ -61,12 +61,19 @@ interface IncomeEntry {
   payment_method?: string | null;
 }
 
+interface PdvReceivable {
+  date: string; // yyyy-MM-dd (data prevista de entrada)
+  total: number;
+  count: number;
+}
+
 export function ExpenseTracker() {
   const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [overrides, setOverrides] = useState<Override[]>([]);
   const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
+  const [pdvOrders, setPdvOrders] = useState<IncomeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -75,29 +82,43 @@ export function ExpenseTracker() {
 
   const loadData = async () => {
     setLoading(true);
-    const monthStart = startOfMonth(currentMonth).toISOString();
-    const monthEnd = endOfMonth(currentMonth).toISOString();
-    const [{ data: exp }, { data: ov }, { data: ord }] = await Promise.all([
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    // Para receber: precisamos olhar PDV de até ~40 dias antes do início do mês
+    // (crédito do mês anterior cai neste mês). Site continua olhando só o mês.
+    const pdvLookbackStart = subDays(monthStart, 40).toISOString();
+    const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
         .select("id, source, created_at, total_amount, customer_name, payment_method, status")
-        .gte("created_at", monthStart)
-        .lte("created_at", monthEnd)
+        .eq("source", "site" as any)
+        .gte("created_at", monthStart.toISOString())
+        .lte("created_at", monthEnd.toISOString())
+        .neq("status", "cancelado" as any)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("orders")
+        .select("id, source, created_at, total_amount, customer_name, payment_method, status")
+        .eq("source", "pdv" as any)
+        .gte("created_at", pdvLookbackStart)
+        .lte("created_at", monthEnd.toISOString())
         .neq("status", "cancelado" as any)
         .order("created_at", { ascending: false }),
     ]);
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
-    setIncomes(((ord ?? []) as any[]).map((o) => ({
+    const mapOrder = (o: any): IncomeEntry => ({
       id: o.id,
       source: o.source === "pdv" ? "pdv" : "site",
       created_at: o.created_at,
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
-    })));
+    });
+    setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
+    setPdvOrders(((pdvOrd ?? []) as any[]).map(mapOrder));
     setLoading(false);
   };
   useEffect(() => { loadData(); }, [currentMonth]);
@@ -127,15 +148,37 @@ export function ExpenseTracker() {
     return result.sort((a, b) => a.expense.expense_date.localeCompare(b.expense.expense_date));
   }, [expenses, overrides, currentMonth, yearMonth]);
 
+  // Agrega vendas do PDV por data prevista de entrada (settlement) dentro do mês atual
+  const pdvReceivables: PdvReceivable[] = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const byDate = new Map<string, PdvReceivable>();
+    for (const o of pdvOrders) {
+      const orderDate = parseISO(o.created_at);
+      const settle = getSettlementDate(orderDate, o.payment_method);
+      if (settle < monthStart || settle > monthEnd) continue;
+      const key = format(settle, "yyyy-MM-dd");
+      const cur = byDate.get(key);
+      if (cur) {
+        cur.total += o.total_amount;
+        cur.count += 1;
+      } else {
+        byDate.set(key, { date: key, total: o.total_amount, count: 1 });
+      }
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [pdvOrders, currentMonth]);
+
   const totals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = monthEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
-    const incomeSite = incomes.filter(i => i.source === "site").reduce((s, i) => s + i.total_amount, 0);
-    const incomePdv = incomes.filter(i => i.source === "pdv").reduce((s, i) => s + i.total_amount, 0);
+    const incomeSite = incomes.reduce((s, i) => s + i.total_amount, 0);
+    const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
     const income = incomeSite + incomePdv;
     const expensesTotal = fixed + variable;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
-  }, [monthEntries, incomes]);
+  }, [monthEntries, incomes, pdvReceivables]);
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
