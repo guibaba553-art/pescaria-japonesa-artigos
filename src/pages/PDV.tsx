@@ -1666,6 +1666,7 @@ export default function PDV() {
           customer_id: selectedCustomer?.id || null,
           source: 'pdv',
           payment_method: paymentMethod,
+          installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
           idempotency_key: idempotencyKey,
           tef_transaction_id: tefData?.transaction_id ?? null,
           card_brand: tefData?.card_brand ?? null,
