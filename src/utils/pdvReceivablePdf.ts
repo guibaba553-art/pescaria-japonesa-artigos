@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getSettlementSchedule } from "@/utils/pdvSettlement";
+import { getCardFeeRate } from "@/utils/cardFees";
 
 interface OrderLike {
   id: string;
