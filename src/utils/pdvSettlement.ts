@@ -1,9 +1,11 @@
 // Calcula a data em que o valor de uma venda do PDV entra no caixa,
-// conforme o método de pagamento:
+// conforme o método de pagamento (regras Stone):
 //   - PIX, Dinheiro: mesmo dia (inclui fim de semana e feriado)
-//   - Débito: D+1 (pula fim de semana e feriado)
-//   - Crédito: mesmo dia do mês seguinte (pula fim de semana e feriado)
+//   - Débito: D+1 (pula apenas sábado/domingo)
+//   - Crédito 1x: D+30 dias corridos (pula apenas sábado/domingo se cair em fds)
+//   - Crédito Nx: parcela i em D+(30*i) dias corridos (idem)
 import { addDays, addMonths } from "date-fns";
+
 
 // ---------- Feriados nacionais BR ----------
 // Calcula a Páscoa (Meeus/Jones/Butcher) e deriva feriados móveis.
@@ -99,7 +101,7 @@ export function getSettlementDate(orderDate: Date, paymentMethod?: string | null
   const base = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
   switch (method) {
     case "credit":
-      return nextBusinessDay(addMonths(base, 1));
+      return nextBusinessDay(addDays(base, 30));
     case "debit":
       return nextBusinessDay(addDays(base, 1));
     case "pix":
@@ -112,8 +114,8 @@ export function getSettlementDate(orderDate: Date, paymentMethod?: string | null
 
 /**
  * Retorna a agenda de recebimentos (uma entrada por parcela).
- * - Crédito Nx: N parcelas, uma por mês a partir de orderDate + 1 mês,
- *   cada uma em dia útil. Valor = total / N (última parcela ajusta centavos).
+ * - Crédito Nx (Stone): parcela i em D+(30*i) dias corridos, ajustando para próximo dia útil.
+ *   Valor = total / N (última parcela ajusta centavos).
  * - Demais métodos: 1 única entrada na data de settlement padrão.
  */
 export function getSettlementSchedule(
@@ -126,7 +128,7 @@ export function getSettlementSchedule(
   const base = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
   const n = Math.max(1, Math.floor(installments || 1));
 
-  if (method !== "credit" || n <= 1) {
+  if (method !== "credit") {
     return [{ date: getSettlementDate(orderDate, paymentMethod), amount: total }];
   }
 
@@ -135,10 +137,14 @@ export function getSettlementSchedule(
   const remainder = cents - per * n;
   const schedule: Array<{ date: Date; amount: number }> = [];
   for (let i = 1; i <= n; i++) {
-    const d = nextBusinessDay(addMonths(base, i));
+    const d = nextBusinessDay(addDays(base, 30 * i));
     const parcelCents = per + (i === n ? remainder : 0);
     schedule.push({ date: d, amount: parcelCents / 100 });
   }
   return schedule;
 }
+
+// `addMonths` ainda é importado caso outras utilidades futuras precisem; suprime warning.
+void addMonths;
+
 
