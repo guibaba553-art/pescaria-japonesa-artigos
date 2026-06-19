@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, isAfter, isBefore, subDays, isSameDay, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown } from "lucide-react";
+import { generatePdvReceivablePdf } from "@/utils/pdvReceivablePdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -447,6 +448,7 @@ export function ExpenseTracker() {
                 entries={dayEntries}
                 incomes={dayIncomes}
                 pdvReceivables={dayPdvReceivables}
+                pdvOrders={pdvOrders}
                 loading={loading}
                 onEdit={(e) => { setEditing(e); setDialogOpen(true); }}
                 onDelete={handleDelete}
@@ -479,7 +481,7 @@ export function ExpenseTracker() {
               </TabsContent>
             ))}
             <TabsContent value="incomes">
-              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} loading={loading} />
+              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} pdvOrders={pdvOrders} loading={loading} />
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -648,12 +650,13 @@ function MonthAgenda({
   );
 }
 function UnifiedList({
-  entries, incomes, pdvReceivables, loading,
+  entries, incomes, pdvReceivables, pdvOrders, loading,
   onEdit, onDelete, onSkip, onOverride,
 }: {
   entries: MonthlyEntry[];
   incomes: IncomeEntry[];
   pdvReceivables: PdvReceivable[];
+  pdvOrders: IncomeEntry[];
   loading: boolean;
   onEdit: (e: Expense) => void;
   onDelete: (id: string) => void;
@@ -684,8 +687,18 @@ function UnifiedList({
               {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
+              title="Baixar PDF com as vendas desta liquidação"
+            >
+              <FileDown className="w-4 h-4 mr-1" /> PDF
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -770,7 +783,7 @@ function UnifiedList({
 
 
 
-function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
+function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; pdvOrders: IncomeEntry[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (incomes.length === 0 && pdvReceivables.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
@@ -792,8 +805,18 @@ function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry
                 {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
+                title="Baixar PDF com as vendas desta liquidação"
+              >
+                <FileDown className="w-4 h-4 mr-1" /> PDF
+              </Button>
             </div>
           </CardContent>
         </Card>
