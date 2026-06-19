@@ -783,7 +783,7 @@ function UnifiedList({
 
 
 
-function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; loading: boolean }) {
+function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; pdvOrders: IncomeEntry[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (incomes.length === 0 && pdvReceivables.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
@@ -805,8 +805,18 @@ function IncomeList({ incomes, pdvReceivables, loading }: { incomes: IncomeEntry
                 {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
+                title="Baixar PDF com as vendas desta liquidação"
+              >
+                <FileDown className="w-4 h-4 mr-1" /> PDF
+              </Button>
             </div>
           </CardContent>
         </Card>
