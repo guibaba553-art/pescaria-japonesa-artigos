@@ -112,15 +112,22 @@ export function generatePdvReceivablePdf(
   autoTable(doc, {
     startY: cardsY + 80,
     head: [["#", "Data da venda", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
-    body: matches.map((m, i) => [
-      String(i + 1),
-      format(parseISO(m.order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
-      m.order.payment_method || "—",
-      m.parcelCount > 1 ? `${m.parcelIndex}/${m.parcelCount}` : "à vista",
-      fmtBRL(m.parcelGross),
-      m.feeRate > 0 ? `-${(m.feeRate * 100).toFixed(2).replace(".", ",")}%` : "—",
-      fmtBRL(m.parcelNet),
-    ]),
+    body: matches.map((m, i) => {
+      const methodLabel = (m.order.payment_method || "—").toLowerCase();
+      const isCard = methodLabel.includes("credit") || methodLabel.includes("debit") || methodLabel.includes("créd") || methodLabel.includes("débit");
+      const paymentDisplay = isCard && m.parcelCount > 1
+        ? `${m.order.payment_method} (${m.parcelCount}x)`
+        : (m.order.payment_method || "—");
+      return [
+        String(i + 1),
+        format(parseISO(m.order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        paymentDisplay,
+        `${m.parcelIndex}/${m.parcelCount}`,
+        fmtBRL(m.parcelGross),
+        m.feeRate > 0 ? `-${(m.feeRate * 100).toFixed(2).replace(".", ",")}%` : "—",
+        fmtBRL(m.parcelNet),
+      ];
+    }),
     foot: [["", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
     theme: "striped",
     margin: { left: margin, right: margin },
