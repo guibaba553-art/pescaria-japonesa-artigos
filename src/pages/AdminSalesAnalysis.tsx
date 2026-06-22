@@ -955,18 +955,65 @@ export default function AdminSalesAnalysis() {
       throw new Error('Tipo de venda não suporta emissão a partir daqui.');
     } catch (e: any) {
       console.error('Erro ao emitir nota:', e);
-      toast.error('Erro ao emitir nota', {
-        id: loadingToastId,
-        description: e?.message || 'Verifique as configurações fiscais.',
-      });
+      if (loadingToastId !== null) {
+        toast.error('Erro ao emitir nota', {
+          id: loadingToastId,
+          description: e?.message || 'Verifique as configurações fiscais.',
+        });
+      }
+      if (opts?.silent) throw e;
     } finally {
       setEmittingInvoice(prev => {
         const n = new Set(prev);
         n.delete(key);
         return n;
       });
-      setInvoiceTarget(null);
+      if (!opts?.silent) setInvoiceTarget(null);
     }
+  };
+
+  // Emissão em lote — apenas linhas em que canEmitRow é true.
+  // Usa o modelo padrão (NFC-e para PDV/orçamento; NF-e p/ site só se já houver cliente selecionado por linha — aqui só PDV/orçamento entram).
+  const canEmitRow = (r: UnifiedRow) => {
+    const hasInvoice = r.statusGroup === 'nota' || !!r.raw?.nfe;
+    const isCancelled = r.statusGroup === 'cancelado';
+    return !hasInvoice && !isCancelled && (r.kind === 'order' || r.kind === 'saved');
+  };
+
+  const bulkEmitSelected = async () => {
+    const allRows = rows.filter(r => selectedEmit.has(`${r.kind}-${r.id}`) && canEmitRow(r));
+    // Para emissão em lote só permitimos NFC-e (não exige cliente). Pula site (que normalmente vai como NF-e).
+    const targets = allRows.filter(r => !(r.kind === 'order' && r.source !== 'pdv'));
+    const skipped = allRows.length - targets.length;
+    if (targets.length === 0) {
+      toast.error('Nada para emitir', {
+        description: 'A emissão em lote só funciona para vendas PDV / orçamentos (NFC-e). Vendas do site precisam ser emitidas individualmente.',
+      });
+      return;
+    }
+    setBulkEmitting(true);
+    const toastId = toast.loading(`Emitindo ${targets.length} nota(s)...`, {
+      description: 'Aguarde, enviando para a SEFAZ uma a uma.',
+    });
+    let ok = 0;
+    let fail = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const r = targets[i];
+      toast.loading(`Emitindo ${i + 1}/${targets.length}...`, { id: toastId });
+      try {
+        await emitInvoice(r, { model: 'nfce', customer: null, silent: true, skipRefresh: true });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    toast.success(`Emissão em lote concluída`, {
+      id: toastId,
+      description: `${ok} sucesso(s), ${fail} falha(s)${skipped > 0 ? `, ${skipped} ignorada(s) (site)` : ''}.`,
+    });
+    setSelectedEmit(new Set());
+    setBulkEmitting(false);
+    await fetchAll(true);
   };
 
   const periodLabel = useMemo(() => {
