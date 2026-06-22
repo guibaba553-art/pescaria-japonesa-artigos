@@ -683,15 +683,22 @@ export default function AdminSalesAnalysis() {
   // Emite NFC-e (PDV / orçamento) ou NF-e (site) a partir do painel de Vendas.
   // Para pedidos do site (kind='order' source!='pdv') -> usa edge function 'emit-nfe' que aceita { orderId }.
   // Para pedidos PDV ou orçamentos salvos -> usa 'emit-nfce' montando o payload completo no client.
-  const emitInvoice = async (row: UnifiedRow) => {
+  const emitInvoice = async (
+    row: UnifiedRow,
+    opts?: { model?: 'nfce' | 'nfe'; customer?: any | null; silent?: boolean; skipRefresh?: boolean }
+  ) => {
     const key = `${row.kind}-${row.id}`;
+    const model = opts?.model ?? invoiceModel;
+    const customer = opts?.customer !== undefined ? opts.customer : invoiceCustomer;
     setEmittingInvoice(prev => new Set(prev).add(key));
-    const loadingToastId = toast.loading('Emitindo nota fiscal...', {
-      description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
-    });
+    const loadingToastId = opts?.silent
+      ? null
+      : toast.loading('Emitindo nota fiscal...', {
+          description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
+        });
 
     try {
-      if (invoiceModel === 'nfe' && !invoiceCustomer) {
+      if (model === 'nfe' && !customer) {
         throw new Error('Selecione manualmente o cliente antes de emitir a NF-e.');
       }
 
