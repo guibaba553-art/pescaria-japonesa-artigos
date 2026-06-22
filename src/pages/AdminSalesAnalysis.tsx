@@ -1289,6 +1289,7 @@ export default function AdminSalesAnalysis() {
                     <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Pagamento</TableHead>
+                    <TableHead>Operador</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
