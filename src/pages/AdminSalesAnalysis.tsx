@@ -1373,6 +1373,11 @@ export default function AdminSalesAnalysis() {
                               {formatPayment(r.raw?.payment_method)}
                             </span>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">
+                              {r.raw?.user_id ? (profileMap[r.raw.user_id] || '—') : '—'}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
