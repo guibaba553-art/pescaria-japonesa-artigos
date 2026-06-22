@@ -28,6 +28,7 @@ import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } fro
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
