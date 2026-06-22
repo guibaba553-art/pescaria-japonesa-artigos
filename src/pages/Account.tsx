@@ -326,7 +326,7 @@ export default function Account() {
             name: retryCardData.creditCardHolderInfo?.name || '',
             email: retryCardData.creditCardHolderInfo?.email || '',
             cpfCnpj: retryCardData.creditCardHolderInfo?.cpfCnpj || '',
-            phone: retryCardData.creditCardHolderInfo?.phone || retryCardData.creditCardHolderInfo?.mobilePhone || '',
+            phone: retryCardData.creditCardHolderInfo?.phone || (retryCardData.creditCardHolderInfo as any)?.mobilePhone || '',
           },
         },
       });
