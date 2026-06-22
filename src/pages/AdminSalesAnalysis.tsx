@@ -1267,6 +1267,21 @@ export default function AdminSalesAnalysis() {
                           <TableCell className="p-0 pl-0">
                             <div className={`w-1.5 h-10 ${meta.dot} rounded-r`} />
                           </TableCell>
+                          <TableCell className="p-0 text-center">
+                            {canEmitRow(r) ? (
+                              <Checkbox
+                                aria-label="Selecionar para emissão em lote"
+                                checked={selectedEmit.has(expandKey)}
+                                onCheckedChange={(v) => {
+                                  setSelectedEmit(prev => {
+                                    const n = new Set(prev);
+                                    if (v) n.add(expandKey); else n.delete(expandKey);
+                                    return n;
+                                  });
+                                }}
+                              />
+                            ) : null}
+                          </TableCell>
                           <TableCell className="p-0 pl-1">
                             {expandable && (
                               <Button
