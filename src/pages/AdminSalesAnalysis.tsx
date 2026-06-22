@@ -1375,7 +1375,7 @@ export default function AdminSalesAnalysis() {
                           </TableCell>
                           <TableCell>
                             <span className="text-xs text-muted-foreground">
-                              {r.raw?.user_id ? (profileMap[r.raw.user_id] || '—') : '—'}
+                              {r.raw?.user_id ? ((profileMap[r.raw.user_id] || '').split(' ')[0] || '—') : '—'}
                             </span>
                           </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
