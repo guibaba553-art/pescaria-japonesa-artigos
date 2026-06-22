@@ -152,6 +152,7 @@ export default function AdminSalesAnalysis() {
   const [linkingCustomer, setLinkingCustomer] = useState(false);
   const [selectedEmit, setSelectedEmit] = useState<Set<string>>(new Set());
   const [bulkEmitting, setBulkEmitting] = useState(false);
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
@@ -356,6 +357,27 @@ export default function AdminSalesAnalysis() {
 
       unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(unified);
+
+      // Carrega nomes dos operadores (user_id de orders/saved_sales)
+      const userIds = Array.from(new Set(
+        unified
+          .map((r) => r.raw?.user_id)
+          .filter((u): u is string => !!u && !profileMap[u])
+      ));
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        if (profs) {
+          setProfileMap((prev) => {
+            const next = { ...prev };
+            profs.forEach((p: any) => { next[p.id] = p.full_name || ''; });
+            return next;
+          });
+        }
+      }
+
       if (!silent) toast.success(`${unified.length} registro(s) carregado(s)`);
     } catch (e: any) {
       toast.error('Erro ao carregar: ' + e.message);
@@ -1267,6 +1289,7 @@ export default function AdminSalesAnalysis() {
                     <TableHead>Origem</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Pagamento</TableHead>
+                    <TableHead>Operador</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -1350,6 +1373,11 @@ export default function AdminSalesAnalysis() {
                               {formatPayment(r.raw?.payment_method)}
                             </span>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">
+                              {r.raw?.user_id ? (profileMap[r.raw.user_id] || '—') : '—'}
+                            </span>
+                          </TableCell>
                           <TableCell className="text-right font-bold">{formatCurrency(r.total_amount)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
@@ -1404,7 +1432,7 @@ export default function AdminSalesAnalysis() {
 
                         {isExpanded && (
                           <TableRow key={`${expandKey}-expand`} className={meta.rowBg}>
-                            <TableCell colSpan={11} className="p-0">
+                            <TableCell colSpan={12} className="p-0">
                               <div className="bg-muted/30 border-t border-border px-6 py-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <Package className="w-4 h-4 text-muted-foreground" />
