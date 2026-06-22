@@ -1757,6 +1757,69 @@ export default function PDV() {
         description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
+      // Auto-emissão de NFC-e para pagamentos em crédito/débito/pix
+      if (paymentMethod === 'credit' || paymentMethod === 'debit' || paymentMethod === 'pix') {
+        (async () => {
+          try {
+            const { data: items } = await supabase
+              .from('order_items')
+              .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
+              .eq('order_id', order.id);
+            if (!items || items.length === 0) return;
+
+            const pmMap: Record<string, 'cartao_credito' | 'cartao_debito' | 'pix'> = {
+              credit: 'cartao_credito',
+              debit: 'cartao_debito',
+              pix: 'pix',
+            };
+
+            const payload = {
+              order_id: order.id,
+              payment_method: pmMap[paymentMethod],
+              total_amount: Number(order.total_amount),
+              customer: selectedCustomer ? {
+                cpf: selectedCustomer.cpf || undefined,
+                cnpj: (selectedCustomer as any).cnpj || undefined,
+                nome: (selectedCustomer as any).company_name || selectedCustomer.full_name || undefined,
+              } : undefined,
+              items: items.map((it: any) => ({
+                product_id: it.product_id,
+                name: it.products?.name || 'Produto',
+                quantity: Number(it.quantity),
+                unit_price: Number(it.price_at_purchase),
+                ncm: it.products?.ncm || undefined,
+                cfop: it.products?.cfop || undefined,
+                csosn: it.products?.csosn || undefined,
+                origem: it.products?.origem || undefined,
+                unidade: it.products?.unidade_comercial || undefined,
+                cest: it.products?.cest || undefined,
+              })),
+            };
+
+            const { data: nfceData, error: nfceError } = await supabase.functions.invoke('emit-nfce', { body: payload });
+            if (nfceError || nfceData?.error) {
+              const msg = nfceData?.error || nfceError?.message || 'Falha ao emitir NFC-e';
+              toast({
+                title: 'NFC-e não emitida automaticamente',
+                description: msg + ' — emita manualmente em Análise de Vendas.',
+                variant: 'destructive',
+              });
+              return;
+            }
+            toast({
+              title: 'NFC-e emitida automaticamente ✅',
+              description: nfceData?.nfe_number ? `Número: ${nfceData.nfe_number}` : 'Nota fiscal gerada.',
+            });
+          } catch (e: any) {
+            toast({
+              title: 'NFC-e não emitida automaticamente',
+              description: (e?.message || 'Erro desconhecido') + ' — emita manualmente em Análise de Vendas.',
+              variant: 'destructive',
+            });
+          }
+        })();
+      }
+
       // Se a venda estava salva, deletar da lista de rascunhos
       if (currentSaleId) {
         await supabase
