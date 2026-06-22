@@ -128,7 +128,61 @@ serve(async (req) => {
     let user = { id: userIdForRateLimit } as { id: string };
 
 
-    const body = (await req.json()) as RequestBody;
+    const body = (await req.json()) as RequestBody & { _internal_user_id?: string };
+
+    if (isInternalCall) {
+      const internalUserId = body._internal_user_id;
+      if (!internalUserId) {
+        return new Response(JSON.stringify({ error: 'Chamada interna sem _internal_user_id' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      user = { id: internalUserId };
+
+      // Rate limiting também no modo interno (por operador)
+      const { data: rateLimitCheck } = await supabase.rpc('check_fiscal_rate_limit', {
+        p_user_id: internalUserId,
+        p_function_name: 'emit-nfce',
+        p_max_requests: 100,
+        p_window_hours: 1,
+      });
+      if (!rateLimitCheck) {
+        return new Response(
+          JSON.stringify({ error: 'Limite de emissões excedido (interno).' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Idempotência: se já existe uma emissão bem-sucedida ou pendente recente
+    // para este pedido, não duplicar. Evita corrida entre trigger e frontend.
+    if (body.order_id) {
+      const { data: existing } = await supabase
+        .from('nfe_emissions')
+        .select('id, status, nfe_number, nfe_key, danfe_url, created_at')
+        .eq('order_id', body.order_id)
+        .eq('modelo', '65')
+        .in('status', ['success', 'pending', 'processing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: 'already_emitted_or_in_progress',
+            emission_id: existing.id,
+            status: existing.status,
+            nfe_number: existing.nfe_number,
+            nfe_key: existing.nfe_key,
+            danfe_url: existing.danfe_url,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
+      }
+    }
 
     if (!body.items || body.items.length === 0) {
       return new Response(JSON.stringify({ error: 'Itens são obrigatórios' }), {
@@ -136,6 +190,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     // Buscar configurações Focus NFe
     const { data: focusSettings, error: focusError } = await supabase
