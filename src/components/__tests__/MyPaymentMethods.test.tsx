@@ -27,7 +27,7 @@ describe('MyPaymentMethods — guarda de token antes do INSERT', () => {
   });
 
   it('toast de erro quando token inválido', () => {
-    const t = '';
+    const t: string = '';
     const msg = !t || t.length < 10
       ? 'Falha ao tokenizar cartão. Tente novamente.'
       : '';

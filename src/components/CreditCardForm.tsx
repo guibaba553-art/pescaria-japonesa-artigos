@@ -817,7 +817,7 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
           </div>
 
           {/* Right column or below: holder info */}
-          {mode !== "saved" && (
+          {true && (
             <div className={columns === 2 ? "space-y-4" : "space-y-4"}>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Dados do titular

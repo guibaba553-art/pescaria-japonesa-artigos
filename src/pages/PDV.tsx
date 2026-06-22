@@ -1757,10 +1757,44 @@ export default function PDV() {
         description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
-      // Auto-emissão de NFC-e para pagamentos em crédito/débito/pix
+      // Auto-emissão fiscal para pagamentos em crédito/débito/pix
+      // Cliente com CNPJ => NF-e (modelo 55). Caso contrário => NFC-e (modelo 65).
       if (paymentMethod === 'credit' || paymentMethod === 'debit' || paymentMethod === 'pix') {
         (async () => {
+          const customerCnpj = (selectedCustomer as any)?.cnpj
+            ? String((selectedCustomer as any).cnpj).replace(/\D/g, '')
+            : '';
+          const isCnpj = customerCnpj.length === 14;
+
           try {
+            if (isCnpj) {
+              // NF-e (modelo 55) — usa edge function emit-nfe que aceita { orderId, manualCustomer }
+              const manualCustomer = {
+                cnpj: customerCnpj,
+                cpf: undefined,
+                full_name: (selectedCustomer as any)?.company_name || selectedCustomer?.full_name || undefined,
+                company_name: (selectedCustomer as any)?.company_name || undefined,
+              };
+              const { data: nfeData, error: nfeError } = await supabase.functions.invoke('emit-nfe', {
+                body: { orderId: order.id, manualCustomer },
+              });
+              if (nfeError || nfeData?.error) {
+                const msg = nfeData?.error || nfeError?.message || 'Falha ao emitir NF-e';
+                toast({
+                  title: 'NF-e não emitida automaticamente',
+                  description: msg + ' — emita manualmente em Análise de Vendas.',
+                  variant: 'destructive',
+                });
+                return;
+              }
+              toast({
+                title: 'NF-e emitida automaticamente ✅',
+                description: nfeData?.nfe_number ? `Número: ${nfeData.nfe_number}` : 'Nota fiscal gerada.',
+              });
+              return;
+            }
+
+            // NFC-e (modelo 65) — consumidor final/CPF/anônimo
             const { data: items } = await supabase
               .from('order_items')
               .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
@@ -1779,7 +1813,7 @@ export default function PDV() {
               total_amount: Number(order.total_amount),
               customer: selectedCustomer ? {
                 cpf: selectedCustomer.cpf || undefined,
-                cnpj: (selectedCustomer as any).cnpj || undefined,
+                cnpj: undefined,
                 nome: (selectedCustomer as any).company_name || selectedCustomer.full_name || undefined,
               } : undefined,
               items: items.map((it: any) => ({
@@ -1812,7 +1846,7 @@ export default function PDV() {
             });
           } catch (e: any) {
             toast({
-              title: 'NFC-e não emitida automaticamente',
+              title: (isCnpj ? 'NF-e' : 'NFC-e') + ' não emitida automaticamente',
               description: (e?.message || 'Erro desconhecido') + ' — emita manualmente em Análise de Vendas.',
               variant: 'destructive',
             });
