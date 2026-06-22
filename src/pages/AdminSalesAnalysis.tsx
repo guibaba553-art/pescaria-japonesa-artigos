@@ -155,6 +155,7 @@ export default function AdminSalesAnalysis() {
   const [profileMap, setProfileMap] = useState<Record<string, string>>({});
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
+  // e pré-seleciona o cliente vinculado ao pedido/orçamento, se houver.
   useEffect(() => {
     if (!invoiceTarget) {
       setInvoiceCustomer(null);
@@ -163,6 +164,38 @@ export default function AdminSalesAnalysis() {
     const isSite = invoiceTarget.kind === 'order' && invoiceTarget.source !== 'pdv';
     setInvoiceModel(isSite ? 'nfe' : 'nfce');
     setInvoiceCustomer(null);
+
+    let cancelled = false;
+    (async () => {
+      const raw: any = invoiceTarget.raw || {};
+      const customerId: string | null = raw.customer_id || null;
+      if (customerId) {
+        const { data: c } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('id', customerId)
+          .maybeSingle();
+        if (!cancelled && c) setInvoiceCustomer(c);
+        return;
+      }
+      // Fallback: orçamentos salvam customer_data em JSON
+      const cd = raw.customer_data;
+      if (cd && (cd.cpf || cd.cnpj || cd.id)) {
+        if (cd.id) {
+          const { data: c } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('id', cd.id)
+            .maybeSingle();
+          if (!cancelled && c) {
+            setInvoiceCustomer(c);
+            return;
+          }
+        }
+        if (!cancelled) setInvoiceCustomer(cd);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [invoiceTarget]);
 
   const handleLinkCustomer = async (cust: any) => {
