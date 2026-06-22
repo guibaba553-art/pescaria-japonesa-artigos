@@ -1193,6 +1193,28 @@ export default function AdminSalesAnalysis() {
           </div>
         )}
 
+        {/* Bulk emit bar */}
+        {selectedEmit.size > 0 && (
+          <div className="sticky top-16 z-20 bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm">
+            <div className="text-sm">
+              <strong>{selectedEmit.size}</strong> venda(s) selecionada(s) para emissão em lote (NFC-e).
+              <span className="text-xs text-muted-foreground ml-2">Vendas do site são ignoradas — emita individualmente.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedEmit(new Set())} disabled={bulkEmitting}>
+                Limpar
+              </Button>
+              <Button size="sm" onClick={bulkEmitSelected} disabled={bulkEmitting}>
+                {bulkEmitting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Emitindo...</>
+                ) : (
+                  <><Receipt className="w-4 h-4 mr-2" /> Emitir {selectedEmit.size} nota(s)</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Daily groups */}
         {dailyGroups.map((group) => (
           <div key={group.date.toISOString()} className="bg-card border border-border rounded-2xl overflow-hidden">
