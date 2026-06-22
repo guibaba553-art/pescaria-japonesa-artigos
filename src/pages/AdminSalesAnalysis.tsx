@@ -1214,6 +1214,30 @@ export default function AdminSalesAnalysis() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-2"></TableHead>
+                    <TableHead className="w-8 text-center">
+                      {(() => {
+                        const emitables = group.rows.filter(canEmitRow);
+                        const allChecked = emitables.length > 0 && emitables.every(r => selectedEmit.has(`${r.kind}-${r.id}`));
+                        const someChecked = emitables.some(r => selectedEmit.has(`${r.kind}-${r.id}`));
+                        return (
+                          <Checkbox
+                            aria-label="Selecionar todas emitíveis deste dia"
+                            checked={allChecked ? true : (someChecked ? 'indeterminate' : false)}
+                            onCheckedChange={(v) => {
+                              setSelectedEmit(prev => {
+                                const n = new Set(prev);
+                                emitables.forEach(r => {
+                                  const k = `${r.kind}-${r.id}`;
+                                  if (v) n.add(k); else n.delete(k);
+                                });
+                                return n;
+                              });
+                            }}
+                            disabled={emitables.length === 0}
+                          />
+                        );
+                      })()}
+                    </TableHead>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Hora</TableHead>
