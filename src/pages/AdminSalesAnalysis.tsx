@@ -152,6 +152,7 @@ export default function AdminSalesAnalysis() {
   const [linkingCustomer, setLinkingCustomer] = useState(false);
   const [selectedEmit, setSelectedEmit] = useState<Set<string>>(new Set());
   const [bulkEmitting, setBulkEmitting] = useState(false);
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
