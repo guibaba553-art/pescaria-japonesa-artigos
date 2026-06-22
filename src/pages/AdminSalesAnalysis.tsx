@@ -357,6 +357,27 @@ export default function AdminSalesAnalysis() {
 
       unified.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(unified);
+
+      // Carrega nomes dos operadores (user_id de orders/saved_sales)
+      const userIds = Array.from(new Set(
+        unified
+          .map((r) => r.raw?.user_id)
+          .filter((u): u is string => !!u && !profileMap[u])
+      ));
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        if (profs) {
+          setProfileMap((prev) => {
+            const next = { ...prev };
+            profs.forEach((p: any) => { next[p.id] = p.full_name || ''; });
+            return next;
+          });
+        }
+      }
+
       if (!silent) toast.success(`${unified.length} registro(s) carregado(s)`);
     } catch (e: any) {
       toast.error('Erro ao carregar: ' + e.message);
