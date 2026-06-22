@@ -84,3 +84,7 @@ verify_jwt = true
 
 [functions.create-asaas-pix]
 verify_jwt = true
+
+[functions.auto-emit-fiscal]
+verify_jwt = false
+
