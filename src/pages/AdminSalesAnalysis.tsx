@@ -828,14 +828,14 @@ export default function AdminSalesAnalysis() {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (!u) throw new Error('Usuário não autenticado');
 
-          const { data: customer } = await supabase
+          const { data: customerAddr } = await supabase
             .from('customers')
             .select('cep, street, number, neighborhood, municipio, uf, complemento')
             .eq('id', cd.id)
             .maybeSingle();
 
-          const addrStr = customer
-            ? `${customer.street || 'NAO INFORMADO'}, ${customer.number || 'S/N'} - ${customer.neighborhood || 'CENTRO'}, ${customer.municipio || 'CUIABA'} - ${customer.uf || 'MT'}, ${customer.cep || '00000000'}`
+          const addrStr = customerAddr
+            ? `${customerAddr.street || 'NAO INFORMADO'}, ${customerAddr.number || 'S/N'} - ${customerAddr.neighborhood || 'CENTRO'}, ${customerAddr.municipio || 'CUIABA'} - ${customerAddr.uf || 'MT'}, ${customerAddr.cep || '00000000'}`
             : 'Venda Presencial';
 
           const { data: newOrder, error: orderErr } = await supabase
