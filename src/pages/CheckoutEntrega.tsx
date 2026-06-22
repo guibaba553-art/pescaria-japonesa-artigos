@@ -643,13 +643,15 @@ export default function CheckoutEntrega() {
             usedGateway = 'asaas';
           } catch (asaasErr) {
             // Ambos falharam — fazer rollback (sem reserva para liberar)
-            await supabase.rpc('release_promo_limits', {
-              p_items: items.map(item => ({
-                product_id: item.id,
-                variation_id: item.variationId || null,
-                quantity: item.quantity,
-              })),
-            }).catch(() => {});
+            try {
+              await supabase.rpc('release_promo_limits', {
+                p_items: items.map(item => ({
+                  product_id: item.id,
+                  variation_id: item.variationId || null,
+                  quantity: item.quantity,
+                })),
+              });
+            } catch { /* ignore */ }
             await supabase.from('order_items').delete().eq('order_id', orderData.id);
             await supabase.from('orders').delete().eq('id', orderData.id);
             throw new Error('PIX temporariamente indisponível. Tente novamente mais tarde.');
