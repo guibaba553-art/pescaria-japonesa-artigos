@@ -705,11 +705,11 @@ export default function AdminSalesAnalysis() {
       // Pedido (site ou PDV): respeita o modelo escolhido (NF-e 55 ou NFC-e 65)
       if (row.kind === 'order') {
         // NF-e (modelo 55) — usa edge function emit-nfe
-        if (invoiceModel === 'nfe') {
+        if (model === 'nfe') {
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
             body: {
               orderId: row.id,
-              manualCustomer: invoiceCustomer,
+              manualCustomer: customer,
             },
           });
           if (error) {
@@ -728,7 +728,7 @@ export default function AdminSalesAnalysis() {
             id: loadingToastId,
             description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
           });
-          await fetchAll(true);
+          if (!opts?.skipRefresh) await fetchAll(true);
           return;
         }
 
@@ -751,10 +751,10 @@ export default function AdminSalesAnalysis() {
           order_id: row.id,
           payment_method: 'dinheiro' as const,
           total_amount: Number((order as any).total_amount),
-          customer: invoiceCustomer ? {
-            cpf: invoiceCustomer.cpf || undefined,
-            cnpj: invoiceCustomer.cnpj || undefined,
-            nome: invoiceCustomer.company_name || invoiceCustomer.full_name || undefined,
+          customer: customer ? {
+            cpf: customer.cpf || undefined,
+            cnpj: customer.cnpj || undefined,
+            nome: customer.company_name || customer.full_name || undefined,
           } : undefined,
           items: items.map((it: any) => ({
             product_id: it.product_id,
@@ -787,7 +787,7 @@ export default function AdminSalesAnalysis() {
           id: loadingToastId,
           description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
         });
-        await fetchAll(true);
+        if (!opts?.skipRefresh) await fetchAll(true);
         return;
       }
 
@@ -819,8 +819,8 @@ export default function AdminSalesAnalysis() {
         if (cart.length === 0) throw new Error('Orçamento sem itens');
 
         // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
-        if (invoiceModel === 'nfe') {
-          const cd: any = invoiceCustomer || null;
+        if (model === 'nfe') {
+          const cd: any = customer || null;
           if (!cd?.id) {
             throw new Error('Para emitir NF-e a partir de um orçamento é necessário ter um cliente vinculado (com endereço completo).');
           }
@@ -888,7 +888,7 @@ export default function AdminSalesAnalysis() {
             id: loadingToastId,
             description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
           });
-          await fetchAll(true);
+          if (!opts?.skipRefresh) await fetchAll(true);
           return;
         }
 
@@ -902,7 +902,7 @@ export default function AdminSalesAnalysis() {
           .in('id', productIds as string[]);
         const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
 
-        const cd: any = invoiceCustomer || null;
+        const cd: any = customer || null;
         const payload = {
           order_id: undefined,
           payment_method: (row.raw?.payment_method || 'dinheiro') as any,
@@ -948,7 +948,7 @@ export default function AdminSalesAnalysis() {
           id: loadingToastId,
           description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
         });
-        await fetchAll(true);
+        if (!opts?.skipRefresh) await fetchAll(true);
         return;
       }
 
