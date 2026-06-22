@@ -28,6 +28,7 @@ import { format, isSameDay, startOfDay, endOfDay, startOfMonth, endOfMonth } fro
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
@@ -149,6 +150,8 @@ export default function AdminSalesAnalysis() {
   const [invoiceModel, setInvoiceModel] = useState<'nfce' | 'nfe'>('nfce');
   const [invoiceCustomer, setInvoiceCustomer] = useState<any | null>(null);
   const [linkingCustomer, setLinkingCustomer] = useState(false);
+  const [selectedEmit, setSelectedEmit] = useState<Set<string>>(new Set());
+  const [bulkEmitting, setBulkEmitting] = useState(false);
 
   // Define o modelo padrão ao abrir o diálogo (site -> NF-e, demais -> NFC-e)
   useEffect(() => {
@@ -680,26 +683,33 @@ export default function AdminSalesAnalysis() {
   // Emite NFC-e (PDV / orçamento) ou NF-e (site) a partir do painel de Vendas.
   // Para pedidos do site (kind='order' source!='pdv') -> usa edge function 'emit-nfe' que aceita { orderId }.
   // Para pedidos PDV ou orçamentos salvos -> usa 'emit-nfce' montando o payload completo no client.
-  const emitInvoice = async (row: UnifiedRow) => {
+  const emitInvoice = async (
+    row: UnifiedRow,
+    opts?: { model?: 'nfce' | 'nfe'; customer?: any | null; silent?: boolean; skipRefresh?: boolean }
+  ) => {
     const key = `${row.kind}-${row.id}`;
+    const model = opts?.model ?? invoiceModel;
+    const customer = opts?.customer !== undefined ? opts.customer : invoiceCustomer;
     setEmittingInvoice(prev => new Set(prev).add(key));
-    const loadingToastId = toast.loading('Emitindo nota fiscal...', {
-      description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
-    });
+    const loadingToastId = opts?.silent
+      ? null
+      : toast.loading('Emitindo nota fiscal...', {
+          description: 'Enviando dados para a SEFAZ. Pode levar alguns segundos.',
+        });
 
     try {
-      if (invoiceModel === 'nfe' && !invoiceCustomer) {
+      if (model === 'nfe' && !customer) {
         throw new Error('Selecione manualmente o cliente antes de emitir a NF-e.');
       }
 
       // Pedido (site ou PDV): respeita o modelo escolhido (NF-e 55 ou NFC-e 65)
       if (row.kind === 'order') {
         // NF-e (modelo 55) — usa edge function emit-nfe
-        if (invoiceModel === 'nfe') {
+        if (model === 'nfe') {
           const { data, error } = await supabase.functions.invoke('emit-nfe', {
             body: {
               orderId: row.id,
-              manualCustomer: invoiceCustomer,
+              manualCustomer: customer,
             },
           });
           if (error) {
@@ -718,7 +728,7 @@ export default function AdminSalesAnalysis() {
             id: loadingToastId,
             description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
           });
-          await fetchAll(true);
+          if (!opts?.skipRefresh) await fetchAll(true);
           return;
         }
 
@@ -741,10 +751,10 @@ export default function AdminSalesAnalysis() {
           order_id: row.id,
           payment_method: 'dinheiro' as const,
           total_amount: Number((order as any).total_amount),
-          customer: invoiceCustomer ? {
-            cpf: invoiceCustomer.cpf || undefined,
-            cnpj: invoiceCustomer.cnpj || undefined,
-            nome: invoiceCustomer.company_name || invoiceCustomer.full_name || undefined,
+          customer: customer ? {
+            cpf: customer.cpf || undefined,
+            cnpj: customer.cnpj || undefined,
+            nome: customer.company_name || customer.full_name || undefined,
           } : undefined,
           items: items.map((it: any) => ({
             product_id: it.product_id,
@@ -777,7 +787,7 @@ export default function AdminSalesAnalysis() {
           id: loadingToastId,
           description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
         });
-        await fetchAll(true);
+        if (!opts?.skipRefresh) await fetchAll(true);
         return;
       }
 
@@ -809,8 +819,8 @@ export default function AdminSalesAnalysis() {
         if (cart.length === 0) throw new Error('Orçamento sem itens');
 
         // Caminho 3.A: NF-e (modelo 55) -> precisa de um pedido. Cria pedido a partir do orçamento.
-        if (invoiceModel === 'nfe') {
-          const cd: any = invoiceCustomer || null;
+        if (model === 'nfe') {
+          const cd: any = customer || null;
           if (!cd?.id) {
             throw new Error('Para emitir NF-e a partir de um orçamento é necessário ter um cliente vinculado (com endereço completo).');
           }
@@ -818,14 +828,14 @@ export default function AdminSalesAnalysis() {
           const { data: { user: u } } = await supabase.auth.getUser();
           if (!u) throw new Error('Usuário não autenticado');
 
-          const { data: customer } = await supabase
+          const { data: customerAddr } = await supabase
             .from('customers')
             .select('cep, street, number, neighborhood, municipio, uf, complemento')
             .eq('id', cd.id)
             .maybeSingle();
 
-          const addrStr = customer
-            ? `${customer.street || 'NAO INFORMADO'}, ${customer.number || 'S/N'} - ${customer.neighborhood || 'CENTRO'}, ${customer.municipio || 'CUIABA'} - ${customer.uf || 'MT'}, ${customer.cep || '00000000'}`
+          const addrStr = customerAddr
+            ? `${customerAddr.street || 'NAO INFORMADO'}, ${customerAddr.number || 'S/N'} - ${customerAddr.neighborhood || 'CENTRO'}, ${customerAddr.municipio || 'CUIABA'} - ${customerAddr.uf || 'MT'}, ${customerAddr.cep || '00000000'}`
             : 'Venda Presencial';
 
           const { data: newOrder, error: orderErr } = await supabase
@@ -878,7 +888,7 @@ export default function AdminSalesAnalysis() {
             id: loadingToastId,
             description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
           });
-          await fetchAll(true);
+          if (!opts?.skipRefresh) await fetchAll(true);
           return;
         }
 
@@ -892,7 +902,7 @@ export default function AdminSalesAnalysis() {
           .in('id', productIds as string[]);
         const prodMap = new Map((prods || []).map((p: any) => [p.id, p]));
 
-        const cd: any = invoiceCustomer || null;
+        const cd: any = customer || null;
         const payload = {
           order_id: undefined,
           payment_method: (row.raw?.payment_method || 'dinheiro') as any,
@@ -938,25 +948,72 @@ export default function AdminSalesAnalysis() {
           id: loadingToastId,
           description: data?.nfe_number ? `Número: ${data.nfe_number}` : 'A nota fiscal foi gerada.',
         });
-        await fetchAll(true);
+        if (!opts?.skipRefresh) await fetchAll(true);
         return;
       }
 
       throw new Error('Tipo de venda não suporta emissão a partir daqui.');
     } catch (e: any) {
       console.error('Erro ao emitir nota:', e);
-      toast.error('Erro ao emitir nota', {
-        id: loadingToastId,
-        description: e?.message || 'Verifique as configurações fiscais.',
-      });
+      if (loadingToastId !== null) {
+        toast.error('Erro ao emitir nota', {
+          id: loadingToastId,
+          description: e?.message || 'Verifique as configurações fiscais.',
+        });
+      }
+      if (opts?.silent) throw e;
     } finally {
       setEmittingInvoice(prev => {
         const n = new Set(prev);
         n.delete(key);
         return n;
       });
-      setInvoiceTarget(null);
+      if (!opts?.silent) setInvoiceTarget(null);
     }
+  };
+
+  // Emissão em lote — apenas linhas em que canEmitRow é true.
+  // Usa o modelo padrão (NFC-e para PDV/orçamento; NF-e p/ site só se já houver cliente selecionado por linha — aqui só PDV/orçamento entram).
+  const canEmitRow = (r: UnifiedRow) => {
+    const hasInvoice = r.statusGroup === 'nota' || !!r.raw?.nfe;
+    const isCancelled = r.statusGroup === 'cancelado';
+    return !hasInvoice && !isCancelled && (r.kind === 'order' || r.kind === 'saved');
+  };
+
+  const bulkEmitSelected = async () => {
+    const allRows = rows.filter(r => selectedEmit.has(`${r.kind}-${r.id}`) && canEmitRow(r));
+    // Para emissão em lote só permitimos NFC-e (não exige cliente). Pula site (que normalmente vai como NF-e).
+    const targets = allRows.filter(r => !(r.kind === 'order' && r.source !== 'pdv'));
+    const skipped = allRows.length - targets.length;
+    if (targets.length === 0) {
+      toast.error('Nada para emitir', {
+        description: 'A emissão em lote só funciona para vendas PDV / orçamentos (NFC-e). Vendas do site precisam ser emitidas individualmente.',
+      });
+      return;
+    }
+    setBulkEmitting(true);
+    const toastId = toast.loading(`Emitindo ${targets.length} nota(s)...`, {
+      description: 'Aguarde, enviando para a SEFAZ uma a uma.',
+    });
+    let ok = 0;
+    let fail = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const r = targets[i];
+      toast.loading(`Emitindo ${i + 1}/${targets.length}...`, { id: toastId });
+      try {
+        await emitInvoice(r, { model: 'nfce', customer: null, silent: true, skipRefresh: true });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    toast.success(`Emissão em lote concluída`, {
+      id: toastId,
+      description: `${ok} sucesso(s), ${fail} falha(s)${skipped > 0 ? `, ${skipped} ignorada(s) (site)` : ''}.`,
+    });
+    setSelectedEmit(new Set());
+    setBulkEmitting(false);
+    await fetchAll(true);
   };
 
   const periodLabel = useMemo(() => {
@@ -1136,6 +1193,28 @@ export default function AdminSalesAnalysis() {
           </div>
         )}
 
+        {/* Bulk emit bar */}
+        {selectedEmit.size > 0 && (
+          <div className="sticky top-16 z-20 bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-3 flex items-center justify-between gap-3 shadow-sm">
+            <div className="text-sm">
+              <strong>{selectedEmit.size}</strong> venda(s) selecionada(s) para emissão em lote (NFC-e).
+              <span className="text-xs text-muted-foreground ml-2">Vendas do site são ignoradas — emita individualmente.</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelectedEmit(new Set())} disabled={bulkEmitting}>
+                Limpar
+              </Button>
+              <Button size="sm" onClick={bulkEmitSelected} disabled={bulkEmitting}>
+                {bulkEmitting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Emitindo...</>
+                ) : (
+                  <><Receipt className="w-4 h-4 mr-2" /> Emitir {selectedEmit.size} nota(s)</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Daily groups */}
         {dailyGroups.map((group) => (
           <div key={group.date.toISOString()} className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -1157,6 +1236,30 @@ export default function AdminSalesAnalysis() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-2"></TableHead>
+                    <TableHead className="w-8 text-center">
+                      {(() => {
+                        const emitables = group.rows.filter(canEmitRow);
+                        const allChecked = emitables.length > 0 && emitables.every(r => selectedEmit.has(`${r.kind}-${r.id}`));
+                        const someChecked = emitables.some(r => selectedEmit.has(`${r.kind}-${r.id}`));
+                        return (
+                          <Checkbox
+                            aria-label="Selecionar todas emitíveis deste dia"
+                            checked={allChecked ? true : (someChecked ? 'indeterminate' : false)}
+                            onCheckedChange={(v) => {
+                              setSelectedEmit(prev => {
+                                const n = new Set(prev);
+                                emitables.forEach(r => {
+                                  const k = `${r.kind}-${r.id}`;
+                                  if (v) n.add(k); else n.delete(k);
+                                });
+                                return n;
+                              });
+                            }}
+                            disabled={emitables.length === 0}
+                          />
+                        );
+                      })()}
+                    </TableHead>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Hora</TableHead>
@@ -1185,6 +1288,21 @@ export default function AdminSalesAnalysis() {
                         <TableRow key={expandKey} className={meta.rowBg}>
                           <TableCell className="p-0 pl-0">
                             <div className={`w-1.5 h-10 ${meta.dot} rounded-r`} />
+                          </TableCell>
+                          <TableCell className="p-0 text-center">
+                            {canEmitRow(r) ? (
+                              <Checkbox
+                                aria-label="Selecionar para emissão em lote"
+                                checked={selectedEmit.has(expandKey)}
+                                onCheckedChange={(v) => {
+                                  setSelectedEmit(prev => {
+                                    const n = new Set(prev);
+                                    if (v) n.add(expandKey); else n.delete(expandKey);
+                                    return n;
+                                  });
+                                }}
+                              />
+                            ) : null}
                           </TableCell>
                           <TableCell className="p-0 pl-1">
                             {expandable && (
@@ -1286,7 +1404,7 @@ export default function AdminSalesAnalysis() {
 
                         {isExpanded && (
                           <TableRow key={`${expandKey}-expand`} className={meta.rowBg}>
-                            <TableCell colSpan={10} className="p-0">
+                            <TableCell colSpan={11} className="p-0">
                               <div className="bg-muted/30 border-t border-border px-6 py-4">
                                 <div className="flex items-center gap-2 mb-3">
                                   <Package className="w-4 h-4 text-muted-foreground" />
