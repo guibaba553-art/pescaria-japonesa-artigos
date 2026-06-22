@@ -1553,6 +1553,21 @@ export default function PDV() {
       return;
     }
 
+    // Bloqueio: vendas acima de R$ 1.000 exigem cliente identificado,
+    // exceto quando o pagamento é em dinheiro.
+    if (
+      calculateTotal() > 1000 &&
+      paymentMethod !== 'cash' &&
+      !selectedCustomer
+    ) {
+      toast({
+        title: 'Cliente obrigatório',
+        description: 'Vendas acima de R$ 1.000,00 exigem cliente selecionado (ou pagamento em dinheiro).',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
 
     if (paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
