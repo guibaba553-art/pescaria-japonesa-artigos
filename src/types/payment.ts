@@ -13,7 +13,7 @@ export interface SavedMethod {
   card_exp_year: string | null;
   cardholder_name: string | null;
   is_default: boolean;
-  asaas_credit_card_token: string | null;
+  asaas_credit_card_token?: string | null;
   last_used_at: string | null;
 }
 
