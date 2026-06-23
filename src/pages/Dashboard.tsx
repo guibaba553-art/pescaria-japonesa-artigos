@@ -132,18 +132,36 @@ export default function Dashboard() {
       setLoadingData(true);
 
       const [
-        { data: orders },
-        { data: products },
-        { data: productVariations },
-        { data: profiles },
-        { data: expenses },
-      ] = await Promise.all([
-        supabase.from('orders').select('id, total_amount, shipping_cost, created_at, status, source'),
-        supabase.rpc('get_products_admin'),
-        supabase.rpc('get_product_variations_admin'),
-        supabase.from('profiles').select('id'),
-        supabase.from('expenses').select('amount'),
-      ]);
+         { data: products },
+         { data: productVariations },
+         { data: profiles },
+         { data: expenses },
+       ] = await Promise.all([
+         supabase.rpc('get_products_admin'),
+         supabase.rpc('get_product_variations_admin'),
+         supabase.from('profiles').select('id'),
+         supabase.from('expenses').select('amount'),
+       ]);
+
+      // Buscar TODOS os pedidos (paginado — Supabase limita a 1000 por requisição)
+      const orders: any[] = [];
+      {
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('orders')
+            .select('id, total_amount, shipping_cost, created_at, status, source')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          if (!page || page.length === 0) break;
+          orders.push(...page);
+          if (page.length < pageSize) break;
+          from += pageSize;
+        }
+      }
+
 
       const days = PERIODS[period].days;
       const delivered = (orders || []).filter((o) => o.status === 'entregado');
