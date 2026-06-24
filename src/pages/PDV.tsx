@@ -3589,7 +3589,9 @@ export default function PDV() {
         open={!!scoreDialogCustomer}
         onOpenChange={(v) => { if (!v) setScoreDialogCustomer(null); }}
         customer={scoreDialogCustomer}
+        compact
       />
+
     </div>
 
   );
