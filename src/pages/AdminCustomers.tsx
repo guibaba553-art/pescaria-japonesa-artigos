@@ -310,21 +310,22 @@ export default function AdminCustomers() {
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    console.log('[AdminCustomers] filter run', { search, s, listLen: list.length });
     let arr = list;
 
     if (s) {
+      const sDigits = s.replace(/\D/g, '');
       arr = arr.filter((c) => {
         const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
         return (
           c.full_name.toLowerCase().includes(s) ||
           (c.company_name || '').toLowerCase().includes(s) ||
           (c.email || '').toLowerCase().includes(s) ||
-          doc.includes(s.replace(/\D/g, '')) ||
+          (sDigits.length > 0 && doc.includes(sDigits)) ||
           (c.municipio || '').toLowerCase().includes(s)
         );
       });
     }
+
     if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
     if (docFilter === 'pj') arr = arr.filter((c) => !!c.cnpj);
     else if (docFilter === 'pf') arr = arr.filter((c) => !c.cnpj);
