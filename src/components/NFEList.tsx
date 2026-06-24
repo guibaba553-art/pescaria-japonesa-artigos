@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye, Ban, Loader2, RefreshCw } from 'lucide-react';
+import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye, Ban, Loader2, RefreshCw, User, DollarSign } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
