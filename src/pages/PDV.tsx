@@ -2459,6 +2459,44 @@ export default function PDV() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        {/* Seletor de tipo de nota fiscal para este cliente */}
+                        <div className="mt-3 pt-3 border-t border-primary/20 space-y-1.5">
+                          <Label className="text-xs">Tipo de nota fiscal</Label>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={(selectedCustomer.preferred_emission_type || 'nfce') === 'nfce' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfce' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfce' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NFC-e
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={selectedCustomer.preferred_emission_type === 'nfe' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfe' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfe' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NF-e
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {selectedCustomer.preferred_emission_type === 'nfe'
+                              ? 'NF-e exige endereço completo do destinatário.'
+                              : 'NFC-e usa apenas nome e documento.'}
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
