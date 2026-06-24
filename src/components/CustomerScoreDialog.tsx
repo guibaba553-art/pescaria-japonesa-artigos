@@ -41,6 +41,8 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
   const [loading, setLoading] = useState(false);
   const [delta, setDelta] = useState<number>(1);
   const [reason, setReason] = useState('');
+  const [pendingSign, setPendingSign] = useState<1 | -1>(1);
+
   const [saving, setSaving] = useState(false);
   const [currentScore, setCurrentScore] = useState(0);
   const [presets, setPresets] = useState<ReasonPreset[]>([]);
