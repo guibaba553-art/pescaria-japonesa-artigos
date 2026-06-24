@@ -2342,7 +2342,33 @@ export default function PDV() {
                         </Button>
                       )}
                     </div>
+                    {customerTier && customerTier.allow_discount && !customerTier.block_purchase && customerTier.discount_percent > 0 && (() => {
+                      const subtotal = calculateSubtotal();
+                      const disc = (subtotal * customerTier.discount_percent) / 100;
+                      const currentVal = parseFloat((discountInput || '').replace(',', '.')) || 0;
+                      const already = Math.abs(currentVal - disc) < 0.01;
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={already ? 'secondary' : 'outline'}
+                          className="w-full border-emerald-500/40 text-emerald-700 hover:bg-emerald-50"
+                          disabled={already || subtotal <= 0}
+                          onClick={() => setDiscountInput(disc.toFixed(2).replace('.', ','))}
+                        >
+                          <Award className="w-3.5 h-3.5 mr-1.5" />
+                          {already
+                            ? `Desconto do nível ${customerTier.name} aplicado (${customerTier.discount_percent}%)`
+                            : `Aplicar ${customerTier.discount_percent}% — nível ${customerTier.name}`}
+                        </Button>
+                      );
+                    })()}
                   </div>
+                  {selectedCustomer && customerTier && !customerTier.allow_discount && !customerTier.block_purchase && (
+                    <p className="text-[11px] text-orange-600 font-medium">
+                      Cliente nível {customerTier.name} não permite descontos.
+                    </p>
+                  )}
 
                   {getDiscountValue() !== 0 && (
                     <div className="space-y-1 text-sm">
@@ -2477,9 +2503,9 @@ export default function PDV() {
                                 {customerTier.block_purchase && (
                                   <span className="text-xs font-semibold text-destructive">Venda bloqueada</span>
                                 )}
-                                {!customerTier.block_purchase && customerTier.discount_percent > 0 && (
+                                {!customerTier.block_purchase && customerTier.allow_discount && customerTier.discount_percent > 0 && (
                                   <span className="text-xs font-semibold text-emerald-600">
-                                    {customerTier.discount_percent}% off aplicado
+                                    {customerTier.discount_percent}% off disponível
                                   </span>
                                 )}
                                 {!customerTier.allow_discount && !customerTier.block_purchase && (
@@ -2546,14 +2572,10 @@ export default function PDV() {
                                 title: `Atenção — cliente ${tier.name}`,
                                 description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
                               });
-                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
-
-                              const subtotal = calculateSubtotal();
-                              const disc = (subtotal * tier.discount_percent) / 100;
-                              setDiscountInput(disc.toFixed(2).replace('.', ','));
+                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount) {
                               toast({
-                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off`,
-                                description: `Desconto de R$ ${disc.toFixed(2)} aplicado automaticamente.`,
+                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off disponível`,
+                                description: 'Clique em "Aplicar desconto do nível" para liberar.',
                               });
                             } else {
                               toast({
