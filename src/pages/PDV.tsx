@@ -1454,7 +1454,7 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
-        preferred_emission_type: customerForm.emission_type,
+        preferred_emission_type: isCnpj ? 'nfe' : 'nfce',
         created_by: user!.id,
       };
 
