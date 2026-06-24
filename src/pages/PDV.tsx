@@ -60,7 +60,9 @@ import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMeth
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
+import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
+
 import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
@@ -231,6 +233,8 @@ export default function PDV() {
     [selectedCustomer, tiers]
   );
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [scoreDialogCustomer, setScoreDialogCustomer] = useState<{ id: string; full_name: string; company_name: string | null; score: number } | null>(null);
+
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
     emission_type: 'nfce' as 'nfce' | 'nfe',
@@ -1897,9 +1901,20 @@ export default function PDV() {
         loadSavedSales();
       }
 
+      // Se havia cliente cadastrado vinculado à venda, abrir popup de nota/score
+      if (selectedCustomer && selectedCustomer.id) {
+        setScoreDialogCustomer({
+          id: selectedCustomer.id,
+          full_name: selectedCustomer.full_name,
+          company_name: (selectedCustomer as any).company_name ?? null,
+          score: (selectedCustomer as any).score || 0,
+        });
+      }
+
       // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
       await loadProducts();
+
 
     } catch (error: any) {
       // Rollback manual: se criamos o pedido mas algo falhou depois,
@@ -3569,6 +3584,13 @@ export default function PDV() {
           />
         </Suspense>
       )}
+
+      <CustomerScoreDialog
+        open={!!scoreDialogCustomer}
+        onOpenChange={(v) => { if (!v) setScoreDialogCustomer(null); }}
+        customer={scoreDialogCustomer}
+      />
     </div>
+
   );
 }
