@@ -310,7 +310,9 @@ export default function AdminCustomers() {
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
+    console.log('[AdminCustomers] filter run', { search, s, listLen: list.length });
     let arr = list;
+
     if (s) {
       arr = arr.filter((c) => {
         const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
