@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
-  TrendingUp, Download, AlertTriangle, Clock, Receipt, Target,
+  TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
+import { ExpenseTracker } from '@/components/ExpenseTracker';
 
 interface ChannelStats {
   totalRevenue: number;
@@ -572,130 +573,14 @@ export default function Dashboard() {
       </div>
 
       <div className="container mx-auto p-6 -mt-4 space-y-8">
-
-        {/* Visão geral - linha 1: receita */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Receita Total"
-            value={formatBRL(totalRevenue)}
-            icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Pedidos"
-            value={String(totalOrders)}
-            icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Ticket Médio"
-            value={formatBRL(overallAvgTicket)}
-            icon={<Target className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Pedidos Pendentes"
-            value={String(pendingOrders)}
-            hint="Aguardando pagamento ou em preparo"
-            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-          />
-        </div>
-
-        {/* Visão geral - linha 2: estoque & clientes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Produtos"
-            value={String(totalProducts)}
-            icon={<Package className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Clientes"
-            value={String(totalCustomers)}
-            icon={<Users className="h-4 w-4 text-muted-foreground" />}
-          />
-          <StatCard
-            title="Estoque Baixo"
-            value={String(lowStock.length)}
-            hint="Produtos com 5 unidades ou menos"
-            icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
-          />
-          <StatCard
-            title="Sem Estoque"
-            value={String(outOfStock)}
-            hint="Indisponíveis no catálogo"
-            icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
-          />
-        </div>
-
-        {/* Lucro */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard
-            title="Lucro Bruto"
-            value={formatBRL(lucroBruto)}
-            formula="Σ (preço registrado na venda − custo unit.) × qtd"
-            hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
-            icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
-          />
-          <StatCard
-            title="Lucro Líquido"
-            value={formatBRL(lucroLiquido)}
-            formula="Lucro Bruto − Despesas gerais"
-            hint={`Margem líquida: ${margemLiquida.toFixed(1)}%  |  ${formatBRL(lucroBruto)} − ${formatBRL(totalExpenses)}`}
-            icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
-          />
-        </div>
-
-
-
-        {/* Alertas de estoque */}
-        {lowStock.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-orange-500" />
-                Atenção: Produtos com estoque baixo
-              </CardTitle>
-              <CardDescription>Repor o quanto antes para evitar rupturas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {lowStock.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex justify-between items-center p-3 border rounded hover:bg-muted/50 cursor-pointer"
-                    onClick={() => navigate('/admin/catalogo')}
-                  >
-                    <span className="text-sm font-medium truncate flex-1">{p.name}</span>
-                    <Badge variant={p.stock <= 2 ? 'destructive' : 'secondary'}>
-                      {p.stock} un.
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Distribuição de status */}
-        {statusBreakdown.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribuição de Pedidos por Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={statusBreakdown}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#2563eb" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Canais separados */}
-        <Tabs defaultValue="pdv" className="space-y-4">
-          <TabsList>
+        <Tabs defaultValue="geral" className="space-y-6">
+          <TabsList className="flex flex-wrap h-auto">
+            <TabsTrigger value="geral" className="gap-2">
+              <LayoutDashboard className="h-4 w-4" /> Geral
+            </TabsTrigger>
+            <TabsTrigger value="financas" className="gap-2">
+              <Wallet className="h-4 w-4" /> Finanças
+            </TabsTrigger>
             <TabsTrigger value="pdv" className="gap-2">
               <Store className="h-4 w-4" /> PDV
             </TabsTrigger>
@@ -705,6 +590,159 @@ export default function Dashboard() {
             <TabsTrigger value="traffic">Tráfego do Site</TabsTrigger>
           </TabsList>
 
+          {/* ============ GERAL ============ */}
+          <TabsContent value="geral" className="space-y-8">
+            {/* linha 1: receita */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Receita Total"
+                value={formatBRL(totalRevenue)}
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Pedidos"
+                value={String(totalOrders)}
+                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(overallAvgTicket)}
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Pedidos Pendentes"
+                value={String(pendingOrders)}
+                hint="Aguardando pagamento ou em preparo"
+                icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            {/* linha 2: estoque & clientes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Produtos"
+                value={String(totalProducts)}
+                icon={<Package className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Clientes"
+                value={String(totalCustomers)}
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Estoque Baixo"
+                value={String(lowStock.length)}
+                hint="Produtos com 5 unidades ou menos"
+                icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+              />
+              <StatCard
+                title="Sem Estoque"
+                value={String(outOfStock)}
+                hint="Indisponíveis no catálogo"
+                icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
+              />
+            </div>
+
+            {/* Alertas de estoque */}
+            {lowStock.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-orange-500" />
+                    Atenção: Produtos com estoque baixo
+                  </CardTitle>
+                  <CardDescription>Repor o quanto antes para evitar rupturas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {lowStock.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex justify-between items-center p-3 border rounded hover:bg-muted/50 cursor-pointer"
+                        onClick={() => navigate('/admin/catalogo')}
+                      >
+                        <span className="text-sm font-medium truncate flex-1">{p.name}</span>
+                        <Badge variant={p.stock <= 2 ? 'destructive' : 'secondary'}>
+                          {p.stock} un.
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Distribuição de status */}
+            {statusBreakdown.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Distribuição de Pedidos por Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={statusBreakdown}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="value" fill="#2563eb" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ============ FINANÇAS ============ */}
+          <TabsContent value="financas" className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Receita Total"
+                value={formatBRL(totalRevenue)}
+                formula="PDV + Site no período"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Receita de Itens"
+                value={formatBRL(itemsRevenue)}
+                formula="Σ preço registrado × qtd"
+                icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Custo dos Itens"
+                value={formatBRL(totalCost)}
+                formula="Σ custo unit. × qtd"
+                icon={<Package className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Despesas Gerais"
+                value={formatBRL(totalExpenses)}
+                formula="Soma das despesas no período"
+                icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <StatCard
+                title="Lucro Bruto"
+                value={formatBRL(lucroBruto)}
+                formula="Σ (preço registrado na venda − custo unit.) × qtd"
+                hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
+                icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+              />
+              <StatCard
+                title="Lucro Líquido"
+                value={formatBRL(lucroLiquido)}
+                formula="Lucro Bruto − Despesas gerais"
+                hint={`Margem líquida: ${margemLiquida.toFixed(1)}%  |  ${formatBRL(lucroBruto)} − ${formatBRL(totalExpenses)}`}
+                icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+              />
+            </div>
+
+            <ExpenseTracker />
+          </TabsContent>
+
+          {/* ============ PDV ============ */}
           <TabsContent value="pdv">
             <ChannelSection
               title="PDV"
@@ -717,6 +755,7 @@ export default function Dashboard() {
             />
           </TabsContent>
 
+          {/* ============ SITE ============ */}
           <TabsContent value="site">
             <ChannelSection
               title="Site"
@@ -729,6 +768,7 @@ export default function Dashboard() {
             />
           </TabsContent>
 
+          {/* ============ TRÁFEGO ============ */}
           <TabsContent value="traffic">
             <SiteAnalytics />
           </TabsContent>
