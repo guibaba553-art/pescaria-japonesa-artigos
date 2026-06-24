@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,9 +6,12 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
   TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -16,9 +19,9 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
-
+import { format, startOfDay, endOfDay } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 interface ChannelStats {
   totalRevenue: number;
@@ -56,9 +59,17 @@ const PERIODS = {
   '30': { label: 'Últimos 30 dias', days: 30 },
   '90': { label: 'Últimos 90 dias', days: 90 },
   '365': { label: 'Último ano', days: 365 },
+  'custom': { label: 'Personalizado', days: 30 },
 } as const;
 
 type PeriodKey = keyof typeof PERIODS;
+
+function getPresetRange(key: Exclude<PeriodKey, 'custom'>): DateRange {
+  const to = new Date();
+  const from = new Date();
+  from.setDate(to.getDate() - PERIODS[key].days);
+  return { from: startOfDay(from), to: endOfDay(to) };
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -68,6 +79,10 @@ export default function Dashboard() {
   const canView = isAdmin || permissions.dashboard;
 
   const [period, setPeriod] = useState<PeriodKey>('30');
+  const [range, setRange] = useState<DateRange>(() => getPresetRange('30'));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const initialLoadedRef = useRef(false);
 
   const [pdvStats, setPdvStats] = useState<ChannelStats>({
     totalRevenue: 0, totalOrders: 0, revenueGrowth: 0, ordersGrowth: 0, avgTicket: 0,
@@ -88,20 +103,33 @@ export default function Dashboard() {
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [canView, loading, navigate]);
 
   useEffect(() => {
-    if (canView) loadDashboardData();
-  }, [canView, period]);
+    if (period !== 'custom') {
+      setRange(getPresetRange(period as Exclude<PeriodKey, 'custom'>));
+    }
+  }, [period]);
 
-  const calcChannelStats = (orders: any[], days: number): ChannelStats => {
-    const now = new Date();
-    const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    const prevStart = new Date(now.getTime() - 2 * days * 24 * 60 * 60 * 1000);
+  useEffect(() => {
+    if (!canView || !range?.from || !range?.to) return;
+    const isFirst = !initialLoadedRef.current;
+    if (isFirst) setInitialLoading(true);
+    initialLoadedRef.current = true;
+    loadDashboardData().finally(() => {
+      if (isFirst) setInitialLoading(false);
+    });
+  }, [canView, range]);
+
+  const calcChannelStats = (orders: any[], range: DateRange): ChannelStats => {
+    const start = startOfDay(range.from!);
+    const end = endOfDay(range.to!);
+    const rangeMs = end.getTime() - start.getTime();
+    const prevEnd = new Date(start.getTime());
+    const prevStart = new Date(start.getTime() - rangeMs);
 
     const sumOf = (list: any[]) =>
       list.reduce(
@@ -109,28 +137,32 @@ export default function Dashboard() {
         0
       );
 
-    const recent = orders.filter((o) => new Date(o.created_at) >= start);
-    const previous = orders.filter(
-      (o) => new Date(o.created_at) >= prevStart && new Date(o.created_at) < start
-    );
+    const recent = orders.filter((o) => {
+      const d = new Date(o.created_at);
+      return d >= start && d <= end;
+    });
+    const previous = orders.filter((o) => {
+      const d = new Date(o.created_at);
+      return d >= prevStart && d < start;
+    });
 
     const recentRev = sumOf(recent);
     const prevRev = sumOf(previous);
-    const totalRev = sumOf(orders);
 
     return {
-      totalRevenue: totalRev,
-      totalOrders: orders.length,
+      totalRevenue: recentRev,
+      totalOrders: recent.length,
       revenueGrowth: prevRev > 0 ? ((recentRev - prevRev) / prevRev) * 100 : 0,
       ordersGrowth:
         previous.length > 0 ? ((recent.length - previous.length) / previous.length) * 100 : 0,
-      avgTicket: orders.length > 0 ? totalRev / orders.length : 0,
+      avgTicket: recent.length > 0 ? recentRev / recent.length : 0,
     };
   };
 
   const loadDashboardData = async () => {
     try {
-      setLoadingData(true);
+      const start = startOfDay(range.from!);
+      const end = endOfDay(range.to!);
 
       const [
          { data: products },
@@ -138,11 +170,11 @@ export default function Dashboard() {
          { data: profiles },
          { data: expenses },
        ] = await Promise.all([
-         supabase.rpc('get_products_admin'),
-         supabase.rpc('get_product_variations_admin'),
-         supabase.from('profiles').select('id'),
-         supabase.from('expenses').select('amount'),
-       ]);
+          supabase.rpc('get_products_admin'),
+          supabase.rpc('get_product_variations_admin'),
+          supabase.from('profiles').select('id'),
+          supabase.from('expenses').select('amount, expense_date'),
+        ]);
 
       // Buscar TODOS os pedidos (paginado — Supabase limita a 1000 por requisição)
       const orders: any[] = [];
@@ -163,14 +195,12 @@ export default function Dashboard() {
         }
       }
 
-
-      const days = PERIODS[period].days;
       const delivered = (orders || []).filter((o) => o.status === 'entregado');
       const pdvOrders = delivered.filter((o) => o.source === 'pdv');
       const siteOrders = delivered.filter((o) => o.source !== 'pdv');
 
-      setPdvStats(calcChannelStats(pdvOrders, days));
-      setSiteStats(calcChannelStats(siteOrders, days));
+      setPdvStats(calcChannelStats(pdvOrders, range));
+      setSiteStats(calcChannelStats(siteOrders, range));
       setTotalProducts(products?.length || 0);
       setTotalCustomers(profiles?.length || 0);
 
@@ -197,7 +227,11 @@ export default function Dashboard() {
       }
 
       // Lucro por item: (preço efetivamente cobrado na venda − custo total) × quantidade
-      const deliveredIds = new Set(delivered.map((o) => o.id));
+      const deliveredInRange = delivered.filter((o) => {
+        const d = new Date(o.created_at);
+        return d >= start && d <= end;
+      });
+      const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
       let custoTotalAcc = 0;
       let receitaItensAcc = 0;
       orderItems.forEach((it: any) => {
@@ -219,17 +253,18 @@ export default function Dashboard() {
       setTotalCost(custoTotalAcc);
       setItemsRevenue(receitaItensAcc);
 
-
-
-
-      // Despesas totais (todas — mesma base do "Receita Total")
-      const expensesSum = (expenses || []).reduce(
+      // Despesas dentro do período selecionado
+      const expensesSum = (expenses || []).filter((e: any) => {
+        if (!e.expense_date) return false;
+        const d = new Date(e.expense_date);
+        return d >= start && d <= end;
+      }).reduce(
         (s: number, e: any) => s + Number(e.amount || 0),
         0,
       );
       setTotalExpenses(expensesSum);
 
-      // Pending / status overview
+      // Pending / status overview (mantido global, independente do período)
       const pending = (orders || []).filter(
         (o) => o.status === 'em_preparo' || o.status === 'aguardando_pagamento'
       ).length;
@@ -256,11 +291,13 @@ export default function Dashboard() {
       setOutOfStock((products || []).filter((p: any) => p.stock === 0).length);
 
       // Vendas diárias dentro do período por canal
-      const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       const byDay: Record<string, SalesData> = {};
 
       delivered
-        .filter((o) => new Date(o.created_at) >= start)
+        .filter((o) => {
+          const d = new Date(o.created_at);
+          return d >= start && d <= end;
+        })
         .forEach((o) => {
           const date = new Date(o.created_at).toLocaleDateString('pt-BR');
           if (!byDay[date]) {
@@ -284,7 +321,7 @@ export default function Dashboard() {
       });
       setSalesData(sorted);
 
-      // Top produtos por canal (apenas pedidos entregues)
+      // Top produtos por canal (apenas pedidos entregues no período)
       const aggregate = (filterFn: (item: any) => boolean) => {
         const acc: Record<string, ProductSales> = {};
         (orderItems || [])
@@ -305,20 +342,22 @@ export default function Dashboard() {
       setTopPdv(
         aggregate((i: any) => {
           const order = orderMap.get(i.order_id);
-          return order?.status === 'entregado' && order?.source === 'pdv';
+          if (!order) return false;
+          const d = new Date(order.created_at);
+          return order.status === 'entregado' && order.source === 'pdv' && d >= start && d <= end;
         })
       );
       setTopSite(
         aggregate((i: any) => {
           const order = orderMap.get(i.order_id);
-          return order?.status === 'entregado' && order?.source !== 'pdv';
+          if (!order) return false;
+          const d = new Date(order.created_at);
+          return order.status === 'entregado' && order.source !== 'pdv' && d >= start && d <= end;
         })
       );
     } catch (error: any) {
       console.error('Erro ao carregar dashboard:', error);
       toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
-    } finally {
-      setLoadingData(false);
     }
   };
 
@@ -334,18 +373,25 @@ export default function Dashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dashboard-${period}d-${new Date().toISOString().split('T')[0]}.csv`;
+    const label = period === 'custom'
+      ? `${format(range.from!, 'yyyy-MM-dd')}_${format(range.to!, 'yyyy-MM-dd')}`
+      : `${period}d`;
+    a.download = `dashboard-${label}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: 'CSV exportado!' });
   };
 
-  if (loading || loadingData) {
+  if (loading || initialLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   if (!canView) return null;
 
   const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04'];
+
+  const rangeLabel = period === 'custom'
+    ? `${format(range.from!, 'dd/MM/yyyy')} - ${format(range.to!, 'dd/MM/yyyy')}`
+    : PERIODS[period].label;
 
   const StatCard = ({
     title, value, growth, icon, hint, formula,
@@ -418,7 +464,7 @@ export default function Dashboard() {
         <TabsContent value="revenue">
           <Card>
             <CardHeader>
-              <CardTitle>Receita Diária — {title} ({PERIODS[period].label})</CardTitle>
+              <CardTitle>Receita Diária — {title} ({rangeLabel})</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -438,7 +484,7 @@ export default function Dashboard() {
         <TabsContent value="orders">
           <Card>
             <CardHeader>
-              <CardTitle>Pedidos Diários — {title} ({PERIODS[period].label})</CardTitle>
+              <CardTitle>Pedidos Diários — {title} ({rangeLabel})</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -541,16 +587,59 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
-                <SelectTrigger className="w-[180px] rounded-full bg-transparent border-background/20 text-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PERIODS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    aria-label="Selecionar período"
+                    className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground w-[240px] justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {rangeLabel}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="end">
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.entries(PERIODS).filter(([k]) => k !== 'custom') as [string, typeof PERIODS['30']][]).map(([k, v]) => (
+                        <Button
+                          key={k}
+                          variant={period === k ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setPeriod(k as PeriodKey);
+                            setDatePickerOpen(false);
+                          }}
+                        >
+                          {v.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={range.from}
+                      selected={range}
+                      onSelect={(r) => {
+                        if (r?.from && r?.to) {
+                          setRange({ from: startOfDay(r.from), to: endOfDay(r.to) });
+                          setPeriod('custom');
+                        }
+                      }}
+                      numberOfMonths={2}
+                    />
+                    <Button
+                      className="w-full"
+                      onClick={() => setDatePickerOpen(false)}
+                      disabled={!range?.from || !range?.to}
+                    >
+                      Confirmar período
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Button
                 variant="outline"
                 onClick={exportCSV}
@@ -814,7 +903,7 @@ export default function Dashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Evolução da Receita</CardTitle>
-                  <CardDescription>{PERIODS[period].label}</CardDescription>
+                  <CardDescription>{rangeLabel}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={280}>
@@ -865,7 +954,7 @@ export default function Dashboard() {
 
           {/* ============ TRÁFEGO ============ */}
           <TabsContent value="traffic">
-            <SiteAnalytics days={PERIODS[period].days} />
+            <SiteAnalytics rangeStart={range.from} rangeEnd={range.to} />
           </TabsContent>
         </Tabs>
       </div>
