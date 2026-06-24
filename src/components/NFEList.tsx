@@ -282,6 +282,23 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                   </div>
                 )}
 
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {(nfe.customer_name || nfe.customer_company_name) && (
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <User className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {nfe.customer_company_name || nfe.customer_name}
+                      </span>
+                    </span>
+                  )}
+                  {nfe.valor_total !== null && nfe.valor_total !== undefined && (
+                    <span className="flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                      {nfe.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between gap-2 pt-2 border-t flex-wrap">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Calendar className="w-3.5 h-3.5" />
