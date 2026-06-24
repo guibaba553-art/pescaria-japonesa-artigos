@@ -1384,43 +1384,54 @@ export default function PDV() {
   const handleSaveCustomer = async () => {
     if (savingCustomer) return; // trava duplo clique
     const isCnpj = customerForm.doc_type === 'cnpj';
+    const isNfe = customerForm.emission_type === 'nfe';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
+    const docDigits = docValue.replace(/\D/g, '');
 
-    // Validar campos básicos
-    if (!customerForm.full_name.trim() || !docValue.trim() ||
-        !customerForm.cep.trim() || !customerForm.street.trim() ||
-        !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
+    // Validação mínima (NFC-e e NF-e): nome + documento válido
+    if (!customerForm.full_name.trim() || !docValue.trim()) {
       toast({
         title: 'Campos obrigatórios',
-        description: `Preencha todos os campos do cliente (incluindo ${isCnpj ? 'CNPJ' : 'CPF'})`,
-        variant: 'destructive'
+        description: `Informe o nome e o ${isCnpj ? 'CNPJ' : 'CPF'} do cliente.`,
+        variant: 'destructive',
       });
       return;
     }
+    if (isCnpj && docDigits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    if (!isCnpj && docDigits.length !== 11) {
+      toast({ title: 'CPF inválido', description: 'O CPF deve ter 11 dígitos.', variant: 'destructive' });
+      return;
+    }
 
-    // Validações extras para CNPJ (necessárias para emissão de NF-e)
-    if (isCnpj) {
-      const cnpjDigits = customerForm.cnpj.replace(/\D/g, '');
-      if (cnpjDigits.length !== 14) {
-        toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+    // NF-e exige endereço completo + município/UF/IBGE; CNPJ exige razão social e IE indicador
+    if (isNfe) {
+      if (!customerForm.cep.trim() || !customerForm.street.trim() ||
+          !customerForm.number.trim() || !customerForm.neighborhood.trim() ||
+          !customerForm.municipio.trim() || !customerForm.uf.trim() ||
+          !customerForm.codigo_municipio_ibge.trim()) {
+        toast({
+          title: 'Endereço incompleto',
+          description: 'Para emitir NF-e informe CEP, rua, número, bairro, município, UF e código IBGE.',
+          variant: 'destructive',
+        });
         return;
       }
-      if (!customerForm.company_name.trim()) {
-        toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.municipio.trim() || !customerForm.uf.trim() || !customerForm.codigo_municipio_ibge.trim()) {
-        toast({ title: 'Município incompleto', description: 'Informe município, UF e código IBGE (busque pelo CNPJ).', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.ie_indicador) {
-        toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
-        return;
-      }
-      // Se for contribuinte (1), exige IE; se isento (2) ou não contribuinte (9), grava ISENTO
-      if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
-        toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
-        return;
+      if (isCnpj) {
+        if (!customerForm.company_name.trim()) {
+          toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
+          return;
+        }
+        if (!customerForm.ie_indicador) {
+          toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
+          return;
+        }
+        if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
+          toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
+          return;
+        }
       }
       if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
         toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
