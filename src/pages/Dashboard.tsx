@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
-import { ExpenseTracker } from '@/components/ExpenseTracker';
+
 
 interface ChannelStats {
   totalRevenue: number;
@@ -694,53 +694,148 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* ============ FINANÇAS ============ */}
-          <TabsContent value="financas" className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <TabsContent value="financas" className="space-y-6">
+            {/* KPIs principais */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                title="Receita Total"
+                title="Receita"
                 value={formatBRL(totalRevenue)}
-                formula="PDV + Site no período"
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
-                title="Receita de Itens"
-                value={formatBRL(itemsRevenue)}
-                formula="Σ preço registrado × qtd"
-                icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Custo dos Itens"
-                value={formatBRL(totalCost)}
-                formula="Σ custo unit. × qtd"
-                icon={<Package className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Despesas Gerais"
-                value={formatBRL(totalExpenses)}
-                formula="Soma das despesas no período"
+                title="Custos + Despesas"
+                value={formatBRL(totalCost + totalExpenses)}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <StatCard
-                title="Lucro Bruto"
-                value={formatBRL(lucroBruto)}
-                formula="Σ (preço registrado na venda − custo unit.) × qtd"
-                hint={`Margem bruta: ${margemBruta.toFixed(1)}%  |  ${formatBRL(itemsRevenue)} − ${formatBRL(totalCost)}`}
-                icon={<TrendingUp className={`h-4 w-4 ${lucroBruto >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
               />
               <StatCard
                 title="Lucro Líquido"
                 value={formatBRL(lucroLiquido)}
-                formula="Lucro Bruto − Despesas gerais"
-                hint={`Margem líquida: ${margemLiquida.toFixed(1)}%  |  ${formatBRL(lucroBruto)} − ${formatBRL(totalExpenses)}`}
-                icon={<DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+                hint={`Margem ${margemLiquida.toFixed(1)}%`}
+                icon={<TrendingUp className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`} />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(overallAvgTicket)}
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
               />
             </div>
 
-            <ExpenseTracker />
+            {/* Gráficos lado a lado */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Comparativo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Resumo Financeiro</CardTitle>
+                  <CardDescription>Comparativo do período</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={[
+                        { name: 'Receita', valor: totalRevenue, fill: '#16a34a' },
+                        { name: 'Custos', valor: totalCost, fill: '#f59e0b' },
+                        { name: 'Despesas', valor: totalExpenses, fill: '#ef4444' },
+                        { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
+                      ]}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                      <Bar dataKey="valor" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Composição da Receita */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Origem da Receita</CardTitle>
+                  <CardDescription>PDV vs Site</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'PDV', value: pdvStats.totalRevenue },
+                          { name: 'Site', value: siteStats.totalRevenue },
+                        ]}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        label={(e: any) => `${e.name}: ${formatBRL(e.value)}`}
+                      >
+                        <Cell fill="#2563eb" />
+                        <Cell fill="#7c3aed" />
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Para onde foi o dinheiro */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Para onde foi o dinheiro</CardTitle>
+                  <CardDescription>Distribuição da receita</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Custo de Produto', value: Math.max(0, totalCost) },
+                          { name: 'Despesas', value: Math.max(0, totalExpenses) },
+                          { name: 'Lucro', value: Math.max(0, lucroLiquido) },
+                        ]}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        label={(e: any) => `${e.name}`}
+                      >
+                        <Cell fill="#f59e0b" />
+                        <Cell fill="#ef4444" />
+                        <Cell fill="#16a34a" />
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Evolução diária */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Evolução da Receita</CardTitle>
+                  <CardDescription>{PERIODS[period].label}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart
+                      data={salesData.map((d) => ({
+                        date: d.date,
+                        total: (d.pdv || 0) + (d.site || 0),
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                      <Line type="monotone" dataKey="total" stroke="#16a34a" strokeWidth={2} name="Receita" dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
+
 
           {/* ============ PDV ============ */}
           <TabsContent value="pdv">
