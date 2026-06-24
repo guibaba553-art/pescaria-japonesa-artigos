@@ -1542,16 +1542,48 @@ export default function PDV() {
       return;
     }
 
-    // Bloqueio por classificação do cliente
+    // Cliente com classificação restritiva: exige confirmação + motivo (não bloqueia automaticamente)
+    let tierOverrideReason: string | null = null;
     if (selectedCustomer && customerTier?.block_purchase) {
-      toast({
-        title: `Venda bloqueada — cliente ${customerTier.name}`,
-        description: customerTier.perks || 'Este cliente está bloqueado para vendas.',
-        variant: 'destructive',
-      });
-      finalizingRef.current = false;
-      return;
+      const ok = window.confirm(
+        `Atenção: este cliente está classificado como "${customerTier.name}".\n\n` +
+        `${customerTier.perks || 'Há restrição de venda registrada para este cliente.'}\n\n` +
+        `Deseja prosseguir mesmo assim?`
+      );
+      if (!ok) {
+        finalizingRef.current = false;
+        return;
+      }
+      const reason = window.prompt(
+        'Informe o motivo para liberar esta venda (obrigatório, mínimo 5 caracteres):',
+        ''
+      );
+      if (!reason || reason.trim().length < 5) {
+        toast({
+          title: 'Motivo obrigatório',
+          description: 'É necessário registrar uma justificativa para liberar a venda.',
+          variant: 'destructive',
+        });
+        finalizingRef.current = false;
+        return;
+      }
+      tierOverrideReason = reason.trim();
+      // Registra a liberação no audit log (fire-and-forget)
+      supabase.from('admin_audit_log').insert({
+        action: 'pdv_tier_block_override',
+        entity_type: 'customer',
+        entity_id: selectedCustomer.id,
+        details: {
+          customer_name: selectedCustomer.full_name,
+          tier_name: customerTier.name,
+          reason: tierOverrideReason,
+          cart_total: calculateTotal(),
+          payment_method: paymentMethod,
+        },
+      } as any).then(() => {});
     }
+
+
 
     // Bloqueio: vendas acima de R$ 1.000 exigem cliente identificado,
     // exceto quando o pagamento é em dinheiro.
