@@ -70,7 +70,7 @@ function classifyReferrer(ref: string | null): string {
   }
 }
 
-export function SiteAnalytics() {
+export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
   const [loading, setLoading] = useState(true);
   const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
@@ -79,12 +79,12 @@ export function SiteAnalytics() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [days]);
 
   const load = async () => {
     setLoading(true);
     const since = new Date();
-    since.setDate(since.getDate() - 30);
+    since.setDate(since.getDate() - days);
     const sinceIso = since.toISOString();
 
     // Buscar IDs de admins e funcionários para excluir das estatísticas
