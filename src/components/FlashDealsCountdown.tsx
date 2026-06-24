@@ -59,21 +59,18 @@ const FlashDealsCountdown = () => {
 
   useEffect(() => {
     const load = async () => {
+      const nowIso = new Date().toISOString();
       const { data } = await supabase
         .from("products")
         .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, variations:product_variations(*)`)
         .eq("on_sale", true)
         .gt("stock", 0)
         .not("sale_price", "is", null)
+        .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
         .order("sale_ends_at", { ascending: true, nullsFirst: false })
         .limit(8);
 
-      // Filter out expired sale_ends_at
-      const now = Date.now();
-      const valid = ((data as Product[]) || []).filter(
-        (p) => !p.sale_ends_at || new Date(p.sale_ends_at).getTime() > now,
-      );
-      setProducts(valid.slice(0, 4));
+      setProducts(((data as Product[]) || []).slice(0, 4));
       setLoading(false);
     };
     load();
