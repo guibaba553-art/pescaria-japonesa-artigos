@@ -317,7 +317,9 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
                         onClick={() => {
                           setReason(p.reason);
                           setDelta(p.points);
+                          setPendingSign(p.sign > 0 ? 1 : -1);
                         }}
+
                         className={`text-[11px] px-2 py-1 rounded-md border transition-colors pr-5 ${
                           p.sign > 0
                             ? 'border-emerald-500/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400'
