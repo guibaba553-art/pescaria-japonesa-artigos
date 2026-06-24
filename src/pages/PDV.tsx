@@ -1463,17 +1463,17 @@ export default function PDV() {
 
       const payload: any = {
         full_name: customerForm.full_name,
-        cep: customerForm.cep,
-        street: customerForm.street,
-        number: customerForm.number,
-        neighborhood: customerForm.neighborhood,
+        cep: customerForm.cep || null,
+        street: customerForm.street || null,
+        number: customerForm.number || null,
+        neighborhood: customerForm.neighborhood || null,
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
-        company_name: isCnpj ? customerForm.company_name : null,
+        company_name: isCnpj ? (customerForm.company_name || null) : null,
         complemento: customerForm.complemento || null,
         municipio: customerForm.municipio || null,
         uf: customerForm.uf || null,
-        codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
+        codigo_municipio_ibge: customerForm.codigo_municipio_ibge || null,
         inscricao_estadual: isCnpj
           ? (customerForm.inscricao_estadual.trim()
               ? customerForm.inscricao_estadual.trim()
@@ -1481,7 +1481,8 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
-        created_by: user!.id
+        preferred_emission_type: customerForm.emission_type,
+        created_by: user!.id,
       };
 
       const { data, error } = await supabase
@@ -1496,6 +1497,7 @@ export default function PDV() {
       setShowCustomerDialog(false);
       setCustomerForm({
         full_name: '',
+        emission_type: 'nfce',
         doc_type: 'cpf',
         cpf: '',
         cnpj: '',
