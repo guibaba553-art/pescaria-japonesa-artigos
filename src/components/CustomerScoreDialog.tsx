@@ -207,9 +207,16 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="number"
-                  min={1}
                   value={delta}
-                  onChange={(e) => setDelta(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (Number.isNaN(val)) {
+                      setDelta(0);
+                      return;
+                    }
+                    setDelta(val);
+                    setPendingSign(val < 0 ? -1 : 1);
+                  }}
                   className="sm:w-24"
                 />
                 <Input
@@ -223,12 +230,12 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
                     <Button
                       type="button"
                       onClick={() => adjust(pendingSign)}
-                      disabled={saving}
+                      disabled={saving || delta === 0}
                       className={pendingSign > 0
                         ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                         : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'}
                     >
-                      <Award className="w-4 h-4 mr-1" /> Avaliar ({pendingSign > 0 ? '+' : '−'}{Math.abs(delta)})
+                      <Award className="w-4 h-4 mr-1" /> Avaliar ({delta > 0 ? '+' : ''}{delta})
                     </Button>
                   ) : (
                     <>
