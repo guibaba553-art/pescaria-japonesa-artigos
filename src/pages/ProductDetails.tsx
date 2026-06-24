@@ -28,6 +28,7 @@ export default function ProductDetails() {
   const [displayImages, setDisplayImages] = useState<string[]>([]);
   const { toast } = useToast();
   const { addItem } = useCart();
+  usePromoExpiryTick(product as any);
 
   useEffect(() => {
     loadProduct();
