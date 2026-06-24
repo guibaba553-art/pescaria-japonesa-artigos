@@ -1,0 +1,1 @@
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS preferred_emission_type text CHECK (preferred_emission_type IN ('nfce','nfe'));

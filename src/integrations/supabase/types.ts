@@ -717,6 +717,7 @@ export type Database = {
           municipio: string | null
           neighborhood: string
           number: string
+          preferred_emission_type: string | null
           score: number
           street: string
           uf: string | null
@@ -739,6 +740,7 @@ export type Database = {
           municipio?: string | null
           neighborhood: string
           number: string
+          preferred_emission_type?: string | null
           score?: number
           street: string
           uf?: string | null
@@ -761,6 +763,7 @@ export type Database = {
           municipio?: string | null
           neighborhood?: string
           number?: string
+          preferred_emission_type?: string | null
           score?: number
           street?: string
           uf?: string | null
