@@ -97,13 +97,17 @@ serve(async (req) => {
     // Carrega cliente, se houver
     let customer: { cpf?: string; cnpj?: string; nome?: string } | undefined;
     let isCnpj = false;
+    let preferredEmission: 'nfce' | 'nfe' | null = null;
+    let fullCustomer: any = null;
     if (order.customer_id) {
       const { data: c } = await supabase
         .from('customers')
-        .select('full_name, cpf, cnpj, company_name')
+        .select('full_name, cpf, cnpj, company_name, inscricao_estadual, cep, street, number, complemento, neighborhood, municipio, uf, preferred_emission_type')
         .eq('id', order.customer_id)
         .maybeSingle();
       if (c) {
+        fullCustomer = c as any;
+        preferredEmission = ((c as any).preferred_emission_type as any) || null;
         const cnpj = String((c as any).cnpj || '').replace(/\D/g, '');
         const cpf = String((c as any).cpf || '').replace(/\D/g, '');
         if (cnpj.length === 14) {
@@ -121,13 +125,24 @@ serve(async (req) => {
       }
     }
 
-    // NF-e (CNPJ) — delega para emit-nfe
-    if (isCnpj && customer?.cnpj) {
+    // Decide modelo: respeita preferência do cliente; caso ausente, usa CNPJ → NF-e, CPF/sem doc → NFC-e
+    const useNfe = preferredEmission === 'nfe' || (preferredEmission == null && isCnpj);
+
+    // NF-e — delega para emit-nfe (suporta CPF e CNPJ)
+    if (useNfe && fullCustomer) {
       const manualCustomer = {
-        cnpj: customer.cnpj,
-        cpf: undefined,
-        full_name: customer.nome,
-        company_name: customer.nome,
+        cnpj: customer?.cnpj,
+        cpf: customer?.cpf,
+        full_name: fullCustomer.full_name,
+        company_name: fullCustomer.company_name,
+        inscricao_estadual: fullCustomer.inscricao_estadual,
+        cep: fullCustomer.cep,
+        street: fullCustomer.street,
+        number: fullCustomer.number,
+        complemento: fullCustomer.complemento,
+        neighborhood: fullCustomer.neighborhood,
+        municipio: fullCustomer.municipio,
+        uf: fullCustomer.uf,
       };
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/emit-nfe`, {
         method: 'POST',
