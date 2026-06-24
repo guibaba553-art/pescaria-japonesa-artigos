@@ -1406,37 +1406,10 @@ export default function PDV() {
       return;
     }
 
-    // NF-e exige endereço completo + município/UF/IBGE; CNPJ exige razão social e IE indicador
-    if (isNfe) {
-      if (!customerForm.cep.trim() || !customerForm.street.trim() ||
-          !customerForm.number.trim() || !customerForm.neighborhood.trim() ||
-          !customerForm.municipio.trim() || !customerForm.uf.trim() ||
-          !customerForm.codigo_municipio_ibge.trim()) {
-        toast({
-          title: 'Endereço incompleto',
-          description: 'Para emitir NF-e informe CEP, rua, número, bairro, município, UF e código IBGE.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      if (isCnpj) {
-        if (!customerForm.company_name.trim()) {
-          toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
-          return;
-        }
-        if (!customerForm.ie_indicador) {
-          toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
-          return;
-        }
-        if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
-          toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
-          return;
-        }
-      }
-      if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
-        toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
-        return;
-      }
+    // Validação extra apenas se for CNPJ e o usuário tiver começado a preencher dados de NF-e
+    if (isCnpj && customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
+      toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
+      return;
     }
 
     setSavingCustomer(true);
@@ -1481,7 +1454,7 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
-        preferred_emission_type: customerForm.emission_type,
+        preferred_emission_type: isCnpj ? 'nfe' : 'nfce',
         created_by: user!.id,
       };
 
@@ -2486,6 +2459,44 @@ export default function PDV() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        {/* Seletor de tipo de nota fiscal para este cliente */}
+                        <div className="mt-3 pt-3 border-t border-primary/20 space-y-1.5">
+                          <Label className="text-xs">Tipo de nota fiscal</Label>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={(selectedCustomer.preferred_emission_type || 'nfce') === 'nfce' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfce' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfce' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NFC-e
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={selectedCustomer.preferred_emission_type === 'nfe' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfe' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfe' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NF-e
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {selectedCustomer.preferred_emission_type === 'nfe'
+                              ? 'NF-e exige endereço completo do destinatário.'
+                              : 'NFC-e usa apenas nome e documento.'}
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -2834,40 +2845,13 @@ export default function PDV() {
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Cadastrar Cliente</DialogTitle>
+            <DialogTitle>Cadastro do Cliente</DialogTitle>
             <DialogDescription>
               Preencha os dados do cliente para vincular à venda
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Tipo de nota fiscal */}
-            <div className="space-y-2">
-              <Label>Tipo de nota fiscal *</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={customerForm.emission_type === 'nfce' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfce' })}
-                >
-                  NFC-e (consumidor)
-                </Button>
-                <Button
-                  type="button"
-                  variant={customerForm.emission_type === 'nfe' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfe' })}
-                >
-                  NF-e (com endereço)
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {customerForm.emission_type === 'nfce'
-                  ? 'NFC-e exige apenas nome e CPF ou CNPJ.'
-                  : 'NF-e exige endereço completo do destinatário.'}
-              </p>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="full_name">
@@ -2942,7 +2926,6 @@ export default function PDV() {
               </p>
             </div>
 
-            {customerForm.emission_type === 'nfe' && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP *</Label>
@@ -3054,9 +3037,8 @@ export default function PDV() {
                   </div>
                 )}
               </>
-            )}
 
-            {customerForm.emission_type === 'nfe' && customerForm.doc_type === 'cnpj' && (
+            {customerForm.doc_type === 'cnpj' && (
               <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
                 <p className="text-xs font-semibold text-orange-900">
                   Dados obrigatórios para emissão de NF-e
