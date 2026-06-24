@@ -128,9 +128,9 @@ export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
       entry.visits++;
       if (v.session_id) entry.sessions.add(v.session_id);
     }
-    // fill last 30 days
+    // fill last N days
     const daily: DailyVisit[] = [];
-    for (let i = 29; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
