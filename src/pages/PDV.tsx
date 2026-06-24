@@ -1406,37 +1406,10 @@ export default function PDV() {
       return;
     }
 
-    // NF-e exige endereço completo + município/UF/IBGE; CNPJ exige razão social e IE indicador
-    if (isNfe) {
-      if (!customerForm.cep.trim() || !customerForm.street.trim() ||
-          !customerForm.number.trim() || !customerForm.neighborhood.trim() ||
-          !customerForm.municipio.trim() || !customerForm.uf.trim() ||
-          !customerForm.codigo_municipio_ibge.trim()) {
-        toast({
-          title: 'Endereço incompleto',
-          description: 'Para emitir NF-e informe CEP, rua, número, bairro, município, UF e código IBGE.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      if (isCnpj) {
-        if (!customerForm.company_name.trim()) {
-          toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
-          return;
-        }
-        if (!customerForm.ie_indicador) {
-          toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
-          return;
-        }
-        if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
-          toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
-          return;
-        }
-      }
-      if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
-        toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
-        return;
-      }
+    // Validação extra apenas se for CNPJ e o usuário tiver começado a preencher dados de NF-e
+    if (isCnpj && customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
+      toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
+      return;
     }
 
     setSavingCustomer(true);
