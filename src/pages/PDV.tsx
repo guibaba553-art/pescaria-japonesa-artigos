@@ -2869,29 +2869,6 @@ export default function PDV() {
               </p>
             </div>
 
-            {/* Tipo de documento */}
-            <div className="space-y-2">
-              <Label>Documento *</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={customerForm.doc_type === 'cpf' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
-                >
-                  CPF
-                </Button>
-                <Button
-                  type="button"
-                  variant={customerForm.doc_type === 'cnpj' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
-                >
-                  CNPJ
-                </Button>
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="full_name">
                 {customerForm.doc_type === 'cnpj' ? 'Nome do responsável *' : 'Nome Completo *'}
@@ -2916,46 +2893,40 @@ export default function PDV() {
               </div>
             )}
 
-            {customerForm.doc_type === 'cpf' ? (
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <div className="relative">
+            {/* Documento unificado: detecta CPF/CNPJ pelo número de dígitos */}
+            <div className="space-y-2">
+              <Label htmlFor="documento">CPF ou CNPJ *</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
                   <Input
-                    id="cpf"
-                    placeholder="000.000.000-00"
-                    value={customerForm.cpf}
+                    id="documento"
+                    placeholder="Digite CPF (11) ou CNPJ (14)"
+                    value={customerForm.doc_type === 'cnpj' ? customerForm.cnpj : customerForm.cpf}
                     onChange={(e) => {
-                      const digits = sanitizeNumericInput(e.target.value).slice(0, 11);
-                      setCustomerForm({ ...customerForm, cpf: formatCPF(digits) });
-                      if (digits.length === 11) lookupCpf(digits);
+                      const digits = sanitizeNumericInput(e.target.value).slice(0, 14);
+                      const isCnpj = digits.length > 11;
+                      if (isCnpj) {
+                        // formata CNPJ: 00.000.000/0000-00
+                        const f = digits
+                          .replace(/^(\d{2})(\d)/, '$1.$2')
+                          .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                          .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                          .replace(/(\d{4})(\d)/, '$1-$2');
+                        setCustomerForm({ ...customerForm, doc_type: 'cnpj', cnpj: f, cpf: '' });
+                        if (digits.length === 14) lookupCnpj(digits);
+                      } else {
+                        setCustomerForm({ ...customerForm, doc_type: 'cpf', cpf: formatCPF(digits), cnpj: '' });
+                        if (digits.length === 11) lookupCpf(digits);
+                      }
                     }}
-                    maxLength={14}
+                    maxLength={18}
                     inputMode="numeric"
                   />
-                  {cpfLoading && (
+                  {(cpfLoading || cnpjLoading) && (
                     <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Validamos o CPF e buscamos cadastro existente automaticamente.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="cnpj"
-                    placeholder="00.000.000/0000-00"
-                    value={customerForm.cnpj}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCustomerForm({ ...customerForm, cnpj: v });
-                      const digits = v.replace(/\D/g, '');
-                      if (digits.length === 14) lookupCnpj(digits);
-                    }}
-                    maxLength={18}
-                  />
+                {customerForm.doc_type === 'cnpj' && (
                   <Button
                     type="button"
                     variant="outline"
@@ -2964,12 +2935,12 @@ export default function PDV() {
                   >
                     {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
                   </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Preenche automaticamente os dados via Receita Federal (BrasilAPI).
-                </p>
+                )}
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                Identificamos automaticamente se é CPF ou CNPJ pela quantidade de dígitos.
+              </p>
+            </div>
 
             {customerForm.emission_type === 'nfe' && (
               <>
