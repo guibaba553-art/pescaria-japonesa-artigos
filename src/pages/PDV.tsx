@@ -2546,14 +2546,10 @@ export default function PDV() {
                                 title: `Atenção — cliente ${tier.name}`,
                                 description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
                               });
-                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
-
-                              const subtotal = calculateSubtotal();
-                              const disc = (subtotal * tier.discount_percent) / 100;
-                              setDiscountInput(disc.toFixed(2).replace('.', ','));
+                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount) {
                               toast({
-                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off`,
-                                description: `Desconto de R$ ${disc.toFixed(2)} aplicado automaticamente.`,
+                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off disponível`,
+                                description: 'Clique em "Aplicar desconto do nível" para liberar.',
                               });
                             } else {
                               toast({
