@@ -2999,9 +2999,8 @@ export default function PDV() {
                   </div>
                 )}
               </>
-            )}
 
-            {customerForm.emission_type === 'nfe' && customerForm.doc_type === 'cnpj' && (
+            {customerForm.doc_type === 'cnpj' && (
               <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
                 <p className="text-xs font-semibold text-orange-900">
                   Dados obrigatórios para emissão de NF-e
