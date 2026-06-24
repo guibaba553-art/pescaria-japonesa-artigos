@@ -168,7 +168,41 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNfes(data || []);
+
+      // Enriquece com dados do cliente através do pedido
+      const raw = (data || []) as any[];
+      const orderIds = [...new Set(raw.map((n) => n.order_id).filter(Boolean))];
+      let customerMap: Record<string, { full_name?: string; company_name?: string }> = {};
+      if (orderIds.length > 0) {
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('id, customer_id')
+          .in('id', orderIds);
+        const customerIds = [...new Set((ordersData || []).map((o) => o.customer_id).filter(Boolean))];
+        if (customerIds.length > 0) {
+          const { data: customersData } = await supabase
+            .from('customers')
+            .select('id, full_name, company_name')
+            .in('id', customerIds);
+          customersData?.forEach((c) => {
+            customerMap[c.id] = { full_name: c.full_name, company_name: c.company_name };
+          });
+        }
+        ordersData?.forEach((o) => {
+          if (o.customer_id && customerMap[o.customer_id]) {
+            customerMap[o.id] = customerMap[o.customer_id];
+          }
+        });
+      }
+
+      const enriched: NFE[] = raw.map((n) => ({
+        ...n,
+        valor_total: n.valor_total ?? null,
+        customer_name: customerMap[n.order_id]?.full_name || null,
+        customer_company_name: customerMap[n.order_id]?.company_name || null,
+      }));
+
+      setNfes(enriched);
     } catch (error: any) {
       const msg = String(error?.message || '');
       const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
