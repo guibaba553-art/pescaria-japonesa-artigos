@@ -1901,9 +1901,20 @@ export default function PDV() {
         loadSavedSales();
       }
 
+      // Se havia cliente cadastrado vinculado à venda, abrir popup de nota/score
+      if (selectedCustomer && selectedCustomer.id) {
+        setScoreDialogCustomer({
+          id: selectedCustomer.id,
+          full_name: selectedCustomer.full_name,
+          company_name: (selectedCustomer as any).company_name ?? null,
+          score: (selectedCustomer as any).score || 0,
+        });
+      }
+
       // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
       await loadProducts();
+
 
     } catch (error: any) {
       // Rollback manual: se criamos o pedido mas algo falhou depois,
