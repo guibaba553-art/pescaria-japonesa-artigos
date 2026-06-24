@@ -2888,7 +2888,7 @@ export default function PDV() {
               </p>
             </div>
 
-            {customerForm.emission_type === 'nfe' && (
+            <>
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP *</Label>
