@@ -169,38 +169,55 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
 
       if (error) throw error;
 
-      // Enriquece com dados do cliente através do pedido
+      // Enriquece com dados do cliente através do pedido (busca em lotes)
       const raw = (data || []) as any[];
       const orderIds = [...new Set(raw.map((n) => n.order_id).filter(Boolean))];
-      let customerMap: Record<string, { full_name?: string; company_name?: string }> = {};
+      const orderCustomerMap: Record<string, string | null> = {};
+      const customerMap: Record<string, { full_name?: string; company_name?: string }> = {};
+
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+
       if (orderIds.length > 0) {
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('id, customer_id')
-          .in('id', orderIds);
-        const customerIds = [...new Set((ordersData || []).map((o) => o.customer_id).filter(Boolean))];
-        if (customerIds.length > 0) {
-          const { data: customersData } = await supabase
-            .from('customers')
-            .select('id, full_name, company_name')
-            .in('id', customerIds);
-          customersData?.forEach((c) => {
-            customerMap[c.id] = { full_name: c.full_name, company_name: c.company_name };
+        for (const batch of chunk(orderIds, 100)) {
+          const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('id, customer_id')
+            .in('id', batch);
+          if (ordersError) console.error('[NFEList] Erro ao buscar pedidos:', ordersError);
+          ordersData?.forEach((o: any) => {
+            orderCustomerMap[o.id] = o.customer_id;
           });
         }
-        ordersData?.forEach((o) => {
-          if (o.customer_id && customerMap[o.customer_id]) {
-            customerMap[o.id] = customerMap[o.customer_id];
+
+        const customerIds = [...new Set(Object.values(orderCustomerMap).filter(Boolean))];
+        if (customerIds.length > 0) {
+          for (const batch of chunk(customerIds, 100)) {
+            const { data: customersData, error: customersError } = await supabase
+              .from('customers')
+              .select('id, full_name, company_name')
+              .in('id', batch);
+            if (customersError) console.error('[NFEList] Erro ao buscar clientes:', customersError);
+            customersData?.forEach((c: any) => {
+              customerMap[c.id] = { full_name: c.full_name, company_name: c.company_name };
+            });
           }
-        });
+        }
       }
 
-      const enriched: NFE[] = raw.map((n) => ({
-        ...n,
-        valor_total: n.valor_total ?? null,
-        customer_name: customerMap[n.order_id]?.full_name || null,
-        customer_company_name: customerMap[n.order_id]?.company_name || null,
-      }));
+      const enriched: NFE[] = raw.map((n) => {
+        const customerId = orderCustomerMap[n.order_id];
+        const customer = customerId ? customerMap[customerId] : null;
+        return {
+          ...n,
+          valor_total: n.valor_total ?? null,
+          customer_name: customer?.full_name || null,
+          customer_company_name: customer?.company_name || null,
+        };
+      });
 
       setNfes(enriched);
     } catch (error: any) {
