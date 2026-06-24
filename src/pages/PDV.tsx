@@ -60,7 +60,9 @@ import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMeth
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
+import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
+
 import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
