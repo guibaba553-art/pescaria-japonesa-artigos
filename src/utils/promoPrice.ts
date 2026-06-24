@@ -9,6 +9,7 @@
  *
  * Variação com promo própria tem prioridade sobre a promo do produto pai.
  */
+import { useEffect, useState } from 'react';
 
 export interface PromoFields {
   on_sale?: boolean | null;
@@ -116,4 +117,33 @@ export function getProductDisplayImage(
 ): string | null {
   if (selectedVariation?.image_url) return selectedVariation.image_url;
   return baseImageUrl;
+}
+
+/**
+ * Hook que força re-render no instante em que a promoção mais próxima expira.
+ * Coleta sale_ends_at do produto e de suas variações, agenda um timeout para o
+ * mais próximo no futuro e atualiza um state quando dispara. Evita que o preço
+ * promocional continue aparecendo após o término do prazo.
+ */
+export function usePromoExpiryTick(
+  product?: (PromoFields & { variations?: PromoFields[] | null }) | null,
+): void {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!product) return;
+    const now = Date.now();
+    const candidates: number[] = [];
+    const collect = (p?: PromoFields | null) => {
+      if (!p?.on_sale || !p.sale_ends_at) return;
+      const t = new Date(p.sale_ends_at).getTime();
+      if (!isNaN(t) && t > now) candidates.push(t);
+    };
+    collect(product);
+    product.variations?.forEach(collect);
+    if (candidates.length === 0) return;
+    const next = Math.min(...candidates);
+    const delay = Math.min(next - now + 500, 2_147_000_000); // cap em ~24 dias
+    const id = window.setTimeout(() => setTick((n) => n + 1), Math.max(delay, 100));
+    return () => window.clearTimeout(id);
+  }, [product]);
 }
