@@ -865,7 +865,7 @@ export default function Dashboard() {
 
           {/* ============ TRÁFEGO ============ */}
           <TabsContent value="traffic">
-            <SiteAnalytics />
+            <SiteAnalytics days={PERIODS[period].days} />
           </TabsContent>
         </Tabs>
       </div>

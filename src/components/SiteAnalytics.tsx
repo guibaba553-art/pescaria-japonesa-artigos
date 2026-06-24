@@ -70,7 +70,7 @@ function classifyReferrer(ref: string | null): string {
   }
 }
 
-export function SiteAnalytics() {
+export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
   const [loading, setLoading] = useState(true);
   const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
@@ -79,12 +79,12 @@ export function SiteAnalytics() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [days]);
 
   const load = async () => {
     setLoading(true);
     const since = new Date();
-    since.setDate(since.getDate() - 30);
+    since.setDate(since.getDate() - days);
     const sinceIso = since.toISOString();
 
     // Buscar IDs de admins e funcionários para excluir das estatísticas
@@ -128,9 +128,9 @@ export function SiteAnalytics() {
       entry.visits++;
       if (v.session_id) entry.sessions.add(v.session_id);
     }
-    // fill last 30 days
+    // fill last N days
     const daily: DailyVisit[] = [];
-    for (let i = 29; i >= 0; i--) {
+    for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toISOString().slice(0, 10);
@@ -230,7 +230,7 @@ export function SiteAnalytics() {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Visitas (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Visitas</CardTitle>
             <Eye className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -248,7 +248,7 @@ export function SiteAnalytics() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Pedidos (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Pedidos</CardTitle>
             <MousePointerClick className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -282,7 +282,7 @@ export function SiteAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.avgPerDay.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">visitas/dia (30d)</p>
+            <p className="text-xs text-muted-foreground">visitas/dia</p>
           </CardContent>
         </Card>
       </div>
@@ -290,7 +290,7 @@ export function SiteAnalytics() {
       {/* Daily visits chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Visitas por dia (últimos 30 dias)</CardTitle>
+          <CardTitle>Visitas por dia</CardTitle>
           <CardDescription>Total de visitas e visitantes únicos por dia</CardDescription>
         </CardHeader>
         <CardContent>
