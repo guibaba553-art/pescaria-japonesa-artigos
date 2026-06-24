@@ -230,7 +230,7 @@ export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Visitas (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Visitas</CardTitle>
             <Eye className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -248,7 +248,7 @@ export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Pedidos (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Pedidos</CardTitle>
             <MousePointerClick className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -282,7 +282,7 @@ export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.avgPerDay.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">visitas/dia (30d)</p>
+            <p className="text-xs text-muted-foreground">visitas/dia</p>
           </CardContent>
         </Card>
       </div>
@@ -290,7 +290,7 @@ export function SiteAnalytics({ days = 30 }: { days?: number } = {}) {
       {/* Daily visits chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Visitas por dia (últimos 30 dias)</CardTitle>
+          <CardTitle>Visitas por dia</CardTitle>
           <CardDescription>Total de visitas e visitantes únicos por dia</CardDescription>
         </CardHeader>
         <CardContent>
