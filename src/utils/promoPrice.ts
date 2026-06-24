@@ -9,6 +9,7 @@
  *
  * Variação com promo própria tem prioridade sobre a promo do produto pai.
  */
+import { useEffect, useState } from 'react';
 
 export interface PromoFields {
   on_sale?: boolean | null;
