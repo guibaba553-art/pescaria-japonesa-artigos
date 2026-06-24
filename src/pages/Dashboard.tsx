@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
-  TrendingUp, Download, AlertTriangle, Clock, Receipt, Target,
+  TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -18,6 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
+import { ExpenseTracker } from '@/components/ExpenseTracker';
 
 interface ChannelStats {
   totalRevenue: number;
