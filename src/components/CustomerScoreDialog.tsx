@@ -219,23 +219,39 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
                   className="flex-1"
                 />
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => adjust(1)}
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Adicionar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => adjust(-1)}
-                    disabled={saving}
-                  >
-                    <Minus className="w-4 h-4 mr-1" /> Descontar
-                  </Button>
+                  {compact ? (
+                    <Button
+                      type="button"
+                      onClick={() => adjust(pendingSign)}
+                      disabled={saving}
+                      className={pendingSign > 0
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                        : 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'}
+                    >
+                      <Award className="w-4 h-4 mr-1" /> Avaliar ({pendingSign > 0 ? '+' : '−'}{Math.abs(delta)})
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={() => adjust(1)}
+                        disabled={saving}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-1" /> Adicionar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => adjust(-1)}
+                        disabled={saving}
+                      >
+                        <Minus className="w-4 h-4 mr-1" /> Descontar
+                      </Button>
+                    </>
+                  )}
                 </div>
+
               </div>
 
               <div className="pt-1">
