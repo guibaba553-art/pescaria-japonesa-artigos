@@ -2927,8 +2927,11 @@ export default function PDV() {
             </div>
 
               <>
+                <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  Para <strong>NFC-e</strong> apenas <strong>Nome</strong> e <strong>CPF</strong> são obrigatórios. Os campos de endereço abaixo são opcionais e só ficam obrigatórios para <strong>NF-e</strong> (CNPJ).
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cep">CEP *</Label>
+                  <Label htmlFor="cep">CEP {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                   <div className="relative">
                     <Input
                       id="cep"
@@ -2964,7 +2967,7 @@ export default function PDV() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="street">Rua *</Label>
+                  <Label htmlFor="street">Rua {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                   <Input
                     id="street"
                     placeholder="Nome da rua"
@@ -2975,7 +2978,7 @@ export default function PDV() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="number">Número *</Label>
+                    <Label htmlFor="number">Número {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                     <Input
                       id="number"
                       placeholder="123"
@@ -2985,7 +2988,7 @@ export default function PDV() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="neighborhood">Bairro *</Label>
+                    <Label htmlFor="neighborhood">Bairro {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                     <Input
                       id="neighborhood"
                       placeholder="Bairro"
@@ -2997,7 +3000,7 @@ export default function PDV() {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2 col-span-2">
-                    <Label htmlFor="municipio">Município *</Label>
+                    <Label htmlFor="municipio">Município {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                     <Input
                       id="municipio"
                       placeholder="Cidade"
@@ -3006,7 +3009,7 @@ export default function PDV() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="uf">UF *</Label>
+                    <Label htmlFor="uf">UF {customerForm.doc_type === 'cnpj' ? '*' : <span className="text-xs text-muted-foreground font-normal">(opcional)</span>}</Label>
                     <Input
                       id="uf"
                       placeholder="SP"
@@ -3016,6 +3019,7 @@ export default function PDV() {
                     />
                   </div>
                 </div>
+
 
                 {customerForm.doc_type === 'cpf' && (
                   <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
