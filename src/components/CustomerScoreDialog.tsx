@@ -35,7 +35,7 @@ interface Props {
 }
 
 
-export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }: Props) {
+export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, compact = false }: Props) {
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   const [events, setEvents] = useState<ScoreEvent[]>([]);
   const [loading, setLoading] = useState(false);
