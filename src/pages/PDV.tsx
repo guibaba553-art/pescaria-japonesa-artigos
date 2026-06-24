@@ -2481,11 +2481,11 @@ export default function PDV() {
                             const tier = getTierForScore(tiers, customer.score || 0);
                             if (tier?.block_purchase) {
                               toast({
-                                title: `Cliente ${tier.name}`,
-                                description: 'Venda bloqueada para este cliente.',
-                                variant: 'destructive',
+                                title: `Atenção — cliente ${tier.name}`,
+                                description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
                               });
                             } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
+
                               const subtotal = calculateSubtotal();
                               const disc = (subtotal * tier.discount_percent) / 100;
                               setDiscountInput(disc.toFixed(2).replace('.', ','));
