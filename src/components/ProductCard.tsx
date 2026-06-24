@@ -46,6 +46,7 @@ export function ProductCard({
   };
 
   const hasVariations = product.variations && product.variations.length > 0;
+  usePromoExpiryTick(product as any);
   const isOnSale = isPromoActive(product);
   // REGRA: no SITE o preço exibido é o "Valor mínimo de venda" (min_sale_price) quando definido.
   // O campo `price` é o preço médio usado no PDV — não é usado aqui no site (a menos que min_sale_price esteja vazio).
