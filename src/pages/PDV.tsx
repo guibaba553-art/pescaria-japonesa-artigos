@@ -2888,7 +2888,6 @@ export default function PDV() {
               </p>
             </div>
 
-            <>
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP *</Label>
