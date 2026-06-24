@@ -1901,19 +1901,41 @@ export default function PDV() {
         loadSavedSales();
       }
 
-      // Se havia cliente cadastrado vinculado à venda, abrir popup de nota/score
-      if (selectedCustomer && selectedCustomer.id) {
-        setScoreDialogCustomer({
-          id: selectedCustomer.id,
-          full_name: selectedCustomer.full_name,
-          company_name: (selectedCustomer as any).company_name ?? null,
-          score: (selectedCustomer as any).score || 0,
-        });
-      }
+      // Snapshot do cliente ANTES de limpar a venda (clearSale zera selectedCustomer)
+      const customerForScore = selectedCustomer && selectedCustomer.id
+        ? {
+            id: selectedCustomer.id as string,
+            full_name: selectedCustomer.full_name as string,
+            company_name: ((selectedCustomer as any).company_name ?? null) as string | null,
+            score: Number((selectedCustomer as any).score || 0),
+          }
+        : null;
 
       // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
       await loadProducts();
+
+      // Abre o popup de avaliação APÓS limpar a venda — garante que nenhum outro
+      // diálogo (TEF/cadastro) esteja consumindo o foco do Radix.
+      if (customerForScore) {
+        // Busca o score atualizado do banco caso o objeto local esteja desatualizado
+        try {
+          const { data: freshCust } = await supabase
+            .from('customers')
+            .select('id, full_name, company_name, score')
+            .eq('id', customerForScore.id)
+            .maybeSingle();
+          if (freshCust) {
+            customerForScore.full_name = freshCust.full_name ?? customerForScore.full_name;
+            customerForScore.company_name = freshCust.company_name ?? customerForScore.company_name;
+            customerForScore.score = Number(freshCust.score || 0);
+          }
+        } catch (_) { /* ignora; usa snapshot local */ }
+
+        setTimeout(() => {
+          setScoreDialogCustomer(customerForScore);
+        }, 80);
+      }
 
 
     } catch (error: any) {
