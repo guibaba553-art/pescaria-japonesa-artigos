@@ -4,7 +4,7 @@ import { ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
-import { isPromoActive } from '@/utils/promoPrice';
+import { isPromoActive, usePromoExpiryTick } from '@/utils/promoPrice';
 import duckEasterEgg from '@/assets/duck-easter-egg.gif';
 
 interface ProductCardProps {
