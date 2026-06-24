@@ -233,6 +233,8 @@ export default function PDV() {
     [selectedCustomer, tiers]
   );
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [scoreDialogCustomer, setScoreDialogCustomer] = useState<{ id: string; full_name: string; company_name: string | null; score: number } | null>(null);
+
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
     emission_type: 'nfce' as 'nfce' | 'nfe',
