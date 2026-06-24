@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye, Ban, Loader2, RefreshCw } from 'lucide-react';
+import { FileText, Download, AlertCircle, ArrowDown, ArrowUp, Calendar, Hash, Eye, Ban, Loader2, RefreshCw, User, DollarSign } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -29,6 +29,9 @@ interface NFE {
   modelo: string | null;
   fornecedor_nome: string | null;
   fornecedor_cnpj: string | null;
+  valor_total: number | null;
+  customer_name: string | null;
+  customer_company_name: string | null;
 }
 
 interface NFEListProps {
@@ -165,7 +168,58 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setNfes(data || []);
+
+      // Enriquece com dados do cliente através do pedido (busca em lotes)
+      const raw = (data || []) as any[];
+      const orderIds = [...new Set(raw.map((n) => n.order_id).filter(Boolean))];
+      const orderCustomerMap: Record<string, string | null> = {};
+      const customerMap: Record<string, { full_name?: string; company_name?: string }> = {};
+
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+
+      if (orderIds.length > 0) {
+        for (const batch of chunk(orderIds, 100)) {
+          const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('id, customer_id')
+            .in('id', batch);
+          if (ordersError) console.error('[NFEList] Erro ao buscar pedidos:', ordersError);
+          ordersData?.forEach((o: any) => {
+            orderCustomerMap[o.id] = o.customer_id;
+          });
+        }
+
+        const customerIds = [...new Set(Object.values(orderCustomerMap).filter(Boolean))];
+        if (customerIds.length > 0) {
+          for (const batch of chunk(customerIds, 100)) {
+            const { data: customersData, error: customersError } = await supabase
+              .from('customers')
+              .select('id, full_name, company_name')
+              .in('id', batch);
+            if (customersError) console.error('[NFEList] Erro ao buscar clientes:', customersError);
+            customersData?.forEach((c: any) => {
+              customerMap[c.id] = { full_name: c.full_name, company_name: c.company_name };
+            });
+          }
+        }
+      }
+
+      const enriched: NFE[] = raw.map((n) => {
+        const customerId = orderCustomerMap[n.order_id];
+        const customer = customerId ? customerMap[customerId] : null;
+        return {
+          ...n,
+          valor_total: n.valor_total ?? null,
+          customer_name: customer?.full_name || null,
+          customer_company_name: customer?.company_name || null,
+        };
+      });
+
+      setNfes(enriched);
     } catch (error: any) {
       const msg = String(error?.message || '');
       const isNetwork = msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network');
@@ -244,6 +298,23 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
                     <span className="truncate">{nfe.nfe_key}</span>
                   </div>
                 )}
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {(nfe.customer_name || nfe.customer_company_name) && (
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <User className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {nfe.customer_company_name || nfe.customer_name}
+                      </span>
+                    </span>
+                  )}
+                  {nfe.valor_total !== null && nfe.valor_total !== undefined && (
+                    <span className="flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                      {nfe.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex items-center justify-between gap-2 pt-2 border-t flex-wrap">
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
