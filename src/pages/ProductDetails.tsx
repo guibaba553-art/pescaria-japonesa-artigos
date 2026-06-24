@@ -136,6 +136,7 @@ export default function ProductDetails() {
 
   const productUrl = `${window.location.origin}/produto/${product.id}`;
   const productImage = displayImages[0] || 'https://lovable.dev/opengraph-image-p98pqg.png';
+  usePromoExpiryTick(product as any);
   const productPromoActive = isPromoActive(product as any);
   const effectivePrice = effectiveProductPrice(product as any);
   const seoTitle = `${product.name} | JAPAS Pesca`;
