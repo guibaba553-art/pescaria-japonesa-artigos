@@ -2477,9 +2477,9 @@ export default function PDV() {
                                 {customerTier.block_purchase && (
                                   <span className="text-xs font-semibold text-destructive">Venda bloqueada</span>
                                 )}
-                                {!customerTier.block_purchase && customerTier.discount_percent > 0 && (
+                                {!customerTier.block_purchase && customerTier.allow_discount && customerTier.discount_percent > 0 && (
                                   <span className="text-xs font-semibold text-emerald-600">
-                                    {customerTier.discount_percent}% off aplicado
+                                    {customerTier.discount_percent}% off disponível
                                   </span>
                                 )}
                                 {!customerTier.allow_discount && !customerTier.block_purchase && (
