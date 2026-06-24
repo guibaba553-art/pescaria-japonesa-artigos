@@ -13,7 +13,7 @@ import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
 import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
-import { effectiveProductPrice, isPromoActive, getProductDisplayImage } from '@/utils/promoPrice';
+import { effectiveProductPrice, isPromoActive, getProductDisplayImage, usePromoExpiryTick } from '@/utils/promoPrice';
 import { getStockMessage } from '@/utils/stockDisplay';
 
 export default function ProductDetails() {
