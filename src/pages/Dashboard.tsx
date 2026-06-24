@@ -626,11 +626,17 @@ export default function Dashboard() {
                         if (r?.from && r?.to) {
                           setRange({ from: startOfDay(r.from), to: endOfDay(r.to) });
                           setPeriod('custom');
-                          setDatePickerOpen(false);
                         }
                       }}
                       numberOfMonths={2}
                     />
+                    <Button
+                      className="w-full"
+                      onClick={() => setDatePickerOpen(false)}
+                      disabled={!range?.from || !range?.to}
+                    >
+                      Confirmar período
+                    </Button>
                   </div>
                 </PopoverContent>
               </Popover>
