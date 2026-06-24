@@ -2841,9 +2841,37 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Toggle Pessoa Física / Jurídica */}
+            {/* Tipo de nota fiscal */}
             <div className="space-y-2">
-              <Label>Tipo de cliente *</Label>
+              <Label>Tipo de nota fiscal *</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerForm.emission_type === 'nfce' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfce' })}
+                >
+                  NFC-e (consumidor)
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerForm.emission_type === 'nfe' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfe' })}
+                >
+                  NF-e (com endereço)
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {customerForm.emission_type === 'nfce'
+                  ? 'NFC-e exige apenas nome e CPF ou CNPJ.'
+                  : 'NF-e exige endereço completo do destinatário.'}
+              </p>
+            </div>
+
+            {/* Tipo de documento */}
+            <div className="space-y-2">
+              <Label>Documento *</Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -2851,7 +2879,7 @@ export default function PDV() {
                   className="flex-1"
                   onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
                 >
-                  Pessoa Física (CPF)
+                  CPF
                 </Button>
                 <Button
                   type="button"
@@ -2859,7 +2887,7 @@ export default function PDV() {
                   className="flex-1"
                   onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
                 >
-                  Pessoa Jurídica (CNPJ)
+                  CNPJ
                 </Button>
               </div>
             </div>
