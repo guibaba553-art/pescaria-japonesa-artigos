@@ -349,40 +349,43 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold mb-2">
-                <History className="w-4 h-4" /> Histórico ({events.length})
-              </div>
-              {loading ? (
-                <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" /> Carregando...
+            {!compact && (
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+                  <History className="w-4 h-4" /> Histórico ({events.length})
                 </div>
-              ) : events.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-6 border rounded-md">
-                  Nenhum evento de pontuação ainda.
-                </div>
-              ) : (
-                <div className="border rounded-md divide-y max-h-80 overflow-auto">
-                  {events.map((e) => (
-                    <div key={e.id} className="flex items-start gap-3 p-2 text-sm">
-                      <div
-                        className={`shrink-0 font-bold tabular-nums w-12 text-right ${
-                          e.points_delta > 0 ? 'text-emerald-600' : 'text-destructive'
-                        }`}
-                      >
-                        {e.points_delta > 0 ? `+${e.points_delta}` : e.points_delta}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate">{e.reason}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {new Date(e.created_at).toLocaleString('pt-BR')} · {e.source}
+                {loading ? (
+                  <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Carregando...
+                  </div>
+                ) : events.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-6 border rounded-md">
+                    Nenhum evento de pontuação ainda.
+                  </div>
+                ) : (
+                  <div className="border rounded-md divide-y max-h-80 overflow-auto">
+                    {events.map((e) => (
+                      <div key={e.id} className="flex items-start gap-3 p-2 text-sm">
+                        <div
+                          className={`shrink-0 font-bold tabular-nums w-12 text-right ${
+                            e.points_delta > 0 ? 'text-emerald-600' : 'text-destructive'
+                          }`}
+                        >
+                          {e.points_delta > 0 ? `+${e.points_delta}` : e.points_delta}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate">{e.reason}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {new Date(e.created_at).toLocaleString('pt-BR')} · {e.source}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
       </DialogContent>
