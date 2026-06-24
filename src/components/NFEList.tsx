@@ -29,6 +29,9 @@ interface NFE {
   modelo: string | null;
   fornecedor_nome: string | null;
   fornecedor_cnpj: string | null;
+  valor_total: number | null;
+  customer_name: string | null;
+  customer_company_name: string | null;
 }
 
 interface NFEListProps {
