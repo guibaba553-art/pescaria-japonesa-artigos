@@ -2342,7 +2342,33 @@ export default function PDV() {
                         </Button>
                       )}
                     </div>
+                    {customerTier && customerTier.allow_discount && !customerTier.block_purchase && customerTier.discount_percent > 0 && (() => {
+                      const subtotal = calculateSubtotal();
+                      const disc = (subtotal * customerTier.discount_percent) / 100;
+                      const currentVal = parseFloat((discountInput || '').replace(',', '.')) || 0;
+                      const already = Math.abs(currentVal - disc) < 0.01;
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={already ? 'secondary' : 'outline'}
+                          className="w-full border-emerald-500/40 text-emerald-700 hover:bg-emerald-50"
+                          disabled={already || subtotal <= 0}
+                          onClick={() => setDiscountInput(disc.toFixed(2).replace('.', ','))}
+                        >
+                          <Award className="w-3.5 h-3.5 mr-1.5" />
+                          {already
+                            ? `Desconto do nível ${customerTier.name} aplicado (${customerTier.discount_percent}%)`
+                            : `Aplicar ${customerTier.discount_percent}% — nível ${customerTier.name}`}
+                        </Button>
+                      );
+                    })()}
                   </div>
+                  {selectedCustomer && customerTier && !customerTier.allow_discount && !customerTier.block_purchase && (
+                    <p className="text-[11px] text-orange-600 font-medium">
+                      Cliente nível {customerTier.name} não permite descontos.
+                    </p>
+                  )}
 
                   {getDiscountValue() !== 0 && (
                     <div className="space-y-1 text-sm">
