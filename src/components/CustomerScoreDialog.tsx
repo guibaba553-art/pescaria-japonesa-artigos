@@ -31,7 +31,9 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   customer: { id: string; full_name: string; company_name: string | null; score: number } | null;
   onChanged?: (newScore: number) => void;
+  compact?: boolean;
 }
+
 
 export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged }: Props) {
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
