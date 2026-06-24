@@ -39,7 +39,7 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   const [events, setEvents] = useState<ScoreEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [delta, setDelta] = useState<number>(1);
+  const [delta, setDelta] = useState<number>(0);
   const [reason, setReason] = useState('');
   const [pendingSign, setPendingSign] = useState<1 | -1>(1);
 
@@ -147,8 +147,9 @@ export function CustomerScoreDialog({ open, onOpenChange, customer, onChanged, c
     setCurrentScore(newScore);
     onChanged?.(newScore);
     setReason('');
-    setDelta(1);
-    toast({ title: `${amount > 0 ? '+' : ''}${amount} ponto(s)`, description: 'Pontuação atualizada' });
+    setDelta(0);
+    setPendingSign(1);
+    onOpenChange(false);
     loadEvents();
   };
 
