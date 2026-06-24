@@ -233,6 +233,7 @@ export default function PDV() {
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
+    emission_type: 'nfce' as 'nfce' | 'nfe',
     doc_type: 'cpf' as 'cpf' | 'cnpj',
     cpf: '',
     cnpj: '',
@@ -1383,43 +1384,54 @@ export default function PDV() {
   const handleSaveCustomer = async () => {
     if (savingCustomer) return; // trava duplo clique
     const isCnpj = customerForm.doc_type === 'cnpj';
+    const isNfe = customerForm.emission_type === 'nfe';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
+    const docDigits = docValue.replace(/\D/g, '');
 
-    // Validar campos básicos
-    if (!customerForm.full_name.trim() || !docValue.trim() ||
-        !customerForm.cep.trim() || !customerForm.street.trim() ||
-        !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
+    // Validação mínima (NFC-e e NF-e): nome + documento válido
+    if (!customerForm.full_name.trim() || !docValue.trim()) {
       toast({
         title: 'Campos obrigatórios',
-        description: `Preencha todos os campos do cliente (incluindo ${isCnpj ? 'CNPJ' : 'CPF'})`,
-        variant: 'destructive'
+        description: `Informe o nome e o ${isCnpj ? 'CNPJ' : 'CPF'} do cliente.`,
+        variant: 'destructive',
       });
       return;
     }
+    if (isCnpj && docDigits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    if (!isCnpj && docDigits.length !== 11) {
+      toast({ title: 'CPF inválido', description: 'O CPF deve ter 11 dígitos.', variant: 'destructive' });
+      return;
+    }
 
-    // Validações extras para CNPJ (necessárias para emissão de NF-e)
-    if (isCnpj) {
-      const cnpjDigits = customerForm.cnpj.replace(/\D/g, '');
-      if (cnpjDigits.length !== 14) {
-        toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+    // NF-e exige endereço completo + município/UF/IBGE; CNPJ exige razão social e IE indicador
+    if (isNfe) {
+      if (!customerForm.cep.trim() || !customerForm.street.trim() ||
+          !customerForm.number.trim() || !customerForm.neighborhood.trim() ||
+          !customerForm.municipio.trim() || !customerForm.uf.trim() ||
+          !customerForm.codigo_municipio_ibge.trim()) {
+        toast({
+          title: 'Endereço incompleto',
+          description: 'Para emitir NF-e informe CEP, rua, número, bairro, município, UF e código IBGE.',
+          variant: 'destructive',
+        });
         return;
       }
-      if (!customerForm.company_name.trim()) {
-        toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.municipio.trim() || !customerForm.uf.trim() || !customerForm.codigo_municipio_ibge.trim()) {
-        toast({ title: 'Município incompleto', description: 'Informe município, UF e código IBGE (busque pelo CNPJ).', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.ie_indicador) {
-        toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
-        return;
-      }
-      // Se for contribuinte (1), exige IE; se isento (2) ou não contribuinte (9), grava ISENTO
-      if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
-        toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
-        return;
+      if (isCnpj) {
+        if (!customerForm.company_name.trim()) {
+          toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
+          return;
+        }
+        if (!customerForm.ie_indicador) {
+          toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
+          return;
+        }
+        if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
+          toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
+          return;
+        }
       }
       if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
         toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
@@ -1451,17 +1463,17 @@ export default function PDV() {
 
       const payload: any = {
         full_name: customerForm.full_name,
-        cep: customerForm.cep,
-        street: customerForm.street,
-        number: customerForm.number,
-        neighborhood: customerForm.neighborhood,
+        cep: customerForm.cep || null,
+        street: customerForm.street || null,
+        number: customerForm.number || null,
+        neighborhood: customerForm.neighborhood || null,
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
-        company_name: isCnpj ? customerForm.company_name : null,
+        company_name: isCnpj ? (customerForm.company_name || null) : null,
         complemento: customerForm.complemento || null,
         municipio: customerForm.municipio || null,
         uf: customerForm.uf || null,
-        codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
+        codigo_municipio_ibge: customerForm.codigo_municipio_ibge || null,
         inscricao_estadual: isCnpj
           ? (customerForm.inscricao_estadual.trim()
               ? customerForm.inscricao_estadual.trim()
@@ -1469,7 +1481,8 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
-        created_by: user!.id
+        preferred_emission_type: customerForm.emission_type,
+        created_by: user!.id,
       };
 
       const { data, error } = await supabase
@@ -1484,6 +1497,7 @@ export default function PDV() {
       setShowCustomerDialog(false);
       setCustomerForm({
         full_name: '',
+        emission_type: 'nfce',
         doc_type: 'cpf',
         cpf: '',
         cnpj: '',
@@ -2827,9 +2841,37 @@ export default function PDV() {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Toggle Pessoa Física / Jurídica */}
+            {/* Tipo de nota fiscal */}
             <div className="space-y-2">
-              <Label>Tipo de cliente *</Label>
+              <Label>Tipo de nota fiscal *</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={customerForm.emission_type === 'nfce' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfce' })}
+                >
+                  NFC-e (consumidor)
+                </Button>
+                <Button
+                  type="button"
+                  variant={customerForm.emission_type === 'nfe' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfe' })}
+                >
+                  NF-e (com endereço)
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {customerForm.emission_type === 'nfce'
+                  ? 'NFC-e exige apenas nome e CPF ou CNPJ.'
+                  : 'NF-e exige endereço completo do destinatário.'}
+              </p>
+            </div>
+
+            {/* Tipo de documento */}
+            <div className="space-y-2">
+              <Label>Documento *</Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -2837,7 +2879,7 @@ export default function PDV() {
                   className="flex-1"
                   onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
                 >
-                  Pessoa Física (CPF)
+                  CPF
                 </Button>
                 <Button
                   type="button"
@@ -2845,7 +2887,7 @@ export default function PDV() {
                   className="flex-1"
                   onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
                 >
-                  Pessoa Jurídica (CNPJ)
+                  CNPJ
                 </Button>
               </div>
             </div>
@@ -2929,117 +2971,121 @@ export default function PDV() {
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="cep">CEP *</Label>
-              <div className="relative">
-                <Input
-                  id="cep"
-                  placeholder="00000-000"
-                  value={customerForm.cep}
-                  onChange={(e) => {
-                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                    if (digits.length === 8) lookupCep(digits);
-                  }}
-                  onBlur={(e) => {
-                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                    if (digits.length === 8) lookupCep(digits);
-                  }}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData('text');
-                    const digits = sanitizeNumericInput(pasted).slice(0, 8);
-                    if (digits.length === 8) {
-                      e.preventDefault();
-                      setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                      lookupCep(digits);
-                    }
-                  }}
-                  maxLength={9}
-                  inputMode="numeric"
-                  autoComplete="postal-code"
-                />
-                {cepLoading && (
-                  <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+            {customerForm.emission_type === 'nfe' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="cep">CEP *</Label>
+                  <div className="relative">
+                    <Input
+                      id="cep"
+                      placeholder="00000-000"
+                      value={customerForm.cep}
+                      onChange={(e) => {
+                        const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                        setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                        if (digits.length === 8) lookupCep(digits);
+                      }}
+                      onBlur={(e) => {
+                        const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                        if (digits.length === 8) lookupCep(digits);
+                      }}
+                      onPaste={(e) => {
+                        const pasted = e.clipboardData.getData('text');
+                        const digits = sanitizeNumericInput(pasted).slice(0, 8);
+                        if (digits.length === 8) {
+                          e.preventDefault();
+                          setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                          lookupCep(digits);
+                        }
+                      }}
+                      maxLength={9}
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                    />
+                    {cepLoading && (
+                      <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="street">Rua *</Label>
+                  <Input
+                    id="street"
+                    placeholder="Nome da rua"
+                    value={customerForm.street}
+                    onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="number">Número *</Label>
+                    <Input
+                      id="number"
+                      placeholder="123"
+                      value={customerForm.number}
+                      onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="neighborhood">Bairro *</Label>
+                    <Input
+                      id="neighborhood"
+                      placeholder="Bairro"
+                      value={customerForm.neighborhood}
+                      onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="municipio">Município *</Label>
+                    <Input
+                      id="municipio"
+                      placeholder="Cidade"
+                      value={customerForm.municipio}
+                      onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="uf">UF *</Label>
+                    <Input
+                      id="uf"
+                      placeholder="SP"
+                      maxLength={2}
+                      value={customerForm.uf}
+                      onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+                </div>
+
+                {customerForm.doc_type === 'cpf' && (
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                    <Label htmlFor="inscricao_estadual_cpf" className="text-xs font-semibold">
+                      Inscrição Estadual (opcional — produtor rural)
+                    </Label>
+                    <Input
+                      id="inscricao_estadual_cpf"
+                      placeholder="Somente números (deixe em branco se não tiver)"
+                      value={customerForm.inscricao_estadual}
+                      onChange={(e) =>
+                        setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                      }
+                      inputMode="numeric"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Preencha apenas se o cliente PF tiver IE (ex.: produtor rural).
+                    </p>
+                  </div>
                 )}
-              </div>
-              <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="street">Rua *</Label>
-              <Input
-                id="street"
-                placeholder="Nome da rua"
-                value={customerForm.street}
-                onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="number">Número *</Label>
-                <Input
-                  id="number"
-                  placeholder="123"
-                  value={customerForm.number}
-                  onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Bairro *</Label>
-                <Input
-                  id="neighborhood"
-                  placeholder="Bairro"
-                  value={customerForm.neighborhood}
-                  onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="municipio">Município {customerForm.doc_type === 'cnpj' && '*'}</Label>
-                <Input
-                  id="municipio"
-                  placeholder="Cidade"
-                  value={customerForm.municipio}
-                  onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="uf">UF {customerForm.doc_type === 'cnpj' && '*'}</Label>
-                <Input
-                  id="uf"
-                  placeholder="SP"
-                  maxLength={2}
-                  value={customerForm.uf}
-                  onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
-                />
-              </div>
-            </div>
-
-            {customerForm.doc_type === 'cpf' && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <Label htmlFor="inscricao_estadual_cpf" className="text-xs font-semibold">
-                  Inscrição Estadual (opcional — produtor rural)
-                </Label>
-                <Input
-                  id="inscricao_estadual_cpf"
-                  placeholder="Somente números (deixe em branco se não tiver)"
-                  value={customerForm.inscricao_estadual}
-                  onChange={(e) =>
-                    setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
-                  }
-                  inputMode="numeric"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Preencha apenas se o cliente PF tiver IE (ex.: produtor rural).
-                </p>
-              </div>
+              </>
             )}
 
-            {customerForm.doc_type === 'cnpj' && (
+            {customerForm.emission_type === 'nfe' && customerForm.doc_type === 'cnpj' && (
               <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
                 <p className="text-xs font-semibold text-orange-900">
                   Dados obrigatórios para emissão de NF-e
