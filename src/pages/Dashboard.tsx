@@ -18,7 +18,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
-import { ExpenseTracker } from '@/components/ExpenseTracker';
+
 
 interface ChannelStats {
   totalRevenue: number;
