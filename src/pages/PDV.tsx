@@ -2807,40 +2807,13 @@ export default function PDV() {
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Cadastrar Cliente</DialogTitle>
+            <DialogTitle>Cadastro do Cliente</DialogTitle>
             <DialogDescription>
               Preencha os dados do cliente para vincular à venda
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Tipo de nota fiscal */}
-            <div className="space-y-2">
-              <Label>Tipo de nota fiscal *</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={customerForm.emission_type === 'nfce' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfce' })}
-                >
-                  NFC-e (consumidor)
-                </Button>
-                <Button
-                  type="button"
-                  variant={customerForm.emission_type === 'nfe' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, emission_type: 'nfe' })}
-                >
-                  NF-e (com endereço)
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {customerForm.emission_type === 'nfce'
-                  ? 'NFC-e exige apenas nome e CPF ou CNPJ.'
-                  : 'NF-e exige endereço completo do destinatário.'}
-              </p>
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="full_name">
