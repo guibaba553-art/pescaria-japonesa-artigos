@@ -418,6 +418,7 @@ export default function PDV() {
         uf: d.uf || prev.uf,
         codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
         email: d.email || prev.email,
+        phone: d.phone || prev.phone,
         // Focus NFe traz IE direto da SEFAZ — preenche e marca como contribuinte
         inscricao_estadual: ieFromFocus && ieAtivaFromFocus ? ieFromFocus : prev.inscricao_estadual,
         ie_indicador: ieFromFocus && ieAtivaFromFocus ? '1' : prev.ie_indicador,
