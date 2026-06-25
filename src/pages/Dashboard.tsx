@@ -551,12 +551,6 @@ export default function Dashboard() {
     title: string; icon: React.ReactNode; stats: ChannelStats; color: string;
     dataKey: 'pdv' | 'site'; orderKey: 'pdvOrders' | 'siteOrders'; top: ProductSales[];
   }) => {
-    const [search, setSearch] = useState('');
-    const filtered = top.filter((p) =>
-      p.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .includes(search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
-    );
-
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
