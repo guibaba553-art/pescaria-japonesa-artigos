@@ -2359,6 +2359,16 @@ export default function PDV() {
             </Card>
           </div>
 
+          {/* Resize handle: Produtos | Carrinho */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group"
+            style={{ left: `${columnWidths.customer + columnWidths.products}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'products-cart')}
+            title="Arraste para redimensionar (produtos × carrinho)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary transition-colors rounded-full" />
+          </div>
+
           {/* Coluna 3 — Carrinho e Pagamento */}
           <div
             id="pdv-cart-panel"
