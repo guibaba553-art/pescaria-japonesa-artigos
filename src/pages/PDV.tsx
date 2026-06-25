@@ -2199,8 +2199,8 @@ export default function PDV() {
                   </>
                 ) : (
                   <>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Comece digitando o <strong>CPF</strong> ou <strong>CNPJ</strong> do cliente para liberar o painel com perfil de compra, pagamento preferido e tempo de atendimento.
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                      Digite o <strong>CPF/CNPJ</strong> ou nome para liberar perfil, pagamento preferido e tempo de atendimento.
                     </p>
                     <CustomerSearchCombobox
                       placeholder="CPF, CNPJ ou nome..."
