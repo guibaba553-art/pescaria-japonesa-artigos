@@ -2378,7 +2378,7 @@ export default function PDV() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-r-none h-[calc(100vh-12rem)]">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
                   <span>Carrinho</span>
