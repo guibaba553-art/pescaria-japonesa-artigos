@@ -2083,7 +2083,7 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="p-3 lg:p-6 lg:-mt-4">
+      <div className="py-3 lg:py-6 px-0 lg:-mt-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Coluna 1 — Cliente (desktop) */}
