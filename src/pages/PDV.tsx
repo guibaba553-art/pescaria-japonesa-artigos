@@ -2277,11 +2277,11 @@ export default function PDV() {
             </Card>
           </div>
 
-          {/* Carrinho e Pagamento */}
+          {/* Coluna 3 — Carrinho e Pagamento */}
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-3 lg:space-y-4 order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
