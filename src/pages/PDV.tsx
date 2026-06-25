@@ -2215,11 +2215,11 @@ export default function PDV() {
                         }
                       }}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button
                         size="sm"
                         onClick={() => setShowCustomerDialog(true)}
-                        className="bg-orange-500 hover:bg-orange-600"
+                        className="bg-orange-500 hover:bg-orange-600 w-full"
                       >
                         <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
                       </Button>
@@ -2227,6 +2227,7 @@ export default function PDV() {
                         size="sm"
                         variant="outline"
                         onClick={handleConsumidorFinal}
+                        className="w-full"
                       >
                         Consumidor final
                       </Button>
