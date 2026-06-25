@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Trash2, UserPlus, Loader2, Users, ShieldCheck,
   Package, ShoppingCart, DollarSign, TrendingUp,
-  ClipboardList, CalendarRange, ScanBarcode, Calculator,
+  ClipboardList, CalendarRange, ScanBarcode, Calculator, UserSquare2,
 } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 
