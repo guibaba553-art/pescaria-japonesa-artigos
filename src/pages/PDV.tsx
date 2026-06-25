@@ -3195,98 +3195,11 @@ export default function PDV() {
                 </div>
 
                 {!isCnpj && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="cep">CEP</Label>
-                      <div className="relative">
-                        <Input
-                          id="cep"
-                          placeholder="00000-000"
-                          value={customerForm.cep}
-                          onChange={(e) => {
-                            const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                            setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                            if (digits.length === 8) lookupCep(digits);
-                          }}
-                          onBlur={(e) => {
-                            const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                            if (digits.length === 8) lookupCep(digits);
-                          }}
-                          maxLength={9}
-                          inputMode="numeric"
-                          autoComplete="postal-code"
-                        />
-                        {cepLoading && (
-                          <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="street">Rua</Label>
-                      <Input
-                        id="street"
-                        placeholder="Nome da rua"
-                        value={customerForm.street}
-                        onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="number">Número</Label>
-                        <Input
-                          id="number"
-                          placeholder="123"
-                          value={customerForm.number}
-                          onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="neighborhood">Bairro</Label>
-                        <Input
-                          id="neighborhood"
-                          placeholder="Bairro"
-                          value={customerForm.neighborhood}
-                          onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="municipio">Município</Label>
-                        <Input
-                          id="municipio"
-                          placeholder="Cidade"
-                          value={customerForm.municipio}
-                          onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="uf">UF</Label>
-                        <Input
-                          id="uf"
-                          placeholder="SP"
-                          maxLength={2}
-                          value={customerForm.uf}
-                          onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                      <Label htmlFor="inscricao_estadual_cpf" className="text-xs font-semibold">
-                        Inscrição Estadual (produtor rural)
-                      </Label>
-                      <Input
-                        id="inscricao_estadual_cpf"
-                        placeholder="Somente números (deixe em branco se não tiver)"
-                        value={customerForm.inscricao_estadual}
-                        onChange={(e) =>
-                          setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
-                        }
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </>
+                  <p className="text-xs text-muted-foreground">
+                    Para CPF não é necessário endereço nem inscrição estadual.
+                  </p>
                 )}
+
 
                 {isCnpj && customerForm.ie_indicador !== '1' && (
                   <div className="space-y-2">
