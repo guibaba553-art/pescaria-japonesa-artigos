@@ -406,8 +406,12 @@ export default function Dashboard() {
       }
       setStockHistory(history.reverse());
 
+      // Vendas diárias dentro do período por canal
+      const byDay: Record<string, SalesData> = {};
 
+      delivered
         .filter((o) => {
+
           const d = new Date(o.created_at);
           return d >= start && d <= end;
         })
