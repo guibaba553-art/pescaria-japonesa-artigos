@@ -2083,11 +2083,11 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="py-3 lg:py-6 px-4 lg:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:max-h-[calc(100vh-200px)] lg:overflow-hidden">
+      <div className="flex-1 min-h-0 py-3 lg:py-6 px-4 lg:px-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full lg:overflow-hidden">
 
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-3 lg:h-[calc(100vh-200px)] lg:overflow-y-auto space-y-4 order-1">
+          <aside className="hidden lg:block lg:col-span-3 h-full space-y-4 order-1 overflow-y-auto">
 
             <Card className="border-primary/20">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
