@@ -483,12 +483,13 @@ export default function Dashboard() {
               ? Number(variation.stock || 0)
               : Number(product.stock || 0);
             if (!acc[name]) acc[name] = { name, quantity: 0, revenue: 0, stock: 0 };
-            acc[name].quantity += item.quantity;
-            acc[name].revenue += item.quantity * parseFloat(item.price_at_purchase);
+            acc[name].quantity += Number(item.quantity || 0);
+            acc[name].revenue += Number(item.quantity || 0) * parseFloat(item.price_at_purchase);
             acc[name].stock = itemStock;
           });
         return Object.values(acc)
           .filter((p) => p.stock > 0)
+          .map((p) => ({ ...p, quantity: Math.round(p.quantity), revenue: Math.round(p.revenue * 100) / 100 }))
           .sort((a, b) => b.revenue - a.revenue);
       };
 
@@ -610,30 +611,68 @@ export default function Dashboard() {
     const byQuantity = [...filtered].sort((a, b) => b.quantity - a.quantity);
     const byRevenue = [...filtered].sort((a, b) => b.revenue - a.revenue);
 
-    const Table = ({ list, sortKey }: { list: ProductSales[]; sortKey: 'quantity' | 'revenue' }) => (
-      <div className="overflow-auto max-h-[460px]">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold w-12">#</th>
-              <th className="px-3 py-2 text-left font-semibold">Produto</th>
-              <th className="px-3 py-2 text-right font-semibold w-24">Qtd</th>
-              <th className="px-3 py-2 text-right font-semibold w-32">Receita</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((p, i) => (
-              <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
-                <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
-                <td className="px-3 py-2 font-medium">{p.name}</td>
-                <td className={`px-3 py-2 text-right tabular-nums ${sortKey === 'quantity' ? 'font-bold' : ''}`}>{p.quantity}</td>
-                <td className={`px-3 py-2 text-right tabular-nums ${sortKey === 'revenue' ? 'font-bold' : ''}`}>{formatBRL(p.revenue)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
+    const Leaderboard = ({ list, sortKey }: { list: ProductSales[]; sortKey: 'quantity' | 'revenue' }) => {
+      const total = list.reduce((s, p) => s + (sortKey === 'revenue' ? p.revenue : p.quantity), 0) || 1;
+      return (
+        <div className="space-y-2 max-h-[520px] overflow-auto pr-1">
+          {list.map((p, i) => {
+            const rank = i + 1;
+            const value = sortKey === 'revenue' ? p.revenue : p.quantity;
+            const share = total > 0 ? (value / total) * 100 : 0;
+            const isTop3 = rank <= 3;
+            const rankClass =
+              rank === 1
+                ? 'bg-yellow-400 text-yellow-950 ring-2 ring-yellow-200'
+                : rank === 2
+                ? 'bg-slate-300 text-slate-900 ring-2 ring-slate-200'
+                : rank === 3
+                ? 'bg-amber-600 text-white ring-2 ring-amber-200'
+                : 'bg-muted text-muted-foreground';
+            return (
+              <div
+                key={i}
+                className={`group flex items-center gap-3 rounded-xl border border-border/60 bg-card p-3 transition-all hover:shadow-sm hover:border-primary/30 ${isTop3 ? 'bg-primary/5' : ''}`}
+              >
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${rankClass}`}>
+                  {rank}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium text-sm" title={p.name}>{p.name}</span>
+                    <span className="shrink-0 text-sm font-semibold tabular-nums">
+                      {sortKey === 'revenue' ? formatBRL(p.revenue) : `${p.quantity.toLocaleString('pt-BR')} un`}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${Math.min(share, 100)}%` }}
+                      />
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {sortKey === 'revenue'
+                        ? `${p.quantity.toLocaleString('pt-BR')} vendidos`
+                        : formatBRL(p.revenue)}
+                    </span>
+                    {p.stock <= 5 && p.stock > 0 && (
+                      <Badge variant="outline" className="shrink-0 text-[10px] h-5 px-1.5 border-yellow-500/50 text-yellow-700">
+                        Baixo estoque
+                      </Badge>
+                    )}
+                    {p.stock <= 0 && (
+                      <Badge variant="outline" className="shrink-0 text-[10px] h-5 px-1.5 border-red-500/50 text-red-700">
+                        Sem estoque
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
 
     return (
       <div className="space-y-3">
@@ -657,10 +696,10 @@ export default function Dashboard() {
               <TabsTrigger value="quantity">Por quantidade</TabsTrigger>
             </TabsList>
             <TabsContent value="revenue">
-              <Table list={byRevenue} sortKey="revenue" />
+              <Leaderboard list={byRevenue} sortKey="revenue" />
             </TabsContent>
             <TabsContent value="quantity">
-              <Table list={byQuantity} sortKey="quantity" />
+              <Leaderboard list={byQuantity} sortKey="quantity" />
             </TabsContent>
           </Tabs>
         )}
