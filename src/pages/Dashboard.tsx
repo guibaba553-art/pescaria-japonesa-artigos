@@ -452,8 +452,7 @@ export default function Dashboard() {
             acc[name].revenue += item.quantity * parseFloat(item.price_at_purchase);
           });
         return Object.values(acc)
-          .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, 10);
+          .sort((a, b) => b.revenue - a.revenue);
       };
 
       setTopPdv(
