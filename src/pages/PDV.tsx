@@ -2154,36 +2154,42 @@ export default function PDV() {
         >
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:flex lg:flex-col space-y-4 order-1 min-w-0 lg:h-full lg:overflow-y-auto lg:pr-1">
-            <Card className="border-primary/20">
-              <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0">
+            <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <CardHeader className="p-4 pb-3 bg-white dark:bg-zinc-900 flex-row items-center justify-between space-y-0 border-b border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
-                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                    Identificação
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-black shadow-sm">1</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                    Identificação do Cliente
                   </CardTitle>
                 </div>
                 {selectedCustomer && customerSelectedAt && (
-                  <Badge variant="outline" className="text-[9px] font-bold uppercase bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300">
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900">
                     em atendimento
-                  </Badge>
+                  </span>
                 )}
               </CardHeader>
-              <CardContent className="p-3 pt-0 space-y-3">
+              <CardContent className={cn("p-4 space-y-4", selectedCustomer && "bg-primary/5")}>
                 {selectedCustomer ? (
                   <>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shrink-0 shadow">
+                        {(selectedCustomer.company_name || selectedCustomer.full_name || '?').slice(0,2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate leading-tight">
                           {selectedCustomer.company_name || selectedCustomer.full_name}
                         </p>
-                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                        <p className="text-[11px] text-primary font-bold uppercase tracking-wide mt-0.5">
+                          {customerTier?.name ? `Consumidor ${customerTier.name}` : 'Cliente'}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                           {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
                         </p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="shrink-0 h-7 w-7 p-0"
+                        className="shrink-0 h-7 w-7 p-0 rounded-full"
                         onClick={() => setSelectedCustomer(null)}
                       >
                         <X className="w-3.5 h-3.5" />
@@ -2193,7 +2199,7 @@ export default function PDV() {
                   </>
                 ) : (
                   <>
-                    <p className="text-[11px] text-muted-foreground leading-snug">
+                    <p className="text-[12px] text-muted-foreground leading-snug">
                       Digite o <strong>CPF/CNPJ</strong> ou nome para liberar perfil, pagamento preferido e tempo de atendimento.
                     </p>
                     <CustomerSearchCombobox
@@ -2213,15 +2219,15 @@ export default function PDV() {
                       <Button
                         size="sm"
                         onClick={() => setShowCustomerDialog(true)}
-                        className="bg-orange-500 hover:bg-orange-600 w-full"
+                        className="w-full rounded-xl"
                       >
-                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar novo
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={handleConsumidorFinal}
-                        className="w-full"
+                        className="w-full rounded-xl"
                       >
                         Consumidor final
                       </Button>
@@ -2231,6 +2237,7 @@ export default function PDV() {
               </CardContent>
             </Card>
           </aside>
+
 
           {/* Resize handle: Cliente | Produtos */}
           <div
