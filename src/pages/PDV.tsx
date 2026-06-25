@@ -1578,6 +1578,46 @@ export default function PDV() {
     });
   };
 
+  const startResize = useCallback((
+    e: React.MouseEvent,
+    handle: 'customer-products' | 'products-cart'
+  ) => {
+    e.preventDefault();
+    const gridEl = document.getElementById('pdv-desktop-grid');
+    if (!gridEl) return;
+    const rect = gridEl.getBoundingClientRect();
+    const startX = e.clientX;
+    const startCustomer = columnWidths.customer;
+    const startProducts = columnWidths.products;
+    const startCart = columnWidths.cart;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
+
+      if (handle === 'customer-products') {
+        const newCustomer = Math.max(15, Math.min(40, startCustomer + deltaPct));
+        const newProducts = Math.max(30, Math.min(70, startProducts - deltaPct));
+        setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
+      } else {
+        const newProducts = Math.max(30, Math.min(70, startProducts + deltaPct));
+        const newCart = Math.max(15, Math.min(60, startCart - deltaPct));
+        setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [columnWidths]);
+
+  const resetColumnWidths = () => {
+    setColumnWidths({ customer: 25, products: 50, cart: 25 });
+  };
+
   const finalizeSale = async () => {
     // Guarda síncrona: bloqueia cliques duplos antes do estado React atualizar
     if (finalizingRef.current) return;
