@@ -650,7 +650,7 @@ export default function Dashboard() {
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                     {top.map((p, i) => (
                       <div key={i} className="flex justify-between items-center p-2 border rounded">
                         <span className="text-sm font-medium truncate flex-1">
