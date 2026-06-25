@@ -2744,6 +2744,7 @@ export type Database = {
         }
         Returns: Json
       }
+      can_access_pdv: { Args: { _user_id: string }; Returns: boolean }
       check_fiscal_rate_limit: {
         Args: {
           p_function_name: string
