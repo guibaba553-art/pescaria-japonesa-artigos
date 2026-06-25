@@ -173,7 +173,7 @@ export default function PDV() {
 
   // Larguras das colunas do PDV — editáveis manualmente
   const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
-    if (typeof window === 'undefined') return { customer: 20, products: 50, cart: 30 };
+    if (typeof window === 'undefined') return { customer: 15, products: 50, cart: 35 };
     try {
       const saved = localStorage.getItem('pdv:columnWidths');
       if (saved) {
@@ -183,7 +183,7 @@ export default function PDV() {
         }
       }
     } catch { /* ignore */ }
-    return { customer: 20, products: 50, cart: 30 };
+    return { customer: 15, products: 50, cart: 35 };
   });
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1603,12 +1603,12 @@ export default function PDV() {
       const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
 
       if (handle === 'customer-products') {
-        const newCustomer = Math.max(16, Math.min(30, startCustomer + deltaPct));
-        const newProducts = Math.max(40, Math.min(60, startProducts - deltaPct));
+        const newCustomer = Math.max(15, Math.min(30, startCustomer + deltaPct));
+        const newProducts = Math.max(40, Math.min(65, startProducts - deltaPct));
         setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
       } else {
-        const newProducts = Math.max(40, Math.min(60, startProducts + deltaPct));
-        const newCart = Math.max(25, Math.min(45, startCart - deltaPct));
+        const newProducts = Math.max(40, Math.min(65, startProducts + deltaPct));
+        const newCart = Math.max(25, Math.min(50, startCart - deltaPct));
         setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
       }
     };
@@ -1623,7 +1623,7 @@ export default function PDV() {
   }, [columnWidths]);
 
   const resetColumnWidths = () => {
-    setColumnWidths({ customer: 20, products: 50, cart: 30 });
+    setColumnWidths({ customer: 15, products: 50, cart: 35 });
   };
 
   const finalizeSale = async () => {
@@ -2151,7 +2151,7 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
+      <div className="w-full px-2 lg:px-4 lg:-mt-4">
 
         <div
           id="pdv-desktop-grid"
