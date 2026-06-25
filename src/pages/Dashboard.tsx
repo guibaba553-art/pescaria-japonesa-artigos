@@ -48,6 +48,16 @@ interface ProductSales {
   stock: number;
 }
 
+interface CustomerSales {
+  id: string;
+  name: string;
+  doc: string;
+  score: number;
+  orders: number;
+  revenue: number;
+  lastOrder: string | null;
+}
+
 interface LowStockProduct {
   id: string;
   name: string;
@@ -113,6 +123,7 @@ export default function Dashboard() {
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
+  const [customersList, setCustomersList] = useState<CustomerSales[]>([]);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -186,6 +197,25 @@ export default function Dashboard() {
           supabase.from('expenses').select('amount, expense_date'),
         ]);
 
+      // Buscar clientes (paginado)
+      const customers: any[] = [];
+      {
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('customers')
+            .select('id, full_name, cpf, cnpj, score')
+            .order('full_name', { ascending: true })
+            .range(from, from + pageSize - 1);
+          if (error) { console.error('Erro ao carregar clientes:', error); break; }
+          if (!page || page.length === 0) break;
+          customers.push(...page);
+          if (page.length < pageSize) break;
+          from += pageSize;
+        }
+      }
+
       // Buscar TODOS os pedidos (paginado — Supabase limita a 1000 por requisição)
       const orders: any[] = [];
       {
@@ -194,7 +224,7 @@ export default function Dashboard() {
         while (true) {
           const { data: page, error } = await supabase
             .from('orders')
-            .select('id, total_amount, shipping_cost, created_at, status, source')
+            .select('id, total_amount, shipping_cost, created_at, status, source, customer_id')
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
           if (error) throw error;
@@ -478,6 +508,33 @@ export default function Dashboard() {
           return order.status === 'entregado' && order.source !== 'pdv' && d >= start && d <= end;
         })
       );
+
+      // Ranking de clientes no período
+      const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+      const customerAcc: Record<string, CustomerSales> = {};
+      deliveredInRange.forEach((o: any) => {
+        if (!o.customer_id) return;
+        const c = customerMap.get(o.customer_id);
+        const name = c?.full_name || 'Cliente sem nome';
+        const doc = c?.cpf || c?.cnpj || '—';
+        if (!customerAcc[o.customer_id]) {
+          customerAcc[o.customer_id] = {
+            id: o.customer_id,
+            name,
+            doc,
+            score: Number(c?.score || 0),
+            orders: 0,
+            revenue: 0,
+            lastOrder: null,
+          };
+        }
+        const row = customerAcc[o.customer_id];
+        row.orders += 1;
+        row.revenue += parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost));
+        const d = new Date(o.created_at).toISOString();
+        if (!row.lastOrder || d > row.lastOrder) row.lastOrder = d;
+      });
+      setCustomersList(Object.values(customerAcc));
     } catch (error: any) {
       console.error('Erro ao carregar dashboard:', error);
       toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
@@ -611,6 +668,77 @@ export default function Dashboard() {
     );
   };
 
+  const CustomerTables = ({ customers }: { customers: CustomerSales[] }) => {
+    const [search, setSearch] = useState('');
+    const term = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const filtered = customers.filter((c) =>
+      c.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(term) ||
+      c.doc.toLowerCase().replace(/\D/g, '').includes(term.replace(/\D/g, ''))
+    );
+    const byQuantity = [...filtered].sort((a, b) => b.orders - a.orders);
+    const byRevenue = [...filtered].sort((a, b) => b.revenue - a.revenue);
+
+    const Table = ({ list, sortKey }: { list: CustomerSales[]; sortKey: 'orders' | 'revenue' }) => (
+      <div className="overflow-auto max-h-[460px]">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+            <tr>
+              <th className="px-3 py-2 text-left font-semibold w-12">#</th>
+              <th className="px-3 py-2 text-left font-semibold">Cliente</th>
+              <th className="px-3 py-2 text-right font-semibold w-24">Compras</th>
+              <th className="px-3 py-2 text-right font-semibold w-36">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((c, i) => (
+              <tr key={c.id} className="border-t border-border/60 hover:bg-muted/30">
+                <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                <td className="px-3 py-2">
+                  <div className="font-medium">{c.name}</div>
+                  <div className="text-xs text-muted-foreground">{c.doc}</div>
+                </td>
+                <td className={`px-3 py-2 text-right tabular-nums ${sortKey === 'orders' ? 'font-bold' : ''}`}>{c.orders}</td>
+                <td className={`px-3 py-2 text-right tabular-nums ${sortKey === 'revenue' ? 'font-bold' : ''}`}>{formatBRL(c.revenue)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+    return (
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente por nome ou documento..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {filtered.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            {search ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente comprou no período selecionado.'}
+          </div>
+        ) : (
+          <Tabs defaultValue="revenue" className="space-y-3">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="revenue">Por valor</TabsTrigger>
+              <TabsTrigger value="quantity">Por compras</TabsTrigger>
+            </TabsList>
+            <TabsContent value="revenue">
+              <Table list={byRevenue} sortKey="revenue" />
+            </TabsContent>
+            <TabsContent value="quantity">
+              <Table list={byQuantity} sortKey="orders" />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    );
+  };
+
   const ChannelSection = ({
     title, icon, stats, color, dataKey, orderKey, top,
   }: {
@@ -716,6 +844,11 @@ export default function Dashboard() {
   const lucroLiquido = lucroBruto - totalExpenses;
   const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
   const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
+
+  const customerRevenue = customersList.reduce((s, c) => s + c.revenue, 0);
+  const customerOrders = customersList.reduce((s, c) => s + c.orders, 0);
+  const customerAvgTicket = customerOrders > 0 ? customerRevenue / customerOrders : 0;
+  const activeCustomers = customersList.length;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -823,6 +956,9 @@ export default function Dashboard() {
             </TabsTrigger>
             <TabsTrigger value="estoque" className="gap-2">
               <Boxes className="h-4 w-4" /> Estoque
+            </TabsTrigger>
+            <TabsTrigger value="clientes" className="gap-2">
+              <Users className="h-4 w-4" /> Clientes
             </TabsTrigger>
 
             <TabsTrigger value="pdv" className="gap-2">
@@ -1159,6 +1295,43 @@ export default function Dashboard() {
                     </BarChart>
                   </ResponsiveContainer>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ============ CLIENTES ============ */}
+          <TabsContent value="clientes" className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Total de Clientes"
+                value={String(totalCustomers)}
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Clientes Ativos"
+                value={String(activeCustomers)}
+                hint="Compraram no período selecionado"
+                icon={<Users className="h-4 w-4 text-primary" />}
+              />
+              <StatCard
+                title="Receita de Clientes"
+                value={formatBRL(customerRevenue)}
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(customerAvgTicket)}
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Clientes</CardTitle>
+                <CardDescription>Ranking dos clientes que mais compraram no período</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CustomerTables customers={customersList} />
               </CardContent>
             </Card>
           </TabsContent>
