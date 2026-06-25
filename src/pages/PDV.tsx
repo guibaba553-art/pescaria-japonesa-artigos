@@ -2257,7 +2257,7 @@ export default function PDV() {
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                    <CustomerPdvInsights customer={selectedCustomer} />
+                    <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
                   </>
                 ) : (
                   <>
