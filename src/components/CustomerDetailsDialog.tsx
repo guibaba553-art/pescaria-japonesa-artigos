@@ -513,7 +513,7 @@ export function CustomerDetailsDialog({
                     </div>
                   )}
                 </TabsContent>
-              </ScrollArea>
+              </>
             )}
           </div>
         </Tabs>
