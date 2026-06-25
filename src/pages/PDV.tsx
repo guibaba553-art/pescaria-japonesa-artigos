@@ -34,7 +34,8 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Pencil
+  Pencil,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
@@ -124,6 +125,33 @@ interface CartItem {
   cartItemKey: string;
   customPrice?: number; // Preço unitário sobrescrito manualmente no PDV
   priceInput?: string;  // String editável do input (permite digitar "12,")
+}
+
+function StepIndicator({ step, label, active, complete }: { step: number; label: string; active: boolean; complete: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors',
+          complete
+            ? 'bg-primary text-primary-foreground'
+            : active
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+        )}
+      >
+        {complete ? <Check className="w-3 h-3" /> : step}
+      </div>
+      <span
+        className={cn(
+          'text-xs font-medium transition-colors hidden sm:block',
+          active || complete ? 'text-foreground' : 'text-muted-foreground'
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
 }
 
 export default function PDV() {
@@ -2907,341 +2935,406 @@ export default function PDV() {
 
 
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Cadastro do Cliente</DialogTitle>
-            <DialogDescription>
-              Preencha os dados do cliente para vincular à venda
-            </DialogDescription>
-          </DialogHeader>
-          
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0 sm:rounded-2xl">
           {(() => {
             const isCnpj = customerForm.doc_type === 'cnpj';
             const docDigits = (isCnpj ? customerForm.cnpj : customerForm.cpf).replace(/\D/g, '');
             const docComplete = isCnpj ? docDigits.length === 14 : docDigits.length === 11;
-            const requiredFilled = docComplete && (
-              isCnpj
-                ? (
-                    customerForm.full_name.trim() !== '' &&
-                    customerForm.cep.replace(/\D/g, '').length === 8 &&
-                    customerForm.street.trim() !== '' &&
-                    customerForm.number.trim() !== '' &&
-                    customerForm.neighborhood.trim() !== '' &&
-                    customerForm.municipio.trim() !== '' &&
-                    customerForm.uf.trim() !== '' &&
-                    customerForm.codigo_municipio_ibge.trim() !== '' &&
-                    (customerForm.ie_indicador !== '1' || customerForm.inscricao_estadual.trim() !== '')
-                  )
-                : customerForm.full_name.trim() !== ''
-            );
+            const cnpjRequiredFilled =
+              customerForm.full_name.trim() !== '' &&
+              customerForm.cep.replace(/\D/g, '').length === 8 &&
+              customerForm.street.trim() !== '' &&
+              customerForm.number.trim() !== '' &&
+              customerForm.neighborhood.trim() !== '' &&
+              customerForm.municipio.trim() !== '' &&
+              customerForm.uf.trim() !== '' &&
+              customerForm.codigo_municipio_ibge.trim() !== '' &&
+              (customerForm.ie_indicador !== '1' || customerForm.inscricao_estadual.trim() !== '');
+            const requiredFilled = docComplete && (isCnpj ? cnpjRequiredFilled : customerForm.full_name.trim() !== '');
+            const step1Complete = docComplete;
+            const step2Complete = requiredFilled;
             return (
-          <div className="space-y-4">
-
-            {/* PASSO 1 — Documento */}
-            <div className="space-y-2">
-              <Label htmlFor="documento">CPF ou CNPJ *</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="documento"
-                    placeholder="Digite CPF (11) ou CNPJ (14)"
-                    value={isCnpj ? customerForm.cnpj : customerForm.cpf}
-                    onChange={(e) => {
-                      const digits = sanitizeNumericInput(e.target.value).slice(0, 14);
-                      const willBeCnpj = digits.length > 11;
-                      if (willBeCnpj) {
-                        const f = digits
-                          .replace(/^(\d{2})(\d)/, '$1.$2')
-                          .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-                          .replace(/\.(\d{3})(\d)/, '.$1/$2')
-                          .replace(/(\d{4})(\d)/, '$1-$2');
-                        setCustomerForm({ ...customerForm, doc_type: 'cnpj', cnpj: f, cpf: '' });
-                        if (digits.length === 14) lookupCnpj(digits);
-                      } else {
-                        setCustomerForm({ ...customerForm, doc_type: 'cpf', cpf: formatCPF(digits), cnpj: '' });
-                        if (digits.length === 11) lookupCpf(digits);
-                      }
-                    }}
-                    maxLength={18}
-                    inputMode="numeric"
-                  />
-                  {(cpfLoading || cnpjLoading) && (
-                    <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-                {isCnpj && (
-                  <Button
+              <>
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4 flex items-start justify-between border-b border-border/50">
+                  <div>
+                    <DialogTitle className="text-xl font-bold tracking-tight">Cadastro do Cliente</DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground mt-1">
+                      Preencha os dados para vincular à venda
+                    </DialogDescription>
+                  </div>
+                  <button
                     type="button"
-                    variant="outline"
-                    disabled={cnpjLoading}
-                    onClick={() => lookupCnpj(customerForm.cnpj.replace(/\D/g, ''))}
+                    onClick={() => setShowCustomerDialog(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted"
                   >
-                    {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
-                  </Button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Identificamos automaticamente se é CPF ou CNPJ pela quantidade de dígitos.
-              </p>
-            </div>
-
-            {/* PASSO 2 — Dados obrigatórios conforme tipo */}
-            {docComplete && (
-              <div className="space-y-4 border-t pt-4">
-                <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  {isCnpj
-                    ? <>Para <strong>NF-e</strong> são obrigatórios: nome do responsável, razão social e endereço completo.</>
-                    : <>Para <strong>NFC-e</strong> apenas <strong>Nome</strong> é obrigatório.</>}
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">
-                    {isCnpj ? 'Nome do responsável *' : 'Nome Completo *'}
-                  </Label>
-                  <Input
-                    id="full_name"
-                    placeholder={isCnpj ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
-                    value={customerForm.full_name}
-                    onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
+                {/* Stepper */}
+                <div className="px-6 py-4 flex items-center gap-2">
+                  <StepIndicator
+                    step={1}
+                    label="Documento"
+                    active={true}
+                    complete={step1Complete}
+                  />
+                  <div className={cn('h-1 flex-1 rounded-full transition-colors', step1Complete ? 'bg-primary' : 'bg-muted')} />
+                  <StepIndicator
+                    step={2}
+                    label="Dados"
+                    active={step1Complete}
+                    complete={step2Complete}
+                  />
+                  <div className={cn('h-1 flex-1 rounded-full transition-colors', step2Complete ? 'bg-primary' : 'bg-muted')} />
+                  <StepIndicator
+                    step={3}
+                    label="Opcional"
+                    active={step2Complete}
+                    complete={false}
                   />
                 </div>
 
-                {isCnpj && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="company_name">Razão social / Nome fantasia *</Label>
-                      <Input
-                        id="company_name"
-                        placeholder="Nome da empresa"
-                        value={customerForm.company_name}
-                        onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cep">CEP *</Label>
+                <div className="px-6 py-2 space-y-6">
+                  {/* Step 1 — Documento */}
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="documento" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                        CPF ou CNPJ <span className="text-primary">*</span>
+                      </Label>
                       <div className="relative">
                         <Input
-                          id="cep"
-                          placeholder="00000-000"
-                          value={customerForm.cep}
+                          id="documento"
+                          placeholder="Digite CPF (11) ou CNPJ (14)"
+                          value={isCnpj ? customerForm.cnpj : customerForm.cpf}
                           onChange={(e) => {
-                            const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                            setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                            if (digits.length === 8) lookupCep(digits);
-                          }}
-                          onBlur={(e) => {
-                            const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                            if (digits.length === 8) lookupCep(digits);
-                          }}
-                          onPaste={(e) => {
-                            const pasted = e.clipboardData.getData('text');
-                            const digits = sanitizeNumericInput(pasted).slice(0, 8);
-                            if (digits.length === 8) {
-                              e.preventDefault();
-                              setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                              lookupCep(digits);
+                            const digits = sanitizeNumericInput(e.target.value).slice(0, 14);
+                            const willBeCnpj = digits.length > 11;
+                            if (willBeCnpj) {
+                              const f = digits
+                                .replace(/^(\d{2})(\d)/, '$1.$2')
+                                .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                                .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                                .replace(/(\d{4})(\d)/, '$1-$2');
+                              setCustomerForm({ ...customerForm, doc_type: 'cnpj', cnpj: f, cpf: '' });
+                              if (digits.length === 14) lookupCnpj(digits);
+                            } else {
+                              setCustomerForm({ ...customerForm, doc_type: 'cpf', cpf: formatCPF(digits), cnpj: '' });
+                              if (digits.length === 11) lookupCpf(digits);
                             }
                           }}
-                          maxLength={9}
+                          maxLength={18}
                           inputMode="numeric"
-                          autoComplete="postal-code"
+                          className="pr-16 py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                         />
-                        {cepLoading && (
-                          <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                        )}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-tighter">
+                            {isCnpj ? 'CNPJ' : 'CPF'}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="street">Rua *</Label>
-                      <Input
-                        id="street"
-                        placeholder="Nome da rua"
-                        value={customerForm.street}
-                        onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="number">Número *</Label>
-                        <Input
-                          id="number"
-                          placeholder="123"
-                          value={customerForm.number}
-                          onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="neighborhood">Bairro *</Label>
-                        <Input
-                          id="neighborhood"
-                          placeholder="Bairro"
-                          value={customerForm.neighborhood}
-                          onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="municipio">Município *</Label>
-                        <Input
-                          id="municipio"
-                          placeholder="Cidade"
-                          value={customerForm.municipio}
-                          onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="uf">UF *</Label>
-                        <Input
-                          id="uf"
-                          placeholder="SP"
-                          maxLength={2}
-                          value={customerForm.uf}
-                          onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
-                      <p className="text-xs font-semibold text-orange-900">
-                        Dados fiscais obrigatórios para NF-e
+                      <p className="text-[11px] text-muted-foreground">
+                        Identificação automática por quantidade de dígitos.
                       </p>
-                      <div className="space-y-2">
-                        <Label htmlFor="codigo_municipio_ibge">Código IBGE do município *</Label>
+                    </div>
+                  </div>
+
+                  {/* Step 2 — Dados obrigatórios */}
+                  {docComplete && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="full_name" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                          {isCnpj ? 'Nome do responsável' : 'Nome Completo'} <span className="text-primary">*</span>
+                        </Label>
                         <Input
-                          id="codigo_municipio_ibge"
-                          placeholder="Ex: 3550308"
-                          value={customerForm.codigo_municipio_ibge}
-                          onChange={(e) =>
-                            setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
-                          }
-                          maxLength={7}
+                          id="full_name"
+                          placeholder={isCnpj ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
+                          value={customerForm.full_name}
+                          onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
+                          className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                         />
-                        <p className="text-xs text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Obrigatório para emissão de {isCnpj ? 'NF-e' : 'NFC-e'}.
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ie_indicador">Indicador de Inscrição Estadual *</Label>
-                        <Select
-                          value={customerForm.ie_indicador}
-                          onValueChange={(v) =>
-                            setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
-                          }
-                        >
-                          <SelectTrigger id="ie_indicador">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
-                            <SelectItem value="2">2 - Contribuinte isento</SelectItem>
-                            <SelectItem value="9">9 - Não contribuinte</SelectItem>
-                          </SelectContent>
-                        </Select>
+
+                      {isCnpj && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="company_name" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Razão social / Nome fantasia <span className="text-primary">*</span>
+                            </Label>
+                            <Input
+                              id="company_name"
+                              placeholder="Nome da empresa"
+                              value={customerForm.company_name}
+                              onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
+                              className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="cep" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              CEP <span className="text-primary">*</span>
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="cep"
+                                placeholder="00000-000"
+                                value={customerForm.cep}
+                                onChange={(e) => {
+                                  const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                  setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                  if (digits.length === 8) lookupCep(digits);
+                                }}
+                                onBlur={(e) => {
+                                  const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                  if (digits.length === 8) lookupCep(digits);
+                                }}
+                                onPaste={(e) => {
+                                  const pasted = e.clipboardData.getData('text');
+                                  const digits = sanitizeNumericInput(pasted).slice(0, 8);
+                                  if (digits.length === 8) {
+                                    e.preventDefault();
+                                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                    lookupCep(digits);
+                                  }
+                                }}
+                                maxLength={9}
+                                inputMode="numeric"
+                                autoComplete="postal-code"
+                                className="pr-10 py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                              {cepLoading && (
+                                <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="street" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Rua <span className="text-primary">*</span>
+                            </Label>
+                            <Input
+                              id="street"
+                              placeholder="Nome da rua"
+                              value={customerForm.street}
+                              onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
+                              className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="number" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Número <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="number"
+                                placeholder="123"
+                                value={customerForm.number}
+                                onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="neighborhood" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Bairro <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="neighborhood"
+                                placeholder="Bairro"
+                                value={customerForm.neighborhood}
+                                onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1.5 col-span-2">
+                              <Label htmlFor="municipio" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Município <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="municipio"
+                                placeholder="Cidade"
+                                value={customerForm.municipio}
+                                onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="uf" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                UF <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="uf"
+                                placeholder="SP"
+                                maxLength={2}
+                                value={customerForm.uf}
+                                onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Dados fiscais obrigatórios para NF-e
+                            </p>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="codigo_municipio_ibge" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Código IBGE do município <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="codigo_municipio_ibge"
+                                placeholder="Ex: 3550308"
+                                value={customerForm.codigo_municipio_ibge}
+                                onChange={(e) =>
+                                  setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
+                                }
+                                maxLength={7}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                              <p className="text-[11px] text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="ie_indicador" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Indicador de Inscrição Estadual <span className="text-primary">*</span>
+                              </Label>
+                              <Select
+                                value={customerForm.ie_indicador}
+                                onValueChange={(v) =>
+                                  setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
+                                }
+                              >
+                                <SelectTrigger id="ie_indicador" className="py-3 rounded-xl border-input focus:ring-primary/20 focus:border-primary">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
+                                  <SelectItem value="2">2 - Contribuinte isento</SelectItem>
+                                  <SelectItem value="9">9 - Não contribuinte</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {customerForm.ie_indicador === '1' && (
+                              <div className="space-y-1.5">
+                                <Label htmlFor="inscricao_estadual" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                  Inscrição Estadual <span className="text-primary">*</span>
+                                </Label>
+                                <Input
+                                  id="inscricao_estadual"
+                                  placeholder="Somente números"
+                                  value={customerForm.inscricao_estadual}
+                                  onChange={(e) =>
+                                    setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                                  }
+                                  inputMode="numeric"
+                                  className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 3 — Dados opcionais */}
+                  {requiredFilled && (
+                    <div className="pt-4 border-t border-border/50 space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                        Dados Opcionais
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="customer_email" className="text-xs font-medium text-muted-foreground">
+                            E-mail
+                          </Label>
+                          <Input
+                            id="customer_email"
+                            type="email"
+                            placeholder="cliente@email.com"
+                            value={customerForm.email}
+                            onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="customer_phone" className="text-xs font-medium text-muted-foreground">
+                            Telefone
+                          </Label>
+                          <Input
+                            id="customer_phone"
+                            type="tel"
+                            placeholder="(00) 00000-0000"
+                            value={formatPhone(customerForm.phone)}
+                            onChange={(e) => setCustomerForm({ ...customerForm, phone: sanitizeNumericInput(e.target.value).slice(0, 11) })}
+                            maxLength={15}
+                            inputMode="tel"
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                          />
+                        </div>
                       </div>
-                      {customerForm.ie_indicador === '1' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="inscricao_estadual">Inscrição Estadual *</Label>
+
+                      {isCnpj && customerForm.ie_indicador !== '1' && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="inscricao_estadual" className="text-xs font-medium text-muted-foreground">
+                            Inscrição Estadual
+                          </Label>
                           <Input
                             id="inscricao_estadual"
-                            placeholder="Somente números"
+                            placeholder="Deixe em branco se isento/não contribuinte"
                             value={customerForm.inscricao_estadual}
                             onChange={(e) =>
                               setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
                             }
                             inputMode="numeric"
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                           />
                         </div>
                       )}
+
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
+                        <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-muted-foreground leading-tight">
+                          Para CPF não é necessário endereço nem inscrição estadual.
+                        </p>
+                      </div>
                     </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* PASSO 3 — Dados secundários (opcionais) */}
-            {requiredFilled && (
-              <div className="space-y-4 border-t pt-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Dados adicionais (opcionais)
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customer_email">E-mail</Label>
-                    <Input
-                      id="customer_email"
-                      type="email"
-                      placeholder="cliente@email.com"
-                      value={customerForm.email}
-                      onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="customer_phone">Telefone</Label>
-                    <Input
-                      id="customer_phone"
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      value={formatPhone(customerForm.phone)}
-                      onChange={(e) => setCustomerForm({ ...customerForm, phone: sanitizeNumericInput(e.target.value).slice(0, 11) })}
-                      maxLength={15}
-                      inputMode="tel"
-                    />
-                  </div>
+                  )}
                 </div>
 
-                {!isCnpj && (
-                  <p className="text-xs text-muted-foreground">
-                    Para CPF não é necessário endereço nem inscrição estadual.
-                  </p>
-                )}
-
-
-                {isCnpj && customerForm.ie_indicador !== '1' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="inscricao_estadual">Inscrição Estadual</Label>
-                    <Input
-                      id="inscricao_estadual"
-                      placeholder="Deixe em branco se isento/não contribuinte"
-                      value={customerForm.inscricao_estadual}
-                      onChange={(e) =>
-                        setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
-                      }
-                      inputMode="numeric"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowCustomerDialog(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSaveCustomer}
-                disabled={savingCustomer}
-                className="flex-1 bg-orange-500 hover:bg-orange-600"
-              >
-                {savingCustomer ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
-              </Button>
-            </div>
-          </div>
+                {/* Footer */}
+                <div className="px-6 py-5 mt-2 flex items-center gap-3 bg-muted/30 border-t border-border/50">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCustomerDialog(false)}
+                    className="flex-1 py-3 rounded-xl text-foreground hover:bg-muted transition-all"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveCustomer}
+                    disabled={savingCustomer}
+                    className="flex-[2] py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    {savingCustomer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
+                  </Button>
+                </div>
+              </>
             );
           })()}
-
         </DialogContent>
       </Dialog>
+
 
       {/* Diálogo de entrada de peso */}
       <Dialog open={showWeightDialog} onOpenChange={setShowWeightDialog}>
