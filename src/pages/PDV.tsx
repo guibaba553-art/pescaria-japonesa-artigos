@@ -63,7 +63,7 @@ import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerT
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
 
-import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
+import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
@@ -253,6 +253,7 @@ export default function PDV() {
     inscricao_estadual: '',
     ie_indicador: '9' as '1' | '2' | '9', // 1=contribuinte, 2=isento, 9=não contribuinte
     email: '',
+    phone: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cpfLoading, setCpfLoading] = useState(false);
@@ -292,6 +293,7 @@ export default function PDV() {
           uf: existing.uf || prev.uf,
           inscricao_estadual: existing.inscricao_estadual || prev.inscricao_estadual,
           email: existing.email || prev.email,
+          phone: existing.phone || prev.phone,
         }));
         toast({
           title: 'Cliente já cadastrado',
@@ -416,6 +418,7 @@ export default function PDV() {
         uf: d.uf || prev.uf,
         codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
         email: d.email || prev.email,
+        phone: d.phone || prev.phone,
         // Focus NFe traz IE direto da SEFAZ — preenche e marca como contribuinte
         inscricao_estadual: ieFromFocus && ieAtivaFromFocus ? ieFromFocus : prev.inscricao_estadual,
         ie_indicador: ieFromFocus && ieAtivaFromFocus ? '1' : prev.ie_indicador,
@@ -1458,6 +1461,7 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
+        phone: customerForm.phone ? customerForm.phone.replace(/\D/g, '') : null,
         preferred_emission_type: isCnpj ? 'nfe' : 'nfce',
         created_by: user!.id,
       };
@@ -1490,6 +1494,7 @@ export default function PDV() {
         inscricao_estadual: '',
         ie_indicador: '9',
         email: '',
+        phone: '',
       });
 
       toast({
@@ -2936,6 +2941,32 @@ export default function PDV() {
               </div>
             )}
 
+            {/* Dados de contato — opcionais para CPF e CNPJ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer_email">E-mail <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input
+                  id="customer_email"
+                  type="email"
+                  placeholder="cliente@email.com"
+                  value={customerForm.email}
+                  onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer_phone">Telefone <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input
+                  id="customer_phone"
+                  type="tel"
+                  placeholder="(00) 00000-0000"
+                  value={formatPhone(customerForm.phone)}
+                  onChange={(e) => setCustomerForm({ ...customerForm, phone: sanitizeNumericInput(e.target.value).slice(0, 11) })}
+                  maxLength={15}
+                  inputMode="tel"
+                />
+              </div>
+            </div>
+
             {/* Documento unificado: detecta CPF/CNPJ pelo número de dígitos */}
             <div className="space-y-2">
               <Label htmlFor="documento">CPF ou CNPJ *</Label>
@@ -3158,17 +3189,6 @@ export default function PDV() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customer_email">E-mail (recomendado)</Label>
-                  <Input
-                    id="customer_email"
-                    type="email"
-                    placeholder="contato@empresa.com.br"
-                    value={customerForm.email}
-                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">Para envio automático do XML/DANFE da NF-e.</p>
-                </div>
               </div>
             )}
 
