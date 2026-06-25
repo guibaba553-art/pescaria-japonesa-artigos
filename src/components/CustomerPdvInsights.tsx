@@ -27,8 +27,10 @@ const payLabel = (m?: string | null) => {
   if (k.includes('credit') || k.includes('crédit')) return 'Crédito';
   if (k.includes('debit') || k.includes('débit')) return 'Débito';
   if (k.includes('cash') || k.includes('dinheiro')) return 'Dinheiro';
-  return m || '—';
+  return 'Outro';
 };
+
+const ALL_METHODS = ['Dinheiro', 'Crédito', 'Débito', 'PIX'] as const;
 
 const payIcon = (k: string) => {
   if (k === 'PIX') return <DollarSign className="w-3 h-3" />;
