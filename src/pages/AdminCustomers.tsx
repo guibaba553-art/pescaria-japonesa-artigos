@@ -37,18 +37,19 @@ function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
 
   if (isCnpj && !c.company_name?.trim()) missing.push('Razão social');
 
-  const cepDigits = (c.cep || '').replace(/\D/g, '');
-  if (cepDigits.length !== 8) missing.push('CEP');
-  if (!c.street?.trim()) missing.push('Rua');
-  if (!c.number?.trim()) missing.push('Número');
-  if (!c.neighborhood?.trim()) missing.push('Bairro');
-  if (!c.municipio?.trim()) missing.push('Município');
-  if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
-
-  const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
-  if (ibge.length !== 7) missing.push('Código IBGE');
-
+  // Endereço, IBGE e IE são obrigatórios apenas para CNPJ (NF-e). PF (NFC-e) não exige.
   if (isCnpj) {
+    const cepDigits = (c.cep || '').replace(/\D/g, '');
+    if (cepDigits.length !== 8) missing.push('CEP');
+    if (!c.street?.trim()) missing.push('Rua');
+    if (!c.number?.trim()) missing.push('Número');
+    if (!c.neighborhood?.trim()) missing.push('Bairro');
+    if (!c.municipio?.trim()) missing.push('Município');
+    if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
+
+    const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
+    if (ibge.length !== 7) missing.push('Código IBGE');
+
     if (!c.ie_indicador) missing.push('Indicador de IE');
     else if ((c.ie_indicador === '1') && !c.inscricao_estadual?.trim()) missing.push('Inscrição Estadual');
   }
