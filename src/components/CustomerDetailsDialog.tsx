@@ -463,6 +463,109 @@ export function CustomerDetailsDialog({
                   )}
                 </TabsContent>
 
+                {/* ============ Perfil de consumo ============ */}
+                <TabsContent value="profile" className="m-0 p-6 space-y-4">
+                  {!profile ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      Sem compras suficientes para gerar um perfil de consumo.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border p-4 bg-gradient-to-br from-primary/10 to-transparent">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5" /> Perfil de consumo
+                        </div>
+                        <div className="mt-1 text-lg font-bold">{profile.consumerProfile}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Baseado em {stats.count} compras · ticket médio {BRL(stats.avg)}
+                          {profile.daysSinceLast !== null && ` · última há ${profile.daysSinceLast} dias`}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <StatCard icon={<CreditCard className="w-4 h-4" />} label="Pagamento preferido" value={profile.preferredPayment} />
+                        <StatCard icon={<Target className="w-4 h-4" />} label="Canal preferido" value={`${profile.channel.split(' ')[0]} (${profile.channelPct}%)`} />
+                        <StatCard
+                          icon={<Repeat className="w-4 h-4" />}
+                          label="Intervalo médio"
+                          value={profile.avgIntervalDays > 0 ? `${Math.round(profile.avgIntervalDays)} dias` : '—'}
+                        />
+                        <StatCard icon={<Clock className="w-4 h-4" />} label="Atendimento" value={`${profile.topDay} · ${profile.topPeriod}`} />
+                      </div>
+
+                      <Section title="Mix por categoria" icon={<Package className="w-4 h-4" />}>
+                        <div className="space-y-2">
+                          {profile.categories.map((cat) => (
+                            <div key={cat.name} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium">{cat.name}</span>
+                                <span className="text-muted-foreground font-mono">
+                                  {cat.qty} un · {BRL(cat.total)} · {cat.pct.toFixed(0)}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full bg-primary rounded-full transition-all"
+                                  style={{ width: `${Math.max(2, cat.pct)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Section>
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <Section title="Formas de pagamento" icon={<CreditCard className="w-4 h-4" />}>
+                          <div className="space-y-1.5">
+                            {profile.payRanking.map((p) => (
+                              <div key={p.name} className="flex items-center justify-between text-xs">
+                                <span>{p.name}</span>
+                                <span className="text-muted-foreground font-mono">
+                                  {p.count}× · {p.pct.toFixed(0)}%
+                                </span>
+                              </div>
+                            ))}
+                            {profile.avgInstallments > 1 && (
+                              <div className="text-[11px] text-muted-foreground border-t pt-1.5 mt-1.5">
+                                Parcelamento médio no crédito: <span className="font-semibold">{profile.avgInstallments.toFixed(1)}x</span>
+                              </div>
+                            )}
+                          </div>
+                        </Section>
+
+                        <Section title="Produtos favoritos" icon={<ShoppingBag className="w-4 h-4" />}>
+                          {profile.topProducts.length === 0 ? (
+                            <div className="text-xs text-muted-foreground italic">Sem dados.</div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {profile.topProducts.map((p, idx) => (
+                                <div key={p.name} className="flex items-center justify-between text-xs gap-2">
+                                  <span className="truncate flex-1">
+                                    <span className="text-muted-foreground mr-1">{idx + 1}.</span>
+                                    {p.name}
+                                  </span>
+                                  <span className="font-mono text-muted-foreground shrink-0">
+                                    {p.qty}× · {BRL(p.total)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Section>
+                      </div>
+
+                      <div className="rounded-xl border border-dashed p-3 text-[11px] text-muted-foreground bg-muted/20 flex gap-2">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                        <span>
+                          Esses dados serão usados no PDV para sugerir produtos, antecipar a forma de pagamento e personalizar o atendimento ao reconhecer o cliente.
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+
+
                 {/* ============ Histórico ============ */}
                 <TabsContent value="history" className="m-0 p-6 space-y-3">
                   {orders.length === 0 ? (
