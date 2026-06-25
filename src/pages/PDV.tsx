@@ -2243,13 +2243,13 @@ export default function PDV() {
           </div>
 
           {/* Coluna 2 — Produtos */}
-          <div className="space-y-4 order-2 min-w-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produtos</CardTitle>
+          <div className="space-y-4 order-2 min-w-0 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
+            <Card className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+              <CardHeader className="lg:py-3 shrink-0">
+                <CardTitle className="text-base">Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative">
+              <CardContent className="space-y-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Buscar produto..."
@@ -2259,7 +2259,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
+                <ScrollArea className="h-[calc(100vh-260px)] lg:h-auto lg:flex-1 lg:min-h-0">
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {filteredProducts.map(product => (
                       <Card
