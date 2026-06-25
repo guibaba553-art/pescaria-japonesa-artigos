@@ -120,6 +120,18 @@ export default function AdminCustomers() {
   const [historyFor, setHistoryFor] = useState<Customer | null>(null);
   const [detailsFor, setDetailsFor] = useState<Customer | null>(null);
 
+  // Agregados por cliente (compras, total gasto, última compra)
+  type Agg = { orders: number; total: number; last: string | null };
+  const [aggregates, setAggregates] = useState<Record<string, Agg>>({});
+
+  // Filtros e ordenação avançados
+  const [tierFilter, setTierFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<'all' | '30d' | '90d' | '180d' | '365d' | 'never'>('all');
+  type SortKey = 'name' | 'doc' | 'score' | 'orders' | 'spent' | 'last' | 'created';
+  const [sortKey, setSortKey] = useState<SortKey>('last');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
 
