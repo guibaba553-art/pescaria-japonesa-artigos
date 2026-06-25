@@ -3189,17 +3189,6 @@ export default function PDV() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customer_email">E-mail (recomendado)</Label>
-                  <Input
-                    id="customer_email"
-                    type="email"
-                    placeholder="contato@empresa.com.br"
-                    value={customerForm.email}
-                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">Para envio automático do XML/DANFE da NF-e.</p>
-                </div>
               </div>
             )}
 
