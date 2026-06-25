@@ -952,6 +952,9 @@ export default function Dashboard() {
             <TabsTrigger value="estoque" className="gap-2">
               <Boxes className="h-4 w-4" /> Estoque
             </TabsTrigger>
+            <TabsTrigger value="clientes" className="gap-2">
+              <Users className="h-4 w-4" /> Clientes
+            </TabsTrigger>
 
             <TabsTrigger value="pdv" className="gap-2">
               <Store className="h-4 w-4" /> PDV
