@@ -2020,7 +2020,7 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
+    <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-muted/30 pb-32 lg:pb-0">
       <Header />
 
       {/* Compact mobile back bar */}
