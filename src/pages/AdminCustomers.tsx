@@ -21,6 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
 import { CustomerHistoryDialog } from '@/components/CustomerHistoryDialog';
+import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
