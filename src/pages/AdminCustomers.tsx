@@ -293,8 +293,8 @@ export default function AdminCustomers() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) navigate('/admin');
-  }, [authLoading, isAdmin, navigate]);
+    if (!authLoading && !isAdmin && !permissions.customers) navigate('/admin');
+  }, [authLoading, isAdmin, permissions.customers, navigate]);
 
   const load = async () => {
     setLoading(true);
