@@ -629,48 +629,27 @@ export default function Dashboard() {
                   Nenhuma venda registrada neste canal ainda.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ResponsiveContainer width="100%" height={420}>
-                    <BarChart data={top} layout="vertical" margin={{ left: 24, right: 24, top: 8, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" hide />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        width={140}
-                        tick={{ fontSize: 11 }}
-                        tickFormatter={(v: string) => `${String(v).substring(0, 22)}${v.length > 22 ? '…' : ''}`}
-                      />
-                      <Tooltip formatter={(v: number) => formatBRL(v)} />
-                      <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
-                        {top.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className="overflow-auto max-h-[420px]">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold">#</th>
-                          <th className="px-3 py-2 text-left font-semibold">Produto</th>
-                          <th className="px-3 py-2 text-right font-semibold">Qtd</th>
-                          <th className="px-3 py-2 text-right font-semibold">Receita</th>
+                <div className="overflow-auto max-h-[520px]">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold w-12">#</th>
+                        <th className="px-3 py-2 text-left font-semibold">Produto</th>
+                        <th className="px-3 py-2 text-right font-semibold w-24">Qtd</th>
+                        <th className="px-3 py-2 text-right font-semibold w-32">Receita</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {top.map((p, i) => (
+                        <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
+                          <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                          <td className="px-3 py-2 font-medium">{p.name}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
+                          <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {top.map((p, i) => (
-                          <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
-                            <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
-                            <td className="px-3 py-2 font-medium">{p.name}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </CardContent>
