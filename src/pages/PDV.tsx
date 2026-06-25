@@ -2020,7 +2020,7 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
+    <div className="flex flex-col h-screen overflow-hidden bg-muted/30 pb-32 lg:pb-0">
       <Header />
 
       {/* Compact mobile back bar */}
@@ -2046,7 +2046,7 @@ export default function PDV() {
       </div>
 
       {/* Commercial dark banner — desktop only */}
-      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-24 pb-5">
+      <div className="hidden lg:block bg-foreground text-background shrink-0 pt-20 lg:pt-24 pb-5">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -2083,13 +2083,13 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="py-3 lg:py-6 px-4 lg:px-6">
+      <div className="flex-1 min-h-0 py-3 lg:py-6 px-4 lg:px-6 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full lg:overflow-hidden">
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
+          <aside className="hidden lg:block lg:col-span-3 h-full space-y-4 order-1 overflow-y-auto">
 
-            <Card className="border-primary/20 sticky top-24">
+            <Card className="border-primary/20">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
@@ -2167,12 +2167,12 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-6 space-y-4 order-2">
-            <Card>
+          <div className="lg:col-span-6 flex flex-col h-full space-y-4 order-2">
+            <Card className="flex flex-col h-full">
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-col flex-1 min-h-0 space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -2183,7 +2183,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
+                <ScrollArea className="flex-1 min-h-0 pr-2">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
@@ -2282,7 +2282,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-3 lg:space-y-4 order-3',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-y-auto lg:block lg:col-span-3 lg:space-y-4 lg:h-full order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
