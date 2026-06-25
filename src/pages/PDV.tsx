@@ -2083,13 +2083,13 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="py-3 lg:py-6 px-0 lg:-mt-4">
+      <div className="py-3 lg:py-6 px-4 lg:px-6">
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1 h-full">
+          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
 
-            <Card className="border-primary/20 sticky top-24 rounded-l-none h-[calc(100vh-12rem)]">
+            <Card className="border-primary/20 sticky top-24">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
@@ -2167,7 +2167,7 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-5 space-y-4 order-2">
+          <div className="lg:col-span-6 space-y-4 order-2">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
@@ -2184,7 +2184,7 @@ export default function PDV() {
                 </div>
 
                 <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
-                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {filteredProducts.map(product => (
                       <Card
                         key={product.id}
@@ -2217,7 +2217,7 @@ export default function PDV() {
                         )}
                         <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-28 lg:h-36 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-32 lg:h-44 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
@@ -2282,7 +2282,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-4 lg:space-y-4 order-3',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-3 lg:space-y-4 order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
@@ -2378,7 +2378,7 @@ export default function PDV() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-r-none h-[calc(100vh-12rem)]">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
                   <span>Carrinho</span>
