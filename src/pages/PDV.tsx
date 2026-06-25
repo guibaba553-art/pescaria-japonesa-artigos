@@ -2167,12 +2167,12 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-6 space-y-4 order-2">
-            <Card>
+          <div className="lg:col-span-6 flex flex-col h-auto lg:h-[calc(100vh-200px)] space-y-4 order-2">
+            <Card className="flex flex-col h-full">
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-col flex-1 min-h-0 space-y-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
@@ -2183,7 +2183,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
+                <ScrollArea className="flex-1 min-h-0 pr-2">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3">
                     {filteredProducts.map(product => (
                       <Card
