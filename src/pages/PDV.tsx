@@ -2088,7 +2088,7 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0 lg:h-screen lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden">
+    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-32 lg:pb-0 lg:h-screen lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden">
       <Header />
 
       {/* Compact mobile back bar */}
@@ -2113,21 +2113,21 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Compact desktop top bar */}
-      <div className="hidden lg:flex bg-foreground text-background pt-16 pb-2 px-4 items-center justify-between shrink-0">
+      {/* Compact desktop top bar (light, clean) */}
+      <div className="hidden lg:flex bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 pt-16 pb-2 px-4 items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary">
             <ShoppingCart className="w-3 h-3" />
             <span className="text-[10px] font-bold uppercase tracking-wider">PDV</span>
           </div>
-          <h1 className="text-base font-display font-black tracking-tight">Ponto de Venda</h1>
+          <h1 className="text-base font-display font-black tracking-tight text-zinc-900 dark:text-zinc-100">Ponto de Venda</h1>
         </div>
         <div className="flex gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={() => navigate('/pdv/sales-history')}
-            className="h-7 rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground text-xs"
+            className="h-7 rounded-full text-xs"
           >
             <History className="w-3.5 h-3.5 mr-1.5" />
             Histórico
@@ -2136,7 +2136,7 @@ export default function PDV() {
             size="sm"
             variant="outline"
             onClick={() => navigate('/admin')}
-            className="h-7 rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground text-xs"
+            className="h-7 rounded-full text-xs"
           >
             <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
             Admin
@@ -2144,8 +2144,8 @@ export default function PDV() {
         </div>
       </div>
 
+      <div className="w-full overflow-x-hidden px-2 lg:px-4 lg:pt-3 lg:flex-1 lg:min-h-0">
 
-      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:pt-2 lg:flex-1 lg:min-h-0">
 
         <div
           id="pdv-desktop-grid"
