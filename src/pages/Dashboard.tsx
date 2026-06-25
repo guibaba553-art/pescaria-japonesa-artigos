@@ -620,7 +620,7 @@ export default function Dashboard() {
         <TabsContent value="products">
           <Card>
             <CardHeader>
-              <CardTitle>Top 10 Produtos — {title}</CardTitle>
+              <CardTitle>Produtos — {title}</CardTitle>
               <CardDescription>Produtos com maior receita neste canal</CardDescription>
             </CardHeader>
             <CardContent>
