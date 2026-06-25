@@ -171,9 +171,9 @@ export default function PDV() {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
 
-  // Larguras das colunas do PDV — editáveis manualmente
+  // Larguras das colunas do PDV — editáveis manualmente (em frações proporcionais)
   const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
-    if (typeof window === 'undefined') return { customer: 15, products: 50, cart: 35 };
+    if (typeof window === 'undefined') return { customer: 14, products: 46, cart: 32 };
     try {
       const saved = localStorage.getItem('pdv:columnWidths');
       if (saved) {
@@ -183,7 +183,7 @@ export default function PDV() {
         }
       }
     } catch { /* ignore */ }
-    return { customer: 15, products: 50, cart: 35 };
+    return { customer: 14, products: 46, cart: 32 };
   });
   useEffect(() => {
     if (typeof window === 'undefined') return;
