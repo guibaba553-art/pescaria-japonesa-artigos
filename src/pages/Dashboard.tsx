@@ -448,11 +448,16 @@ export default function Dashboard() {
             const product: any = productMap.get(item.product_id) || {};
             const variation: any = item.variation_id ? variationMap.get(item.variation_id) || {} : {};
             const name = variation.name || product.name || '—';
-            if (!acc[name]) acc[name] = { name, quantity: 0, revenue: 0 };
+            const itemStock = item.variation_id
+              ? Number(variation.stock || 0)
+              : Number(product.stock || 0);
+            if (!acc[name]) acc[name] = { name, quantity: 0, revenue: 0, stock: 0 };
             acc[name].quantity += item.quantity;
             acc[name].revenue += item.quantity * parseFloat(item.price_at_purchase);
+            acc[name].stock = itemStock;
           });
         return Object.values(acc)
+          .filter((p) => p.stock > 0)
           .sort((a, b) => b.revenue - a.revenue);
       };
 
