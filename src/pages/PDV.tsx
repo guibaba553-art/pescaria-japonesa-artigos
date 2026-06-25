@@ -2153,7 +2153,11 @@ export default function PDV() {
 
       <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,25%)_minmax(0,50%)_1fr] gap-6">
+        <div
+          id="pdv-desktop-grid"
+          className="relative grid grid-cols-1 gap-6 lg:grid-cols-3"
+          style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}% ${columnWidths.products}% ${columnWidths.cart}%` } : undefined}
+        >
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:block space-y-4 order-1">
             <Card className="border-primary/20 sticky top-24">
