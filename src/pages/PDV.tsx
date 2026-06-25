@@ -1603,12 +1603,12 @@ export default function PDV() {
       const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
 
       if (handle === 'customer-products') {
-        const newCustomer = Math.max(15, Math.min(40, startCustomer + deltaPct));
-        const newProducts = Math.max(30, Math.min(70, startProducts - deltaPct));
+        const newCustomer = Math.max(15, Math.min(28, startCustomer + deltaPct));
+        const newProducts = Math.max(40, Math.min(60, startProducts - deltaPct));
         setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
       } else {
-        const newProducts = Math.max(30, Math.min(70, startProducts + deltaPct));
-        const newCart = Math.max(15, Math.min(60, startCart - deltaPct));
+        const newProducts = Math.max(40, Math.min(60, startProducts + deltaPct));
+        const newCart = Math.max(25, Math.min(45, startCart - deltaPct));
         setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
       }
     };
