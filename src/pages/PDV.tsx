@@ -2941,6 +2941,32 @@ export default function PDV() {
               </div>
             )}
 
+            {/* Dados de contato — opcionais para CPF e CNPJ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="customer_email">E-mail <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input
+                  id="customer_email"
+                  type="email"
+                  placeholder="cliente@email.com"
+                  value={customerForm.email}
+                  onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customer_phone">Telefone <span className="text-xs text-muted-foreground font-normal">(opcional)</span></Label>
+                <Input
+                  id="customer_phone"
+                  type="tel"
+                  placeholder="(00) 00000-0000"
+                  value={formatPhone(customerForm.phone)}
+                  onChange={(e) => setCustomerForm({ ...customerForm, phone: sanitizeNumericInput(e.target.value).slice(0, 11) })}
+                  maxLength={15}
+                  inputMode="tel"
+                />
+              </div>
+            </div>
+
             {/* Documento unificado: detecta CPF/CNPJ pelo número de dígitos */}
             <div className="space-y-2">
               <Label htmlFor="documento">CPF ou CNPJ *</Label>
