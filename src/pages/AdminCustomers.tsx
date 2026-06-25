@@ -16,10 +16,11 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
+import { CustomerHistoryDialog } from '@/components/CustomerHistoryDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
@@ -114,6 +115,7 @@ export default function AdminCustomers() {
   const [scoreFor, setScoreFor] = useState<Customer | null>(null);
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<Customer | null>(null);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
@@ -728,6 +730,9 @@ export default function AdminCustomers() {
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-1">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setHistoryFor(c)}>
+                      <History className="w-3.5 h-3.5 mr-1.5" /> Histórico
+                    </Button>
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
                       <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
                     </Button>
@@ -956,6 +961,13 @@ export default function AdminCustomers() {
         open={rewardsOpen}
         onOpenChange={(v) => { setRewardsOpen(v); if (!v) setRewardsCustomerId(null); }}
         initialCustomerId={rewardsCustomerId}
+      />
+
+      <CustomerHistoryDialog
+        open={!!historyFor}
+        onOpenChange={(v) => { if (!v) setHistoryFor(null); }}
+        customerId={historyFor?.id || null}
+        customerName={historyFor?.cnpj && historyFor?.company_name ? historyFor.company_name : historyFor?.full_name}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
