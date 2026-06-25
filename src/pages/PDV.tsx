@@ -2046,7 +2046,7 @@ export default function PDV() {
       </div>
 
       {/* Commercial dark banner — desktop only */}
-      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-32 pb-8">
+      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-24 pb-5">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -2183,7 +2183,7 @@ export default function PDV() {
                 </div>
 
                 <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {filteredProducts.map(product => (
                       <Card
                         key={product.id}
@@ -2216,7 +2216,7 @@ export default function PDV() {
                         )}
                         <CardContent className="p-2 lg:p-3 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-28 lg:h-36 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
