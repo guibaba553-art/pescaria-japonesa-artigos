@@ -1754,6 +1754,9 @@ export default function PDV() {
           cash_received: paymentMethod === 'cash'
             ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
             : null,
+          pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
+            ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
+            : null,
         }])
         .select()
         .single();
