@@ -36,7 +36,7 @@ const payIcon = (k: string) => {
   return <CreditCard className="w-3 h-3" />;
 };
 
-export function CustomerPdvInsights({ customer }: Props) {
+export function CustomerPdvInsights({ customer, tier }: Props) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
