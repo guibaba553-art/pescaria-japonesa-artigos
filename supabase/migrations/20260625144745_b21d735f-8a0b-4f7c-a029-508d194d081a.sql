@@ -1,0 +1,2 @@
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS pdv_service_time_seconds INTEGER;
+COMMENT ON COLUMN public.orders.pdv_service_time_seconds IS 'Tempo de atendimento no PDV em segundos (cliente selecionado -> venda finalizada).';
