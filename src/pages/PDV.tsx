@@ -2167,7 +2167,7 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-5 space-y-4 order-2">
+          <div className="lg:col-span-6 space-y-4 order-2">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
