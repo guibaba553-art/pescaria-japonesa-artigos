@@ -130,13 +130,6 @@ export function CustomerPdvInsights({ customer }: Props) {
               {insights.avgServiceSec > 0 ? 'Média histórica' : 'Sem dados ainda'}
             </div>
           </div>
-          <div className="rounded-lg bg-background border p-2">
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
-              <Timer className="w-3 h-3" /> Tempo atual
-            </div>
-            <div className="text-sm font-bold mt-0.5 font-mono tabular-nums">{fmtSecs(elapsed)}</div>
-            <div className="text-[10px] text-muted-foreground">Em atendimento</div>
-          </div>
         </div>
 
         {/* Métodos de pagamento */}
