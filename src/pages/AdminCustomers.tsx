@@ -609,9 +609,14 @@ export default function AdminCustomers() {
                   {/* Cabeçalho: nome + tipo */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-semibold truncate">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsFor(c)}
+                        className="font-semibold truncate text-left hover:text-primary hover:underline underline-offset-4 transition-colors w-full"
+                        title="Ver detalhes do cliente"
+                      >
                         {c.cnpj && c.company_name ? c.company_name : c.full_name}
-                      </div>
+                      </button>
                       {c.cnpj && c.company_name && (
                         <div className="text-xs text-muted-foreground truncate">Resp.: {c.full_name}</div>
                       )}
