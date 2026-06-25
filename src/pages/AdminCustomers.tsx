@@ -360,8 +360,51 @@ export default function AdminCustomers() {
     if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
     if (docFilter === 'pj') arr = arr.filter((c) => !!c.cnpj);
     else if (docFilter === 'pf') arr = arr.filter((c) => !c.cnpj);
-    return arr;
-  }, [list, search, onlyInvalid, docFilter, validations]);
+
+    if (tierFilter !== 'all') {
+      arr = arr.filter((c) => getTierForScore(c.score || 0, tiers)?.id === tierFilter);
+    }
+
+    if (periodFilter !== 'all') {
+      const now = Date.now();
+      const days = periodFilter === '30d' ? 30 : periodFilter === '90d' ? 90 : periodFilter === '180d' ? 180 : 365;
+      arr = arr.filter((c) => {
+        const last = aggregates[c.id]?.last;
+        if (periodFilter === 'never') return !last;
+        if (!last) return false;
+        return now - new Date(last).getTime() <= days * 86400000;
+      });
+    }
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const sorted = [...arr].sort((a, b) => {
+      const ag = aggregates[a.id] || { orders: 0, total: 0, last: null };
+      const bg = aggregates[b.id] || { orders: 0, total: 0, last: null };
+      switch (sortKey) {
+        case 'name': {
+          const an = (a.cnpj && a.company_name ? a.company_name : a.full_name) || '';
+          const bn = (b.cnpj && b.company_name ? b.company_name : b.full_name) || '';
+          return an.localeCompare(bn, 'pt-BR') * dir;
+        }
+        case 'doc':
+          return ((a.cnpj || a.cpf || '').localeCompare(b.cnpj || b.cpf || '')) * dir;
+        case 'score':
+          return ((a.score || 0) - (b.score || 0)) * dir;
+        case 'orders':
+          return (ag.orders - bg.orders) * dir;
+        case 'spent':
+          return (ag.total - bg.total) * dir;
+        case 'last': {
+          const at = ag.last ? new Date(ag.last).getTime() : 0;
+          const bt = bg.last ? new Date(bg.last).getTime() : 0;
+          return (at - bt) * dir;
+        }
+        case 'created':
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+      }
+    });
+    return sorted;
+  }, [list, search, onlyInvalid, docFilter, validations, tierFilter, periodFilter, aggregates, sortKey, sortDir, tiers]);
 
   const pjCount = useMemo(() => list.filter((c) => !!c.cnpj).length, [list]);
   const pfCount = useMemo(() => list.filter((c) => !c.cnpj).length, [list]);
