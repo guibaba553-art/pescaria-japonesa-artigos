@@ -756,11 +756,8 @@ export default function AdminCustomers() {
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setHistoryFor(c)}>
-                      <History className="w-3.5 h-3.5 mr-1.5" /> Histórico
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
-                      <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setDetailsFor(c)}>
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Abrir ficha
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
