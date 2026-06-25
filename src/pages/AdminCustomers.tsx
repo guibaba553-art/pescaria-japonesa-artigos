@@ -16,11 +16,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift, History } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift, History, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
 import { CustomerHistoryDialog } from '@/components/CustomerHistoryDialog';
+import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
@@ -117,6 +118,7 @@ export default function AdminCustomers() {
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<Customer | null>(null);
+  const [detailsFor, setDetailsFor] = useState<Customer | null>(null);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
@@ -607,9 +609,14 @@ export default function AdminCustomers() {
                   {/* Cabeçalho: nome + tipo */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-semibold truncate">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsFor(c)}
+                        className="font-semibold truncate text-left hover:text-primary hover:underline underline-offset-4 transition-colors w-full"
+                        title="Ver detalhes do cliente"
+                      >
                         {c.cnpj && c.company_name ? c.company_name : c.full_name}
-                      </div>
+                      </button>
                       {c.cnpj && c.company_name && (
                         <div className="text-xs text-muted-foreground truncate">Resp.: {c.full_name}</div>
                       )}
@@ -749,11 +756,8 @@ export default function AdminCustomers() {
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setHistoryFor(c)}>
-                      <History className="w-3.5 h-3.5 mr-1.5" /> Histórico
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
-                      <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setDetailsFor(c)}>
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Abrir ficha
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
                       <Trash2 className="w-4 h-4" />
@@ -988,6 +992,18 @@ export default function AdminCustomers() {
         customerId={historyFor?.id || null}
         customerName={historyFor?.cnpj && historyFor?.company_name ? historyFor.company_name : historyFor?.full_name}
       />
+
+      <CustomerDetailsDialog
+        open={!!detailsFor}
+        onOpenChange={(v) => { if (!v) setDetailsFor(null); }}
+        customer={detailsFor as any}
+        tiers={tiers}
+        fiscalValid={detailsFor ? (validations.get(detailsFor.id) || { ok: true, missing: [] }) : { ok: true, missing: [] }}
+        onEdit={(c) => { setDetailsFor(null); openEdit(c as any); }}
+        onManageScore={(c) => { setDetailsFor(null); setScoreFor(c as any); }}
+        onManageRewards={(c) => { setDetailsFor(null); setRewardsCustomerId(c.id); setRewardsOpen(true); }}
+      />
+
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
