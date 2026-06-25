@@ -3543,6 +3543,31 @@ export default function PDV() {
                             className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
                           />
                         </div>
+                        {!isCnpj && (
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label htmlFor="customer_cep_opt" className="text-xs font-medium text-muted-foreground">
+                              CEP
+                            </Label>
+                            <Input
+                              id="customer_cep_opt"
+                              placeholder="00000-000"
+                              value={customerForm.cep}
+                              onChange={(e) => {
+                                const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                if (digits.length === 8) lookupCep(digits);
+                              }}
+                              onBlur={(e) => {
+                                const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                if (digits.length === 8) lookupCep(digits);
+                              }}
+                              maxLength={9}
+                              inputMode="numeric"
+                              className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                            <p className="text-[11px] text-muted-foreground">Preenche endereço automaticamente (opcional).</p>
+                          </div>
+                        )}
                       </div>
 
                       {isCnpj && customerForm.ie_indicador !== '1' && (
