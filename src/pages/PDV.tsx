@@ -1461,6 +1461,7 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
+        phone: customerForm.phone ? customerForm.phone.replace(/\D/g, '') : null,
         preferred_emission_type: isCnpj ? 'nfe' : 'nfce',
         created_by: user!.id,
       };
