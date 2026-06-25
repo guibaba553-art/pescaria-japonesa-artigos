@@ -101,6 +101,13 @@ export default function Dashboard() {
   const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
 
+  // Estoque
+  const [stockCostValue, setStockCostValue] = useState(0);
+  const [stockPriceValue, setStockPriceValue] = useState(0);
+  const [stockItemCount, setStockItemCount] = useState(0);
+  const [stockHistory, setStockHistory] = useState<{ date: string; costValue: number; priceValue: number; items: number }[]>([]);
+
+
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
