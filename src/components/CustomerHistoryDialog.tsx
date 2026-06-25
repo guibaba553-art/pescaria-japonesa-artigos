@@ -137,7 +137,7 @@ export function CustomerHistoryDialog({ open, onOpenChange, customerId, customer
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-3 border-b">
+        <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-primary" />
             Histórico de compras
@@ -153,14 +153,14 @@ export function CustomerHistoryDialog({ open, onOpenChange, customerId, customer
           </div>
         ) : (
           <>
-            <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-3 border-b bg-muted/30">
+            <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-3 border-b bg-muted/30 shrink-0">
               <StatCard icon={<Receipt className="w-4 h-4" />} label="Compras" value={String(stats.count)} />
               <StatCard icon={<TrendingUp className="w-4 h-4" />} label="Total gasto" value={BRL(stats.total)} />
               <StatCard icon={<Package className="w-4 h-4" />} label="Itens" value={String(stats.items)} />
               <StatCard icon={<CreditCard className="w-4 h-4" />} label="Ticket médio" value={BRL(stats.avg)} />
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <div className="px-6 py-4 space-y-3">
                 {orders.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-12">
