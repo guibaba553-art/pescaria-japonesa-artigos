@@ -107,9 +107,22 @@ export function CustomerPdvInsights({ customer, tier }: Props) {
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
       <CardContent className="p-3 space-y-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-          <Sparkles className="w-3.5 h-3.5" />
-          Painel do cliente
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <Sparkles className="w-3.5 h-3.5" />
+            Painel do cliente
+          </div>
+          {tier && (
+            <Badge
+              variant="secondary"
+              className="h-5 px-1.5 text-[10px] gap-1 border"
+              style={{ borderColor: tier.color, backgroundColor: `${tier.color}20`, color: tier.color }}
+            >
+              <Award className="w-3 h-3" />
+              {tier.name}
+              {tier.discount_percent > 0 && ` · ${tier.discount_percent}% desc.`}
+            </Badge>
+          )}
         </div>
 
         {/* KPIs principais */}
