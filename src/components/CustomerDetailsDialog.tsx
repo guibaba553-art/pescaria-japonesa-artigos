@@ -6,7 +6,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Loader2, ShoppingBag, Calendar, CreditCard, Package, TrendingUp, Receipt,
   User as UserIcon, Mail, Phone, MapPin, FileText, Award, Gift, Pencil,
@@ -201,7 +201,7 @@ export function CustomerDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] p-0 overflow-hidden flex flex-col gap-0">
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-muted/40 to-transparent">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-muted/40 to-transparent shrink-0">
           <div className="flex items-start gap-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm"
@@ -239,8 +239,8 @@ export function CustomerDetailsDialog({
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-4 pt-3 border-b">
+        <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="px-4 pt-3 border-b shrink-0">
             <TabsList className="bg-transparent p-0 h-auto gap-1">
               <TabsTrigger value="overview" className="data-[state=active]:bg-muted gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Visão geral
@@ -258,13 +258,13 @@ export function CustomerDetailsDialog({
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ScrollArea className="h-full">
+              <>
                 {/* ============ Visão geral ============ */}
                 <TabsContent value="overview" className="m-0 p-6 space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -513,7 +513,7 @@ export function CustomerDetailsDialog({
                     </div>
                   )}
                 </TabsContent>
-              </ScrollArea>
+              </>
             )}
           </div>
         </Tabs>
