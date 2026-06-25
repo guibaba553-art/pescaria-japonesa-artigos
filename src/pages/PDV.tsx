@@ -1623,7 +1623,7 @@ export default function PDV() {
   }, [columnWidths]);
 
   const resetColumnWidths = () => {
-    setColumnWidths({ customer: 25, products: 50, cart: 25 });
+    setColumnWidths({ customer: 18, products: 52, cart: 30 });
   };
 
   const finalizeSale = async () => {
