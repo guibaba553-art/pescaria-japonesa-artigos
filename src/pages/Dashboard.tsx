@@ -508,6 +508,33 @@ export default function Dashboard() {
           return order.status === 'entregado' && order.source !== 'pdv' && d >= start && d <= end;
         })
       );
+
+      // Ranking de clientes no período
+      const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+      const customerAcc: Record<string, CustomerSales> = {};
+      deliveredInRange.forEach((o: any) => {
+        if (!o.customer_id) return;
+        const c = customerMap.get(o.customer_id);
+        const name = c?.full_name || 'Cliente sem nome';
+        const doc = c?.cpf || c?.cnpj || '—';
+        if (!customerAcc[o.customer_id]) {
+          customerAcc[o.customer_id] = {
+            id: o.customer_id,
+            name,
+            doc,
+            score: Number(c?.score || 0),
+            orders: 0,
+            revenue: 0,
+            lastOrder: null,
+          };
+        }
+        const row = customerAcc[o.customer_id];
+        row.orders += 1;
+        row.revenue += parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost));
+        const d = new Date(o.created_at).toISOString();
+        if (!row.lastOrder || d > row.lastOrder) row.lastOrder = d;
+      });
+      setCustomersList(Object.values(customerAcc));
     } catch (error: any) {
       console.error('Erro ao carregar dashboard:', error);
       toast({ title: 'Erro ao carregar dados', description: error.message, variant: 'destructive' });
