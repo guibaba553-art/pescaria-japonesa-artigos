@@ -14,11 +14,12 @@ export interface EmployeePermissions {
   sales_analysis: boolean;
   triagem: boolean;
   fiscal: boolean;
+  customers: boolean;
 }
 
 const ADMIN_PERMS: EmployeePermissions = {
   pdv: true, catalog: true, cash_register: true, dashboard: true,
-  orders: true, sales_analysis: true, triagem: true, fiscal: true,
+  orders: true, sales_analysis: true, triagem: true, fiscal: true, customers: true,
 };
 
 interface AuthContextType {
