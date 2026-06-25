@@ -11,8 +11,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
   TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, Boxes,
 } from 'lucide-react';
+
 import { useToast } from '@/hooks/use-toast';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
