@@ -44,6 +44,7 @@ interface ProductSales {
   name: string;
   quantity: number;
   revenue: number;
+  stock: number;
 }
 
 interface LowStockProduct {
