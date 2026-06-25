@@ -452,8 +452,7 @@ export default function Dashboard() {
             acc[name].revenue += item.quantity * parseFloat(item.price_at_purchase);
           });
         return Object.values(acc)
-          .sort((a, b) => b.revenue - a.revenue)
-          .slice(0, 10);
+          .sort((a, b) => b.revenue - a.revenue);
       };
 
       setTopPdv(
@@ -621,7 +620,7 @@ export default function Dashboard() {
         <TabsContent value="products">
           <Card>
             <CardHeader>
-              <CardTitle>Top 10 Produtos — {title}</CardTitle>
+              <CardTitle>Produtos — {title}</CardTitle>
               <CardDescription>Produtos com maior receita neste canal</CardDescription>
             </CardHeader>
             <CardContent>
@@ -651,7 +650,7 @@ export default function Dashboard() {
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                     {top.map((p, i) => (
                       <div key={i} className="flex justify-between items-center p-2 border rounded">
                         <span className="text-sm font-medium truncate flex-1">
