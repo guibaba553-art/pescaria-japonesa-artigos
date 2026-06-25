@@ -2087,9 +2087,9 @@ export default function PDV() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
+          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1 h-full">
 
-            <Card className="border-primary/20 sticky top-24 rounded-l-none">
+            <Card className="border-primary/20 sticky top-24 rounded-l-none h-[calc(100vh-12rem)]">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
