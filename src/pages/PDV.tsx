@@ -60,6 +60,7 @@ import {
 import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { CustomerPdvInsights } from '@/components/CustomerPdvInsights';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
@@ -254,12 +255,18 @@ export default function PDV() {
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  // Cronômetro de atendimento (ms desde que o cliente foi selecionado)
+  const [customerSelectedAt, setCustomerSelectedAt] = useState<number | null>(null);
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   useEffect(() => { loadTiers().then(setTiers); }, []);
   const customerTier = useMemo(
     () => (selectedCustomer ? getTierForScore(tiers, selectedCustomer.score || 0) : null),
     [selectedCustomer, tiers]
   );
+  // Inicia/zera o cronômetro automaticamente quando o cliente muda
+  useEffect(() => {
+    setCustomerSelectedAt(selectedCustomer?.id ? Date.now() : null);
+  }, [selectedCustomer?.id]);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [scoreDialogCustomer, setScoreDialogCustomer] = useState<{ id: string; full_name: string; company_name: string | null; score: number } | null>(null);
 
@@ -1748,6 +1755,9 @@ export default function PDV() {
           cash_received: paymentMethod === 'cash'
             ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
             : null,
+          pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
+            ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
+            : null,
         }])
         .select()
         .single();
@@ -2212,6 +2222,82 @@ export default function PDV() {
                 <X className="w-5 h-5" />
               </Button>
             </div>
+
+            {/* Identificação do cliente — primeiro passo do atendimento */}
+            <Card className="border-primary/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Identificação do cliente
+                  {selectedCustomer && customerSelectedAt && (
+                    <Badge variant="outline" className="ml-auto text-[10px] font-mono">
+                      em atendimento
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {selectedCustomer ? (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">
+                          {selectedCustomer.company_name || selectedCustomer.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0"
+                        onClick={() => setSelectedCustomer(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <CustomerPdvInsights customer={selectedCustomer} startedAt={customerSelectedAt} />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Comece digitando o <strong>CPF</strong> ou <strong>CNPJ</strong> do cliente para liberar o painel com perfil de compra, pagamento preferido e tempo de atendimento.
+                    </p>
+                    <CustomerSearchCombobox
+                      placeholder="CPF, CNPJ ou nome do cliente..."
+                      onSelect={(customer) => {
+                        setSelectedCustomer(customer);
+                        const tier = getTierForScore(tiers, customer.score || 0);
+                        if (tier?.block_purchase) {
+                          toast({
+                            title: `Atenção — cliente ${tier.name}`,
+                            description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
+                          });
+                        }
+                      }}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowCustomerDialog(true)}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConsumidorFinal}
+                      >
+                        Consumidor final
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">

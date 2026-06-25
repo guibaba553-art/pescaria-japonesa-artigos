@@ -1404,6 +1404,7 @@ export type Database = {
           nsu: string | null
           payment_id: string | null
           payment_method: string | null
+          pdv_service_time_seconds: number | null
           pix_expiration: string | null
           qr_code: string | null
           qr_code_base64: string | null
@@ -1447,6 +1448,7 @@ export type Database = {
           nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
+          pdv_service_time_seconds?: number | null
           pix_expiration?: string | null
           qr_code?: string | null
           qr_code_base64?: string | null
@@ -1490,6 +1492,7 @@ export type Database = {
           nsu?: string | null
           payment_id?: string | null
           payment_method?: string | null
+          pdv_service_time_seconds?: number | null
           pix_expiration?: string | null
           qr_code?: string | null
           qr_code_base64?: string | null
