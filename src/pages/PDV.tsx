@@ -2238,7 +2238,7 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="space-y-4 order-2">
+          <div className="space-y-4 order-2 min-w-0">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
