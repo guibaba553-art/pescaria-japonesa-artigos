@@ -128,8 +128,8 @@ export default function AdminCustomers() {
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<'all' | '30d' | '90d' | '180d' | '365d' | 'never'>('all');
   type SortKey = 'name' | 'doc' | 'score' | 'orders' | 'spent' | 'last' | 'created';
-  const [sortKey, setSortKey] = useState<SortKey>('last');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
