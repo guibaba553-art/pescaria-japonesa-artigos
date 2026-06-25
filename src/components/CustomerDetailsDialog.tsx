@@ -239,8 +239,8 @@ export function CustomerDetailsDialog({
           </div>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-4 pt-3 border-b">
+        <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="px-4 pt-3 border-b shrink-0">
             <TabsList className="bg-transparent p-0 h-auto gap-1">
               <TabsTrigger value="overview" className="data-[state=active]:bg-muted gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Visão geral
