@@ -2046,7 +2046,7 @@ export default function PDV() {
       </div>
 
       {/* Commercial dark banner — desktop only */}
-      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-32 pb-8">
+      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-24 pb-5">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
