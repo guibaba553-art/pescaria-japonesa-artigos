@@ -48,6 +48,16 @@ interface ProductSales {
   stock: number;
 }
 
+interface CustomerSales {
+  id: string;
+  name: string;
+  doc: string;
+  score: number;
+  orders: number;
+  revenue: number;
+  lastOrder: string | null;
+}
+
 interface LowStockProduct {
   id: string;
   name: string;
