@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, TrendingUp, Clock, CreditCard, Banknote, DollarSign, ShoppingBag } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Clock, CreditCard, Banknote, DollarSign, ShoppingBag, Award } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { CustomerTier } from '@/utils/customerTiers';
 
 interface Props {
   customer: any;
+  tier?: CustomerTier | null;
 }
 
 const BRL = (n: number) =>
