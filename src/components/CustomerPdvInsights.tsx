@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, TrendingUp, Clock, CreditCard, Banknote, DollarSign, ShoppingBag, Timer } from 'lucide-react';
+import { Loader2, Sparkles, TrendingUp, Clock, CreditCard, Banknote, DollarSign, ShoppingBag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   customer: any;
-  /** Timestamp (ms) em que o cliente foi selecionado — usado para o cronômetro de atendimento. */
-  startedAt: number | null;
 }
 
 const BRL = (n: number) =>
@@ -36,17 +34,9 @@ const payIcon = (k: string) => {
   return <CreditCard className="w-3 h-3" />;
 };
 
-export function CustomerPdvInsights({ customer, startedAt }: Props) {
+export function CustomerPdvInsights({ customer }: Props) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(Date.now());
-
-  // Cronômetro
-  useEffect(() => {
-    if (!startedAt) return;
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, [startedAt]);
 
   useEffect(() => {
     let cancel = false;
@@ -102,7 +92,7 @@ export function CustomerPdvInsights({ customer, startedAt }: Props) {
     return { count, total, avg, estimatedPower, avgServiceSec, payRanking, lastN: last.length };
   }, [orders]);
 
-  const elapsed = startedAt ? Math.max(0, Math.floor((now - startedAt) / 1000)) : 0;
+  
 
   if (loading) {
     return (
@@ -121,7 +111,7 @@ export function CustomerPdvInsights({ customer, startedAt }: Props) {
         </div>
 
         {/* KPIs principais */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <div className="rounded-lg bg-background border p-2">
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide">
               <TrendingUp className="w-3 h-3" /> Poder de compra
