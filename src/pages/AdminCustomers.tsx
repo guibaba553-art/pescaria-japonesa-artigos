@@ -118,6 +118,7 @@ export default function AdminCustomers() {
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<Customer | null>(null);
+  const [detailsFor, setDetailsFor] = useState<Customer | null>(null);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
