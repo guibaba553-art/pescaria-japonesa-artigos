@@ -1603,7 +1603,7 @@ export default function PDV() {
       const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
 
       if (handle === 'customer-products') {
-        const newCustomer = Math.max(15, Math.min(28, startCustomer + deltaPct));
+        const newCustomer = Math.max(16, Math.min(30, startCustomer + deltaPct));
         const newProducts = Math.max(40, Math.min(60, startProducts - deltaPct));
         setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
       } else {
