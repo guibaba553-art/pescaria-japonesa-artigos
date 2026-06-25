@@ -298,10 +298,115 @@ export default function Dashboard() {
       setLowStock(low);
       setOutOfStock((products || []).filter((p: any) => p.stock === 0).length);
 
-      // Vendas diárias dentro do período por canal
-      const byDay: Record<string, SalesData> = {};
+      // ============ ESTOQUE: valor atual + histórico ============
+      // Unidades de estoque: variações quando existem, senão produto
+      type Unit = { id: string; productId: string; variationId: string | null; stock: number; cost: number; price: number };
+      const units: Unit[] = [];
+      const variationsByProduct = new Map<string, any[]>();
+      (productVariations || []).forEach((v: any) => {
+        if (!variationsByProduct.has(v.product_id)) variationsByProduct.set(v.product_id, []);
+        variationsByProduct.get(v.product_id)!.push(v);
+      });
+      (products || []).forEach((p: any) => {
+        const vars = variationsByProduct.get(p.id) || [];
+        if (vars.length > 0) {
+          vars.forEach((v: any) => {
+            const price = v.on_sale && v.sale_price ? Number(v.sale_price) : Number(v.price ?? p.price ?? 0);
+            units.push({
+              id: `${p.id}|${v.id}`,
+              productId: p.id,
+              variationId: v.id,
+              stock: Number(v.stock || 0),
+              cost: Number(v.cost ?? p.cost ?? 0),
+              price,
+            });
+          });
+        } else {
+          const price = p.on_sale && p.sale_price ? Number(p.sale_price) : Number(p.price ?? 0);
+          units.push({
+            id: `${p.id}|`,
+            productId: p.id,
+            variationId: null,
+            stock: Number(p.stock || 0),
+            cost: Number(p.cost ?? 0),
+            price,
+          });
+        }
+      });
 
-      delivered
+      const currentCostValue = units.reduce((s, u) => s + u.stock * u.cost, 0);
+      const currentPriceValue = units.reduce((s, u) => s + u.stock * u.price, 0);
+      const currentItems = units.reduce((s, u) => s + Math.max(0, u.stock), 0);
+      setStockCostValue(currentCostValue);
+      setStockPriceValue(currentPriceValue);
+      setStockItemCount(currentItems);
+
+      // Histórico: reconstruir estoque dia-a-dia desde end..start usando stock_movements
+      const stockMovements: any[] = [];
+      {
+        const pageSize = 1000;
+        let from2 = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('stock_movements')
+            .select('product_id, variation_id, quantity_delta, created_at')
+            .gte('created_at', start.toISOString())
+            .order('created_at', { ascending: false })
+            .range(from2, from2 + pageSize - 1);
+          if (error) break;
+          if (!page || page.length === 0) break;
+          stockMovements.push(...page);
+          if (page.length < pageSize) break;
+          from2 += pageSize;
+        }
+      }
+
+      // Mapa de estoque atual por unidade (mutável conforme desfazemos movimentações)
+      const unitMap = new Map<string, Unit>();
+      units.forEach((u) => unitMap.set(u.id, { ...u }));
+      const keyOf = (pid: string, vid: string | null) => `${pid}|${vid ?? ''}`;
+
+      // Construir dias do período (do mais recente para o mais antigo)
+      const days: Date[] = [];
+      const cursor = new Date(end);
+      cursor.setHours(23, 59, 59, 999);
+      const stopAt = new Date(start);
+      stopAt.setHours(0, 0, 0, 0);
+      while (cursor >= stopAt) {
+        days.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      // Movimentações ordenadas decrescente: para cada dia, desfaz movimentações posteriores ao fim daquele dia
+      let movIdx = 0;
+      const history: { date: string; costValue: number; priceValue: number; items: number }[] = [];
+      for (const dayEnd of days) {
+        // Desfazer todas movimentações que ocorreram APÓS dayEnd (já estão ordenadas desc)
+        while (movIdx < stockMovements.length) {
+          const m = stockMovements[movIdx];
+          if (new Date(m.created_at) <= dayEnd) break;
+          const k = keyOf(m.product_id, m.variation_id);
+          const u = unitMap.get(k);
+          if (u) u.stock = u.stock - Number(m.quantity_delta || 0);
+          movIdx++;
+        }
+        let cVal = 0, pVal = 0, items = 0;
+        unitMap.forEach((u) => {
+          const s = Math.max(0, u.stock);
+          cVal += s * u.cost;
+          pVal += s * u.price;
+          items += s;
+        });
+        history.push({
+          date: dayEnd.toLocaleDateString('pt-BR'),
+          costValue: cVal,
+          priceValue: pVal,
+          items,
+        });
+      }
+      setStockHistory(history.reverse());
+
+
         .filter((o) => {
           const d = new Date(o.created_at);
           return d >= start && d <= end;
