@@ -2166,7 +2166,7 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-7 space-y-4 order-2">
+          <div className="lg:col-span-5 space-y-4 order-2">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
@@ -2281,7 +2281,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-2 lg:space-y-4 order-3',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-4 lg:space-y-4 order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
