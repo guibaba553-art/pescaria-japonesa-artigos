@@ -2174,7 +2174,7 @@ export default function PDV() {
                   </Badge>
                 )}
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="p-3 pt-0 space-y-3">
                 {selectedCustomer ? (
                   <>
                     <div className="flex items-start justify-between gap-2">
