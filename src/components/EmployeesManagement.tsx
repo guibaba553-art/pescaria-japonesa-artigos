@@ -22,7 +22,8 @@ type PermKey =
   | 'can_access_orders'
   | 'can_access_sales_analysis'
   | 'can_access_triagem'
-  | 'can_access_fiscal';
+  | 'can_access_fiscal'
+  | 'can_access_customers';
 
 interface EmployeeRow {
   user_id: string;
@@ -35,6 +36,7 @@ interface EmployeeRow {
   can_access_sales_analysis: boolean;
   can_access_triagem: boolean;
   can_access_fiscal: boolean;
+  can_access_customers: boolean;
 }
 
 const PERMISSIONS: Array<{ key: PermKey; label: string; icon: any; defaultValue: boolean }> = [
@@ -42,6 +44,7 @@ const PERMISSIONS: Array<{ key: PermKey; label: string; icon: any; defaultValue:
   { key: 'can_access_catalog', label: 'Catálogo', icon: Package, defaultValue: true },
   { key: 'can_access_orders', label: 'Pedidos', icon: ClipboardList, defaultValue: true },
   { key: 'can_access_triagem', label: 'Triagem', icon: ScanBarcode, defaultValue: true },
+  { key: 'can_access_customers', label: 'Clientes', icon: UserSquare2, defaultValue: false },
   { key: 'can_access_cash_register', label: 'Caixa', icon: DollarSign, defaultValue: false },
   { key: 'can_access_dashboard', label: 'Dashboard', icon: TrendingUp, defaultValue: false },
   { key: 'can_access_sales_analysis', label: 'Análise de Vendas', icon: CalendarRange, defaultValue: false },
