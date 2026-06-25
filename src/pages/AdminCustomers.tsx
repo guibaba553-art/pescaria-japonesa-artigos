@@ -362,7 +362,7 @@ export default function AdminCustomers() {
     else if (docFilter === 'pf') arr = arr.filter((c) => !c.cnpj);
 
     if (tierFilter !== 'all') {
-      arr = arr.filter((c) => getTierForScore(c.score || 0, tiers)?.id === tierFilter);
+      arr = arr.filter((c) => getTierForScore(tiers, c.score || 0)?.id === tierFilter);
     }
 
     if (periodFilter !== 'all') {
