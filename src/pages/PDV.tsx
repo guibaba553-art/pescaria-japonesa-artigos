@@ -1506,10 +1506,10 @@ export default function PDV() {
 
       const payload: any = {
         full_name: customerForm.full_name,
-        cep: customerForm.cep || null,
-        street: customerForm.street || null,
-        number: customerForm.number || null,
-        neighborhood: customerForm.neighborhood || null,
+        cep: customerForm.cep || '',
+        street: customerForm.street || '',
+        number: customerForm.number || '',
+        neighborhood: customerForm.neighborhood || '',
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
         company_name: isCnpj ? (customerForm.company_name || null) : null,
