@@ -2174,25 +2174,25 @@ export default function PDV() {
                   </Badge>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 {selectedCustomer ? (
                   <>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-base truncate leading-tight">
+                        <p className="font-bold text-sm truncate leading-tight">
                           {selectedCustomer.company_name || selectedCustomer.full_name}
                         </p>
-                        <p className="text-xs text-muted-foreground font-mono mt-1">
+                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                           {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
                         </p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="shrink-0 h-8 w-8 p-0"
+                        className="shrink-0 h-7 w-7 p-0"
                         onClick={() => setSelectedCustomer(null)}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                     <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
