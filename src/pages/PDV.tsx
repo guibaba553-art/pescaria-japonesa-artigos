@@ -60,6 +60,7 @@ import {
 import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { CustomerPdvInsights } from '@/components/CustomerPdvInsights';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
