@@ -3324,6 +3324,9 @@ export default function PDV() {
               </Button>
             </div>
           </div>
+            );
+          })()}
+
         </DialogContent>
       </Dialog>
 
