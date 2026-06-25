@@ -262,6 +262,10 @@ export default function PDV() {
     () => (selectedCustomer ? getTierForScore(tiers, selectedCustomer.score || 0) : null),
     [selectedCustomer, tiers]
   );
+  // Inicia/zera o cronômetro automaticamente quando o cliente muda
+  useEffect(() => {
+    setCustomerSelectedAt(selectedCustomer?.id ? Date.now() : null);
+  }, [selectedCustomer?.id]);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [scoreDialogCustomer, setScoreDialogCustomer] = useState<{ id: string; full_name: string; company_name: string | null; score: number } | null>(null);
 
