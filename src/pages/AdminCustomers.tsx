@@ -569,81 +569,104 @@ export default function AdminCustomers() {
       description="Cadastre, edite e gerencie clientes (PF e PJ) usados no PDV e em emissões de NF-e."
     >
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, documento, e-mail, cidade..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-sm">
-              {([
-                { key: 'all', label: 'Todos', count: list.length },
-                { key: 'pj', label: 'PJ', count: pjCount },
-                { key: 'pf', label: 'PF', count: pfCount },
-              ] as const).map((t) => {
-                const active = docFilter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setDocFilter(t.key)}
-                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[5px] font-medium transition-colors ${
-                      active
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t.label}
-                    <span className={`text-xs font-mono ${active ? 'text-muted-foreground' : 'opacity-70'}`}>
-                      {t.count}
-                    </span>
-                  </button>
-                );
-              })}
+        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+          <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Left: entity tabs + incomplete pill */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center rounded-xl bg-muted p-1 text-sm">
+                {([
+                  { key: 'all', label: 'Todos', count: list.length },
+                  { key: 'pj', label: 'PJ', count: pjCount },
+                  { key: 'pf', label: 'PF', count: pfCount },
+                ] as const).map((t) => {
+                  const active = docFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setDocFilter(t.key)}
+                      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg font-medium transition-colors ${
+                        active
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.label}
+                      <span className={`text-xs font-mono ${active ? 'text-muted-foreground' : 'opacity-70'}`}>
+                        {t.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOnlyInvalid((v) => !v)}
+                className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border-2 text-sm font-semibold transition-colors ${
+                  onlyInvalid
+                    ? 'border-destructive bg-destructive/10 text-destructive'
+                    : 'border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Incompletos
+                <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                  {invalidCount}
+                </span>
+              </button>
             </div>
 
-            
-            <Button
-              type="button"
-              size="sm"
-              variant={onlyInvalid ? 'default' : 'outline'}
-              onClick={() => setOnlyInvalid((v) => !v)}
-              className={onlyInvalid ? '' : 'border-destructive/40 text-destructive hover:text-destructive'}
-            >
-              <AlertTriangle className="w-4 h-4 mr-1.5" />
-              {onlyInvalid ? 'Mostrando incompletos' : 'Só incompletos'}
-              <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={filtersOpen ? 'default' : 'outline'}
-              onClick={() => setFiltersOpen((v) => !v)}
-            >
-              <Filter className="w-4 h-4 mr-1.5" /> Filtros
-              {(tierFilter !== 'all' || periodFilter !== 'all') && (
-                <Badge variant="secondary" className="ml-2">
-                  {(tierFilter !== 'all' ? 1 : 0) + (periodFilter !== 'all' ? 1 : 0)}
-                </Badge>
-              )}
-            </Button>
-            <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
-            <Button
-              variant="outline"
-              onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
-            >
-              <Gift className="w-4 h-4 mr-2" />
-              Recompensas/Punições
-            </Button>
-            <Button onClick={openNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo cliente
-            </Button>
+            {/* Right: search + filters + rewards + primary */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar nome, CPF/CNPJ..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-9 w-56 rounded-xl bg-muted/40 border-muted"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFiltersOpen((v) => !v)}
+                className="h-9 rounded-xl"
+              >
+                <Filter className="w-4 h-4 mr-1.5" /> Filtros
+                {(tierFilter !== 'all' || periodFilter !== 'all') && (
+                  <Badge variant="secondary" className="ml-2">
+                    {(tierFilter !== 'all' ? 1 : 0) + (periodFilter !== 'all' ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+
+              <div className="h-7 w-px bg-border mx-1 hidden sm:block" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
+                className="h-9 rounded-xl"
+              >
+                <Gift className="w-4 h-4 mr-2" />
+                Recompensas
+              </Button>
+
+              <Button onClick={openNew} className="h-9 rounded-xl shadow-md shadow-primary/20">
+                <Plus className="w-4 h-4 mr-2" />
+                Novo cliente
+              </Button>
+            </div>
+          </div>
+
+          <div className="px-4 sm:px-6 py-2 bg-muted/30 border-t">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Mostrando <span className="text-foreground">{filtered.length} de {list.length}</span> registros
+            </p>
           </div>
         </div>
 
