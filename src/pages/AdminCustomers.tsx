@@ -731,9 +731,9 @@ export default function AdminCustomers() {
                   </Button>
                 </div>
               </div>
-              {(tierFilter !== 'all' || periodFilter !== 'all' || sortKey !== 'last' || sortDir !== 'desc') && (
+              {(tierFilter !== 'all' || periodFilter !== 'all' || sortKey !== 'name' || sortDir !== 'asc') && (
                 <div className="sm:col-span-3">
-                  <Button variant="ghost" size="sm" onClick={() => { setTierFilter('all'); setPeriodFilter('all'); setSortKey('last'); setSortDir('desc'); }}>
+                  <Button variant="ghost" size="sm" onClick={() => { setTierFilter('all'); setPeriodFilter('all'); setSortKey('name'); setSortDir('asc'); }}>
                     <X className="w-3.5 h-3.5 mr-1.5" /> Limpar filtros
                   </Button>
                 </div>
