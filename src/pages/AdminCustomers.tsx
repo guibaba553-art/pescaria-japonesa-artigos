@@ -327,9 +327,6 @@ export default function AdminCustomers() {
     load();
   }, []);
 
-  useEffect(() => {
-    load();
-  }, []);
 
   const validations = useMemo(() => {
     const m = new Map<string, ReturnType<typeof validateNfe>>();
