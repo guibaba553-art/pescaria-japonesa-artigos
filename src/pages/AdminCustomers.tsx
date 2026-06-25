@@ -619,6 +619,19 @@ export default function AdminCustomers() {
               {onlyInvalid ? 'Mostrando incompletos' : 'Só incompletos'}
               <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={filtersOpen ? 'default' : 'outline'}
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              <Filter className="w-4 h-4 mr-1.5" /> Filtros
+              {(tierFilter !== 'all' || periodFilter !== 'all') && (
+                <Badge variant="secondary" className="ml-2">
+                  {(tierFilter !== 'all' ? 1 : 0) + (periodFilter !== 'all' ? 1 : 0)}
+                </Badge>
+              )}
+            </Button>
             <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
             <Button
               variant="outline"
