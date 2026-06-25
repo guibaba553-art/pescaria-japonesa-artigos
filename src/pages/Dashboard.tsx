@@ -11,8 +11,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
   TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, Boxes,
 } from 'lucide-react';
+
 import { useToast } from '@/hooks/use-toast';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
@@ -99,6 +100,13 @@ export default function Dashboard() {
   const [totalCost, setTotalCost] = useState(0);
   const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+
+  // Estoque
+  const [stockCostValue, setStockCostValue] = useState(0);
+  const [stockPriceValue, setStockPriceValue] = useState(0);
+  const [stockItemCount, setStockItemCount] = useState(0);
+  const [stockHistory, setStockHistory] = useState<{ date: string; costValue: number; priceValue: number; items: number }[]>([]);
+
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
@@ -290,11 +298,120 @@ export default function Dashboard() {
       setLowStock(low);
       setOutOfStock((products || []).filter((p: any) => p.stock === 0).length);
 
+      // ============ ESTOQUE: valor atual + histórico ============
+      // Unidades de estoque: variações quando existem, senão produto
+      type Unit = { id: string; productId: string; variationId: string | null; stock: number; cost: number; price: number };
+      const units: Unit[] = [];
+      const variationsByProduct = new Map<string, any[]>();
+      (productVariations || []).forEach((v: any) => {
+        if (!variationsByProduct.has(v.product_id)) variationsByProduct.set(v.product_id, []);
+        variationsByProduct.get(v.product_id)!.push(v);
+      });
+      (products || []).forEach((p: any) => {
+        const vars = variationsByProduct.get(p.id) || [];
+        if (vars.length > 0) {
+          vars.forEach((v: any) => {
+            const price = v.on_sale && v.sale_price ? Number(v.sale_price) : Number(v.price ?? p.price ?? 0);
+            units.push({
+              id: `${p.id}|${v.id}`,
+              productId: p.id,
+              variationId: v.id,
+              stock: Number(v.stock || 0),
+              cost: Number(v.cost ?? p.cost ?? 0),
+              price,
+            });
+          });
+        } else {
+          const price = p.on_sale && p.sale_price ? Number(p.sale_price) : Number(p.price ?? 0);
+          units.push({
+            id: `${p.id}|`,
+            productId: p.id,
+            variationId: null,
+            stock: Number(p.stock || 0),
+            cost: Number(p.cost ?? 0),
+            price,
+          });
+        }
+      });
+
+      const currentCostValue = units.reduce((s, u) => s + u.stock * u.cost, 0);
+      const currentPriceValue = units.reduce((s, u) => s + u.stock * u.price, 0);
+      const currentItems = units.reduce((s, u) => s + Math.max(0, u.stock), 0);
+      setStockCostValue(currentCostValue);
+      setStockPriceValue(currentPriceValue);
+      setStockItemCount(currentItems);
+
+      // Histórico: reconstruir estoque dia-a-dia desde end..start usando stock_movements
+      const stockMovements: any[] = [];
+      {
+        const pageSize = 1000;
+        let from2 = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('stock_movements')
+            .select('product_id, variation_id, quantity_delta, created_at')
+            .gte('created_at', start.toISOString())
+            .order('created_at', { ascending: false })
+            .range(from2, from2 + pageSize - 1);
+          if (error) break;
+          if (!page || page.length === 0) break;
+          stockMovements.push(...page);
+          if (page.length < pageSize) break;
+          from2 += pageSize;
+        }
+      }
+
+      // Mapa de estoque atual por unidade (mutável conforme desfazemos movimentações)
+      const unitMap = new Map<string, Unit>();
+      units.forEach((u) => unitMap.set(u.id, { ...u }));
+      const keyOf = (pid: string, vid: string | null) => `${pid}|${vid ?? ''}`;
+
+      // Construir dias do período (do mais recente para o mais antigo)
+      const days: Date[] = [];
+      const cursor = new Date(end);
+      cursor.setHours(23, 59, 59, 999);
+      const stopAt = new Date(start);
+      stopAt.setHours(0, 0, 0, 0);
+      while (cursor >= stopAt) {
+        days.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() - 1);
+      }
+
+      // Movimentações ordenadas decrescente: para cada dia, desfaz movimentações posteriores ao fim daquele dia
+      let movIdx = 0;
+      const history: { date: string; costValue: number; priceValue: number; items: number }[] = [];
+      for (const dayEnd of days) {
+        // Desfazer todas movimentações que ocorreram APÓS dayEnd (já estão ordenadas desc)
+        while (movIdx < stockMovements.length) {
+          const m = stockMovements[movIdx];
+          if (new Date(m.created_at) <= dayEnd) break;
+          const k = keyOf(m.product_id, m.variation_id);
+          const u = unitMap.get(k);
+          if (u) u.stock = u.stock - Number(m.quantity_delta || 0);
+          movIdx++;
+        }
+        let cVal = 0, pVal = 0, items = 0;
+        unitMap.forEach((u) => {
+          const s = Math.max(0, u.stock);
+          cVal += s * u.cost;
+          pVal += s * u.price;
+          items += s;
+        });
+        history.push({
+          date: dayEnd.toLocaleDateString('pt-BR'),
+          costValue: cVal,
+          priceValue: pVal,
+          items,
+        });
+      }
+      setStockHistory(history.reverse());
+
       // Vendas diárias dentro do período por canal
       const byDay: Record<string, SalesData> = {};
 
       delivered
         .filter((o) => {
+
           const d = new Date(o.created_at);
           return d >= start && d <= end;
         })
@@ -670,6 +787,10 @@ export default function Dashboard() {
             <TabsTrigger value="financas" className="gap-2">
               <Wallet className="h-4 w-4" /> Finanças
             </TabsTrigger>
+            <TabsTrigger value="estoque" className="gap-2">
+              <Boxes className="h-4 w-4" /> Estoque
+            </TabsTrigger>
+
             <TabsTrigger value="pdv" className="gap-2">
               <Store className="h-4 w-4" /> PDV
             </TabsTrigger>
@@ -926,7 +1047,90 @@ export default function Dashboard() {
           </TabsContent>
 
 
+          {/* ============ ESTOQUE ============ */}
+          <TabsContent value="estoque" className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Valor de Custo"
+                value={formatBRL(stockCostValue)}
+                hint="Estoque atual × custo unitário"
+                icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Valor de Venda"
+                value={formatBRL(stockPriceValue)}
+                hint="Estoque atual × preço de venda"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Margem Potencial"
+                value={formatBRL(stockPriceValue - stockCostValue)}
+                hint={stockPriceValue > 0 ? `${(((stockPriceValue - stockCostValue) / stockPriceValue) * 100).toFixed(1)}% sobre venda` : '—'}
+                icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+              />
+              <StatCard
+                title="Itens em Estoque"
+                value={stockItemCount.toLocaleString('pt-BR')}
+                hint="Soma de unidades disponíveis"
+                icon={<Boxes className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico do Valor de Estoque</CardTitle>
+                <CardDescription>
+                  Custo vs. valor de venda ao longo do período ({rangeLabel})
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {stockHistory.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    Sem movimentações no período — usando estoque atual.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <LineChart data={stockHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                      <Legend />
+                      <Line type="monotone" dataKey="costValue" stroke="#f59e0b" strokeWidth={2} name="Valor de Custo" dot={false} />
+                      <Line type="monotone" dataKey="priceValue" stroke="#16a34a" strokeWidth={2} name="Valor de Venda" dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Quantidade em Estoque</CardTitle>
+                <CardDescription>Total de unidades disponíveis por dia</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {stockHistory.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    Sem movimentações no período.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={stockHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip formatter={(v: number) => v.toLocaleString('pt-BR')} />
+                      <Bar dataKey="items" fill="#2563eb" name="Unidades" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ============ PDV ============ */}
+
           <TabsContent value="pdv">
             <ChannelSection
               title="PDV"
