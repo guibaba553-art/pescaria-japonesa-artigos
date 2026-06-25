@@ -2087,7 +2087,7 @@ export default function PDV() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-4 space-y-4 order-1">
+          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
             <Card className="border-primary/20 sticky top-24">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
@@ -2166,7 +2166,7 @@ export default function PDV() {
           </aside>
 
           {/* Coluna 2 — Produtos */}
-          <div className="lg:col-span-4 space-y-4 order-2">
+          <div className="lg:col-span-6 space-y-4 order-2">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
@@ -2281,7 +2281,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-4 lg:space-y-4 order-3',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-3 lg:space-y-4 order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
