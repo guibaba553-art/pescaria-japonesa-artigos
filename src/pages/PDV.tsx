@@ -2084,8 +2084,8 @@ export default function PDV() {
       </div>
 
       <div className="py-3 lg:py-6 px-4 lg:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:max-h-[calc(100vh-200px)] lg:overflow-hidden">
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
 
