@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
   Loader2, ShoppingBag, Calendar, CreditCard, Package, TrendingUp, Receipt,
   User as UserIcon, Mail, Phone, MapPin, FileText, Award, Gift, Pencil,
-  CheckCircle2, AlertTriangle, History, Sparkles, IdCard,
+  CheckCircle2, AlertTriangle, History, Sparkles, IdCard, Brain, Clock, Target, Repeat,
 } from 'lucide-react';
 import { getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
@@ -191,6 +191,126 @@ export function CustomerDetailsDialog({
     return { count: valid.length, total, items, avg, last };
   }, [orders]);
 
+  const profile = useMemo(() => {
+    const valid = orders.filter((o) => !['cancelado', 'devolvido'].includes(o.status));
+    if (valid.length === 0) return null;
+
+    // Métodos de pagamento
+    const payCount: Record<string, { count: number; total: number }> = {};
+    valid.forEach((o) => {
+      const k = payLabel(o.payment_method);
+      payCount[k] = payCount[k] || { count: 0, total: 0 };
+      payCount[k].count += 1;
+      payCount[k].total += o.total_amount;
+    });
+    const payRanking = Object.entries(payCount)
+      .map(([k, v]) => ({ name: k, count: v.count, total: v.total, pct: (v.count / valid.length) * 100 }))
+      .sort((a, b) => b.count - a.count);
+
+    // Canal
+    const pdvCount = valid.filter((o) => o.source === 'pdv').length;
+    const siteCount = valid.length - pdvCount;
+    const channel = pdvCount >= siteCount ? 'PDV (loja física)' : 'Site (online)';
+    const channelPct = Math.round((Math.max(pdvCount, siteCount) / valid.length) * 100);
+
+    // Frequência: intervalo médio entre compras
+    const sortedAsc = [...valid].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    let avgIntervalDays = 0;
+    if (sortedAsc.length >= 2) {
+      const intervals: number[] = [];
+      for (let i = 1; i < sortedAsc.length; i++) {
+        intervals.push((+new Date(sortedAsc[i].created_at) - +new Date(sortedAsc[i - 1].created_at)) / 86400000);
+      }
+      avgIntervalDays = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    }
+
+    // Recência
+    const lastDate = sortedAsc[sortedAsc.length - 1]?.created_at;
+    const daysSinceLast = lastDate ? Math.floor((Date.now() - +new Date(lastDate)) / 86400000) : null;
+
+    // Dia da semana e período preferidos
+    const weekDays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const dayCount: Record<string, number> = {};
+    const periodCount: Record<string, number> = { Madrugada: 0, Manhã: 0, Tarde: 0, Noite: 0 };
+    valid.forEach((o) => {
+      const d = new Date(o.created_at);
+      const wd = weekDays[d.getDay()];
+      dayCount[wd] = (dayCount[wd] || 0) + 1;
+      const h = d.getHours();
+      const p = h < 6 ? 'Madrugada' : h < 12 ? 'Manhã' : h < 18 ? 'Tarde' : 'Noite';
+      periodCount[p] += 1;
+    });
+    const topDay = Object.entries(dayCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topPeriod = Object.entries(periodCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+
+    // Categorias (heurística por nome)
+    const catRules: Array<{ key: string; rx: RegExp }> = [
+      { key: 'Linhas', rx: /\b(linha|multifilamento|monofilamento|fluor(o|car)|trança|trancada)/i },
+      { key: 'Anzóis', rx: /\b(anz[oó]l|anzois|anzóis)/i },
+      { key: 'Varas / Caniços', rx: /\b(vara|cani[çc]o|cani[çc]os)/i },
+      { key: 'Carretilhas / Molinetes', rx: /\b(carretilha|molinete|carretel)/i },
+      { key: 'Iscas', rx: /\b(isca|jig|jighead|plug|popper|spinner|spoon)/i },
+      { key: 'Chumbadas', rx: /\b(chumb(o|ada))/i },
+      { key: 'Linha de mão / Empate', rx: /\b(empate|leader|estralo|girador|snap)/i },
+    ];
+    const catSpend: Record<string, { qty: number; total: number }> = {};
+    const productSpend: Record<string, { qty: number; total: number }> = {};
+    valid.forEach((o) => {
+      o.items.forEach((it) => {
+        const totalLine = it.price_at_purchase * it.quantity;
+        const name = it.name || 'Produto';
+        productSpend[name] = productSpend[name] || { qty: 0, total: 0 };
+        productSpend[name].qty += it.quantity;
+        productSpend[name].total += totalLine;
+        const matched = catRules.find((r) => r.rx.test(name));
+        const cat = matched ? matched.key : 'Outros / Acessórios';
+        catSpend[cat] = catSpend[cat] || { qty: 0, total: 0 };
+        catSpend[cat].qty += it.quantity;
+        catSpend[cat].total += totalLine;
+      });
+    });
+    const totalCat = Object.values(catSpend).reduce((s, v) => s + v.total, 0) || 1;
+    const categories = Object.entries(catSpend)
+      .map(([k, v]) => ({ name: k, qty: v.qty, total: v.total, pct: (v.total / totalCat) * 100 }))
+      .sort((a, b) => b.total - a.total);
+    const topProducts = Object.entries(productSpend)
+      .map(([k, v]) => ({ name: k, qty: v.qty, total: v.total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // Parcelamento médio em crédito
+    const credit = valid.filter((o) => /credit|crédito|credito/i.test(o.payment_method || ''));
+    const avgInstallments = credit.length
+      ? credit.reduce((s, o) => s + (o.installments || 1), 0) / credit.length
+      : 0;
+
+    // Perfil de gasto
+    const ticketAvg = stats.avg;
+    let consumerProfile = 'Eventual';
+    if (valid.length >= 10 && avgIntervalDays > 0 && avgIntervalDays <= 30) consumerProfile = 'Frequente / Recorrente';
+    else if (valid.length >= 5) consumerProfile = 'Engajado';
+    else if (valid.length >= 2) consumerProfile = 'Em fidelização';
+    if (ticketAvg >= 500) consumerProfile += ' · Alto ticket';
+    else if (ticketAvg >= 200) consumerProfile += ' · Médio ticket';
+    else consumerProfile += ' · Baixo ticket';
+
+    return {
+      payRanking,
+      preferredPayment: payRanking[0]?.name || '—',
+      channel,
+      channelPct,
+      avgIntervalDays,
+      daysSinceLast,
+      topDay,
+      topPeriod,
+      categories,
+      topProducts,
+      avgInstallments,
+      consumerProfile,
+    };
+  }, [orders, stats.avg]);
+
+
   if (!customer) return null;
   const c = customer;
   const tier = getTierForScore(tiers, c.score || 0);
@@ -244,6 +364,9 @@ export function CustomerDetailsDialog({
             <TabsList className="bg-transparent p-0 h-auto gap-1">
               <TabsTrigger value="overview" className="data-[state=active]:bg-muted gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Visão geral
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="data-[state=active]:bg-muted gap-1.5">
+                <Brain className="w-3.5 h-3.5" /> Perfil
               </TabsTrigger>
               <TabsTrigger value="history" className="data-[state=active]:bg-muted gap-1.5">
                 <History className="w-3.5 h-3.5" /> Histórico
@@ -339,6 +462,109 @@ export function CustomerDetailsDialog({
                     </Section>
                   )}
                 </TabsContent>
+
+                {/* ============ Perfil de consumo ============ */}
+                <TabsContent value="profile" className="m-0 p-6 space-y-4">
+                  {!profile ? (
+                    <div className="text-center text-sm text-muted-foreground py-12">
+                      Sem compras suficientes para gerar um perfil de consumo.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border p-4 bg-gradient-to-br from-primary/10 to-transparent">
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                          <Brain className="w-3.5 h-3.5" /> Perfil de consumo
+                        </div>
+                        <div className="mt-1 text-lg font-bold">{profile.consumerProfile}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Baseado em {stats.count} compras · ticket médio {BRL(stats.avg)}
+                          {profile.daysSinceLast !== null && ` · última há ${profile.daysSinceLast} dias`}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <StatCard icon={<CreditCard className="w-4 h-4" />} label="Pagamento preferido" value={profile.preferredPayment} />
+                        <StatCard icon={<Target className="w-4 h-4" />} label="Canal preferido" value={`${profile.channel.split(' ')[0]} (${profile.channelPct}%)`} />
+                        <StatCard
+                          icon={<Repeat className="w-4 h-4" />}
+                          label="Intervalo médio"
+                          value={profile.avgIntervalDays > 0 ? `${Math.round(profile.avgIntervalDays)} dias` : '—'}
+                        />
+                        <StatCard icon={<Clock className="w-4 h-4" />} label="Atendimento" value={`${profile.topDay} · ${profile.topPeriod}`} />
+                      </div>
+
+                      <Section title="Mix por categoria" icon={<Package className="w-4 h-4" />}>
+                        <div className="space-y-2">
+                          {profile.categories.map((cat) => (
+                            <div key={cat.name} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-medium">{cat.name}</span>
+                                <span className="text-muted-foreground font-mono">
+                                  {cat.qty} un · {BRL(cat.total)} · {cat.pct.toFixed(0)}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className="h-full bg-primary rounded-full transition-all"
+                                  style={{ width: `${Math.max(2, cat.pct)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Section>
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <Section title="Formas de pagamento" icon={<CreditCard className="w-4 h-4" />}>
+                          <div className="space-y-1.5">
+                            {profile.payRanking.map((p) => (
+                              <div key={p.name} className="flex items-center justify-between text-xs">
+                                <span>{p.name}</span>
+                                <span className="text-muted-foreground font-mono">
+                                  {p.count}× · {p.pct.toFixed(0)}%
+                                </span>
+                              </div>
+                            ))}
+                            {profile.avgInstallments > 1 && (
+                              <div className="text-[11px] text-muted-foreground border-t pt-1.5 mt-1.5">
+                                Parcelamento médio no crédito: <span className="font-semibold">{profile.avgInstallments.toFixed(1)}x</span>
+                              </div>
+                            )}
+                          </div>
+                        </Section>
+
+                        <Section title="Produtos favoritos" icon={<ShoppingBag className="w-4 h-4" />}>
+                          {profile.topProducts.length === 0 ? (
+                            <div className="text-xs text-muted-foreground italic">Sem dados.</div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {profile.topProducts.map((p, idx) => (
+                                <div key={p.name} className="flex items-center justify-between text-xs gap-2">
+                                  <span className="truncate flex-1">
+                                    <span className="text-muted-foreground mr-1">{idx + 1}.</span>
+                                    {p.name}
+                                  </span>
+                                  <span className="font-mono text-muted-foreground shrink-0">
+                                    {p.qty}× · {BRL(p.total)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Section>
+                      </div>
+
+                      <div className="rounded-xl border border-dashed p-3 text-[11px] text-muted-foreground bg-muted/20 flex gap-2">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                        <span>
+                          Esses dados serão usados no PDV para sugerir produtos, antecipar a forma de pagamento e personalizar o atendimento ao reconhecer o cliente.
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+
+
 
                 {/* ============ Histórico ============ */}
                 <TabsContent value="history" className="m-0 p-6 space-y-3">
