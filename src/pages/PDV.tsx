@@ -2088,7 +2088,7 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
+    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0 lg:h-screen lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden">
       <Header />
 
       {/* Compact mobile back bar */}
@@ -2113,54 +2113,48 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Commercial dark banner — desktop only */}
-      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-24 pb-5">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">PDV</span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
-                Ponto de Venda
-              </h1>
-              <p className="text-sm text-background/60 mt-1">
-                Vendas presenciais com código de barras e pagamentos integrados.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/pdv/sales-history')}
-                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
-              >
-                <History className="w-4 h-4 mr-2" />
-                Histórico
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/admin')}
-                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Admin
-              </Button>
-            </div>
+      {/* Compact desktop top bar */}
+      <div className="hidden lg:flex bg-foreground text-background pt-16 pb-2 px-4 items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+            <ShoppingCart className="w-3 h-3" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">PDV</span>
           </div>
+          <h1 className="text-base font-display font-black tracking-tight">Ponto de Venda</h1>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/pdv/sales-history')}
+            className="h-7 rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground text-xs"
+          >
+            <History className="w-3.5 h-3.5 mr-1.5" />
+            Histórico
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/admin')}
+            className="h-7 rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground text-xs"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+            Admin
+          </Button>
         </div>
       </div>
 
-      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:-mt-4">
+
+      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:pt-2 lg:flex-1 lg:min-h-0">
 
         <div
           id="pdv-desktop-grid"
-          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3"
+          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3 lg:h-full lg:min-h-0"
           style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}fr ${columnWidths.products}fr ${columnWidths.cart}fr` } : undefined}
         >
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block space-y-4 order-1 min-w-0">
-            <Card className="border-primary/20 sticky top-24">
+          <aside className="hidden lg:flex lg:flex-col space-y-4 order-1 min-w-0 lg:h-full lg:overflow-y-auto lg:pr-1">
+            <Card className="border-primary/20">
               <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
@@ -2249,13 +2243,13 @@ export default function PDV() {
           </div>
 
           {/* Coluna 2 — Produtos */}
-          <div className="space-y-4 order-2 min-w-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produtos</CardTitle>
+          <div className="space-y-4 order-2 min-w-0 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
+            <Card className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+              <CardHeader className="lg:py-3 shrink-0">
+                <CardTitle className="text-base">Produtos</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative">
+              <CardContent className="space-y-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Buscar produto..."
@@ -2265,7 +2259,7 @@ export default function PDV() {
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
+                <ScrollArea className="h-[calc(100vh-260px)] lg:h-auto lg:flex-1 lg:min-h-0">
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {filteredProducts.map(product => (
                       <Card
@@ -2374,7 +2368,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4 order-3 min-w-0',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-y-auto lg:block lg:space-y-4 order-3 min-w-0 lg:h-full lg:min-h-0 lg:pr-1',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
