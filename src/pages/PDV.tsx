@@ -2296,9 +2296,9 @@ export default function PDV() {
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        <CardContent className="p-2 lg:p-3 space-y-2">
+                        <CardContent className="p-2 lg:p-2.5 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-28 lg:h-36 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-24 lg:h-28 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
@@ -2307,7 +2307,7 @@ export default function PDV() {
                             </div>
                           )}
                           <div>
-                            <h3 className="font-semibold text-sm line-clamp-2">
+                            <h3 className="font-semibold text-xs lg:text-sm leading-tight break-words">
                               {product.name}
                             </h3>
                             <div className="flex gap-1 mt-1">
