@@ -2237,6 +2237,16 @@ export default function PDV() {
             </Card>
           </aside>
 
+          {/* Resize handle: Cliente | Produtos */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group"
+            style={{ left: `${columnWidths.customer}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'customer-products')}
+            title="Arraste para redimensionar (cliente × produtos)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary transition-colors rounded-full" />
+          </div>
+
           {/* Coluna 2 — Produtos */}
           <div className="space-y-4 order-2 min-w-0">
             <Card>
