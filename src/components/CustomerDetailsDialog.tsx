@@ -201,7 +201,7 @@ export function CustomerDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] p-0 overflow-hidden flex flex-col gap-0">
         {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-muted/40 to-transparent">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gradient-to-br from-muted/40 to-transparent shrink-0">
           <div className="flex items-start gap-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm"
