@@ -20,6 +20,7 @@ import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, A
 import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
+import { CustomerHistoryDialog } from '@/components/CustomerHistoryDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
