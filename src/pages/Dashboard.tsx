@@ -1047,7 +1047,90 @@ export default function Dashboard() {
           </TabsContent>
 
 
+          {/* ============ ESTOQUE ============ */}
+          <TabsContent value="estoque" className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Valor de Custo"
+                value={formatBRL(stockCostValue)}
+                hint="Estoque atual × custo unitário"
+                icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Valor de Venda"
+                value={formatBRL(stockPriceValue)}
+                hint="Estoque atual × preço de venda"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Margem Potencial"
+                value={formatBRL(stockPriceValue - stockCostValue)}
+                hint={stockPriceValue > 0 ? `${(((stockPriceValue - stockCostValue) / stockPriceValue) * 100).toFixed(1)}% sobre venda` : '—'}
+                icon={<TrendingUp className="h-4 w-4 text-green-600" />}
+              />
+              <StatCard
+                title="Itens em Estoque"
+                value={stockItemCount.toLocaleString('pt-BR')}
+                hint="Soma de unidades disponíveis"
+                icon={<Boxes className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico do Valor de Estoque</CardTitle>
+                <CardDescription>
+                  Custo vs. valor de venda ao longo do período ({rangeLabel})
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {stockHistory.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    Sem movimentações no período — usando estoque atual.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <LineChart data={stockHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                      <Legend />
+                      <Line type="monotone" dataKey="costValue" stroke="#f59e0b" strokeWidth={2} name="Valor de Custo" dot={false} />
+                      <Line type="monotone" dataKey="priceValue" stroke="#16a34a" strokeWidth={2} name="Valor de Venda" dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Quantidade em Estoque</CardTitle>
+                <CardDescription>Total de unidades disponíveis por dia</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {stockHistory.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    Sem movimentações no período.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={stockHistory}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip formatter={(v: number) => v.toLocaleString('pt-BR')} />
+                      <Bar dataKey="items" fill="#2563eb" name="Unidades" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ============ PDV ============ */}
+
           <TabsContent value="pdv">
             <ChannelSection
               title="PDV"
