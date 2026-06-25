@@ -1623,7 +1623,7 @@ export default function PDV() {
   }, [columnWidths]);
 
   const resetColumnWidths = () => {
-    setColumnWidths({ customer: 15, products: 50, cart: 35 });
+    setColumnWidths({ customer: 14, products: 46, cart: 32 });
   };
 
   const finalizeSale = async () => {
@@ -2151,12 +2151,12 @@ export default function PDV() {
         </div>
       </div>
 
-      <div className="w-full px-2 lg:px-4 lg:-mt-4">
+      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:-mt-4">
 
         <div
           id="pdv-desktop-grid"
-          className="relative grid grid-cols-1 gap-6 lg:grid-cols-3"
-          style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}% ${columnWidths.products}% ${columnWidths.cart}%` } : undefined}
+          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3"
+          style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}fr ${columnWidths.products}fr ${columnWidths.cart}fr` } : undefined}
         >
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:block space-y-4 order-1 min-w-0">
