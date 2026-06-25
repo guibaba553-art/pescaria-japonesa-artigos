@@ -2161,9 +2161,9 @@ export default function PDV() {
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:block space-y-4 order-1 min-w-0">
             <Card className="border-primary/20 sticky top-24">
-              <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+              <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
+                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
                   <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                     Identificação
                   </CardTitle>
