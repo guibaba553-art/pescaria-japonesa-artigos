@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
   Loader2, ShoppingBag, Calendar, CreditCard, Package, TrendingUp, Receipt,
   User as UserIcon, Mail, Phone, MapPin, FileText, Award, Gift, Pencil,
-  CheckCircle2, AlertTriangle, History, Sparkles, IdCard,
+  CheckCircle2, AlertTriangle, History, Sparkles, IdCard, Brain, Clock, Target, Repeat,
 } from 'lucide-react';
 import { getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
