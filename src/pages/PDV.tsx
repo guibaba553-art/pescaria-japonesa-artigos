@@ -63,7 +63,7 @@ import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerT
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
 
-import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
+import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
