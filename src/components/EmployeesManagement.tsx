@@ -146,6 +146,7 @@ export function EmployeesManagement() {
       can_access_sales_analysis: current.can_access_sales_analysis,
       can_access_triagem: current.can_access_triagem,
       can_access_fiscal: current.can_access_fiscal,
+      can_access_customers: current.can_access_customers,
       [key]: value,
     };
 
