@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Trash2, UserPlus, Loader2, Users, ShieldCheck,
   Package, ShoppingCart, DollarSign, TrendingUp,
-  ClipboardList, CalendarRange, ScanBarcode, Calculator,
+  ClipboardList, CalendarRange, ScanBarcode, Calculator, UserSquare2,
 } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 
@@ -22,7 +22,8 @@ type PermKey =
   | 'can_access_orders'
   | 'can_access_sales_analysis'
   | 'can_access_triagem'
-  | 'can_access_fiscal';
+  | 'can_access_fiscal'
+  | 'can_access_customers';
 
 interface EmployeeRow {
   user_id: string;
@@ -35,6 +36,7 @@ interface EmployeeRow {
   can_access_sales_analysis: boolean;
   can_access_triagem: boolean;
   can_access_fiscal: boolean;
+  can_access_customers: boolean;
 }
 
 const PERMISSIONS: Array<{ key: PermKey; label: string; icon: any; defaultValue: boolean }> = [
@@ -42,6 +44,7 @@ const PERMISSIONS: Array<{ key: PermKey; label: string; icon: any; defaultValue:
   { key: 'can_access_catalog', label: 'Catálogo', icon: Package, defaultValue: true },
   { key: 'can_access_orders', label: 'Pedidos', icon: ClipboardList, defaultValue: true },
   { key: 'can_access_triagem', label: 'Triagem', icon: ScanBarcode, defaultValue: true },
+  { key: 'can_access_customers', label: 'Clientes', icon: UserSquare2, defaultValue: false },
   { key: 'can_access_cash_register', label: 'Caixa', icon: DollarSign, defaultValue: false },
   { key: 'can_access_dashboard', label: 'Dashboard', icon: TrendingUp, defaultValue: false },
   { key: 'can_access_sales_analysis', label: 'Análise de Vendas', icon: CalendarRange, defaultValue: false },
@@ -105,6 +108,7 @@ export function EmployeesManagement() {
           can_access_sales_analysis: perm?.can_access_sales_analysis ?? defaults.can_access_sales_analysis,
           can_access_triagem: perm?.can_access_triagem ?? defaults.can_access_triagem,
           can_access_fiscal: perm?.can_access_fiscal ?? defaults.can_access_fiscal,
+          can_access_customers: (perm as any)?.can_access_customers ?? defaults.can_access_customers,
         };
       });
       setEmployees(rows);
@@ -142,6 +146,7 @@ export function EmployeesManagement() {
       can_access_sales_analysis: current.can_access_sales_analysis,
       can_access_triagem: current.can_access_triagem,
       can_access_fiscal: current.can_access_fiscal,
+      can_access_customers: current.can_access_customers,
       [key]: value,
     };
 

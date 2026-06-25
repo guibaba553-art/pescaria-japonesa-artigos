@@ -100,7 +100,7 @@ const emptyForm = {
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, permissions, loading: authLoading } = useAuth();
   const [list, setList] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -293,8 +293,8 @@ export default function AdminCustomers() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) navigate('/admin');
-  }, [authLoading, isAdmin, navigate]);
+    if (!authLoading && !isAdmin && !permissions.customers) navigate('/admin');
+  }, [authLoading, isAdmin, permissions.customers, navigate]);
 
   const load = async () => {
     setLoading(true);

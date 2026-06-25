@@ -889,6 +889,7 @@ export type Database = {
         Row: {
           can_access_cash_register: boolean
           can_access_catalog: boolean
+          can_access_customers: boolean
           can_access_dashboard: boolean
           can_access_fiscal: boolean
           can_access_orders: boolean
@@ -903,6 +904,7 @@ export type Database = {
         Insert: {
           can_access_cash_register?: boolean
           can_access_catalog?: boolean
+          can_access_customers?: boolean
           can_access_dashboard?: boolean
           can_access_fiscal?: boolean
           can_access_orders?: boolean
@@ -917,6 +919,7 @@ export type Database = {
         Update: {
           can_access_cash_register?: boolean
           can_access_catalog?: boolean
+          can_access_customers?: boolean
           can_access_dashboard?: boolean
           can_access_fiscal?: boolean
           can_access_orders?: boolean

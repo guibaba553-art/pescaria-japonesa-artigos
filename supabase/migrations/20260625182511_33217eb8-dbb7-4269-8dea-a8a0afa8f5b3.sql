@@ -1,0 +1,1 @@
+ALTER TABLE public.employee_permissions ADD COLUMN IF NOT EXISTS can_access_customers boolean NOT NULL DEFAULT false;
