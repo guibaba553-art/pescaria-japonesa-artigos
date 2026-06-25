@@ -2145,16 +2145,16 @@ export default function PDV() {
       </div>
 
 
-      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:-mt-4">
+      <div className="w-full overflow-x-hidden px-2 lg:px-3 lg:pt-2 lg:flex-1 lg:min-h-0">
 
         <div
           id="pdv-desktop-grid"
-          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3"
+          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3 lg:h-full lg:min-h-0"
           style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}fr ${columnWidths.products}fr ${columnWidths.cart}fr` } : undefined}
         >
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block space-y-4 order-1 min-w-0">
-            <Card className="border-primary/20 sticky top-24">
+          <aside className="hidden lg:flex lg:flex-col space-y-4 order-1 min-w-0 lg:h-full lg:overflow-y-auto lg:pr-1">
+            <Card className="border-primary/20">
               <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
