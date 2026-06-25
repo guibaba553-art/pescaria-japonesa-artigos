@@ -258,13 +258,13 @@ export function CustomerDetailsDialog({
             </TabsList>
           </div>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-full py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ScrollArea className="h-full">
+              <>
                 {/* ============ Visão geral ============ */}
                 <TabsContent value="overview" className="m-0 p-6 space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
