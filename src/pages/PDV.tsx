@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -170,6 +170,34 @@ export default function PDV() {
   useEffect(() => {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
+
+  // Larguras das colunas do PDV — editáveis manualmente
+  const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
+    if (typeof window === 'undefined') return { customer: 25, products: 50, cart: 25 };
+    try {
+      const saved = localStorage.getItem('pdv:columnWidths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.customer === 'number' && typeof parsed.products === 'number' && typeof parsed.cart === 'number') {
+          return parsed;
+        }
+      }
+    } catch { /* ignore */ }
+    return { customer: 25, products: 50, cart: 25 };
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('pdv:columnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -1558,6 +1586,46 @@ export default function PDV() {
     });
   };
 
+  const startResize = useCallback((
+    e: React.MouseEvent,
+    handle: 'customer-products' | 'products-cart'
+  ) => {
+    e.preventDefault();
+    const gridEl = document.getElementById('pdv-desktop-grid');
+    if (!gridEl) return;
+    const rect = gridEl.getBoundingClientRect();
+    const startX = e.clientX;
+    const startCustomer = columnWidths.customer;
+    const startProducts = columnWidths.products;
+    const startCart = columnWidths.cart;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
+
+      if (handle === 'customer-products') {
+        const newCustomer = Math.max(15, Math.min(40, startCustomer + deltaPct));
+        const newProducts = Math.max(30, Math.min(70, startProducts - deltaPct));
+        setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
+      } else {
+        const newProducts = Math.max(30, Math.min(70, startProducts + deltaPct));
+        const newCart = Math.max(15, Math.min(60, startCart - deltaPct));
+        setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [columnWidths]);
+
+  const resetColumnWidths = () => {
+    setColumnWidths({ customer: 25, products: 50, cart: 25 });
+  };
+
   const finalizeSale = async () => {
     // Guarda síncrona: bloqueia cliques duplos antes do estado React atualizar
     if (finalizingRef.current) return;
@@ -2085,9 +2153,13 @@ export default function PDV() {
 
       <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,25%)_minmax(0,50%)_1fr] gap-6">
+        <div
+          id="pdv-desktop-grid"
+          className="relative grid grid-cols-1 gap-6 lg:grid-cols-3"
+          style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}% ${columnWidths.products}% ${columnWidths.cart}%` } : undefined}
+        >
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block space-y-4 order-1">
+          <aside className="hidden lg:block space-y-4 order-1 min-w-0">
             <Card className="border-primary/20 sticky top-24">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
