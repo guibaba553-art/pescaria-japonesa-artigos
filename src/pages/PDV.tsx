@@ -2368,7 +2368,7 @@ export default function PDV() {
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4 order-3 min-w-0',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-y-auto lg:block lg:space-y-4 order-3 min-w-0 lg:h-full lg:min-h-0 lg:pr-1',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
