@@ -845,6 +845,11 @@ export default function Dashboard() {
   const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
   const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
 
+  const customerRevenue = customersList.reduce((s, c) => s + c.revenue, 0);
+  const customerOrders = customersList.reduce((s, c) => s + c.orders, 0);
+  const customerAvgTicket = customerOrders > 0 ? customerRevenue / customerOrders : 0;
+  const activeCustomers = customersList.length;
+
   return (
     <div className="min-h-screen bg-muted/30">
       <Header />
