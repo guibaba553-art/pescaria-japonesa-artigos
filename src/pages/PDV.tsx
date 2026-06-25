@@ -2085,9 +2085,88 @@ export default function PDV() {
 
       <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Produtos */}
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Coluna 1 — Cliente (desktop) */}
+          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
+            <Card className="border-primary/20 sticky top-24">
+              <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
+                    Identificação
+                  </CardTitle>
+                </div>
+                {selectedCustomer && customerSelectedAt && (
+                  <Badge variant="outline" className="text-[9px] font-bold uppercase bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300">
+                    em atendimento
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {selectedCustomer ? (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-base truncate leading-tight">
+                          {selectedCustomer.company_name || selectedCustomer.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono mt-1">
+                          {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0 h-8 w-8 p-0"
+                        onClick={() => setSelectedCustomer(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Comece digitando o <strong>CPF</strong> ou <strong>CNPJ</strong> do cliente para liberar o painel com perfil de compra, pagamento preferido e tempo de atendimento.
+                    </p>
+                    <CustomerSearchCombobox
+                      placeholder="CPF, CNPJ ou nome..."
+                      onSelect={(customer) => {
+                        setSelectedCustomer(customer);
+                        const tier = getTierForScore(tiers, customer.score || 0);
+                        if (tier?.block_purchase) {
+                          toast({
+                            title: `Atenção — cliente ${tier.name}`,
+                            description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
+                          });
+                        }
+                      }}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowCustomerDialog(true)}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConsumidorFinal}
+                      >
+                        Consumidor final
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
+
+          {/* Coluna 2 — Produtos */}
+          <div className="lg:col-span-6 space-y-4 order-2">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
@@ -2198,11 +2277,11 @@ export default function PDV() {
             </Card>
           </div>
 
-          {/* Carrinho e Pagamento */}
+          {/* Coluna 3 — Carrinho e Pagamento */}
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:col-span-3 lg:space-y-4 order-3',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
@@ -2223,8 +2302,8 @@ export default function PDV() {
               </Button>
             </div>
 
-            {/* Identificação do cliente — primeiro passo do atendimento */}
-            <Card className="border-primary/20">
+            {/* Identificação do cliente — primeiro passo (mobile) */}
+            <Card className="border-primary/20 lg:hidden">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <User className="w-4 h-4 text-primary" />
