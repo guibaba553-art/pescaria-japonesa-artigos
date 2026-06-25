@@ -197,6 +197,25 @@ export default function Dashboard() {
           supabase.from('expenses').select('amount, expense_date'),
         ]);
 
+      // Buscar clientes (paginado)
+      const customers: any[] = [];
+      {
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data: page, error } = await supabase
+            .from('customers')
+            .select('id, full_name, cpf, cnpj, score')
+            .order('full_name', { ascending: true })
+            .range(from, from + pageSize - 1);
+          if (error) { console.error('Erro ao carregar clientes:', error); break; }
+          if (!page || page.length === 0) break;
+          customers.push(...page);
+          if (page.length < pageSize) break;
+          from += pageSize;
+        }
+      }
+
       // Buscar TODOS os pedidos (paginado — Supabase limita a 1000 por requisição)
       const orders: any[] = [];
       {
