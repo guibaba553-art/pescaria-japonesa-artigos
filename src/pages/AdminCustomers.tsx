@@ -128,8 +128,8 @@ export default function AdminCustomers() {
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<'all' | '30d' | '90d' | '180d' | '365d' | 'never'>('all');
   type SortKey = 'name' | 'doc' | 'score' | 'orders' | 'spent' | 'last' | 'created';
-  const [sortKey, setSortKey] = useState<SortKey>('last');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
@@ -731,9 +731,9 @@ export default function AdminCustomers() {
                   </Button>
                 </div>
               </div>
-              {(tierFilter !== 'all' || periodFilter !== 'all' || sortKey !== 'last' || sortDir !== 'desc') && (
+              {(tierFilter !== 'all' || periodFilter !== 'all' || sortKey !== 'name' || sortDir !== 'asc') && (
                 <div className="sm:col-span-3">
-                  <Button variant="ghost" size="sm" onClick={() => { setTierFilter('all'); setPeriodFilter('all'); setSortKey('last'); setSortDir('desc'); }}>
+                  <Button variant="ghost" size="sm" onClick={() => { setTierFilter('all'); setPeriodFilter('all'); setSortKey('name'); setSortDir('asc'); }}>
                     <X className="w-3.5 h-3.5 mr-1.5" /> Limpar filtros
                   </Button>
                 </div>
