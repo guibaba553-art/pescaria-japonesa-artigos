@@ -89,9 +89,12 @@ export function CustomerPdvInsights({ customer, tier }: Props) {
       const k = payLabel(o.payment_method);
       payCount[k] = (payCount[k] || 0) + 1;
     });
-    const payRanking = Object.entries(payCount)
-      .map(([k, v]) => ({ name: k, pct: (v / last.length) * 100 }))
-      .sort((a, b) => b.pct - a.pct);
+    const payRanking = [
+      ...ALL_METHODS.map((name) => ({ name, pct: ((payCount[name] || 0) / Math.max(1, last.length)) * 100 })),
+      ...Object.entries(payCount)
+        .filter(([k]) => !ALL_METHODS.includes(k as any))
+        .map(([k, v]) => ({ name: k, pct: (v / last.length) * 100 })),
+    ].sort((a, b) => b.pct - a.pct);
 
     return { count, total, avg, estimatedPower, avgServiceSec, payRanking, lastN: last.length };
   }, [orders]);
