@@ -630,38 +630,46 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={top}
-                        dataKey="revenue"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        label={(e: any) =>
-                          `${String(e.name).substring(0, 15)}${e.name.length > 15 ? '…' : ''}`
-                        }
-                      >
+                  <ResponsiveContainer width="100%" height={420}>
+                    <BarChart data={top} layout="vertical" margin={{ left: 24, right: 24, top: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" hide />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={140}
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(v: string) => `${String(v).substring(0, 22)}${v.length > 22 ? '…' : ''}`}
+                      />
+                      <Tooltip formatter={(v: number) => formatBRL(v)} />
+                      <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
                         {top.map((_, i) => (
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => formatBRL(v)} />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
-                  <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                    {top.map((p, i) => (
-                      <div key={i} className="flex justify-between items-center p-2 border rounded">
-                        <span className="text-sm font-medium truncate flex-1">
-                          {i + 1}. {p.name}
-                        </span>
-                        <div className="text-right">
-                          <div className="text-sm font-bold">{formatBRL(p.revenue)}</div>
-                          <div className="text-xs text-muted-foreground">{p.quantity} unidades</div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="overflow-auto max-h-[420px]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">#</th>
+                          <th className="px-3 py-2 text-left font-semibold">Produto</th>
+                          <th className="px-3 py-2 text-right font-semibold">Qtd</th>
+                          <th className="px-3 py-2 text-right font-semibold">Receita</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {top.map((p, i) => (
+                          <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
+                            <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                            <td className="px-3 py-2 font-medium">{p.name}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
