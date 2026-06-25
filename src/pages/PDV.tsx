@@ -1494,6 +1494,7 @@ export default function PDV() {
         inscricao_estadual: '',
         ie_indicador: '9',
         email: '',
+        phone: '',
       });
 
       toast({
