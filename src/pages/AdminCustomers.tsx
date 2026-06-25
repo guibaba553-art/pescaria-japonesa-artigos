@@ -298,17 +298,34 @@ export default function AdminCustomers() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data, error }, ordersRes] = await Promise.all([
+      supabase.from('customers').select('*').order('created_at', { ascending: false }),
+      supabase.from('orders').select('customer_id,total_amount,created_at,status').not('customer_id', 'is', null),
+    ]);
     if (error) {
       toast({ title: 'Erro ao carregar clientes', description: error.message, variant: 'destructive' });
     } else {
       setList((data || []) as Customer[]);
     }
+    if (!ordersRes.error && ordersRes.data) {
+      const agg: Record<string, Agg> = {};
+      for (const o of ordersRes.data as any[]) {
+        if (!o.customer_id) continue;
+        if (o.status === 'cancelled') continue;
+        const a = agg[o.customer_id] || { orders: 0, total: 0, last: null };
+        a.orders += 1;
+        a.total += Number(o.total_amount || 0);
+        if (!a.last || new Date(o.created_at) > new Date(a.last)) a.last = o.created_at;
+        agg[o.customer_id] = a;
+      }
+      setAggregates(agg);
+    }
     setLoading(false);
   };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   useEffect(() => {
     load();
