@@ -190,6 +190,14 @@ export default function PDV() {
     localStorage.setItem('pdv:columnWidths', JSON.stringify(columnWidths));
   }, [columnWidths]);
 
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
