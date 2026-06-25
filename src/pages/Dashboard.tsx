@@ -1299,6 +1299,43 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
+          {/* ============ CLIENTES ============ */}
+          <TabsContent value="clientes" className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Total de Clientes"
+                value={String(totalCustomers)}"
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Clientes Ativos"
+                value={String(activeCustomers)}"
+                hint="Compraram no período selecionado"
+                icon={<Users className="h-4 w-4 text-primary" />}
+              />
+              <StatCard
+                title="Receita de Clientes"
+                value={formatBRL(customerRevenue)}"
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(customerAvgTicket)}"
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Clientes</CardTitle>
+                <CardDescription>Ranking dos clientes que mais compraram no período</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CustomerTables customers={customersList} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* ============ PDV ============ */}
 
           <TabsContent value="pdv">
