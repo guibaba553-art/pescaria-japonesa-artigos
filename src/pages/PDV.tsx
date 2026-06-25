@@ -170,6 +170,26 @@ export default function PDV() {
   useEffect(() => {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
+
+  // Larguras das colunas do PDV — editáveis manualmente
+  const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
+    if (typeof window === 'undefined') return { customer: 25, products: 50, cart: 25 };
+    try {
+      const saved = localStorage.getItem('pdv:columnWidths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.customer === 'number' && typeof parsed.products === 'number' && typeof parsed.cart === 'number') {
+          return parsed;
+        }
+      }
+    } catch { /* ignore */ }
+    return { customer: 25, products: 50, cart: 25 };
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('pdv:columnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
