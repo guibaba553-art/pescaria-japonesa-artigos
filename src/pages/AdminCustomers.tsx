@@ -993,6 +993,18 @@ export default function AdminCustomers() {
         customerName={historyFor?.cnpj && historyFor?.company_name ? historyFor.company_name : historyFor?.full_name}
       />
 
+      <CustomerDetailsDialog
+        open={!!detailsFor}
+        onOpenChange={(v) => { if (!v) setDetailsFor(null); }}
+        customer={detailsFor as any}
+        tiers={tiers}
+        fiscalValid={detailsFor ? (validations.get(detailsFor.id) || { ok: true, missing: [] }) : { ok: true, missing: [] }}
+        onEdit={(c) => { setDetailsFor(null); openEdit(c as any); }}
+        onManageScore={(c) => { setDetailsFor(null); setScoreFor(c as any); }}
+        onManageRewards={(c) => { setDetailsFor(null); setRewardsCustomerId(c.id); setRewardsOpen(true); }}
+      />
+
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
