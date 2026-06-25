@@ -191,6 +191,126 @@ export function CustomerDetailsDialog({
     return { count: valid.length, total, items, avg, last };
   }, [orders]);
 
+  const profile = useMemo(() => {
+    const valid = orders.filter((o) => !['cancelado', 'devolvido'].includes(o.status));
+    if (valid.length === 0) return null;
+
+    // Métodos de pagamento
+    const payCount: Record<string, { count: number; total: number }> = {};
+    valid.forEach((o) => {
+      const k = payLabel(o.payment_method);
+      payCount[k] = payCount[k] || { count: 0, total: 0 };
+      payCount[k].count += 1;
+      payCount[k].total += o.total_amount;
+    });
+    const payRanking = Object.entries(payCount)
+      .map(([k, v]) => ({ name: k, count: v.count, total: v.total, pct: (v.count / valid.length) * 100 }))
+      .sort((a, b) => b.count - a.count);
+
+    // Canal
+    const pdvCount = valid.filter((o) => o.source === 'pdv').length;
+    const siteCount = valid.length - pdvCount;
+    const channel = pdvCount >= siteCount ? 'PDV (loja física)' : 'Site (online)';
+    const channelPct = Math.round((Math.max(pdvCount, siteCount) / valid.length) * 100);
+
+    // Frequência: intervalo médio entre compras
+    const sortedAsc = [...valid].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+    let avgIntervalDays = 0;
+    if (sortedAsc.length >= 2) {
+      const intervals: number[] = [];
+      for (let i = 1; i < sortedAsc.length; i++) {
+        intervals.push((+new Date(sortedAsc[i].created_at) - +new Date(sortedAsc[i - 1].created_at)) / 86400000);
+      }
+      avgIntervalDays = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    }
+
+    // Recência
+    const lastDate = sortedAsc[sortedAsc.length - 1]?.created_at;
+    const daysSinceLast = lastDate ? Math.floor((Date.now() - +new Date(lastDate)) / 86400000) : null;
+
+    // Dia da semana e período preferidos
+    const weekDays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const dayCount: Record<string, number> = {};
+    const periodCount: Record<string, number> = { Madrugada: 0, Manhã: 0, Tarde: 0, Noite: 0 };
+    valid.forEach((o) => {
+      const d = new Date(o.created_at);
+      const wd = weekDays[d.getDay()];
+      dayCount[wd] = (dayCount[wd] || 0) + 1;
+      const h = d.getHours();
+      const p = h < 6 ? 'Madrugada' : h < 12 ? 'Manhã' : h < 18 ? 'Tarde' : 'Noite';
+      periodCount[p] += 1;
+    });
+    const topDay = Object.entries(dayCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topPeriod = Object.entries(periodCount).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+
+    // Categorias (heurística por nome)
+    const catRules: Array<{ key: string; rx: RegExp }> = [
+      { key: 'Linhas', rx: /\b(linha|multifilamento|monofilamento|fluor(o|car)|trança|trancada)/i },
+      { key: 'Anzóis', rx: /\b(anz[oó]l|anzois|anzóis)/i },
+      { key: 'Varas / Caniços', rx: /\b(vara|cani[çc]o|cani[çc]os)/i },
+      { key: 'Carretilhas / Molinetes', rx: /\b(carretilha|molinete|carretel)/i },
+      { key: 'Iscas', rx: /\b(isca|jig|jighead|plug|popper|spinner|spoon)/i },
+      { key: 'Chumbadas', rx: /\b(chumb(o|ada))/i },
+      { key: 'Linha de mão / Empate', rx: /\b(empate|leader|estralo|girador|snap)/i },
+    ];
+    const catSpend: Record<string, { qty: number; total: number }> = {};
+    const productSpend: Record<string, { qty: number; total: number }> = {};
+    valid.forEach((o) => {
+      o.items.forEach((it) => {
+        const totalLine = it.price_at_purchase * it.quantity;
+        const name = it.name || 'Produto';
+        productSpend[name] = productSpend[name] || { qty: 0, total: 0 };
+        productSpend[name].qty += it.quantity;
+        productSpend[name].total += totalLine;
+        const matched = catRules.find((r) => r.rx.test(name));
+        const cat = matched ? matched.key : 'Outros / Acessórios';
+        catSpend[cat] = catSpend[cat] || { qty: 0, total: 0 };
+        catSpend[cat].qty += it.quantity;
+        catSpend[cat].total += totalLine;
+      });
+    });
+    const totalCat = Object.values(catSpend).reduce((s, v) => s + v.total, 0) || 1;
+    const categories = Object.entries(catSpend)
+      .map(([k, v]) => ({ name: k, qty: v.qty, total: v.total, pct: (v.total / totalCat) * 100 }))
+      .sort((a, b) => b.total - a.total);
+    const topProducts = Object.entries(productSpend)
+      .map(([k, v]) => ({ name: k, qty: v.qty, total: v.total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // Parcelamento médio em crédito
+    const credit = valid.filter((o) => /credit|crédito|credito/i.test(o.payment_method || ''));
+    const avgInstallments = credit.length
+      ? credit.reduce((s, o) => s + (o.installments || 1), 0) / credit.length
+      : 0;
+
+    // Perfil de gasto
+    const ticketAvg = stats.avg;
+    let consumerProfile = 'Eventual';
+    if (valid.length >= 10 && avgIntervalDays > 0 && avgIntervalDays <= 30) consumerProfile = 'Frequente / Recorrente';
+    else if (valid.length >= 5) consumerProfile = 'Engajado';
+    else if (valid.length >= 2) consumerProfile = 'Em fidelização';
+    if (ticketAvg >= 500) consumerProfile += ' · Alto ticket';
+    else if (ticketAvg >= 200) consumerProfile += ' · Médio ticket';
+    else consumerProfile += ' · Baixo ticket';
+
+    return {
+      payRanking,
+      preferredPayment: payRanking[0]?.name || '—',
+      channel,
+      channelPct,
+      avgIntervalDays,
+      daysSinceLast,
+      topDay,
+      topPeriod,
+      categories,
+      topProducts,
+      avgInstallments,
+      consumerProfile,
+    };
+  }, [orders, stats.avg]);
+
+
   if (!customer) return null;
   const c = customer;
   const tier = getTierForScore(tiers, c.score || 0);
