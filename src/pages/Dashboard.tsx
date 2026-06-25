@@ -638,43 +638,7 @@ export default function Dashboard() {
                 <CardDescription>Produtos com maior receita neste canal</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar produto..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                {filtered.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-8">
-                    {search ? 'Nenhum produto encontrado para esta busca.' : 'Nenhuma venda registrada neste canal ainda.'}
-                  </div>
-                ) : (
-                  <div className="overflow-auto max-h-[520px]">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left font-semibold w-12">#</th>
-                          <th className="px-3 py-2 text-left font-semibold">Produto</th>
-                          <th className="px-3 py-2 text-right font-semibold w-24">Qtd</th>
-                          <th className="px-3 py-2 text-right font-semibold w-32">Receita</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filtered.map((p, i) => (
-                          <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
-                            <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
-                            <td className="px-3 py-2 font-medium">{p.name}</td>
-                            <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <ProductTables products={top} />
               </CardContent>
             </Card>
           </TabsContent>
