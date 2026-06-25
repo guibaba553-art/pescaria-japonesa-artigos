@@ -963,6 +963,13 @@ export default function AdminCustomers() {
         initialCustomerId={rewardsCustomerId}
       />
 
+      <CustomerHistoryDialog
+        open={!!historyFor}
+        onOpenChange={(v) => { if (!v) setHistoryFor(null); }}
+        customerId={historyFor?.id || null}
+        customerName={historyFor?.cnpj && historyFor?.company_name ? historyFor.company_name : historyFor?.full_name}
+      />
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
