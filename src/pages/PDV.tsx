@@ -173,7 +173,7 @@ export default function PDV() {
 
   // Larguras das colunas do PDV — editáveis manualmente
   const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
-    if (typeof window === 'undefined') return { customer: 25, products: 50, cart: 25 };
+    if (typeof window === 'undefined') return { customer: 20, products: 50, cart: 30 };
     try {
       const saved = localStorage.getItem('pdv:columnWidths');
       if (saved) {
@@ -183,7 +183,7 @@ export default function PDV() {
         }
       }
     } catch { /* ignore */ }
-    return { customer: 25, products: 50, cart: 25 };
+    return { customer: 20, products: 50, cart: 30 };
   });
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1603,12 +1603,12 @@ export default function PDV() {
       const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
 
       if (handle === 'customer-products') {
-        const newCustomer = Math.max(15, Math.min(40, startCustomer + deltaPct));
-        const newProducts = Math.max(30, Math.min(70, startProducts - deltaPct));
+        const newCustomer = Math.max(16, Math.min(30, startCustomer + deltaPct));
+        const newProducts = Math.max(40, Math.min(60, startProducts - deltaPct));
         setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
       } else {
-        const newProducts = Math.max(30, Math.min(70, startProducts + deltaPct));
-        const newCart = Math.max(15, Math.min(60, startCart - deltaPct));
+        const newProducts = Math.max(40, Math.min(60, startProducts + deltaPct));
+        const newCart = Math.max(25, Math.min(45, startCart - deltaPct));
         setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
       }
     };
@@ -1623,7 +1623,7 @@ export default function PDV() {
   }, [columnWidths]);
 
   const resetColumnWidths = () => {
-    setColumnWidths({ customer: 25, products: 50, cart: 25 });
+    setColumnWidths({ customer: 20, products: 50, cart: 30 });
   };
 
   const finalizeSale = async () => {
@@ -2161,9 +2161,9 @@ export default function PDV() {
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:block space-y-4 order-1 min-w-0">
             <Card className="border-primary/20 sticky top-24">
-              <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+              <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
+                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
                   <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
                     Identificação
                   </CardTitle>
@@ -2174,33 +2174,33 @@ export default function PDV() {
                   </Badge>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="p-3 pt-0 space-y-3">
                 {selectedCustomer ? (
                   <>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="font-bold text-base truncate leading-tight">
+                        <p className="font-bold text-sm truncate leading-tight">
                           {selectedCustomer.company_name || selectedCustomer.full_name}
                         </p>
-                        <p className="text-xs text-muted-foreground font-mono mt-1">
+                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                           {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
                         </p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="shrink-0 h-8 w-8 p-0"
+                        className="shrink-0 h-7 w-7 p-0"
                         onClick={() => setSelectedCustomer(null)}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                     <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
                   </>
                 ) : (
                   <>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Comece digitando o <strong>CPF</strong> ou <strong>CNPJ</strong> do cliente para liberar o painel com perfil de compra, pagamento preferido e tempo de atendimento.
+                    <p className="text-[11px] text-muted-foreground leading-snug">
+                      Digite o <strong>CPF/CNPJ</strong> ou nome para liberar perfil, pagamento preferido e tempo de atendimento.
                     </p>
                     <CustomerSearchCombobox
                       placeholder="CPF, CNPJ ou nome..."
@@ -2215,11 +2215,11 @@ export default function PDV() {
                         }
                       }}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button
                         size="sm"
                         onClick={() => setShowCustomerDialog(true)}
-                        className="bg-orange-500 hover:bg-orange-600"
+                        className="bg-orange-500 hover:bg-orange-600 w-full"
                       >
                         <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
                       </Button>
@@ -2227,6 +2227,7 @@ export default function PDV() {
                         size="sm"
                         variant="outline"
                         onClick={handleConsumidorFinal}
+                        className="w-full"
                       >
                         Consumidor final
                       </Button>
@@ -2237,8 +2238,18 @@ export default function PDV() {
             </Card>
           </aside>
 
+          {/* Resize handle: Cliente | Produtos */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group hover:bg-primary/5 transition-colors"
+            style={{ left: `${columnWidths.customer}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'customer-products')}
+            title="Arraste para redimensionar (cliente × produtos)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary group-hover:w-1 transition-all rounded-full" />
+          </div>
+
           {/* Coluna 2 — Produtos */}
-          <div className="space-y-4 order-2">
+          <div className="space-y-4 order-2 min-w-0">
             <Card>
               <CardHeader>
                 <CardTitle>Produtos</CardTitle>
@@ -2286,9 +2297,9 @@ export default function PDV() {
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        <CardContent className="p-2 lg:p-3 space-y-2">
+                        <CardContent className="p-2 lg:p-2.5 space-y-2">
                           {product.image_url && (
-                            <div className="w-full h-28 lg:h-36 bg-muted rounded overflow-hidden">
+                            <div className="w-full h-24 lg:h-28 bg-muted rounded overflow-hidden">
                               <img
                                 src={product.image_url}
                                 alt={product.name}
@@ -2297,7 +2308,7 @@ export default function PDV() {
                             </div>
                           )}
                           <div>
-                            <h3 className="font-semibold text-sm line-clamp-2">
+                            <h3 className="font-semibold text-xs lg:text-sm leading-tight break-words">
                               {product.name}
                             </h3>
                             <div className="flex gap-1 mt-1">
@@ -2349,11 +2360,21 @@ export default function PDV() {
             </Card>
           </div>
 
+          {/* Resize handle: Produtos | Carrinho */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group hover:bg-primary/5 transition-colors"
+            style={{ left: `${columnWidths.customer + columnWidths.products}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'products-cart')}
+            title="Arraste para redimensionar (produtos × carrinho)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary group-hover:w-1 transition-all rounded-full" />
+          </div>
+
           {/* Coluna 3 — Carrinho e Pagamento */}
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4 order-3',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4 order-3 min-w-0',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
