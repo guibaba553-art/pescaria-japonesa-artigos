@@ -662,71 +662,89 @@ export default function AdminCustomers() {
                     </div>
                   </div>
 
-                  {/* Bloco 2: Dados fiscais para NF-e */}
-                  <div className={`rounded-md border p-2.5 space-y-2 ${v.ok ? 'border-green-600/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                        <FileText className="w-3 h-3" /> Dados fiscais (NF-e)
+                  {/* Bloco 2: Dados fiscais para NF-e (apenas PJ) */}
+                  {c.cnpj ? (
+                    <div className={`rounded-md border p-2.5 space-y-2 ${v.ok ? 'border-green-600/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/5'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Dados fiscais (NF-e)
+                        </div>
+                        {v.ok ? (
+                          <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1 text-[10px] h-5">
+                            <CheckCircle2 className="w-3 h-3" /> NF-e OK
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="gap-1 text-[10px] h-5">
+                            <AlertTriangle className="w-3 h-3" /> Bloqueada
+                          </Badge>
+                        )}
                       </div>
-                      {v.ok ? (
-                        <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1 text-[10px] h-5">
-                          <CheckCircle2 className="w-3 h-3" /> NF-e OK
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1 text-[10px] h-5">
-                          <AlertTriangle className="w-3 h-3" /> Bloqueada
-                        </Badge>
-                      )}
-                    </div>
 
-                    <div className="text-xs font-mono text-muted-foreground">
-                      {c.cnpj ? `CNPJ ${c.cnpj}` : c.cpf ? `CPF ${c.cpf}` : 'Sem CPF/CNPJ'}
-                    </div>
-                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-                      <span className="truncate">
-                        {c.street || c.number || c.neighborhood
-                          ? <>{c.street}, {c.number} — {c.neighborhood}{c.municipio && ` · ${c.municipio}/${c.uf}`} · {c.cep}</>
-                          : <span className="italic">Endereço não informado</span>}
-                      </span>
-                    </div>
-                    {c.cnpj && (
+                      <div className="text-xs font-mono text-muted-foreground">
+                        CNPJ {c.cnpj}
+                      </div>
+                      <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
+                        <span className="truncate">
+                          {c.street || c.number || c.neighborhood
+                            ? <>{c.street}, {c.number} — {c.neighborhood}{c.municipio && ` · ${c.municipio}/${c.uf}`} · {c.cep}</>
+                            : <span className="italic">Endereço não informado</span>}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <FileText className="w-3 h-3 shrink-0" />
                         IE: {c.inscricao_estadual || '—'} (ind. {c.ie_indicador || '—'})
                       </div>
-                    )}
 
-                    {!v.ok && (
-                      <div className="pt-1">
-                        <div className="text-[11px] font-semibold text-destructive flex items-center gap-1 mb-1">
-                          <AlertTriangle className="w-3 h-3" /> Pendências:
+                      {!v.ok && (
+                        <div className="pt-1">
+                          <div className="text-[11px] font-semibold text-destructive flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3 h-3" /> Pendências:
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {v.missing.map((m) => (
+                              <Badge key={m} variant="outline" className="border-destructive/40 text-destructive font-normal text-[10px] h-5">
+                                {m}
+                              </Badge>
+                            ))}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 w-full h-8 border-primary/40 text-primary hover:text-primary"
+                            onClick={() => autoFixOne(c)}
+                            disabled={fixingId === c.id}
+                          >
+                            {fixingId === c.id ? (
+                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                            ) : (
+                              <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                            )}
+                            Corrigir automaticamente
+                          </Button>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {v.missing.map((m) => (
-                            <Badge key={m} variant="outline" className="border-destructive/40 text-destructive font-normal text-[10px] h-5">
-                              {m}
-                            </Badge>
-                          ))}
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-muted/60 bg-muted/20 p-2.5 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                          <FileText className="w-3 h-3" /> Dados fiscais (NFC-e)
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 w-full h-8 border-primary/40 text-primary hover:text-primary"
-                          onClick={() => autoFixOne(c)}
-                          disabled={fixingId === c.id}
-                        >
-                          {fixingId === c.id ? (
-                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                          ) : (
-                            <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                          )}
-                          Corrigir automaticamente
-                        </Button>
+                        <Badge variant="outline" className="text-muted-foreground gap-1 text-[10px] h-5">
+                          Pessoa física
+                        </Badge>
                       </div>
-                    )}
-                  </div>
+                      <div className="text-xs font-mono text-muted-foreground">
+                        CPF {c.cpf}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Cliente PF não exibe endereço completo para NF-e.
+                      </div>
+                    </div>
+                  )}
+
 
                   {/* Ações */}
                   <div className="flex gap-2 pt-1">
