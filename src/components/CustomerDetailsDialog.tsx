@@ -365,6 +365,9 @@ export function CustomerDetailsDialog({
               <TabsTrigger value="overview" className="data-[state=active]:bg-muted gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" /> Visão geral
               </TabsTrigger>
+              <TabsTrigger value="profile" className="data-[state=active]:bg-muted gap-1.5">
+                <Brain className="w-3.5 h-3.5" /> Perfil
+              </TabsTrigger>
               <TabsTrigger value="history" className="data-[state=active]:bg-muted gap-1.5">
                 <History className="w-3.5 h-3.5" /> Histórico
                 {orders.length > 0 && <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px]">{orders.length}</Badge>}
