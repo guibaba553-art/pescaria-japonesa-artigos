@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
   TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
-  Calendar as CalendarIcon, Boxes,
+  Calendar as CalendarIcon, Boxes, Search,
 } from 'lucide-react';
 
 import { useToast } from '@/hooks/use-toast';
