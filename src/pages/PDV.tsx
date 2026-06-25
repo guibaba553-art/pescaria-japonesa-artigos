@@ -2154,36 +2154,42 @@ export default function PDV() {
         >
           {/* Coluna 1 — Cliente (desktop) */}
           <aside className="hidden lg:flex lg:flex-col space-y-4 order-1 min-w-0 lg:h-full lg:overflow-y-auto lg:pr-1">
-            <Card className="border-primary/20">
-              <CardHeader className="p-3 pb-2 flex-row items-center justify-between space-y-0">
+            <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <CardHeader className="p-4 pb-3 bg-white dark:bg-zinc-900 flex-row items-center justify-between space-y-0 border-b border-zinc-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">1</div>
-                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                    Identificação
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-black shadow-sm">1</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                    Identificação do Cliente
                   </CardTitle>
                 </div>
                 {selectedCustomer && customerSelectedAt && (
-                  <Badge variant="outline" className="text-[9px] font-bold uppercase bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300">
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900">
                     em atendimento
-                  </Badge>
+                  </span>
                 )}
               </CardHeader>
-              <CardContent className="p-3 pt-0 space-y-3">
+              <CardContent className={cn("p-4 space-y-4", selectedCustomer && "bg-primary/5")}>
                 {selectedCustomer ? (
                   <>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shrink-0 shadow">
+                        {(selectedCustomer.company_name || selectedCustomer.full_name || '?').slice(0,2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate leading-tight">
                           {selectedCustomer.company_name || selectedCustomer.full_name}
                         </p>
-                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                        <p className="text-[11px] text-primary font-bold uppercase tracking-wide mt-0.5">
+                          {customerTier?.name ? `Consumidor ${customerTier.name}` : 'Cliente'}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                           {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
                         </p>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="shrink-0 h-7 w-7 p-0"
+                        className="shrink-0 h-7 w-7 p-0 rounded-full"
                         onClick={() => setSelectedCustomer(null)}
                       >
                         <X className="w-3.5 h-3.5" />
@@ -2193,7 +2199,7 @@ export default function PDV() {
                   </>
                 ) : (
                   <>
-                    <p className="text-[11px] text-muted-foreground leading-snug">
+                    <p className="text-[12px] text-muted-foreground leading-snug">
                       Digite o <strong>CPF/CNPJ</strong> ou nome para liberar perfil, pagamento preferido e tempo de atendimento.
                     </p>
                     <CustomerSearchCombobox
@@ -2213,15 +2219,15 @@ export default function PDV() {
                       <Button
                         size="sm"
                         onClick={() => setShowCustomerDialog(true)}
-                        className="bg-orange-500 hover:bg-orange-600 w-full"
+                        className="w-full rounded-xl"
                       >
-                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar novo
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={handleConsumidorFinal}
-                        className="w-full"
+                        className="w-full rounded-xl"
                       >
                         Consumidor final
                       </Button>
@@ -2231,6 +2237,7 @@ export default function PDV() {
               </CardContent>
             </Card>
           </aside>
+
 
           {/* Resize handle: Cliente | Produtos */}
           <div
@@ -2244,18 +2251,24 @@ export default function PDV() {
 
           {/* Coluna 2 — Produtos */}
           <div className="space-y-4 order-2 min-w-0 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
-            <Card className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
-              <CardHeader className="lg:py-3 shrink-0">
-                <CardTitle className="text-base">Produtos</CardTitle>
+            <Card className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <CardHeader className="lg:py-3 px-4 shrink-0 flex-row items-center justify-between space-y-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-black shadow-sm">2</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Produtos</CardTitle>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {filteredProducts.length} itens
+                </span>
               </CardHeader>
-              <CardContent className="space-y-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col">
+              <CardContent className="space-y-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col p-4 bg-zinc-50/50 dark:bg-zinc-950/30">
                 <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Buscar produto..."
+                    placeholder="Buscar produto por nome, SKU ou EAN..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
                   />
                 </div>
 
@@ -2264,7 +2277,7 @@ export default function PDV() {
                     {filteredProducts.map(product => (
                       <Card
                         key={product.id}
-                        className="cursor-pointer hover:shadow-lg transition-shadow relative"
+                        className="cursor-pointer hover:border-primary hover:shadow-md transition-all relative rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm group"
                         onClick={() => handleProductClick(product)}
                       >
                         {product.variations && product.variations.length > 0 && (
@@ -2281,7 +2294,7 @@ export default function PDV() {
                             type="button"
                             size="icon"
                             variant="secondary"
-                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
                             title="Ajustar estoque"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2291,59 +2304,57 @@ export default function PDV() {
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        <CardContent className="p-2 lg:p-2.5 space-y-2">
-                          {product.image_url && (
-                            <div className="w-full h-24 lg:h-28 bg-muted rounded overflow-hidden">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="aspect-square w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center">
+                            {product.image_url ? (
                               <img
                                 src={product.image_url}
                                 alt={product.name}
                                 className="w-full h-full object-cover"
                               />
-                            </div>
-                          )}
+                            ) : (
+                              <Package className="w-8 h-8 text-zinc-300 dark:text-zinc-700" />
+                            )}
+                          </div>
                           <div>
-                            <h3 className="font-semibold text-xs lg:text-sm leading-tight break-words">
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
+                              {product.category}
+                            </p>
+                            <h3 className="font-bold text-xs lg:text-sm leading-snug break-words line-clamp-2 text-zinc-800 dark:text-zinc-100">
                               {product.name}
                             </h3>
-                            <div className="flex gap-1 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                {product.category}
-                              </Badge>
+                            <div className="flex gap-1 mt-1 flex-wrap">
                               {product.sold_by_weight && (
-                                <Badge variant="default" className="text-xs bg-green-600">
-                                  Por kg
-                                </Badge>
+                                <Badge variant="default" className="text-[9px] bg-emerald-600">Por kg</Badge>
                               )}
                               {product.minimum_quantity && product.minimum_quantity > 1 && (
-                                <Badge variant="default" className="text-xs">
-                                  Min: {product.minimum_quantity}
-                                </Badge>
+                                <Badge variant="outline" className="text-[9px]">Min: {product.minimum_quantity}</Badge>
                               )}
                             </div>
                           </div>
-                           <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
+                          <div className="flex items-end justify-between pt-1">
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[10px] text-emerald-600 font-bold">
+                                {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
+                              </span>
                               {isPdvPromoActive(product) ? (
                                 <>
-                                  <span className="text-[11px] text-muted-foreground line-through leading-none">
-                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  <span className="text-[10px] text-muted-foreground line-through leading-none">
+                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}
                                   </span>
-                                  <span className="text-lg font-bold text-green-600 dark:text-green-400 leading-none">
-                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  <span className="text-base lg:text-lg font-black text-emerald-600 leading-tight">
+                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-lg font-bold text-primary leading-none">
-                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                <span className="text-base lg:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
                                 </span>
                               )}
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
-                                {paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'debit' ? 'Débito' : paymentMethod === 'credit' ? 'Crédito' : 'PIX'}
-                              </span>
                             </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
-                            </Badge>
+                            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                              <Plus className="w-4 h-4" />
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -2353,6 +2364,7 @@ export default function PDV() {
               </CardContent>
             </Card>
           </div>
+
 
           {/* Resize handle: Produtos | Carrinho */}
           <div
