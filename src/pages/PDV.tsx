@@ -293,6 +293,7 @@ export default function PDV() {
           uf: existing.uf || prev.uf,
           inscricao_estadual: existing.inscricao_estadual || prev.inscricao_estadual,
           email: existing.email || prev.email,
+          phone: existing.phone || prev.phone,
         }));
         toast({
           title: 'Cliente já cadastrado',
