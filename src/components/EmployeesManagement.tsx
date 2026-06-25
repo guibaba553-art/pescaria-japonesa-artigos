@@ -108,6 +108,7 @@ export function EmployeesManagement() {
           can_access_sales_analysis: perm?.can_access_sales_analysis ?? defaults.can_access_sales_analysis,
           can_access_triagem: perm?.can_access_triagem ?? defaults.can_access_triagem,
           can_access_fiscal: perm?.can_access_fiscal ?? defaults.can_access_fiscal,
+          can_access_customers: (perm as any)?.can_access_customers ?? defaults.can_access_customers,
         };
       });
       setEmployees(rows);
