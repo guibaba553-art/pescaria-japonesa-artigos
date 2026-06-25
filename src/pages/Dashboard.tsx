@@ -205,7 +205,7 @@ export default function Dashboard() {
         while (true) {
           const { data: page, error } = await supabase
             .from('orders')
-            .select('id, total_amount, shipping_cost, created_at, status, source')
+            .select('id, total_amount, shipping_cost, created_at, status, source, customer_id')
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
           if (error) throw error;
