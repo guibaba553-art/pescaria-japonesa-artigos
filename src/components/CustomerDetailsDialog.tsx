@@ -6,7 +6,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Loader2, ShoppingBag, Calendar, CreditCard, Package, TrendingUp, Receipt,
   User as UserIcon, Mail, Phone, MapPin, FileText, Award, Gift, Pencil,
