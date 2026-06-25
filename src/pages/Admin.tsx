@@ -99,7 +99,7 @@ export default function Admin() {
       desc: 'Cadastro de clientes (PF/PJ) para PDV e NF-e',
       icon: UserSquare2,
       path: '/admin/clientes',
-      adminOnly: true,
+      perm: 'customers',
     },
     {
       title: 'Funcionários',
