@@ -2087,7 +2087,7 @@ export default function PDV() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,6fr)_minmax(0,5fr)] gap-6">
           {/* Coluna 1 — Cliente (desktop) */}
-          <aside className="hidden lg:block lg:col-span-3 space-y-4 order-1">
+          <aside className="hidden lg:block space-y-4 order-1">
             <Card className="border-primary/20 sticky top-24">
               <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-2">
