@@ -254,6 +254,8 @@ export default function PDV() {
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  // Cronômetro de atendimento (ms desde que o cliente foi selecionado)
+  const [customerSelectedAt, setCustomerSelectedAt] = useState<number | null>(null);
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   useEffect(() => { loadTiers().then(setTiers); }, []);
   const customerTier = useMemo(
