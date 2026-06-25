@@ -2302,8 +2302,8 @@ export default function PDV() {
               </Button>
             </div>
 
-            {/* Identificação do cliente — primeiro passo do atendimento */}
-            <Card className="border-primary/20">
+            {/* Identificação do cliente — primeiro passo (mobile) */}
+            <Card className="border-primary/20 lg:hidden">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <User className="w-4 h-4 text-primary" />
