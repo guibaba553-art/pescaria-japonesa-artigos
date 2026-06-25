@@ -173,7 +173,7 @@ export default function PDV() {
 
   // Larguras das colunas do PDV — editáveis manualmente
   const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
-    if (typeof window === 'undefined') return { customer: 18, products: 52, cart: 30 };
+    if (typeof window === 'undefined') return { customer: 20, products: 50, cart: 30 };
     try {
       const saved = localStorage.getItem('pdv:columnWidths');
       if (saved) {
@@ -183,7 +183,7 @@ export default function PDV() {
         }
       }
     } catch { /* ignore */ }
-    return { customer: 18, products: 52, cart: 30 };
+    return { customer: 20, products: 50, cart: 30 };
   });
   useEffect(() => {
     if (typeof window === 'undefined') return;
