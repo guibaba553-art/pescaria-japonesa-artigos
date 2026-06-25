@@ -123,6 +123,7 @@ export default function Dashboard() {
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
+  const [customersList, setCustomersList] = useState<CustomerSales[]>([]);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
