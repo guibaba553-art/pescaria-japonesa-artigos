@@ -253,6 +253,7 @@ export default function PDV() {
     inscricao_estadual: '',
     ie_indicador: '9' as '1' | '2' | '9', // 1=contribuinte, 2=isento, 9=não contribuinte
     email: '',
+    phone: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cpfLoading, setCpfLoading] = useState(false);
