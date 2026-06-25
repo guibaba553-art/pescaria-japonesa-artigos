@@ -550,121 +550,138 @@ export default function Dashboard() {
   }: {
     title: string; icon: React.ReactNode; stats: ChannelStats; color: string;
     dataKey: 'pdv' | 'site'; orderKey: 'pdvOrders' | 'siteOrders'; top: ProductSales[];
-  }) => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h2 className="text-2xl font-bold">{title}</h2>
-      </div>
+  }) => {
+    const [search, setSearch] = useState('');
+    const filtered = top.filter((p) =>
+      p.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .includes(search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    );
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          title="Receita"
-          value={formatBRL(stats.totalRevenue)}
-          growth={stats.revenueGrowth}
-          icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatCard
-          title="Pedidos"
-          value={String(stats.totalOrders)}
-          growth={stats.ordersGrowth}
-          icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatCard
-          title="Ticket Médio"
-          value={formatBRL(stats.avgTicket)}
-          icon={<Target className="h-4 w-4 text-muted-foreground" />}
-        />
-      </div>
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="text-2xl font-bold">{title}</h2>
+        </div>
 
-      <Tabs defaultValue="revenue" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="revenue">Receita</TabsTrigger>
-          <TabsTrigger value="orders">Pedidos</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-        </TabsList>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard
+            title="Receita"
+            value={formatBRL(stats.totalRevenue)}
+            growth={stats.revenueGrowth}
+            icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatCard
+            title="Pedidos"
+            value={String(stats.totalOrders)}
+            growth={stats.ordersGrowth}
+            icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+          />
+          <StatCard
+            title="Ticket Médio"
+            value={formatBRL(stats.avgTicket)}
+            icon={<Target className="h-4 w-4 text-muted-foreground" />}
+          />
+        </div>
 
-        <TabsContent value="revenue">
-          <Card>
-            <CardHeader>
-              <CardTitle>Receita Diária — {title} ({rangeLabel})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(v: number) => formatBRL(v)} />
-                  <Legend />
-                  <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Tabs defaultValue="revenue" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="revenue">Receita</TabsTrigger>
+            <TabsTrigger value="orders">Pedidos</TabsTrigger>
+            <TabsTrigger value="products">Produtos</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="orders">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pedidos Diários — {title} ({rangeLabel})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey={orderKey} fill={color} name="Pedidos" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
+          <TabsContent value="revenue">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita Diária — {title} ({rangeLabel})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    <Legend />
+                    <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="products">
-          <Card>
-            <CardHeader>
-              <CardTitle>Produtos — {title}</CardTitle>
-              <CardDescription>Produtos com maior receita neste canal</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {top.length === 0 ? (
-                <div className="text-sm text-muted-foreground text-center py-8">
-                  Nenhuma venda registrada neste canal ainda.
+          <TabsContent value="orders">
+            <Card>
+              <CardHeader>
+                <CardTitle>Pedidos Diários — {title} ({rangeLabel})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey={orderKey} fill={color} name="Pedidos" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="products">
+            <Card>
+              <CardHeader>
+                <CardTitle>Produtos — {title}</CardTitle>
+                <CardDescription>Produtos com maior receita neste canal</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar produto..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
-              ) : (
-                <div className="overflow-auto max-h-[520px]">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold w-12">#</th>
-                        <th className="px-3 py-2 text-left font-semibold">Produto</th>
-                        <th className="px-3 py-2 text-right font-semibold w-24">Qtd</th>
-                        <th className="px-3 py-2 text-right font-semibold w-32">Receita</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {top.map((p, i) => (
-                        <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
-                          <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
-                          <td className="px-3 py-2 font-medium">{p.name}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
-                          <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
+                {filtered.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-8">
+                    {search ? 'Nenhum produto encontrado para esta busca.' : 'Nenhuma venda registrada neste canal ainda.'}
+                  </div>
+                ) : (
+                  <div className="overflow-auto max-h-[520px]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold w-12">#</th>
+                          <th className="px-3 py-2 text-left font-semibold">Produto</th>
+                          <th className="px-3 py-2 text-right font-semibold w-24">Qtd</th>
+                          <th className="px-3 py-2 text-right font-semibold w-32">Receita</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+                      </thead>
+                      <tbody>
+                        {filtered.map((p, i) => (
+                          <tr key={i} className="border-t border-border/60 hover:bg-muted/30">
+                            <td className="px-3 py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                            <td className="px-3 py-2 font-medium">{p.name}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{p.quantity}</td>
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatBRL(p.revenue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
 
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
