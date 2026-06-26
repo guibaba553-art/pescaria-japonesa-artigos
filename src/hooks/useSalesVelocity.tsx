@@ -71,7 +71,7 @@ export function useSalesVelocity(opts: Options = {}) {
     }
 
     // 3. Buscar estoque atual de todos os produtos vendidos
-    const productIds = Array.from(new Set((items ?? []).map((i) => i.product_id)));
+    const productIds = Array.from(new Set(items.map((i) => i.product_id)));
     const { data: products } = await supabase
       .from('products')
       .select('id, stock')
@@ -81,7 +81,7 @@ export function useSalesVelocity(opts: Options = {}) {
 
     // 4. Agregar quantidades vendidas por produto
     const soldMap = new Map<string, number>();
-    (items ?? []).forEach((it) => {
+    items.forEach((it) => {
       soldMap.set(it.product_id, (soldMap.get(it.product_id) ?? 0) + Number(it.quantity));
     });
 
