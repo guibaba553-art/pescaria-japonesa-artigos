@@ -307,141 +307,148 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
     <div className="space-y-4">
       {!prefilledXml && (
         <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Importar XML da NFe
-          </CardTitle>
-          <CardDescription>
-            Faça upload do arquivo XML ou PDF da Nota Fiscal Eletrônica para extrair automaticamente os dados dos produtos
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <input
-                type="file"
-                accept=".xml,.pdf"
-                onChange={handleFileChange}
-                className="hidden"
-                id="xml-upload"
-              />
-              <label
-                htmlFor="xml-upload"
-                className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
-              >
-                <Upload className="w-4 h-4" />
-                {file ? file.name : 'Selecionar arquivo XML ou PDF'}
-              </label>
-            </div>
-            
-            {pdfPreview && (
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Importar XML da NFe
+            </CardTitle>
+            <CardDescription>
+              Faça upload do arquivo XML ou PDF da Nota Fiscal Eletrônica para extrair automaticamente os dados dos produtos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept=".xml,.pdf"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="xml-upload"
+                />
+                <label
+                  htmlFor="xml-upload"
+                  className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  {file ? file.name : 'Selecionar arquivo XML ou PDF'}
+                </label>
+              </div>
+              
+              {pdfPreview && (
+                <Button
+                  onClick={() => setShowPreview(true)}
+                  variant="outline"
+                  className="sm:w-auto w-full"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  Visualizar PDF
+                </Button>
+              )}
+              
               <Button
-                onClick={() => setShowPreview(true)}
-                variant="outline"
+                onClick={handleUpload}
+                disabled={!file || loading}
                 className="sm:w-auto w-full"
               >
-                <Eye className="w-4 h-4 mr-2" />
-                Visualizar PDF
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Processar
+                  </>
+                )}
               </Button>
-            )}
-            
-            <Button
-              onClick={handleUpload}
-              disabled={!file || loading}
-              className="sm:w-auto w-full"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Processar
-                </>
-              )}
-            </Button>
-          </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          {nfeData && (
-            <div className="space-y-4">
-              <div className="p-4 bg-primary/5 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  NFe processada com sucesso
+      {nfeData && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              NFe processada com sucesso
+            </CardTitle>
+            <CardDescription>
+              Revise os produtos abaixo e confirme para somar ao estoque
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-primary/5 rounded-lg space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Número:</span> {nfeData.numero}
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Número:</span> {nfeData.numero}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Série:</span> {nfeData.serie}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Data:</span> {new Date(nfeData.data_emissao).toLocaleDateString('pt-BR')}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Valor Total:</span> R$ {nfeData.valor_total.toFixed(2)}
-                  </div>
+                <div>
+                  <span className="text-muted-foreground">Série:</span> {nfeData.serie}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Data:</span> {new Date(nfeData.data_emissao).toLocaleDateString('pt-BR')}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Valor Total:</span> R$ {nfeData.valor_total.toFixed(2)}
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground">Fornecedor:</span> {nfeData.fornecedor.nome} ({nfeData.fornecedor.cnpj})
+                </div>
+                {nfeData.valor_frete && nfeData.valor_frete > 0 && (
                   <div className="col-span-2">
-                    <span className="text-muted-foreground">Fornecedor:</span> {nfeData.fornecedor.nome} ({nfeData.fornecedor.cnpj})
+                    <span className="text-muted-foreground">Frete:</span> R$ {nfeData.valor_frete.toFixed(2)}
                   </div>
-                  {nfeData.valor_frete && nfeData.valor_frete > 0 && (
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Frete:</span> R$ {nfeData.valor_frete.toFixed(2)}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-4 border rounded-lg space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="margem-lucro">Margem de Lucro Padrão (%)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="margem-lucro"
-                      type="number"
-                      min="0"
-                      max="500"
-                      step="0.1"
-                      value={margemLucro}
-                      onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
-                      className="flex-1"
-                    />
-                    <Button onClick={aplicarMargemTodos} variant="outline">
-                      Aplicar a Todos
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Define a margem de lucro padrão. Você pode personalizar cada produto na tabela abaixo.
-                  </p>
-                </div>
-
-                <Button 
-                  onClick={registrarProdutos} 
-                  disabled={processando}
-                  className="w-full"
-                  size="lg"
-                >
-                  {processando ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Registrando produtos...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Registrar {nfeData.produtos.length} Produto(s) Automaticamente
-                    </>
-                  )}
-                </Button>
+                )}
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            <div className="p-4 border rounded-lg space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="margem-lucro">Margem de Lucro Padrão (%)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="margem-lucro"
+                    type="number"
+                    min="0"
+                    max="500"
+                    step="0.1"
+                    value={margemLucro}
+                    onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
+                    className="flex-1"
+                  />
+                  <Button onClick={aplicarMargemTodos} variant="outline">
+                    Aplicar a Todos
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Define a margem de lucro padrão. Você pode personalizar cada produto na tabela abaixo.
+                </p>
+              </div>
+
+              <Button 
+                onClick={registrarProdutos} 
+                disabled={processando}
+                className="w-full"
+                size="lg"
+              >
+                {processando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Registrando produtos...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Registrar {nfeData.produtos.length} Produto(s) Automaticamente
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {nfeData && nfeData.produtos.length > 0 && (
