@@ -111,6 +111,8 @@ export default function Dashboard() {
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalCost, setTotalCost] = useState(0);
   const [itemsRevenue, setItemsRevenue] = useState(0);
+  const [itemsRevenuePdv, setItemsRevenuePdv] = useState(0);
+  const [itemsRevenueSite, setItemsRevenueSite] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [fixedExpenses, setFixedExpenses] = useState(0);
   const [variableExpenses, setVariableExpenses] = useState(0);
