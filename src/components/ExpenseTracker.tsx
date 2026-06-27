@@ -239,8 +239,9 @@ export function ExpenseTracker() {
     const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
     const expensesTotal = fixed + variable;
     const income = incomeSite + incomePdv;
-    return { total: expensesTotal, income, balance: income - expensesTotal };
+    return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [monthEntries, incomes, pdvReceivables]);
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
