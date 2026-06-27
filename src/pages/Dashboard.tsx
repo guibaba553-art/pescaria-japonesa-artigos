@@ -266,31 +266,20 @@ export default function Dashboard() {
         }
       }
 
-      // Lucro por item: (preço efetivamente cobrado na venda − custo total) × quantidade
+      // Receita de itens entregues dentro do período (preço realmente cobrado)
       const deliveredInRange = delivered.filter((o) => {
         const d = new Date(o.created_at);
         return d >= start && d <= end;
       });
       const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
-      let custoTotalAcc = 0;
       let receitaItensAcc = 0;
       orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const product: any = productMap.get(it.product_id) || {};
-        const variation: any = it.variation_id ? variationMap.get(it.variation_id) || {} : {};
-        const baseCost = Number(variation.cost ?? product.cost ?? 0);
-        const fPct = Number(variation.freight_pct ?? product.freight_pct ?? 0) / 100;
-        const oPct = Number(variation.op_cost_pct ?? product.op_cost_pct ?? 0) / 100;
-        const tPct = Number(variation.tax_pct ?? product.tax_pct ?? 0) / 100;
-        // Custo total unitário: custo base + frete + operacional + imposto
-        const custoUnit = baseCost + baseCost * fPct + baseCost * oPct + venda * tPct;
-        // Receita = preço realmente registrado na venda (já reflete PDV/mínimo/método)
-        custoTotalAcc += custoUnit * qty;
         receitaItensAcc += venda * qty;
       });
-      setTotalCost(custoTotalAcc);
+      setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
       // Despesas dentro do período selecionado
