@@ -1209,7 +1209,7 @@ export type Database = {
           nfe_key: string | null
           nfe_number: string | null
           nfe_xml_url: string | null
-          order_id: string
+          order_id: string | null
           products_count: number | null
           protocolo: string | null
           ref_focus: string | null
@@ -1233,7 +1233,7 @@ export type Database = {
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
-          order_id: string
+          order_id?: string | null
           products_count?: number | null
           protocolo?: string | null
           ref_focus?: string | null
@@ -1257,7 +1257,7 @@ export type Database = {
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
-          order_id?: string
+          order_id?: string | null
           products_count?: number | null
           protocolo?: string | null
           ref_focus?: string | null
