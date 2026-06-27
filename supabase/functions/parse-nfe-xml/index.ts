@@ -58,7 +58,7 @@ serve(async (req) => {
     if (!rateLimitCheck) {
       return new Response(
         JSON.stringify({ 
-          error: 'Limite de requisições excedido. Máximo de 10 arquivos por hora. Tente novamente mais tarde.' 
+          error: 'Limite de requisições excedido. Máximo de 300 arquivos por hora. Aguarde alguns minutos.' 
         }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
