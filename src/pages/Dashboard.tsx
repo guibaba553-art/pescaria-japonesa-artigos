@@ -1187,7 +1187,16 @@ export default function Dashboard() {
                       <XAxis dataKey="name" />
                       <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
-                      <Bar dataKey="valor" />
+                      <Bar dataKey="valor">
+                        {[
+                          '#16a34a',
+                          '#f59e0b',
+                          '#ef4444',
+                          lucroLiquido >= 0 ? '#2563eb' : '#dc2626',
+                        ].map((c, i) => (
+                          <Cell key={i} fill={c} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
