@@ -514,7 +514,8 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead className="text-right">Valor Unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Margem %</TableHead>
+                    <TableHead className="text-right">Margem PDV %</TableHead>
+                    <TableHead className="text-right">Margem Site %</TableHead>
                     <TableHead className="text-right w-[140px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
