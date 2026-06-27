@@ -250,9 +250,10 @@ serve(async (req) => {
         // Criar novo produto como RASCUNHO (não aparece na loja)
         // - include_in_nfe: false → oculto até admin revisar
         // - category: "Pendente Revisão" → fácil de filtrar no admin
-        const precoVenda = custoNovaEntrada * (1 + margemLucro / 100);
+        const precoVenda = custoNovaEntrada * (1 + margemLucroPdv / 100);
+        const precoSite = custoNovaEntrada * (1 + margemLucroSite / 100);
         console.log(`  Criando produto como RASCUNHO (Pendente Revisão)`);
-        console.log(`  Preço venda sugerido: R$ ${precoVenda.toFixed(2)}`);
+        console.log(`  Preço venda sugerido — PDV: R$ ${precoVenda.toFixed(2)} | Site: R$ ${precoSite.toFixed(2)}`);
         
         const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
         
