@@ -497,103 +497,105 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
 
       {nfeData && nfeData.produtos.length > 0 && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="py-3">
+            <div className="flex items-center justify-between gap-2">
               <div>
-                <CardTitle>Produtos Extraídos</CardTitle>
-                <CardDescription>
-                  {nfeData.produtos.length} produto(s) encontrado(s) na NFe
+                <CardTitle className="text-base">Produtos Extraídos</CardTitle>
+                <CardDescription className="text-xs">
+                  {nfeData.produtos.length} item(ns) — revise margens e vínculos
                 </CardDescription>
               </div>
               <Button onClick={exportToExcel} variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Exportar CSV
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                CSV
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>EAN</TableHead>
-                    <TableHead>Nome / Vínculo</TableHead>
-                    <TableHead>NCM</TableHead>
-                    <TableHead className="text-right">Qtd</TableHead>
-                    <TableHead className="text-right">Valor Unit.</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Margem PDV %</TableHead>
-                    <TableHead className="text-right">Margem Site %</TableHead>
-                    <TableHead className="text-right w-[140px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {produtosComMargem.map((produto, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-mono text-xs">{produto.sku || '-'}</TableCell>
-                      <TableCell className="font-mono text-xs">{produto.ean || '-'}</TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate">{produto.nome}</div>
-                        {produto.vincular_produto_id && (
-                          <Badge variant="secondary" className="text-[10px] mt-1 max-w-full">
-                            <Link2 className="w-3 h-3 mr-1 shrink-0" />
-                            <span className="truncate">→ {produto.vincular_produto_nome}</span>
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{produto.ncm || '-'}</TableCell>
-                      <TableCell className="text-right">{produto.quantidade}</TableCell>
-                      <TableCell className="text-right">R$ {produto.valor_unitario.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-medium">R$ {produto.valor_total.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          max="500"
-                          step="0.1"
-                          value={produto.margem_lucro_pdv ?? margemLucroPdv}
-                          onChange={(e) => updateMargemPdvProduto(index, parseFloat(e.target.value) || 0)}
-                          className="w-20 text-right"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          min="0"
-                          max="500"
-                          step="0.1"
-                          value={produto.margem_lucro_site ?? margemLucroSite}
-                          onChange={(e) => updateMargemSiteProduto(index, parseFloat(e.target.value) || 0)}
-                          className="w-20 text-right"
-                        />
-                      </TableCell>
+          <CardContent className="p-3">
+            <div className="border rounded-lg divide-y max-h-[55vh] overflow-y-auto">
+              {produtosComMargem.map((produto, index) => (
+                <div
+                  key={index}
+                  className="p-2.5 flex flex-col md:flex-row md:items-center gap-2 hover:bg-muted/30"
+                >
+                  {/* Nome + metadados */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate" title={produto.nome}>
+                      {produto.nome}
+                    </div>
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground font-mono mt-0.5">
+                      {produto.sku && <span>SKU {produto.sku}</span>}
+                      {produto.ean && <span>EAN {produto.ean}</span>}
+                      {produto.ncm && <span>NCM {produto.ncm}</span>}
+                    </div>
+                    {produto.vincular_produto_id && (
+                      <Badge variant="secondary" className="text-[10px] mt-1 max-w-full">
+                        <Link2 className="w-3 h-3 mr-1 shrink-0" />
+                        <span className="truncate">→ {produto.vincular_produto_nome}</span>
+                      </Badge>
+                    )}
+                  </div>
 
-                      <TableCell className="text-right">
-                        {produto.vincular_produto_id ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setLinkedProduct(index, null)}
-                          >
-                            <Unlink className="w-3.5 h-3.5 mr-1" />
-                            Desvincular
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setLinkingIndex(index)}
-                          >
-                            <Link2 className="w-3.5 h-3.5 mr-1" />
-                            Já existe?
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  {/* Valores */}
+                  <div className="flex items-center gap-3 text-xs shrink-0">
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted-foreground">Qtd</div>
+                      <div className="font-semibold">{produto.quantidade}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted-foreground">Unit.</div>
+                      <div>R$ {produto.valor_unitario.toFixed(2)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted-foreground">Total</div>
+                      <div className="font-semibold">R$ {produto.valor_total.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  {/* Margens */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">PDV %</div>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="500"
+                        step="0.1"
+                        value={produto.margem_lucro_pdv ?? margemLucroPdv}
+                        onChange={(e) => updateMargemPdvProduto(index, parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right text-xs px-2"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">Site %</div>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="500"
+                        step="0.1"
+                        value={produto.margem_lucro_site ?? margemLucroSite}
+                        onChange={(e) => updateMargemSiteProduto(index, parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right text-xs px-2"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ação */}
+                  <div className="shrink-0">
+                    {produto.vincular_produto_id ? (
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => setLinkedProduct(index, null)}>
+                        <Unlink className="w-3.5 h-3.5 mr-1" />
+                        Desvincular
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-8" onClick={() => setLinkingIndex(index)}>
+                        <Link2 className="w-3.5 h-3.5 mr-1" />
+                        Já existe?
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
