@@ -269,6 +269,7 @@ serve(async (req) => {
             description: `[RASCUNHO - revisar] ${produto.nome}\nNCM: ${produto.ncm || 'N/A'}${produto.ean && produto.ean !== 'SEM GTIN' ? `\nEAN: ${produto.ean}` : ''}\nFornecedor: ${nfeData.fornecedor?.nome || 'N/A'}`,
             short_description: produto.nome,
             price: precoVenda,
+            min_sale_price: precoSite,
             category: 'Pendente Revisão',
             stock: produto.quantidade,
             sku: skuValue || undefined,
