@@ -74,7 +74,16 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         const { data, error } = await supabase.functions.invoke('parse-nfe-xml', {
           body: { xmlContent: prefilledXml },
         });
-        if (error) throw error;
+        const serverError = (data as any)?.error;
+        if (error || serverError) {
+          let msg = serverError || error?.message || 'Falha';
+          try {
+            const ctx = (error as any)?.context;
+            if (ctx?.json) { const j = await ctx.json(); if (j?.error) msg = j.error; }
+            else if (ctx?.text) { const t = await ctx.text(); if (t) msg = t; }
+          } catch {}
+          throw new Error(msg);
+        }
         if (data) {
           setNfeData(data);
           setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));

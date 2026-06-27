@@ -46,7 +46,7 @@ serve(async (req) => {
       {
         p_user_id: user.id,
         p_function_name: 'parse-nfe-xml',
-        p_max_requests: 10,
+        p_max_requests: 300,
         p_window_hours: 1
       }
     );
@@ -58,7 +58,7 @@ serve(async (req) => {
     if (!rateLimitCheck) {
       return new Response(
         JSON.stringify({ 
-          error: 'Limite de requisições excedido. Máximo de 10 arquivos por hora. Tente novamente mais tarde.' 
+          error: 'Limite de requisições excedido. Máximo de 300 arquivos por hora. Aguarde alguns minutos.' 
         }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
