@@ -1187,19 +1187,21 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={[
-                        { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
+                        { name: 'Receita PDV', valor: itemsRevenuePdv, fill: '#16a34a' },
+                        { name: 'Receita Site', valor: itemsRevenueSite, fill: '#10b981' },
                         { name: 'Desp. Fixas', valor: fixedExpenses, fill: '#f59e0b' },
                         { name: 'Desp. Variáveis', valor: variableExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
                       ]}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" interval={0} tick={{ fontSize: 12 }} height={45} />
+                      <XAxis dataKey="name" interval={0} tick={{ fontSize: 11 }} height={45} />
                       <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
                       <Bar dataKey="valor">
                         {[
                           '#16a34a',
+                          '#10b981',
                           '#f59e0b',
                           '#ef4444',
                           lucroLiquido >= 0 ? '#2563eb' : '#dc2626',
