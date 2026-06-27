@@ -1117,13 +1117,15 @@ export default function Dashboard() {
             {/* KPIs principais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                title="Receita"
-                value={formatBRL(totalRevenue)}
+                title="Receita (itens)"
+                value={formatBRL(itemsRevenue)}
+                hint={`+ Frete ${formatBRL(Math.max(0, totalRevenue - itemsRevenue))}`}
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
                 title="Custos + Despesas"
                 value={formatBRL(totalCost + totalExpenses)}
+                hint={`Custo ${formatBRL(totalCost)} · Desp. ${formatBRL(totalExpenses)}`}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
@@ -1145,13 +1147,15 @@ export default function Dashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
-                  <CardDescription>Comparativo do período</CardDescription>
+                  <CardDescription>
+                    Receita de itens entregues − Custos − Despesas = Lucro
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={[
-                        { name: 'Receita', valor: totalRevenue, fill: '#16a34a' },
+                        { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
                         { name: 'Custos', valor: totalCost, fill: '#f59e0b' },
                         { name: 'Despesas', valor: totalExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
