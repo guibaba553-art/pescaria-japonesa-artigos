@@ -427,26 +427,41 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
 
             <div className="p-4 border rounded-lg space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="margem-lucro">Margem de Lucro Padrão (%)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="margem-lucro"
-                    type="number"
-                    min="0"
-                    max="500"
-                    step="0.1"
-                    value={margemLucro}
-                    onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
-                    className="flex-1"
-                  />
-                  <Button onClick={aplicarMargemTodos} variant="outline">
-                    Aplicar a Todos
-                  </Button>
+                <Label>Margens de Lucro Padrão (%)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="margem-pdv" className="text-xs text-muted-foreground">Margem PDV (%)</Label>
+                    <Input
+                      id="margem-pdv"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.1"
+                      value={margemLucroPdv}
+                      onChange={(e) => setMargemLucroPdv(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="margem-site" className="text-xs text-muted-foreground">Margem Site (%)</Label>
+                    <Input
+                      id="margem-site"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.1"
+                      value={margemLucroSite}
+                      onChange={(e) => setMargemLucroSite(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
+                <Button onClick={aplicarMargemTodos} variant="outline" className="w-full">
+                  Aplicar a Todos
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Define a margem de lucro padrão. Você pode personalizar cada produto na tabela abaixo.
+                  Define as margens padrão para preço de PDV e preço do site. Você pode personalizar cada produto na tabela abaixo.
                 </p>
               </div>
+
 
               <Button 
                 onClick={registrarProdutos} 
