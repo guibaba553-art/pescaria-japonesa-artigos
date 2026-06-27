@@ -543,11 +543,23 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                           min="0"
                           max="500"
                           step="0.1"
-                          value={produto.margem_lucro || margemLucro}
-                          onChange={(e) => updateMargemProduto(index, parseFloat(e.target.value) || 0)}
+                          value={produto.margem_lucro_pdv ?? margemLucroPdv}
+                          onChange={(e) => updateMargemPdvProduto(index, parseFloat(e.target.value) || 0)}
                           className="w-20 text-right"
                         />
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="500"
+                          step="0.1"
+                          value={produto.margem_lucro_site ?? margemLucroSite}
+                          onChange={(e) => updateMargemSiteProduto(index, parseFloat(e.target.value) || 0)}
+                          className="w-20 text-right"
+                        />
+                      </TableCell>
+
                       <TableCell className="text-right">
                         {produto.vincular_produto_id ? (
                           <Button
