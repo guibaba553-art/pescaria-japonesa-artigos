@@ -25,6 +25,8 @@ interface NFEProduct {
   pis?: number;
   cofins?: number;
   margem_lucro?: number;
+  margem_lucro_pdv?: number;
+  margem_lucro_site?: number;
   /** ID de produto já cadastrado para receber o estoque (vínculo manual) */
   vincular_produto_id?: string | null;
   /** Nome do produto vinculado, só para exibição */
