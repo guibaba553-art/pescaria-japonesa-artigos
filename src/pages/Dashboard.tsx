@@ -284,16 +284,20 @@ export default function Dashboard() {
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
-      // Despesas dentro do período selecionado
-      const expensesSum = (expenses || []).filter((e: any) => {
-        if (!e.expense_date) return false;
+      // Despesas dentro do período selecionado (separadas em fixo e variável)
+      let fixedSum = 0;
+      let variableSum = 0;
+      (expenses || []).forEach((e: any) => {
+        if (!e.expense_date) return;
         const d = new Date(e.expense_date);
-        return d >= start && d <= end;
-      }).reduce(
-        (s: number, e: any) => s + Number(e.amount || 0),
-        0,
-      );
-      setTotalExpenses(expensesSum);
+        if (d < start || d > end) return;
+        const amount = Number(e.amount || 0);
+        if (e.type === 'fixed') fixedSum += amount;
+        else variableSum += amount;
+      });
+      setTotalExpenses(fixedSum + variableSum);
+      setFixedExpenses(fixedSum);
+      setVariableExpenses(variableSum);
 
       // Pending / status overview (mantido global, independente do período)
       const pending = (orders || []).filter(
