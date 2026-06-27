@@ -968,10 +968,12 @@ export default function Dashboard() {
                       defaultMonth={range.from}
                       selected={range}
                       onSelect={(r) => {
-                        if (r?.from && r?.to) {
-                          setRange({ from: startOfDay(r.from), to: endOfDay(r.to) });
-                          setPeriod('custom');
-                        }
+                        if (!r) return;
+                        setRange({
+                          from: r.from ? startOfDay(r.from) : undefined as any,
+                          to: r.to ? endOfDay(r.to) : (r.from ? endOfDay(r.from) : undefined as any),
+                        });
+                        setPeriod('custom');
                       }}
                       numberOfMonths={2}
                     />
