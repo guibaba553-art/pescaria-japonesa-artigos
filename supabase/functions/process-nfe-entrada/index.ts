@@ -190,18 +190,20 @@ serve(async (req) => {
           ? ((custoAtual * estoqueAtual) + (custoNovaEntrada * produto.quantidade)) / (estoqueAtual + produto.quantidade)
           : custoNovaEntrada;
         
-        // Preço de venda com a margem aplicada sobre o custo médio
-        const precoVenda = custoMedioPonderado * (1 + margemLucro / 100);
+        // Preço de venda PDV e Site, cada um com sua margem sobre o custo médio
+        const precoVenda = custoMedioPonderado * (1 + margemLucroPdv / 100);
+        const precoSite = custoMedioPonderado * (1 + margemLucroSite / 100);
         
         const novoEstoque = estoqueAtual + produto.quantidade;
         
         console.log(`  Estoque atual: ${estoqueAtual} (custo: R$ ${custoAtual.toFixed(2)})`);
         console.log(`  Custo médio ponderado: R$ ${custoMedioPonderado.toFixed(2)}`);
-        console.log(`  Preço venda final: R$ ${precoVenda.toFixed(2)}`);
+        console.log(`  Preço venda PDV: R$ ${precoVenda.toFixed(2)} | Site: R$ ${precoSite.toFixed(2)}`);
         
         const updateData: any = {
           stock: novoEstoque,
           price: precoVenda,
+          min_sale_price: precoSite,
           updated_at: new Date().toISOString()
         };
         
