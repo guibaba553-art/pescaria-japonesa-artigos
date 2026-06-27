@@ -192,6 +192,7 @@ export default function Dashboard() {
          { data: productVariations },
          { data: profiles },
          { data: expenses },
+         { data: expenseOverrides },
        ] = await Promise.all([
           supabase.rpc('get_products_admin'),
           supabase.rpc('get_product_variations_admin'),
