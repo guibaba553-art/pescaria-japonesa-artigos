@@ -1184,7 +1184,7 @@ export default function Dashboard() {
                       ]}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
+                      <XAxis dataKey="name" interval={0} tick={{ fontSize: 12 }} height={45} />
                       <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
                       <Bar dataKey="valor">
