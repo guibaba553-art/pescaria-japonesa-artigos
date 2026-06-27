@@ -239,8 +239,9 @@ export function ExpenseTracker() {
     const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
     const expensesTotal = fixed + variable;
     const income = incomeSite + incomePdv;
-    return { total: expensesTotal, income, balance: income - expensesTotal };
+    return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [monthEntries, incomes, pdvReceivables]);
+
 
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir esta despesa? Se for fixa, todos os meses serão afetados.")) return;
@@ -490,21 +491,41 @@ export function ExpenseTracker() {
 
         {/* ============ MÊS ============ */}
         <TabsContent value="month" className="space-y-6 mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-                  <span>Entradas do mês</span><TrendingUp className="w-4 h-4" />
+                  <span>Entradas Site</span><TrendingUp className="w-4 h-4" />
                 </div>
-                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(monthTotals.income)}</div>
+                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(monthTotals.incomeSite)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">no mês</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
-                  <span>Saídas do mês</span><TrendingDown className="w-4 h-4" />
+                  <span>Entradas PDV</span><TrendingUp className="w-4 h-4" />
                 </div>
-                <div className="text-xl font-bold text-red-600 mt-2">{fmtBRL(monthTotals.total)}</div>
+                <div className="text-xl font-bold text-emerald-600 mt-2">{fmtBRL(monthTotals.incomePdv)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">liquidando no mês</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Custos fixos</span><Repeat className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-blue-600 mt-2">{fmtBRL(monthTotals.fixed)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">que vencem no mês</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                  <span>Custos variáveis</span><Zap className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-bold text-orange-600 mt-2">{fmtBRL(monthTotals.variable)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">no mês</div>
               </CardContent>
             </Card>
             <Card className={cn(monthTotals.balance >= 0 ? "border-emerald-500/30" : "border-red-500/30")}>
@@ -515,9 +536,13 @@ export function ExpenseTracker() {
                 <div className={cn("text-xl font-bold mt-2", monthTotals.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
                   {fmtBRL(monthTotals.balance)}
                 </div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {fmtBRL(monthTotals.income)} − {fmtBRL(monthTotals.total)}
+                </div>
               </CardContent>
             </Card>
           </div>
+
 
           <MonthAgenda
             currentMonth={currentMonth}
