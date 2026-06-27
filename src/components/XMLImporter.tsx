@@ -77,7 +77,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         if (error) throw error;
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
         }
       } catch (err: any) {
         toast({
@@ -175,7 +175,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
           toast({
             title: 'PDF processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -193,7 +193,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
           toast({
             title: 'XML processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -278,7 +278,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   };
 
   const aplicarMargemTodos = () => {
-    setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro })));
+    setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
     toast({
       title: 'Margem aplicada!',
       description: `Margem de ${margemLucro}% aplicada a todos os produtos.`,
