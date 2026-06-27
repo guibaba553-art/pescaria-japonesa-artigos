@@ -266,31 +266,20 @@ export default function Dashboard() {
         }
       }
 
-      // Lucro por item: (preço efetivamente cobrado na venda − custo total) × quantidade
+      // Receita de itens entregues dentro do período (preço realmente cobrado)
       const deliveredInRange = delivered.filter((o) => {
         const d = new Date(o.created_at);
         return d >= start && d <= end;
       });
       const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
-      let custoTotalAcc = 0;
       let receitaItensAcc = 0;
       orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const product: any = productMap.get(it.product_id) || {};
-        const variation: any = it.variation_id ? variationMap.get(it.variation_id) || {} : {};
-        const baseCost = Number(variation.cost ?? product.cost ?? 0);
-        const fPct = Number(variation.freight_pct ?? product.freight_pct ?? 0) / 100;
-        const oPct = Number(variation.op_cost_pct ?? product.op_cost_pct ?? 0) / 100;
-        const tPct = Number(variation.tax_pct ?? product.tax_pct ?? 0) / 100;
-        // Custo total unitário: custo base + frete + operacional + imposto
-        const custoUnit = baseCost + baseCost * fPct + baseCost * oPct + venda * tPct;
-        // Receita = preço realmente registrado na venda (já reflete PDV/mínimo/método)
-        custoTotalAcc += custoUnit * qty;
         receitaItensAcc += venda * qty;
       });
-      setTotalCost(custoTotalAcc);
+      setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
       // Despesas dentro do período selecionado
@@ -877,11 +866,8 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  // Lucro Bruto = Σ (valor vendido do item − custo do item) × quantidade
-  // Lucro Líquido = Lucro Bruto − despesas gerais
-  const lucroBruto = itemsRevenue - totalCost;
-  const lucroLiquido = lucroBruto - totalExpenses;
-  const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
+  // Lucro = Receita de itens entregues − Despesas gerais
+  const lucroLiquido = itemsRevenue - totalExpenses;
   const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
 
   const customerRevenue = customersList.reduce((s, c) => s + c.revenue, 0);
@@ -1123,9 +1109,8 @@ export default function Dashboard() {
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
-                title="Custos + Despesas"
-                value={formatBRL(totalCost + totalExpenses)}
-                hint={`Custo ${formatBRL(totalCost)} · Desp. ${formatBRL(totalExpenses)}`}
+                title="Despesas"
+                value={formatBRL(totalExpenses)}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
@@ -1148,7 +1133,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
                   <CardDescription>
-                    Receita de itens entregues − Custos − Despesas = Lucro
+                    Receita de itens entregues − Despesas = Lucro
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1156,7 +1141,6 @@ export default function Dashboard() {
                     <BarChart
                       data={[
                         { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
-                        { name: 'Custos', valor: totalCost, fill: '#f59e0b' },
                         { name: 'Despesas', valor: totalExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
                       ]}
@@ -1212,7 +1196,6 @@ export default function Dashboard() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Custo de Produto', value: Math.max(0, totalCost) },
                           { name: 'Despesas', value: Math.max(0, totalExpenses) },
                           { name: 'Lucro', value: Math.max(0, lucroLiquido) },
                         ]}
@@ -1223,7 +1206,6 @@ export default function Dashboard() {
                         outerRadius={90}
                         label={(e: any) => `${e.name}`}
                       >
-                        <Cell fill="#f59e0b" />
                         <Cell fill="#ef4444" />
                         <Cell fill="#16a34a" />
                       </Pie>
