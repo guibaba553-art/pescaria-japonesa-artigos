@@ -1133,7 +1133,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
                   <CardDescription>
-                    Receita de itens entregues − Custos − Despesas = Lucro
+                    Receita de itens entregues − Despesas = Lucro
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1141,7 +1141,6 @@ export default function Dashboard() {
                     <BarChart
                       data={[
                         { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
-                        { name: 'Custos', valor: totalCost, fill: '#f59e0b' },
                         { name: 'Despesas', valor: totalExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
                       ]}
