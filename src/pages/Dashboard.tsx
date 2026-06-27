@@ -286,16 +286,44 @@ export default function Dashboard() {
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
-      // Despesas dentro do período selecionado (separadas em fixo e variável)
+      // Despesas dentro do período selecionado (fixas são recorrentes mensalmente)
       let fixedSum = 0;
       let variableSum = 0;
+      const overridesByExp = new Map<string, Map<string, any>>();
+      (expenseOverrides || []).forEach((o: any) => {
+        if (!overridesByExp.has(o.expense_id)) overridesByExp.set(o.expense_id, new Map());
+        overridesByExp.get(o.expense_id)!.set(o.year_month, o);
+      });
+      // Itera por cada mês dentro do período
+      const monthCursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      const lastMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+      const months: Date[] = [];
+      while (monthCursor <= lastMonth) {
+        months.push(new Date(monthCursor));
+        monthCursor.setMonth(monthCursor.getMonth() + 1);
+      }
       (expenses || []).forEach((e: any) => {
         if (!e.expense_date) return;
-        const d = new Date(e.expense_date);
-        if (d < start || d > end) return;
-        const amount = Number(e.amount || 0);
-        if (e.type === 'fixed') fixedSum += amount;
-        else variableSum += amount;
+        const expStart = new Date(e.expense_date);
+        const expEnd = e.end_date ? new Date(e.end_date) : null;
+        if (e.type === 'variable') {
+          if (expStart >= start && expStart <= end) {
+            variableSum += Number(e.amount || 0);
+          }
+          return;
+        }
+        // fixed: recorrente em cada mês do período onde estiver ativa
+        const ovMap = overridesByExp.get(e.id);
+        months.forEach((m) => {
+          const mStart = new Date(m.getFullYear(), m.getMonth(), 1);
+          const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+          if (expStart > mEnd) return;
+          if (expEnd && expEnd < mStart) return;
+          const ym = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+          const ov = ovMap?.get(ym);
+          if (ov?.skipped) return;
+          fixedSum += Number(ov?.amount ?? e.amount ?? 0);
+        });
       });
       setTotalExpenses(fixedSum + variableSum);
       setFixedExpenses(fixedSum);
