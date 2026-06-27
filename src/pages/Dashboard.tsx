@@ -112,6 +112,8 @@ export default function Dashboard() {
   const [totalCost, setTotalCost] = useState(0);
   const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [fixedExpenses, setFixedExpenses] = useState(0);
+  const [variableExpenses, setVariableExpenses] = useState(0);
 
   // Estoque
   const [stockCostValue, setStockCostValue] = useState(0);
@@ -194,7 +196,7 @@ export default function Dashboard() {
           supabase.rpc('get_products_admin'),
           supabase.rpc('get_product_variations_admin'),
           supabase.from('profiles').select('id'),
-          supabase.from('expenses').select('amount, expense_date'),
+          supabase.from('expenses').select('amount, expense_date, type'),
         ]);
 
       // Buscar clientes (paginado)
@@ -282,16 +284,20 @@ export default function Dashboard() {
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
-      // Despesas dentro do período selecionado
-      const expensesSum = (expenses || []).filter((e: any) => {
-        if (!e.expense_date) return false;
+      // Despesas dentro do período selecionado (separadas em fixo e variável)
+      let fixedSum = 0;
+      let variableSum = 0;
+      (expenses || []).forEach((e: any) => {
+        if (!e.expense_date) return;
         const d = new Date(e.expense_date);
-        return d >= start && d <= end;
-      }).reduce(
-        (s: number, e: any) => s + Number(e.amount || 0),
-        0,
-      );
-      setTotalExpenses(expensesSum);
+        if (d < start || d > end) return;
+        const amount = Number(e.amount || 0);
+        if (e.type === 'fixed') fixedSum += amount;
+        else variableSum += amount;
+      });
+      setTotalExpenses(fixedSum + variableSum);
+      setFixedExpenses(fixedSum);
+      setVariableExpenses(variableSum);
 
       // Pending / status overview (mantido global, independente do período)
       const pending = (orders || []).filter(
@@ -1111,6 +1117,7 @@ export default function Dashboard() {
               <StatCard
                 title="Despesas"
                 value={formatBRL(totalExpenses)}
+                hint={`Fixas ${formatBRL(fixedExpenses)} · Var. ${formatBRL(variableExpenses)}`}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
@@ -1133,7 +1140,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
                   <CardDescription>
-                    Receita de itens entregues − Despesas = Lucro
+                    Receita de itens entregues − Despesas Fixas/Variáveis = Lucro
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1141,7 +1148,8 @@ export default function Dashboard() {
                     <BarChart
                       data={[
                         { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
-                        { name: 'Despesas', valor: totalExpenses, fill: '#ef4444' },
+                        { name: 'Desp. Fixas', valor: fixedExpenses, fill: '#f59e0b' },
+                        { name: 'Desp. Variáveis', valor: variableExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
                       ]}
                     >
@@ -1196,7 +1204,8 @@ export default function Dashboard() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Despesas', value: Math.max(0, totalExpenses) },
+                          { name: 'Desp. Fixas', value: Math.max(0, fixedExpenses) },
+                          { name: 'Desp. Variáveis', value: Math.max(0, variableExpenses) },
                           { name: 'Lucro', value: Math.max(0, lucroLiquido) },
                         ]}
                         dataKey="value"
@@ -1206,6 +1215,7 @@ export default function Dashboard() {
                         outerRadius={90}
                         label={(e: any) => `${e.name}`}
                       >
+                        <Cell fill="#f59e0b" />
                         <Cell fill="#ef4444" />
                         <Cell fill="#16a34a" />
                       </Pie>
