@@ -112,6 +112,8 @@ export default function Dashboard() {
   const [totalCost, setTotalCost] = useState(0);
   const [itemsRevenue, setItemsRevenue] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [fixedExpenses, setFixedExpenses] = useState(0);
+  const [variableExpenses, setVariableExpenses] = useState(0);
 
   // Estoque
   const [stockCostValue, setStockCostValue] = useState(0);
