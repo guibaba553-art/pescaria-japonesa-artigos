@@ -1196,7 +1196,6 @@ export default function Dashboard() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Custo de Produto', value: Math.max(0, totalCost) },
                           { name: 'Despesas', value: Math.max(0, totalExpenses) },
                           { name: 'Lucro', value: Math.max(0, lucroLiquido) },
                         ]}
@@ -1207,7 +1206,6 @@ export default function Dashboard() {
                         outerRadius={90}
                         label={(e: any) => `${e.name}`}
                       >
-                        <Cell fill="#f59e0b" />
                         <Cell fill="#ef4444" />
                         <Cell fill="#16a34a" />
                       </Pie>
