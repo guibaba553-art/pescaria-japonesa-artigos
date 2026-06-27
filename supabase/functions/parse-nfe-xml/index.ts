@@ -46,7 +46,7 @@ serve(async (req) => {
       {
         p_user_id: user.id,
         p_function_name: 'parse-nfe-xml',
-        p_max_requests: 10,
+        p_max_requests: 300,
         p_window_hours: 1
       }
     );
