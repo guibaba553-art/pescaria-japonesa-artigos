@@ -111,8 +111,6 @@ export default function Dashboard() {
   const [statusBreakdown, setStatusBreakdown] = useState<{ name: string; value: number }[]>([]);
   const [totalCost, setTotalCost] = useState(0);
   const [itemsRevenue, setItemsRevenue] = useState(0);
-  const [itemsRevenuePdv, setItemsRevenuePdv] = useState(0);
-  const [itemsRevenueSite, setItemsRevenueSite] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [fixedExpenses, setFixedExpenses] = useState(0);
   const [variableExpenses, setVariableExpenses] = useState(0);
@@ -279,22 +277,14 @@ export default function Dashboard() {
       });
       const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
       let receitaItensAcc = 0;
-      let receitaItensPdv = 0;
-      let receitaItensSite = 0;
       orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        const val = venda * qty;
-        receitaItensAcc += val;
-        const ord = orderMap.get(it.order_id);
-        if (ord?.source === 'pdv') receitaItensPdv += val;
-        else receitaItensSite += val;
+        receitaItensAcc += venda * qty;
       });
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
-      setItemsRevenuePdv(receitaItensPdv);
-      setItemsRevenueSite(receitaItensSite);
 
       // Despesas dentro do período selecionado (fixas são recorrentes mensalmente)
       let fixedSum = 0;
@@ -1187,21 +1177,19 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={[
-                        { name: 'Receita PDV', valor: itemsRevenuePdv, fill: '#16a34a' },
-                        { name: 'Receita Site', valor: itemsRevenueSite, fill: '#10b981' },
+                        { name: 'Receita', valor: itemsRevenue, fill: '#16a34a' },
                         { name: 'Desp. Fixas', valor: fixedExpenses, fill: '#f59e0b' },
                         { name: 'Desp. Variáveis', valor: variableExpenses, fill: '#ef4444' },
                         { name: 'Lucro', valor: lucroLiquido, fill: lucroLiquido >= 0 ? '#2563eb' : '#dc2626' },
                       ]}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" interval={0} tick={{ fontSize: 11 }} height={45} />
+                      <XAxis dataKey="name" interval={0} tick={{ fontSize: 12 }} height={45} />
                       <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
                       <Bar dataKey="valor">
                         {[
                           '#16a34a',
-                          '#10b981',
                           '#f59e0b',
                           '#ef4444',
                           lucroLiquido >= 0 ? '#2563eb' : '#dc2626',
