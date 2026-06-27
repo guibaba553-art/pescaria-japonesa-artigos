@@ -105,8 +105,12 @@ serve(async (req) => {
     const produtosProcessados = [];
 
     for (const produto of nfeData.produtos) {
-      // Margem individual do produto ou 30% padrão
-      const margemLucro = produto.margem_lucro || 30;
+      // Margens individuais (PDV e Site) - com fallback para margem_lucro legado ou 30%
+      const margemLegada = produto.margem_lucro ?? 30;
+      const margemLucroPdv = produto.margem_lucro_pdv ?? margemLegada;
+      const margemLucroSite = produto.margem_lucro_site ?? margemLegada;
+      // Mantém variável "margemLucro" para compat com cálculo de custo médio
+      const margemLucro = margemLucroPdv;
       
       // Calcular frete proporcional deste produto
       const freteProporcional = (produto.valor_total / valorTotalProdutos) * freteTotal;
@@ -122,7 +126,7 @@ serve(async (req) => {
       console.log(`  Impostos/unid: R$ ${(impostosTotal / produto.quantidade).toFixed(2)}`);
       console.log(`  Frete/unid: R$ ${(freteProporcional / produto.quantidade).toFixed(2)}`);
       console.log(`  Custo nova entrada/unid: R$ ${custoNovaEntrada.toFixed(2)}`);
-      console.log(`  Margem: ${margemLucro}%`);
+      console.log(`  Margem PDV: ${margemLucroPdv}% | Margem Site: ${margemLucroSite}%`);
 
       // Verificar se produto já existe — primeiro respeita vínculo manual,
       // depois tenta automaticamente por EAN, SKU e nome.
@@ -186,18 +190,20 @@ serve(async (req) => {
           ? ((custoAtual * estoqueAtual) + (custoNovaEntrada * produto.quantidade)) / (estoqueAtual + produto.quantidade)
           : custoNovaEntrada;
         
-        // Preço de venda com a margem aplicada sobre o custo médio
-        const precoVenda = custoMedioPonderado * (1 + margemLucro / 100);
+        // Preço de venda PDV e Site, cada um com sua margem sobre o custo médio
+        const precoVenda = custoMedioPonderado * (1 + margemLucroPdv / 100);
+        const precoSite = custoMedioPonderado * (1 + margemLucroSite / 100);
         
         const novoEstoque = estoqueAtual + produto.quantidade;
         
         console.log(`  Estoque atual: ${estoqueAtual} (custo: R$ ${custoAtual.toFixed(2)})`);
         console.log(`  Custo médio ponderado: R$ ${custoMedioPonderado.toFixed(2)}`);
-        console.log(`  Preço venda final: R$ ${precoVenda.toFixed(2)}`);
+        console.log(`  Preço venda PDV: R$ ${precoVenda.toFixed(2)} | Site: R$ ${precoSite.toFixed(2)}`);
         
         const updateData: any = {
           stock: novoEstoque,
           price: precoVenda,
+          min_sale_price: precoSite,
           updated_at: new Date().toISOString()
         };
         
@@ -244,9 +250,10 @@ serve(async (req) => {
         // Criar novo produto como RASCUNHO (não aparece na loja)
         // - include_in_nfe: false → oculto até admin revisar
         // - category: "Pendente Revisão" → fácil de filtrar no admin
-        const precoVenda = custoNovaEntrada * (1 + margemLucro / 100);
+        const precoVenda = custoNovaEntrada * (1 + margemLucroPdv / 100);
+        const precoSite = custoNovaEntrada * (1 + margemLucroSite / 100);
         console.log(`  Criando produto como RASCUNHO (Pendente Revisão)`);
-        console.log(`  Preço venda sugerido: R$ ${precoVenda.toFixed(2)}`);
+        console.log(`  Preço venda sugerido — PDV: R$ ${precoVenda.toFixed(2)} | Site: R$ ${precoSite.toFixed(2)}`);
         
         const skuValue = produto.ean && produto.ean !== 'SEM GTIN' ? produto.ean : produto.sku;
         
@@ -262,6 +269,7 @@ serve(async (req) => {
             description: `[RASCUNHO - revisar] ${produto.nome}\nNCM: ${produto.ncm || 'N/A'}${produto.ean && produto.ean !== 'SEM GTIN' ? `\nEAN: ${produto.ean}` : ''}\nFornecedor: ${nfeData.fornecedor?.nome || 'N/A'}`,
             short_description: produto.nome,
             price: precoVenda,
+            min_sale_price: precoSite,
             category: 'Pendente Revisão',
             stock: produto.quantidade,
             sku: skuValue || undefined,

@@ -25,6 +25,8 @@ interface NFEProduct {
   pis?: number;
   cofins?: number;
   margem_lucro?: number;
+  margem_lucro_pdv?: number;
+  margem_lucro_site?: number;
   /** ID de produto já cadastrado para receber o estoque (vínculo manual) */
   vincular_produto_id?: string | null;
   /** Nome do produto vinculado, só para exibição */
@@ -54,6 +56,8 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   const [nfeData, setNfeData] = useState<NFEData | null>(null);
   const [loading, setLoading] = useState(false);
   const [margemLucro, setMargemLucro] = useState<number>(30);
+  const [margemLucroPdv, setMargemLucroPdv] = useState<number>(30);
+  const [margemLucroSite, setMargemLucroSite] = useState<number>(30);
   const [processando, setProcessando] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<string | null>(null);
@@ -73,7 +77,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         if (error) throw error;
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map((p: NFEProduct) => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
         }
       } catch (err: any) {
         toast({
@@ -171,7 +175,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
           toast({
             title: 'PDF processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -189,7 +193,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
         
         if (data) {
           setNfeData(data);
-          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro })));
+          setProdutosComMargem(data.produtos.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
           toast({
             title: 'XML processado!',
             description: `${data.produtos?.length || 0} produto(s) encontrado(s).`,
@@ -253,6 +257,22 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
     });
   };
 
+  const updateMargemPdvProduto = (index: number, margem: number) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], margem_lucro_pdv: margem };
+      return updated;
+    });
+  };
+
+  const updateMargemSiteProduto = (index: number, margem: number) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], margem_lucro_site: margem };
+      return updated;
+    });
+  };
+
   const setLinkedProduct = (index: number, linked: ExistingProductMatch | null) => {
     setProdutosComMargem(prev => {
       const updated = [...prev];
@@ -274,10 +294,10 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
   };
 
   const aplicarMargemTodos = () => {
-    setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro })));
+    setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
     toast({
       title: 'Margem aplicada!',
-      description: `Margem de ${margemLucro}% aplicada a todos os produtos.`,
+      description: `Margem PDV ${margemLucroPdv}% e Site ${margemLucroSite}% aplicadas a todos os produtos.`,
     });
   };
 
@@ -407,26 +427,41 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
 
             <div className="p-4 border rounded-lg space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="margem-lucro">Margem de Lucro Padrão (%)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="margem-lucro"
-                    type="number"
-                    min="0"
-                    max="500"
-                    step="0.1"
-                    value={margemLucro}
-                    onChange={(e) => setMargemLucro(parseFloat(e.target.value) || 0)}
-                    className="flex-1"
-                  />
-                  <Button onClick={aplicarMargemTodos} variant="outline">
-                    Aplicar a Todos
-                  </Button>
+                <Label>Margens de Lucro Padrão (%)</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="margem-pdv" className="text-xs text-muted-foreground">Margem PDV (%)</Label>
+                    <Input
+                      id="margem-pdv"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.1"
+                      value={margemLucroPdv}
+                      onChange={(e) => setMargemLucroPdv(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="margem-site" className="text-xs text-muted-foreground">Margem Site (%)</Label>
+                    <Input
+                      id="margem-site"
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.1"
+                      value={margemLucroSite}
+                      onChange={(e) => setMargemLucroSite(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
                 </div>
+                <Button onClick={aplicarMargemTodos} variant="outline" className="w-full">
+                  Aplicar a Todos
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Define a margem de lucro padrão. Você pode personalizar cada produto na tabela abaixo.
+                  Define as margens padrão para preço de PDV e preço do site. Você pode personalizar cada produto na tabela abaixo.
                 </p>
               </div>
+
 
               <Button 
                 onClick={registrarProdutos} 
@@ -479,7 +514,8 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                     <TableHead className="text-right">Qtd</TableHead>
                     <TableHead className="text-right">Valor Unit.</TableHead>
                     <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Margem %</TableHead>
+                    <TableHead className="text-right">Margem PDV %</TableHead>
+                    <TableHead className="text-right">Margem Site %</TableHead>
                     <TableHead className="text-right w-[140px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -507,11 +543,23 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
                           min="0"
                           max="500"
                           step="0.1"
-                          value={produto.margem_lucro || margemLucro}
-                          onChange={(e) => updateMargemProduto(index, parseFloat(e.target.value) || 0)}
+                          value={produto.margem_lucro_pdv ?? margemLucroPdv}
+                          onChange={(e) => updateMargemPdvProduto(index, parseFloat(e.target.value) || 0)}
                           className="w-20 text-right"
                         />
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="500"
+                          step="0.1"
+                          value={produto.margem_lucro_site ?? margemLucroSite}
+                          onChange={(e) => updateMargemSiteProduto(index, parseFloat(e.target.value) || 0)}
+                          className="w-20 text-right"
+                        />
+                      </TableCell>
+
                       <TableCell className="text-right">
                         {produto.vincular_produto_id ? (
                           <Button
