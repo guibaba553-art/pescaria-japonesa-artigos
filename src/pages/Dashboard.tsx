@@ -866,11 +866,8 @@ export default function Dashboard() {
   const totalRevenue = pdvStats.totalRevenue + siteStats.totalRevenue;
   const totalOrders = pdvStats.totalOrders + siteStats.totalOrders;
   const overallAvgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  // Lucro Bruto = Σ (valor vendido do item − custo do item) × quantidade
-  // Lucro Líquido = Lucro Bruto − despesas gerais
-  const lucroBruto = itemsRevenue - totalCost;
-  const lucroLiquido = lucroBruto - totalExpenses;
-  const margemBruta = itemsRevenue > 0 ? (lucroBruto / itemsRevenue) * 100 : 0;
+  // Lucro = Receita de itens entregues − Despesas gerais
+  const lucroLiquido = itemsRevenue - totalExpenses;
   const margemLiquida = itemsRevenue > 0 ? (lucroLiquido / itemsRevenue) * 100 : 0;
 
   const customerRevenue = customersList.reduce((s, c) => s + c.revenue, 0);
