@@ -196,7 +196,8 @@ export default function Dashboard() {
           supabase.rpc('get_products_admin'),
           supabase.rpc('get_product_variations_admin'),
           supabase.from('profiles').select('id'),
-          supabase.from('expenses').select('amount, expense_date, type'),
+          supabase.from('expenses').select('id, amount, expense_date, end_date, type'),
+          supabase.from('expense_overrides').select('expense_id, year_month, amount, skipped'),
         ]);
 
       // Buscar clientes (paginado)
