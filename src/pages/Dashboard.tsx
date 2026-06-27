@@ -192,11 +192,13 @@ export default function Dashboard() {
          { data: productVariations },
          { data: profiles },
          { data: expenses },
+         { data: expenseOverrides },
        ] = await Promise.all([
           supabase.rpc('get_products_admin'),
           supabase.rpc('get_product_variations_admin'),
           supabase.from('profiles').select('id'),
-          supabase.from('expenses').select('amount, expense_date, type'),
+          supabase.from('expenses').select('id, amount, expense_date, end_date, type'),
+          supabase.from('expense_overrides').select('expense_id, year_month, amount, skipped'),
         ]);
 
       // Buscar clientes (paginado)
@@ -284,16 +286,44 @@ export default function Dashboard() {
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
-      // Despesas dentro do período selecionado (separadas em fixo e variável)
+      // Despesas dentro do período selecionado (fixas são recorrentes mensalmente)
       let fixedSum = 0;
       let variableSum = 0;
+      const overridesByExp = new Map<string, Map<string, any>>();
+      (expenseOverrides || []).forEach((o: any) => {
+        if (!overridesByExp.has(o.expense_id)) overridesByExp.set(o.expense_id, new Map());
+        overridesByExp.get(o.expense_id)!.set(o.year_month, o);
+      });
+      // Itera por cada mês dentro do período
+      const monthCursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      const lastMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+      const months: Date[] = [];
+      while (monthCursor <= lastMonth) {
+        months.push(new Date(monthCursor));
+        monthCursor.setMonth(monthCursor.getMonth() + 1);
+      }
       (expenses || []).forEach((e: any) => {
         if (!e.expense_date) return;
-        const d = new Date(e.expense_date);
-        if (d < start || d > end) return;
-        const amount = Number(e.amount || 0);
-        if (e.type === 'fixed') fixedSum += amount;
-        else variableSum += amount;
+        const expStart = new Date(e.expense_date);
+        const expEnd = e.end_date ? new Date(e.end_date) : null;
+        if (e.type === 'variable') {
+          if (expStart >= start && expStart <= end) {
+            variableSum += Number(e.amount || 0);
+          }
+          return;
+        }
+        // fixed: recorrente em cada mês do período onde estiver ativa
+        const ovMap = overridesByExp.get(e.id);
+        months.forEach((m) => {
+          const mStart = new Date(m.getFullYear(), m.getMonth(), 1);
+          const mEnd = new Date(m.getFullYear(), m.getMonth() + 1, 0);
+          if (expStart > mEnd) return;
+          if (expEnd && expEnd < mStart) return;
+          const ym = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+          const ov = ovMap?.get(ym);
+          if (ov?.skipped) return;
+          fixedSum += Number(ov?.amount ?? e.amount ?? 0);
+        });
       });
       setTotalExpenses(fixedSum + variableSum);
       setFixedExpenses(fixedSum);
@@ -1157,7 +1187,16 @@ export default function Dashboard() {
                       <XAxis dataKey="name" />
                       <YAxis tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                       <Tooltip formatter={(v: number) => formatBRL(v)} />
-                      <Bar dataKey="valor" />
+                      <Bar dataKey="valor">
+                        {[
+                          '#16a34a',
+                          '#f59e0b',
+                          '#ef4444',
+                          lucroLiquido >= 0 ? '#2563eb' : '#dc2626',
+                        ].map((c, i) => (
+                          <Cell key={i} fill={c} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
