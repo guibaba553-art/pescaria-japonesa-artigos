@@ -279,14 +279,22 @@ export default function Dashboard() {
       });
       const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
       let receitaItensAcc = 0;
+      let receitaItensPdv = 0;
+      let receitaItensSite = 0;
       orderItems.forEach((it: any) => {
         if (!deliveredIds.has(it.order_id)) return;
         const qty = Number(it.quantity || 0);
         const venda = Number(it.price_at_purchase || 0);
-        receitaItensAcc += venda * qty;
+        const val = venda * qty;
+        receitaItensAcc += val;
+        const ord = orderMap.get(it.order_id);
+        if (ord?.source === 'pdv') receitaItensPdv += val;
+        else receitaItensSite += val;
       });
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
+      setItemsRevenuePdv(receitaItensPdv);
+      setItemsRevenueSite(receitaItensSite);
 
       // Despesas dentro do período selecionado (fixas são recorrentes mensalmente)
       let fixedSum = 0;
