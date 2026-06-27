@@ -1109,9 +1109,8 @@ export default function Dashboard() {
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
-                title="Custos + Despesas"
-                value={formatBRL(totalCost + totalExpenses)}
-                hint={`Custo ${formatBRL(totalCost)} · Desp. ${formatBRL(totalExpenses)}`}
+                title="Despesas"
+                value={formatBRL(totalExpenses)}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
