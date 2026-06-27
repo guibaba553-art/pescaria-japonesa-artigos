@@ -105,8 +105,12 @@ serve(async (req) => {
     const produtosProcessados = [];
 
     for (const produto of nfeData.produtos) {
-      // Margem individual do produto ou 30% padrão
-      const margemLucro = produto.margem_lucro || 30;
+      // Margens individuais (PDV e Site) - com fallback para margem_lucro legado ou 30%
+      const margemLegada = produto.margem_lucro ?? 30;
+      const margemLucroPdv = produto.margem_lucro_pdv ?? margemLegada;
+      const margemLucroSite = produto.margem_lucro_site ?? margemLegada;
+      // Mantém variável "margemLucro" para compat com cálculo de custo médio
+      const margemLucro = margemLucroPdv;
       
       // Calcular frete proporcional deste produto
       const freteProporcional = (produto.valor_total / valorTotalProdutos) * freteTotal;
@@ -122,7 +126,7 @@ serve(async (req) => {
       console.log(`  Impostos/unid: R$ ${(impostosTotal / produto.quantidade).toFixed(2)}`);
       console.log(`  Frete/unid: R$ ${(freteProporcional / produto.quantidade).toFixed(2)}`);
       console.log(`  Custo nova entrada/unid: R$ ${custoNovaEntrada.toFixed(2)}`);
-      console.log(`  Margem: ${margemLucro}%`);
+      console.log(`  Margem PDV: ${margemLucroPdv}% | Margem Site: ${margemLucroSite}%`);
 
       // Verificar se produto já existe — primeiro respeita vínculo manual,
       // depois tenta automaticamente por EAN, SKU e nome.
