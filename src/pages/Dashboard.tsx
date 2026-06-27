@@ -1117,6 +1117,7 @@ export default function Dashboard() {
               <StatCard
                 title="Despesas"
                 value={formatBRL(totalExpenses)}
+                hint={`Fixas ${formatBRL(fixedExpenses)} · Var. ${formatBRL(variableExpenses)}`}
                 icon={<Wallet className="h-4 w-4 text-muted-foreground" />}
               />
               <StatCard
