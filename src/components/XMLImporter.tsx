@@ -297,7 +297,7 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
     setProdutosComMargem(prev => prev.map(p => ({ ...p, margem_lucro: margemLucro, margem_lucro_pdv: margemLucroPdv, margem_lucro_site: margemLucroSite })));
     toast({
       title: 'Margem aplicada!',
-      description: `Margem de ${margemLucro}% aplicada a todos os produtos.`,
+      description: `Margem PDV ${margemLucroPdv}% e Site ${margemLucroSite}% aplicadas a todos os produtos.`,
     });
   };
 
