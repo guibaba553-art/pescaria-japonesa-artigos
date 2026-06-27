@@ -257,6 +257,22 @@ export function XMLImporter({ prefilledXml }: XMLImporterProps = {}) {
     });
   };
 
+  const updateMargemPdvProduto = (index: number, margem: number) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], margem_lucro_pdv: margem };
+      return updated;
+    });
+  };
+
+  const updateMargemSiteProduto = (index: number, margem: number) => {
+    setProdutosComMargem(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], margem_lucro_site: margem };
+      return updated;
+    });
+  };
+
   const setLinkedProduct = (index: number, linked: ExistingProductMatch | null) => {
     setProdutosComMargem(prev => {
       const updated = [...prev];
