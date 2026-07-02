@@ -1906,102 +1906,11 @@ export default function PDV() {
         description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
-      // Auto-emissão fiscal para pagamentos em crédito/débito/pix
-      // Cliente com CNPJ => NF-e (modelo 55). Caso contrário => NFC-e (modelo 65).
-      if (paymentMethod === 'credit' || paymentMethod === 'debit' || paymentMethod === 'pix') {
-        (async () => {
-          const customerCnpj = (selectedCustomer as any)?.cnpj
-            ? String((selectedCustomer as any).cnpj).replace(/\D/g, '')
-            : '';
-          const isCnpj = customerCnpj.length === 14;
+      // Auto-emissão fiscal para pagamentos em crédito/débito/pix é feita
+      // exclusivamente no servidor pelo trigger `auto-emit-fiscal` (AFTER INSERT em orders),
+      // que decide entre NF-e (CNPJ) e NFC-e (CPF/consumidor final) e evita
+      // emissões duplicadas. Não disparar aqui no cliente para não gerar 2 notas.
 
-          try {
-            if (isCnpj) {
-              // NF-e (modelo 55) — usa edge function emit-nfe que aceita { orderId, manualCustomer }
-              const manualCustomer = {
-                cnpj: customerCnpj,
-                cpf: undefined,
-                full_name: (selectedCustomer as any)?.company_name || selectedCustomer?.full_name || undefined,
-                company_name: (selectedCustomer as any)?.company_name || undefined,
-              };
-              const { data: nfeData, error: nfeError } = await supabase.functions.invoke('emit-nfe', {
-                body: { orderId: order.id, manualCustomer },
-              });
-              if (nfeError || nfeData?.error) {
-                const msg = nfeData?.error || nfeError?.message || 'Falha ao emitir NF-e';
-                toast({
-                  title: 'NF-e não emitida automaticamente',
-                  description: msg + ' — emita manualmente em Análise de Vendas.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-              toast({
-                title: 'NF-e emitida automaticamente ✅',
-                description: nfeData?.nfe_number ? `Número: ${nfeData.nfe_number}` : 'Nota fiscal gerada.',
-              });
-              return;
-            }
-
-            // NFC-e (modelo 65) — consumidor final/CPF/anônimo
-            const { data: items } = await supabase
-              .from('order_items')
-              .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
-              .eq('order_id', order.id);
-            if (!items || items.length === 0) return;
-
-            const pmMap: Record<string, 'cartao_credito' | 'cartao_debito' | 'pix'> = {
-              credit: 'cartao_credito',
-              debit: 'cartao_debito',
-              pix: 'pix',
-            };
-
-            const payload = {
-              order_id: order.id,
-              payment_method: pmMap[paymentMethod],
-              total_amount: Number(order.total_amount),
-              customer: selectedCustomer ? {
-                cpf: selectedCustomer.cpf || undefined,
-                cnpj: undefined,
-                nome: (selectedCustomer as any).company_name || selectedCustomer.full_name || undefined,
-              } : undefined,
-              items: items.map((it: any) => ({
-                product_id: it.product_id,
-                name: it.products?.name || 'Produto',
-                quantity: Number(it.quantity),
-                unit_price: Number(it.price_at_purchase),
-                ncm: it.products?.ncm || undefined,
-                cfop: it.products?.cfop || undefined,
-                csosn: it.products?.csosn || undefined,
-                origem: it.products?.origem || undefined,
-                unidade: it.products?.unidade_comercial || undefined,
-                cest: it.products?.cest || undefined,
-              })),
-            };
-
-            const { data: nfceData, error: nfceError } = await supabase.functions.invoke('emit-nfce', { body: payload });
-            if (nfceError || nfceData?.error) {
-              const msg = nfceData?.error || nfceError?.message || 'Falha ao emitir NFC-e';
-              toast({
-                title: 'NFC-e não emitida automaticamente',
-                description: msg + ' — emita manualmente em Análise de Vendas.',
-                variant: 'destructive',
-              });
-              return;
-            }
-            toast({
-              title: 'NFC-e emitida automaticamente ✅',
-              description: nfceData?.nfe_number ? `Número: ${nfceData.nfe_number}` : 'Nota fiscal gerada.',
-            });
-          } catch (e: any) {
-            toast({
-              title: (isCnpj ? 'NF-e' : 'NFC-e') + ' não emitida automaticamente',
-              description: (e?.message || 'Erro desconhecido') + ' — emita manualmente em Análise de Vendas.',
-              variant: 'destructive',
-            });
-          }
-        })();
-      }
 
       // Se a venda estava salva, deletar da lista de rascunhos
       if (currentSaleId) {
