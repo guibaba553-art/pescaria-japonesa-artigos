@@ -81,14 +81,19 @@ serve(async (req) => {
       });
     }
 
-    // Carrega itens
-    const { data: items } = await supabase
-      .from('order_items')
-      .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
-      .eq('order_id', orderId);
+    // Carrega itens (com retry — o trigger pode disparar antes dos itens serem inseridos)
+    let items: any[] | null = null;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const { data } = await supabase
+        .from('order_items')
+        .select('quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, cest)')
+        .eq('order_id', orderId);
+      if (data && data.length > 0) { items = data; break; }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
     if (!items || items.length === 0) {
-      return new Response(JSON.stringify({ error: 'Pedido sem itens' }), {
+      return new Response(JSON.stringify({ error: 'Pedido sem itens após aguardar 10s' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
