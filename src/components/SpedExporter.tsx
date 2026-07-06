@@ -16,8 +16,13 @@ export function SpedExporter() {
   const { toast } = useToast();
 
   const handleDownload = async () => {
-    if (!startDate || !endDate) {
-      toast({ title: 'Datas obrigatórias', description: 'Selecione o período', variant: 'destructive' });
+    const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s + 'T00:00:00').getTime());
+    if (!startDate || !isValidDate(startDate)) {
+      toast({ title: 'Data inicial inválida', description: 'Verifique se a data existe (ex.: junho tem 30 dias, não 31).', variant: 'destructive' });
+      return;
+    }
+    if (!endDate || !isValidDate(endDate)) {
+      toast({ title: 'Data final inválida', description: 'Verifique se a data existe (ex.: junho tem 30 dias, não 31).', variant: 'destructive' });
       return;
     }
     setDownloading(true);
