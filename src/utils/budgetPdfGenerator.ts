@@ -242,8 +242,9 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
       },
       didDrawCell: (cellData) => {
         if (cellData.section === 'body' && cellData.column.index === 0) {
-          const item = data.items[cellData.row.index];
-          const url = item.variation?.image_url || item.product.image_url;
+          const item = data.items?.[cellData.row.index];
+          if (!item) return;
+          const url = item.variation?.image_url || item.product?.image_url;
           if (!url) return;
           const img = imageCache.get(url);
           if (!img) return;
@@ -256,6 +257,7 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
           try { doc.addImage(img.data, cx - drawW / 2, cy - drawH / 2, drawW, drawH); } catch { /* ignore */ }
         }
       },
+
     });
   } else {
     autoTable(doc, {
@@ -330,8 +332,10 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
       },
       didDrawCell: (cellData) => {
         if (cellData.section === 'body' && cellData.column.index === 0) {
-          const item = data.items[cellData.row.index];
-          const url = item.variation?.image_url || item.product.image_url;
+          const item = data.items?.[cellData.row.index];
+          if (!item) return;
+          const url = item.variation?.image_url || item.product?.image_url;
+
           if (!url) return;
           const img = imageCache.get(url);
           if (!img) return;
