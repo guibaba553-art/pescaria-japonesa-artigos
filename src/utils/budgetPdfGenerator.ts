@@ -184,15 +184,21 @@ export async function generateBudgetPdf(data: BudgetData): Promise<void> {
   y += infoH + 8;
 
   // ============== CACHE DE IMAGENS ==============
+  // Sanitiza a lista de itens: remove nulos/undefined e garante que product exista
+  data.items = (data.items || []).filter(Boolean).map((it: any) => ({
+    ...it,
+    product: it.product || { id: '', name: 'Produto', sku: null, image_url: null },
+  }));
   const imageCache = new Map<string, { data: string; w: number; h: number } | null>();
   const urls = data.items
-    .map((it) => it.variation?.image_url || it.product.image_url || '')
+    .map((it) => it?.variation?.image_url || it?.product?.image_url || '')
     .filter(Boolean) as string[];
   await Promise.all(
     Array.from(new Set(urls)).map(async (u) =>
       imageCache.set(u, await loadImageAsDataURL(u)),
     ),
   );
+
 
   // ============== TABELA DE ITENS ==============
   const rowH = 20;
