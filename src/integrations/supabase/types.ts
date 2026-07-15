@@ -7,30 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -2071,6 +2051,7 @@ export type Database = {
           added_by: string
           created_at: string
           id: string
+          is_auto: boolean
           list_id: string
           product_id: string
           quantity: number
@@ -2081,6 +2062,7 @@ export type Database = {
           added_by: string
           created_at?: string
           id?: string
+          is_auto?: boolean
           list_id: string
           product_id: string
           quantity?: number
@@ -2091,6 +2073,7 @@ export type Database = {
           added_by?: string
           created_at?: string
           id?: string
+          is_auto?: boolean
           list_id?: string
           product_id?: string
           quantity?: number
@@ -2112,25 +2095,63 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          is_auto: boolean
           name: string
           notes: string | null
+          supplier_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by: string
           id?: string
+          is_auto?: boolean
           name: string
           notes?: string | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string
           id?: string
+          is_auto?: boolean
           name?: string
           notes?: string | null
+          supplier_id?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_lists_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reorder_errors: {
+        Row: {
+          created_at: string
+          error_message: string
+          id: string
+          product_id: string
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          id?: string
+          product_id: string
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          id?: string
+          product_id?: string
+          variation_id?: string | null
         }
         Relationships: []
       }
@@ -3130,6 +3151,14 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       sku_needs_label: { Args: { _sku: string }; Returns: boolean }
+      suggest_reorder_qty: {
+        Args: {
+          p_current_stock: number
+          p_min_stock: number
+          p_product_id: string
+        }
+        Returns: number
+      }
       validate_coupon: {
         Args: { p_code: string; p_source?: string; p_subtotal: number }
         Returns: Json
@@ -3292,9 +3321,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_role: ["admin", "employee", "user"],
