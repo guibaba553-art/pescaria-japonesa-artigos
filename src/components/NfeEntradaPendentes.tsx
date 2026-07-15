@@ -241,7 +241,14 @@ export function NfeEntradaPendentes() {
       ) : (
         <div className="space-y-2">
           {pendentes.map((item) => (
-            <Card key={item.id}>
+            <Card
+              key={item.id}
+              className={
+                item.status === 'processado'
+                  ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/20 dark:border-orange-900/50'
+                  : ''
+              }
+            >
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">

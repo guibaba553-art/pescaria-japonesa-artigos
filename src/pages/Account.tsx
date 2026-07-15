@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, MapPin, User, CreditCard, Trash2, Mail, Loader2 } from 'lucide-react';
+import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard, Trash2, Mail, Loader2 } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
 import { CreditCardForm, type CreditCardFormHandle } from '@/components/CreditCardForm';
@@ -368,7 +368,7 @@ export default function Account() {
             name: cardData.creditCardHolderInfo?.name || '',
             email: cardData.creditCardHolderInfo?.email || '',
             cpfCnpj: cardData.creditCardHolderInfo?.cpfCnpj || '',
-            phone: cardData.creditCardHolderInfo?.phone || '',
+            phone: cardData.creditCardHolderInfo?.phone || (cardData.creditCardHolderInfo as any)?.mobilePhone || '',
           },
         },
       });

@@ -14,11 +14,12 @@ export interface EmployeePermissions {
   sales_analysis: boolean;
   triagem: boolean;
   fiscal: boolean;
+  customers: boolean;
 }
 
 const ADMIN_PERMS: EmployeePermissions = {
   pdv: true, catalog: true, cash_register: true, dashboard: true,
-  orders: true, sales_analysis: true, triagem: true, fiscal: true,
+  orders: true, sales_analysis: true, triagem: true, fiscal: true, customers: true,
 };
 
 interface AuthContextType {
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (employee) {
         const { data: perm, error: permErr } = await supabase
           .from('employee_permissions')
-          .select('can_access_pdv, can_access_catalog, can_access_cash_register, can_access_dashboard, can_access_orders, can_access_sales_analysis, can_access_triagem, can_access_fiscal')
+          .select('can_access_pdv, can_access_catalog, can_access_cash_register, can_access_dashboard, can_access_orders, can_access_sales_analysis, can_access_triagem, can_access_fiscal, can_access_customers')
           .eq('user_id', userId)
           .maybeSingle();
         if (permErr) throw permErr;
@@ -158,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sales_analysis: perm?.can_access_sales_analysis ?? false,
           triagem: perm?.can_access_triagem ?? true,
           fiscal: perm?.can_access_fiscal ?? false,
+          customers: (perm as any)?.can_access_customers ?? false,
         };
         setCanAccessPdv(p.pdv);
         setPermissions(p);

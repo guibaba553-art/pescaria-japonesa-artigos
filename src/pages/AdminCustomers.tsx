@@ -16,10 +16,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift } from 'lucide-react';
+import { Users, Search, Plus, Pencil, Trash2, Loader2, Mail, MapPin, FileText, AlertTriangle, CheckCircle2, Wand2, Award, Gift, History, Sparkles, ArrowUp, ArrowDown, ArrowUpDown, Filter, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { CustomerRewardsDialog } from '@/components/CustomerRewardsDialog';
+import { CustomerHistoryDialog } from '@/components/CustomerHistoryDialog';
+import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
 
 // Valida se o cadastro do cliente atende aos requisitos para emissão de NF-e
@@ -36,18 +38,19 @@ function validateNfe(c: Customer): { ok: boolean; missing: string[] } {
 
   if (isCnpj && !c.company_name?.trim()) missing.push('Razão social');
 
-  const cepDigits = (c.cep || '').replace(/\D/g, '');
-  if (cepDigits.length !== 8) missing.push('CEP');
-  if (!c.street?.trim()) missing.push('Rua');
-  if (!c.number?.trim()) missing.push('Número');
-  if (!c.neighborhood?.trim()) missing.push('Bairro');
-  if (!c.municipio?.trim()) missing.push('Município');
-  if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
-
-  const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
-  if (ibge.length !== 7) missing.push('Código IBGE');
-
+  // Endereço, IBGE e IE são obrigatórios apenas para CNPJ (NF-e). PF (NFC-e) não exige.
   if (isCnpj) {
+    const cepDigits = (c.cep || '').replace(/\D/g, '');
+    if (cepDigits.length !== 8) missing.push('CEP');
+    if (!c.street?.trim()) missing.push('Rua');
+    if (!c.number?.trim()) missing.push('Número');
+    if (!c.neighborhood?.trim()) missing.push('Bairro');
+    if (!c.municipio?.trim()) missing.push('Município');
+    if (!c.uf?.trim() || c.uf.length !== 2) missing.push('UF');
+
+    const ibge = (c.codigo_municipio_ibge || '').replace(/\D/g, '');
+    if (ibge.length !== 7) missing.push('Código IBGE');
+
     if (!c.ie_indicador) missing.push('Indicador de IE');
     else if ((c.ie_indicador === '1') && !c.inscricao_estadual?.trim()) missing.push('Inscrição Estadual');
   }
@@ -97,7 +100,7 @@ const emptyForm = {
 
 export default function AdminCustomers() {
   const navigate = useNavigate();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, permissions, loading: authLoading } = useAuth();
   const [list, setList] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -114,6 +117,20 @@ export default function AdminCustomers() {
   const [scoreFor, setScoreFor] = useState<Customer | null>(null);
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const [rewardsCustomerId, setRewardsCustomerId] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<Customer | null>(null);
+  const [detailsFor, setDetailsFor] = useState<Customer | null>(null);
+
+  // Agregados por cliente (compras, total gasto, última compra)
+  type Agg = { orders: number; total: number; last: string | null };
+  const [aggregates, setAggregates] = useState<Record<string, Agg>>({});
+
+  // Filtros e ordenação avançados
+  const [tierFilter, setTierFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<'all' | '30d' | '90d' | '180d' | '365d' | 'never'>('all');
+  type SortKey = 'name' | 'doc' | 'score' | 'orders' | 'spent' | 'last' | 'created';
+  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => { loadTiers().then(setTiers); }, []);
 
@@ -276,19 +293,32 @@ export default function AdminCustomers() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) navigate('/admin');
-  }, [authLoading, isAdmin, navigate]);
+    if (!authLoading && !isAdmin && !permissions.customers) navigate('/admin');
+  }, [authLoading, isAdmin, permissions.customers, navigate]);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const [{ data, error }, ordersRes] = await Promise.all([
+      supabase.from('customers').select('*').order('created_at', { ascending: false }),
+      supabase.from('orders').select('customer_id,total_amount,created_at,status').not('customer_id', 'is', null),
+    ]);
     if (error) {
       toast({ title: 'Erro ao carregar clientes', description: error.message, variant: 'destructive' });
     } else {
       setList((data || []) as Customer[]);
+    }
+    if (!ordersRes.error && ordersRes.data) {
+      const agg: Record<string, Agg> = {};
+      for (const o of ordersRes.data as any[]) {
+        if (!o.customer_id) continue;
+        if (o.status === 'cancelled') continue;
+        const a = agg[o.customer_id] || { orders: 0, total: 0, last: null };
+        a.orders += 1;
+        a.total += Number(o.total_amount || 0);
+        if (!a.last || new Date(o.created_at) > new Date(a.last)) a.last = o.created_at;
+        agg[o.customer_id] = a;
+      }
+      setAggregates(agg);
     }
     setLoading(false);
   };
@@ -296,6 +326,7 @@ export default function AdminCustomers() {
   useEffect(() => {
     load();
   }, []);
+
 
   const validations = useMemo(() => {
     const m = new Map<string, ReturnType<typeof validateNfe>>();
@@ -311,23 +342,69 @@ export default function AdminCustomers() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     let arr = list;
+
     if (s) {
+      const sDigits = s.replace(/\D/g, '');
       arr = arr.filter((c) => {
         const doc = (c.cnpj || c.cpf || '').replace(/\D/g, '');
         return (
           c.full_name.toLowerCase().includes(s) ||
           (c.company_name || '').toLowerCase().includes(s) ||
           (c.email || '').toLowerCase().includes(s) ||
-          doc.includes(s.replace(/\D/g, '')) ||
+          (sDigits.length > 0 && doc.includes(sDigits)) ||
           (c.municipio || '').toLowerCase().includes(s)
         );
       });
     }
+
     if (onlyInvalid) arr = arr.filter((c) => !(validations.get(c.id)?.ok));
     if (docFilter === 'pj') arr = arr.filter((c) => !!c.cnpj);
     else if (docFilter === 'pf') arr = arr.filter((c) => !c.cnpj);
-    return arr;
-  }, [list, search, onlyInvalid, docFilter, validations]);
+
+    if (tierFilter !== 'all') {
+      arr = arr.filter((c) => getTierForScore(tiers, c.score || 0)?.id === tierFilter);
+    }
+
+    if (periodFilter !== 'all') {
+      const now = Date.now();
+      const days = periodFilter === '30d' ? 30 : periodFilter === '90d' ? 90 : periodFilter === '180d' ? 180 : 365;
+      arr = arr.filter((c) => {
+        const last = aggregates[c.id]?.last;
+        if (periodFilter === 'never') return !last;
+        if (!last) return false;
+        return now - new Date(last).getTime() <= days * 86400000;
+      });
+    }
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const sorted = [...arr].sort((a, b) => {
+      const ag = aggregates[a.id] || { orders: 0, total: 0, last: null };
+      const bg = aggregates[b.id] || { orders: 0, total: 0, last: null };
+      switch (sortKey) {
+        case 'name': {
+          const an = (a.cnpj && a.company_name ? a.company_name : a.full_name) || '';
+          const bn = (b.cnpj && b.company_name ? b.company_name : b.full_name) || '';
+          return an.localeCompare(bn, 'pt-BR') * dir;
+        }
+        case 'doc':
+          return ((a.cnpj || a.cpf || '').localeCompare(b.cnpj || b.cpf || '')) * dir;
+        case 'score':
+          return ((a.score || 0) - (b.score || 0)) * dir;
+        case 'orders':
+          return (ag.orders - bg.orders) * dir;
+        case 'spent':
+          return (ag.total - bg.total) * dir;
+        case 'last': {
+          const at = ag.last ? new Date(ag.last).getTime() : 0;
+          const bt = bg.last ? new Date(bg.last).getTime() : 0;
+          return (at - bt) * dir;
+        }
+        case 'created':
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+      }
+    });
+    return sorted;
+  }, [list, search, onlyInvalid, docFilter, validations, tierFilter, periodFilter, aggregates, sortKey, sortDir, tiers]);
 
   const pjCount = useMemo(() => list.filter((c) => !!c.cnpj).length, [list]);
   const pfCount = useMemo(() => list.filter((c) => !c.cnpj).length, [list]);
@@ -492,68 +569,104 @@ export default function AdminCustomers() {
       description="Cadastre, edite e gerencie clientes (PF e PJ) usados no PDV e em emissões de NF-e."
     >
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome, documento, e-mail, cidade..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="inline-flex items-center rounded-md bg-muted p-0.5 text-sm">
-              {([
-                { key: 'all', label: 'Todos', count: list.length },
-                { key: 'pj', label: 'PJ', count: pjCount },
-                { key: 'pf', label: 'PF', count: pfCount },
-              ] as const).map((t) => {
-                const active = docFilter === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setDocFilter(t.key)}
-                    className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[5px] font-medium transition-colors ${
-                      active
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t.label}
-                    <span className={`text-xs font-mono ${active ? 'text-muted-foreground' : 'opacity-70'}`}>
-                      {t.count}
-                    </span>
-                  </button>
-                );
-              })}
+        <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
+          <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Left: entity tabs + incomplete pill */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center rounded-xl bg-muted p-1 text-sm">
+                {([
+                  { key: 'all', label: 'Todos', count: list.length },
+                  { key: 'pj', label: 'PJ', count: pjCount },
+                  { key: 'pf', label: 'PF', count: pfCount },
+                ] as const).map((t) => {
+                  const active = docFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setDocFilter(t.key)}
+                      className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg font-medium transition-colors ${
+                        active
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t.label}
+                      <span className={`text-xs font-mono ${active ? 'text-muted-foreground' : 'opacity-70'}`}>
+                        {t.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOnlyInvalid((v) => !v)}
+                className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl border-2 text-sm font-semibold transition-colors ${
+                  onlyInvalid
+                    ? 'border-destructive bg-destructive/10 text-destructive'
+                    : 'border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10'
+                }`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Incompletos
+                <span className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                  {invalidCount}
+                </span>
+              </button>
             </div>
 
-            
-            <Button
-              type="button"
-              size="sm"
-              variant={onlyInvalid ? 'default' : 'outline'}
-              onClick={() => setOnlyInvalid((v) => !v)}
-              className={onlyInvalid ? '' : 'border-destructive/40 text-destructive hover:text-destructive'}
-            >
-              <AlertTriangle className="w-4 h-4 mr-1.5" />
-              {onlyInvalid ? 'Mostrando incompletos' : 'Só incompletos'}
-              <Badge variant={onlyInvalid ? 'secondary' : 'destructive'} className="ml-2">{invalidCount}</Badge>
-            </Button>
-            <Badge variant="secondary">{filtered.length} de {list.length}</Badge>
-            <Button
-              variant="outline"
-              onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
-            >
-              <Gift className="w-4 h-4 mr-2" />
-              Recompensas/Punições
-            </Button>
-            <Button onClick={openNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo cliente
-            </Button>
+            {/* Right: search + filters + rewards + primary */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar nome, CPF/CNPJ..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-9 w-56 rounded-xl bg-muted/40 border-muted"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFiltersOpen((v) => !v)}
+                className="h-9 rounded-xl"
+              >
+                <Filter className="w-4 h-4 mr-1.5" /> Filtros
+                {(tierFilter !== 'all' || periodFilter !== 'all') && (
+                  <Badge variant="secondary" className="ml-2">
+                    {(tierFilter !== 'all' ? 1 : 0) + (periodFilter !== 'all' ? 1 : 0)}
+                  </Badge>
+                )}
+              </Button>
+
+              <div className="h-7 w-px bg-border mx-1 hidden sm:block" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setRewardsCustomerId(null); setRewardsOpen(true); }}
+                className="h-9 rounded-xl"
+              >
+                <Gift className="w-4 h-4 mr-2" />
+                Recompensas
+              </Button>
+
+              <Button onClick={openNew} className="h-9 rounded-xl shadow-md shadow-primary/20">
+                <Plus className="w-4 h-4 mr-2" />
+                Novo cliente
+              </Button>
+            </div>
+          </div>
+
+          <div className="px-4 sm:px-6 py-2 bg-muted/30 border-t">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Mostrando <span className="text-foreground">{filtered.length} de {list.length}</span> registros
+            </p>
           </div>
         </div>
 
@@ -569,6 +682,66 @@ export default function AdminCustomers() {
           </div>
         )}
 
+        {/* Painel de filtros avançados */}
+        {filtersOpen && (
+          <Card className="border-primary/20">
+            <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Nível de fidelidade</Label>
+                <Select value={tierFilter} onValueChange={setTierFilter}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os níveis</SelectItem>
+                    {tiers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Última compra</Label>
+                <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Qualquer período</SelectItem>
+                    <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                    <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                    <SelectItem value="180d">Últimos 6 meses</SelectItem>
+                    <SelectItem value="365d">Último ano</SelectItem>
+                    <SelectItem value="never">Nunca comprou</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Ordenar por</Label>
+                <div className="flex gap-2">
+                  <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name">Nome</SelectItem>
+                      <SelectItem value="last">Última compra</SelectItem>
+                      <SelectItem value="spent">Total gasto</SelectItem>
+                      <SelectItem value="orders">Nº de compras</SelectItem>
+                      <SelectItem value="score">Pontuação</SelectItem>
+                      <SelectItem value="created">Cadastro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')} title={sortDir === 'asc' ? 'Crescente' : 'Decrescente'}>
+                    {sortDir === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              {(tierFilter !== 'all' || periodFilter !== 'all' || sortKey !== 'name' || sortDir !== 'asc') && (
+                <div className="sm:col-span-3">
+                  <Button variant="ghost" size="sm" onClick={() => { setTierFilter('all'); setPeriodFilter('all'); setSortKey('name'); setSortDir('asc'); }}>
+                    <X className="w-3.5 h-3.5 mr-1.5" /> Limpar filtros
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -582,163 +755,133 @@ export default function AdminCustomers() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {filtered.map((c) => {
-              const v = validations.get(c.id) || { ok: true, missing: [] };
-              const dup = isDuplicate(c);
-              return (
-              <Card
-                key={c.id}
-                className={
-                  dup
-                    ? 'hover:shadow-md transition-shadow border-amber-500/60 bg-amber-50 dark:bg-amber-950/20'
-                    : v.ok
-                    ? 'hover:shadow-md transition-shadow'
-                    : 'hover:shadow-md transition-shadow border-destructive/50 bg-destructive/5'
-                }
-              >
-                <CardContent className="p-4 space-y-3">
-                  {/* Cabeçalho: nome + tipo */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-semibold truncate">
-                        {c.cnpj && c.company_name ? c.company_name : c.full_name}
-                      </div>
-                      {c.cnpj && c.company_name && (
-                        <div className="text-xs text-muted-foreground truncate">Resp.: {c.full_name}</div>
-                      )}
-                      {c.email && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-1">
-                          <Mail className="w-3 h-3 shrink-0" /> {c.email}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <Badge variant={c.cnpj ? 'default' : 'secondary'}>
-                        {c.cnpj ? 'PJ' : 'PF'}
-                      </Badge>
-                      {dup && (
-                        <Badge className="gap-1 bg-amber-500 hover:bg-amber-500 text-white">
-                          <AlertTriangle className="w-3 h-3" /> Duplicado
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Bloco 1: Pontos & Faixa do cliente */}
-                  <div className="rounded-md border border-border/60 bg-muted/30 p-2.5 space-y-2">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                      <Award className="w-3 h-3" /> Pontos do cliente
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {(() => {
-                        const tier = getTierForScore(tiers, c.score || 0);
-                        return (
-                          <Badge
-                            className="gap-1 text-white border-0"
-                            style={{ backgroundColor: tier?.color || '#64748b' }}
-                          >
-                            <Award className="w-3 h-3" /> {tier?.name || 'Sem faixa'} · {c.score || 0} pts
-                          </Badge>
-                        );
-                      })()}
-                      <Button size="sm" variant="outline" className="h-7 text-xs ml-auto" onClick={() => setScoreFor(c)}>
-                        <Award className="w-3 h-3 mr-1" /> Gerenciar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2"
-                        onClick={() => { setRewardsCustomerId(c.id); setRewardsOpen(true); }}
-                        title="Recompensas/Punições"
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    {([
+                      { key: 'name', label: 'Cliente', align: 'left' },
+                      { key: 'doc', label: 'Documento', align: 'left' },
+                      { key: null, label: 'Tipo', align: 'left' },
+                      { key: 'score', label: 'Pontos', align: 'right' },
+                      { key: 'orders', label: 'Compras', align: 'right' },
+                      { key: 'spent', label: 'Total gasto', align: 'right' },
+                      { key: 'last', label: 'Última compra', align: 'left' },
+                      { key: null, label: 'Status', align: 'left' },
+                      { key: null, label: '', align: 'right' },
+                    ] as const).map((col, i) => (
+                      <th
+                        key={i}
+                        className={`px-3 py-2.5 font-semibold ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.key ? 'cursor-pointer hover:text-foreground select-none' : ''}`}
+                        onClick={() => {
+                          if (!col.key) return;
+                          if (sortKey === col.key) setSortDir((d) => d === 'asc' ? 'desc' : 'asc');
+                          else { setSortKey(col.key as SortKey); setSortDir('desc'); }
+                        }}
                       >
-                        <Gift className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Bloco 2: Dados fiscais para NF-e */}
-                  <div className={`rounded-md border p-2.5 space-y-2 ${v.ok ? 'border-green-600/30 bg-green-500/5' : 'border-destructive/30 bg-destructive/5'}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                        <FileText className="w-3 h-3" /> Dados fiscais (NF-e)
-                      </div>
-                      {v.ok ? (
-                        <Badge variant="outline" className="border-green-600/40 text-green-700 dark:text-green-400 gap-1 text-[10px] h-5">
-                          <CheckCircle2 className="w-3 h-3" /> NF-e OK
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1 text-[10px] h-5">
-                          <AlertTriangle className="w-3 h-3" /> Bloqueada
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="text-xs font-mono text-muted-foreground">
-                      {c.cnpj ? `CNPJ ${c.cnpj}` : c.cpf ? `CPF ${c.cpf}` : 'Sem CPF/CNPJ'}
-                    </div>
-                    <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-                      <span className="truncate">
-                        {c.street || c.number || c.neighborhood
-                          ? <>{c.street}, {c.number} — {c.neighborhood}{c.municipio && ` · ${c.municipio}/${c.uf}`} · {c.cep}</>
-                          : <span className="italic">Endereço não informado</span>}
-                      </span>
-                    </div>
-                    {c.cnpj && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <FileText className="w-3 h-3 shrink-0" />
-                        IE: {c.inscricao_estadual || '—'} (ind. {c.ie_indicador || '—'})
-                      </div>
-                    )}
-
-                    {!v.ok && (
-                      <div className="pt-1">
-                        <div className="text-[11px] font-semibold text-destructive flex items-center gap-1 mb-1">
-                          <AlertTriangle className="w-3 h-3" /> Pendências:
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {v.missing.map((m) => (
-                            <Badge key={m} variant="outline" className="border-destructive/40 text-destructive font-normal text-[10px] h-5">
-                              {m}
-                            </Badge>
-                          ))}
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-2 w-full h-8 border-primary/40 text-primary hover:text-primary"
-                          onClick={() => autoFixOne(c)}
-                          disabled={fixingId === c.id}
-                        >
-                          {fixingId === c.id ? (
-                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                          ) : (
-                            <Wand2 className="w-3.5 h-3.5 mr-1.5" />
+                        <span className="inline-flex items-center gap-1">
+                          {col.label}
+                          {col.key && (sortKey === col.key
+                            ? (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)
+                            : <ArrowUpDown className="w-3 h-3 opacity-40" />)}
+                        </span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((c) => {
+                    const v = validations.get(c.id) || { ok: true, missing: [] };
+                    const dup = isDuplicate(c);
+                    const ag = aggregates[c.id] || { orders: 0, total: 0, last: null };
+                    const tier = getTierForScore(tiers, c.score || 0);
+                    const displayName = c.cnpj && c.company_name ? c.company_name : c.full_name;
+                    return (
+                      <tr
+                        key={c.id}
+                        className={`border-t border-border/60 hover:bg-muted/30 transition-colors ${
+                          dup ? 'bg-amber-50/40 dark:bg-amber-950/10' : !v.ok ? 'bg-destructive/5' : ''
+                        }`}
+                      >
+                        <td className="px-3 py-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setDetailsFor(c)}
+                            className="font-medium text-left hover:text-primary hover:underline underline-offset-4 truncate max-w-[260px] block"
+                            title={displayName}
+                          >
+                            {displayName}
+                          </button>
+                          {c.email && (
+                            <div className="text-[11px] text-muted-foreground truncate max-w-[260px]">{c.email}</div>
                           )}
-                          Corrigir automaticamente
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Ações */}
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openEdit(c)}>
-                      <Pencil className="w-3.5 h-3.5 mr-1.5" /> Editar
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-              );
-            })}
-          </div>
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                          {c.cnpj || c.cpf || '—'}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant={c.cnpj ? 'default' : 'secondary'} className="text-[10px]">
+                            {c.cnpj ? 'PJ' : 'PF'}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="font-semibold tabular-nums">{c.score || 0}</div>
+                          {tier && (
+                            <div className="text-[10px] text-muted-foreground">{tier.name}</div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums">{ag.orders}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-medium">
+                          {ag.total > 0
+                            ? ag.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                            : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                          {ag.last
+                            ? new Date(ag.last).toLocaleDateString('pt-BR')
+                            : <span className="opacity-60">Nunca</span>}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {!v.ok && (
+                              <Badge variant="destructive" className="text-[10px] gap-1" title={v.missing.join(', ')}>
+                                <AlertTriangle className="w-3 h-3" /> Incompleto
+                              </Badge>
+                            )}
+                            {dup && (
+                              <Badge className="text-[10px] gap-1 bg-amber-500 hover:bg-amber-500 text-white">
+                                <AlertTriangle className="w-3 h-3" /> Dup
+                              </Badge>
+                            )}
+                            {v.ok && !dup && (
+                              <Badge variant="outline" className="text-[10px] gap-1 text-green-700 border-green-300">
+                                <CheckCircle2 className="w-3 h-3" /> OK
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="inline-flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => setDetailsFor(c)} title="Abrir ficha">
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteId(c.id)} title="Excluir">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
       </div>
+
+
 
       {/* Dialog cadastrar/editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -954,6 +1097,25 @@ export default function AdminCustomers() {
         onOpenChange={(v) => { setRewardsOpen(v); if (!v) setRewardsCustomerId(null); }}
         initialCustomerId={rewardsCustomerId}
       />
+
+      <CustomerHistoryDialog
+        open={!!historyFor}
+        onOpenChange={(v) => { if (!v) setHistoryFor(null); }}
+        customerId={historyFor?.id || null}
+        customerName={historyFor?.cnpj && historyFor?.company_name ? historyFor.company_name : historyFor?.full_name}
+      />
+
+      <CustomerDetailsDialog
+        open={!!detailsFor}
+        onOpenChange={(v) => { if (!v) setDetailsFor(null); }}
+        customer={detailsFor as any}
+        tiers={tiers}
+        fiscalValid={detailsFor ? (validations.get(detailsFor.id) || { ok: true, missing: [] }) : { ok: true, missing: [] }}
+        onEdit={(c) => { setDetailsFor(null); openEdit(c as any); }}
+        onManageScore={(c) => { setDetailsFor(null); setScoreFor(c as any); }}
+        onManageRewards={(c) => { setDetailsFor(null); setRewardsCustomerId(c.id); setRewardsOpen(true); }}
+      />
+
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>

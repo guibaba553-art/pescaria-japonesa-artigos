@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +34,8 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Pencil
+  Pencil,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/Header';
@@ -59,9 +60,12 @@ import {
 import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
+import { CustomerPdvInsights } from '@/components/CustomerPdvInsights';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
+import { CustomerScoreDialog } from '@/components/CustomerScoreDialog';
 import { Award } from 'lucide-react';
-import { validateCPF, formatCPF, formatCEP, sanitizeNumericInput } from '@/utils/validation';
+
+import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
 const TefChargeDialog = lazy(() =>
@@ -124,6 +128,33 @@ interface CartItem {
   priceInput?: string;  // String editável do input (permite digitar "12,")
 }
 
+function StepIndicator({ step, label, active, complete }: { step: number; label: string; active: boolean; complete: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className={cn(
+          'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors',
+          complete
+            ? 'bg-primary text-primary-foreground'
+            : active
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+        )}
+      >
+        {complete ? <Check className="w-3 h-3" /> : step}
+      </div>
+      <span
+        className={cn(
+          'text-xs font-medium transition-colors hidden sm:block',
+          active || complete ? 'text-foreground' : 'text-muted-foreground'
+        )}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function PDV() {
   const navigate = useNavigate();
   const { user, isAdmin, permissions, loading } = useAuth();
@@ -139,6 +170,34 @@ export default function PDV() {
   useEffect(() => {
     localStorage.setItem('pdv:cartAutoExpand', cartAutoExpand ? '1' : '0');
   }, [cartAutoExpand]);
+
+  // Larguras das colunas do PDV — editáveis manualmente (em frações proporcionais)
+  const [columnWidths, setColumnWidths] = useState<{ customer: number; products: number; cart: number }>(() => {
+    if (typeof window === 'undefined') return { customer: 14, products: 46, cart: 32 };
+    try {
+      const saved = localStorage.getItem('pdv:columnWidths');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.customer === 'number' && typeof parsed.products === 'number' && typeof parsed.cart === 'number') {
+          return parsed;
+        }
+      }
+    } catch { /* ignore */ }
+    return { customer: 14, products: 46, cart: 32 };
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('pdv:columnWidths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -224,15 +283,24 @@ export default function PDV() {
   // Cliente
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  // Cronômetro de atendimento (ms desde que o cliente foi selecionado)
+  const [customerSelectedAt, setCustomerSelectedAt] = useState<number | null>(null);
   const [tiers, setTiers] = useState<CustomerTier[]>([]);
   useEffect(() => { loadTiers().then(setTiers); }, []);
   const customerTier = useMemo(
     () => (selectedCustomer ? getTierForScore(tiers, selectedCustomer.score || 0) : null),
     [selectedCustomer, tiers]
   );
+  // Inicia/zera o cronômetro automaticamente quando o cliente muda
+  useEffect(() => {
+    setCustomerSelectedAt(selectedCustomer?.id ? Date.now() : null);
+  }, [selectedCustomer?.id]);
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
+  const [scoreDialogCustomer, setScoreDialogCustomer] = useState<{ id: string; full_name: string; company_name: string | null; score: number } | null>(null);
+
   const [customerForm, setCustomerForm] = useState({
     full_name: '',
+    emission_type: 'nfce' as 'nfce' | 'nfe',
     doc_type: 'cpf' as 'cpf' | 'cnpj',
     cpf: '',
     cnpj: '',
@@ -248,6 +316,7 @@ export default function PDV() {
     inscricao_estadual: '',
     ie_indicador: '9' as '1' | '2' | '9', // 1=contribuinte, 2=isento, 9=não contribuinte
     email: '',
+    phone: '',
   });
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cpfLoading, setCpfLoading] = useState(false);
@@ -287,6 +356,7 @@ export default function PDV() {
           uf: existing.uf || prev.uf,
           inscricao_estadual: existing.inscricao_estadual || prev.inscricao_estadual,
           email: existing.email || prev.email,
+          phone: existing.phone || prev.phone,
         }));
         toast({
           title: 'Cliente já cadastrado',
@@ -411,6 +481,7 @@ export default function PDV() {
         uf: d.uf || prev.uf,
         codigo_municipio_ibge: ibge || prev.codigo_municipio_ibge,
         email: d.email || prev.email,
+        phone: d.phone || prev.phone,
         // Focus NFe traz IE direto da SEFAZ — preenche e marca como contribuinte
         inscricao_estadual: ieFromFocus && ieAtivaFromFocus ? ieFromFocus : prev.inscricao_estadual,
         ie_indicador: ieFromFocus && ieAtivaFromFocus ? '1' : prev.ie_indicador,
@@ -1383,48 +1454,32 @@ export default function PDV() {
   const handleSaveCustomer = async () => {
     if (savingCustomer) return; // trava duplo clique
     const isCnpj = customerForm.doc_type === 'cnpj';
+    const isNfe = customerForm.emission_type === 'nfe';
     const docValue = isCnpj ? customerForm.cnpj : customerForm.cpf;
+    const docDigits = docValue.replace(/\D/g, '');
 
-    // Validar campos básicos
-    if (!customerForm.full_name.trim() || !docValue.trim() ||
-        !customerForm.cep.trim() || !customerForm.street.trim() ||
-        !customerForm.number.trim() || !customerForm.neighborhood.trim()) {
+    // Validação mínima (NFC-e e NF-e): nome + documento válido
+    if (!customerForm.full_name.trim() || !docValue.trim()) {
       toast({
         title: 'Campos obrigatórios',
-        description: `Preencha todos os campos do cliente (incluindo ${isCnpj ? 'CNPJ' : 'CPF'})`,
-        variant: 'destructive'
+        description: `Informe o nome e o ${isCnpj ? 'CNPJ' : 'CPF'} do cliente.`,
+        variant: 'destructive',
       });
       return;
     }
+    if (isCnpj && docDigits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    if (!isCnpj && docDigits.length !== 11) {
+      toast({ title: 'CPF inválido', description: 'O CPF deve ter 11 dígitos.', variant: 'destructive' });
+      return;
+    }
 
-    // Validações extras para CNPJ (necessárias para emissão de NF-e)
-    if (isCnpj) {
-      const cnpjDigits = customerForm.cnpj.replace(/\D/g, '');
-      if (cnpjDigits.length !== 14) {
-        toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.company_name.trim()) {
-        toast({ title: 'Razão social obrigatória', description: 'Informe a razão social para emissão de NF-e.', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.municipio.trim() || !customerForm.uf.trim() || !customerForm.codigo_municipio_ibge.trim()) {
-        toast({ title: 'Município incompleto', description: 'Informe município, UF e código IBGE (busque pelo CNPJ).', variant: 'destructive' });
-        return;
-      }
-      if (!customerForm.ie_indicador) {
-        toast({ title: 'Indicador de IE obrigatório', description: 'Informe o indicador de Inscrição Estadual.', variant: 'destructive' });
-        return;
-      }
-      // Se for contribuinte (1), exige IE; se isento (2) ou não contribuinte (9), grava ISENTO
-      if (customerForm.ie_indicador === '1' && !customerForm.inscricao_estadual.trim()) {
-        toast({ title: 'Inscrição Estadual obrigatória', description: 'Contribuintes de ICMS devem informar a IE.', variant: 'destructive' });
-        return;
-      }
-      if (customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
-        toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
-        return;
-      }
+    // Validação extra apenas se for CNPJ e o usuário tiver começado a preencher dados de NF-e
+    if (isCnpj && customerForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerForm.email)) {
+      toast({ title: 'E-mail inválido', description: 'Verifique o e-mail informado.', variant: 'destructive' });
+      return;
     }
 
     setSavingCustomer(true);
@@ -1451,17 +1506,17 @@ export default function PDV() {
 
       const payload: any = {
         full_name: customerForm.full_name,
-        cep: customerForm.cep,
-        street: customerForm.street,
-        number: customerForm.number,
-        neighborhood: customerForm.neighborhood,
+        cep: customerForm.cep || '',
+        street: customerForm.street || '',
+        number: customerForm.number || '',
+        neighborhood: customerForm.neighborhood || '',
         cpf: isCnpj ? null : customerForm.cpf,
         cnpj: isCnpj ? customerForm.cnpj : null,
-        company_name: isCnpj ? customerForm.company_name : null,
+        company_name: isCnpj ? (customerForm.company_name || null) : null,
         complemento: customerForm.complemento || null,
         municipio: customerForm.municipio || null,
         uf: customerForm.uf || null,
-        codigo_municipio_ibge: isCnpj ? customerForm.codigo_municipio_ibge : null,
+        codigo_municipio_ibge: customerForm.codigo_municipio_ibge || null,
         inscricao_estadual: isCnpj
           ? (customerForm.inscricao_estadual.trim()
               ? customerForm.inscricao_estadual.trim()
@@ -1469,7 +1524,9 @@ export default function PDV() {
           : null,
         ie_indicador: isCnpj ? customerForm.ie_indicador : null,
         email: customerForm.email || null,
-        created_by: user!.id
+        phone: customerForm.phone ? customerForm.phone.replace(/\D/g, '') : null,
+        preferred_emission_type: isCnpj ? 'nfe' : 'nfce',
+        created_by: user!.id,
       };
 
       const { data, error } = await supabase
@@ -1484,6 +1541,7 @@ export default function PDV() {
       setShowCustomerDialog(false);
       setCustomerForm({
         full_name: '',
+        emission_type: 'nfce',
         doc_type: 'cpf',
         cpf: '',
         cnpj: '',
@@ -1499,6 +1557,7 @@ export default function PDV() {
         inscricao_estadual: '',
         ie_indicador: '9',
         email: '',
+        phone: '',
       });
 
       toast({
@@ -1527,6 +1586,46 @@ export default function PDV() {
     });
   };
 
+  const startResize = useCallback((
+    e: React.MouseEvent,
+    handle: 'customer-products' | 'products-cart'
+  ) => {
+    e.preventDefault();
+    const gridEl = document.getElementById('pdv-desktop-grid');
+    if (!gridEl) return;
+    const rect = gridEl.getBoundingClientRect();
+    const startX = e.clientX;
+    const startCustomer = columnWidths.customer;
+    const startProducts = columnWidths.products;
+    const startCart = columnWidths.cart;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaPct = ((moveEvent.clientX - startX) / rect.width) * 100;
+
+      if (handle === 'customer-products') {
+        const newCustomer = Math.max(14, Math.min(28, startCustomer + deltaPct));
+        const newProducts = Math.max(38, Math.min(60, startProducts - deltaPct));
+        setColumnWidths({ customer: newCustomer, products: newProducts, cart: startCart });
+      } else {
+        const newProducts = Math.max(38, Math.min(60, startProducts + deltaPct));
+        const newCart = Math.max(24, Math.min(45, startCart - deltaPct));
+        setColumnWidths({ customer: startCustomer, products: newProducts, cart: newCart });
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [columnWidths]);
+
+  const resetColumnWidths = () => {
+    setColumnWidths({ customer: 14, products: 46, cart: 32 });
+  };
+
   const finalizeSale = async () => {
     // Guarda síncrona: bloqueia cliques duplos antes do estado React atualizar
     if (finalizingRef.current) return;
@@ -1542,17 +1641,64 @@ export default function PDV() {
       return;
     }
 
-    // Bloqueio por classificação do cliente
+    // Cliente com classificação restritiva: exige confirmação + motivo (não bloqueia automaticamente)
+    let tierOverrideReason: string | null = null;
     if (selectedCustomer && customerTier?.block_purchase) {
+      const ok = window.confirm(
+        `Atenção: este cliente está classificado como "${customerTier.name}".\n\n` +
+        `${customerTier.perks || 'Há restrição de venda registrada para este cliente.'}\n\n` +
+        `Deseja prosseguir mesmo assim?`
+      );
+      if (!ok) {
+        finalizingRef.current = false;
+        return;
+      }
+      const reason = window.prompt(
+        'Informe o motivo para liberar esta venda (obrigatório, mínimo 5 caracteres):',
+        ''
+      );
+      if (!reason || reason.trim().length < 5) {
+        toast({
+          title: 'Motivo obrigatório',
+          description: 'É necessário registrar uma justificativa para liberar a venda.',
+          variant: 'destructive',
+        });
+        finalizingRef.current = false;
+        return;
+      }
+      tierOverrideReason = reason.trim();
+      // Registra a liberação no audit log (fire-and-forget)
+      supabase.from('admin_audit_log').insert({
+        action: 'pdv_tier_block_override',
+        entity_type: 'customer',
+        entity_id: selectedCustomer.id,
+        details: {
+          customer_name: selectedCustomer.full_name,
+          tier_name: customerTier.name,
+          reason: tierOverrideReason,
+          cart_total: calculateTotal(),
+          payment_method: paymentMethod,
+        },
+      } as any).then(() => {});
+    }
+
+
+
+    // Bloqueio: vendas acima de R$ 1.000 exigem cliente identificado,
+    // exceto quando o pagamento é em dinheiro.
+    if (
+      calculateTotal() > 1000 &&
+      paymentMethod !== 'cash' &&
+      !selectedCustomer
+    ) {
       toast({
-        title: `Venda bloqueada — cliente ${customerTier.name}`,
-        description: customerTier.perks || 'Este cliente está bloqueado para vendas.',
+        title: 'Cliente obrigatório',
+        description: 'Vendas acima de R$ 1.000,00 exigem cliente selecionado (ou pagamento em dinheiro).',
         variant: 'destructive',
       });
       finalizingRef.current = false;
       return;
     }
-
 
     if (paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
@@ -1666,6 +1812,7 @@ export default function PDV() {
           customer_id: selectedCustomer?.id || null,
           source: 'pdv',
           payment_method: paymentMethod,
+          installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
           idempotency_key: idempotencyKey,
           tef_transaction_id: tefData?.transaction_id ?? null,
           card_brand: tefData?.card_brand ?? null,
@@ -1675,6 +1822,9 @@ export default function PDV() {
           notes: saleNotes || null,
           cash_received: paymentMethod === 'cash'
             ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+            : null,
+          pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
+            ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
             : null,
         }])
         .select()
@@ -1756,6 +1906,12 @@ export default function PDV() {
         description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
+      // Auto-emissão fiscal para pagamentos em crédito/débito/pix é feita
+      // exclusivamente no servidor pelo trigger `auto-emit-fiscal` (AFTER INSERT em orders),
+      // que decide entre NF-e (CNPJ) e NFC-e (CPF/consumidor final) e evita
+      // emissões duplicadas. Não disparar aqui no cliente para não gerar 2 notas.
+
+
       // Se a venda estava salva, deletar da lista de rascunhos
       if (currentSaleId) {
         await supabase
@@ -1765,9 +1921,42 @@ export default function PDV() {
         loadSavedSales();
       }
 
+      // Snapshot do cliente ANTES de limpar a venda (clearSale zera selectedCustomer)
+      const customerForScore = selectedCustomer && selectedCustomer.id
+        ? {
+            id: selectedCustomer.id as string,
+            full_name: selectedCustomer.full_name as string,
+            company_name: ((selectedCustomer as any).company_name ?? null) as string | null,
+            score: Number((selectedCustomer as any).score || 0),
+          }
+        : null;
+
       // Limpar carrinho e recarregar produtos para refletir o novo estoque
       clearSale();
       await loadProducts();
+
+      // Abre o popup de avaliação APÓS limpar a venda — garante que nenhum outro
+      // diálogo (TEF/cadastro) esteja consumindo o foco do Radix.
+      if (customerForScore) {
+        // Busca o score atualizado do banco caso o objeto local esteja desatualizado
+        try {
+          const { data: freshCust } = await supabase
+            .from('customers')
+            .select('id, full_name, company_name, score')
+            .eq('id', customerForScore.id)
+            .maybeSingle();
+          if (freshCust) {
+            customerForScore.full_name = freshCust.full_name ?? customerForScore.full_name;
+            customerForScore.company_name = freshCust.company_name ?? customerForScore.company_name;
+            customerForScore.score = Number(freshCust.score || 0);
+          }
+        } catch (_) { /* ignora; usa snapshot local */ }
+
+        setTimeout(() => {
+          setScoreDialogCustomer(customerForScore);
+        }, 80);
+      }
+
 
     } catch (error: any) {
       // Rollback manual: se criamos o pedido mas algo falhou depois,
@@ -1807,7 +1996,7 @@ export default function PDV() {
   const change = calculateChange();
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-32 lg:pb-0">
+    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-32 lg:pb-0 lg:h-screen lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden">
       <Header />
 
       {/* Compact mobile back bar */}
@@ -1832,70 +2021,171 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Commercial dark banner — desktop only */}
-      <div className="hidden lg:block bg-foreground text-background pt-20 lg:pt-32 pb-8">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary mb-3">
-                <ShoppingCart className="w-3.5 h-3.5" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">PDV</span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
-                Ponto de Venda
-              </h1>
-              <p className="text-sm text-background/60 mt-1">
-                Vendas presenciais com código de barras e pagamentos integrados.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/pdv/sales-history')}
-                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
-              >
-                <History className="w-4 h-4 mr-2" />
-                Histórico
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate('/admin')}
-                className="rounded-full bg-transparent border-background/20 text-background hover:bg-background hover:text-foreground"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Admin
-              </Button>
-            </div>
+      {/* Compact desktop top bar (light, clean) */}
+      <div className="hidden lg:flex bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 pt-16 pb-2 px-4 items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+            <ShoppingCart className="w-3 h-3" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">PDV</span>
           </div>
+          <h1 className="text-base font-display font-black tracking-tight text-zinc-900 dark:text-zinc-100">Ponto de Venda</h1>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/pdv/sales-history')}
+            className="h-7 rounded-full text-xs"
+          >
+            <History className="w-3.5 h-3.5 mr-1.5" />
+            Histórico
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/admin')}
+            className="h-7 rounded-full text-xs"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+            Admin
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto p-3 lg:p-6 lg:-mt-4">
+      <div className="w-full overflow-x-hidden px-2 lg:px-4 lg:pt-3 lg:flex-1 lg:min-h-0">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Produtos */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Produtos</CardTitle>
+
+        <div
+          id="pdv-desktop-grid"
+          className="relative grid grid-cols-1 gap-4 lg:grid-cols-3 lg:h-full lg:min-h-0"
+          style={isDesktop ? { gridTemplateColumns: `${columnWidths.customer}fr ${columnWidths.products}fr ${columnWidths.cart}fr` } : undefined}
+        >
+          {/* Coluna 1 — Cliente (desktop) */}
+          <aside className="hidden lg:flex lg:flex-col space-y-4 order-1 min-w-0 lg:h-full lg:overflow-y-auto lg:pr-1">
+            <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <CardHeader className="p-4 pb-3 bg-white dark:bg-zinc-900 flex-row items-center justify-between space-y-0 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-black shadow-sm">1</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                    Identificação do Cliente
+                  </CardTitle>
+                </div>
+                {selectedCustomer && customerSelectedAt && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900">
+                    em atendimento
+                  </span>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="relative">
+              <CardContent className={cn("p-4 space-y-4", selectedCustomer && "bg-primary/5")}>
+                {selectedCustomer ? (
+                  <>
+                    <div className="flex items-start gap-3">
+                      <div className="w-11 h-11 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shrink-0 shadow">
+                        {(selectedCustomer.company_name || selectedCustomer.full_name || '?').slice(0,2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm truncate leading-tight">
+                          {selectedCustomer.company_name || selectedCustomer.full_name}
+                        </p>
+                        <p className="text-[11px] text-primary font-bold uppercase tracking-wide mt-0.5">
+                          {customerTier?.name ? `Consumidor ${customerTier.name}` : 'Cliente'}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                          {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0 h-7 w-7 p-0 rounded-full"
+                        onClick={() => setSelectedCustomer(null)}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[12px] text-muted-foreground leading-snug">
+                      Digite o <strong>CPF/CNPJ</strong> ou nome para liberar perfil, pagamento preferido e tempo de atendimento.
+                    </p>
+                    <CustomerSearchCombobox
+                      placeholder="CPF, CNPJ ou nome..."
+                      onSelect={(customer) => {
+                        setSelectedCustomer(customer);
+                        const tier = getTierForScore(tiers, customer.score || 0);
+                        if (tier?.block_purchase) {
+                          toast({
+                            title: `Atenção — cliente ${tier.name}`,
+                            description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
+                          });
+                        }
+                      }}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowCustomerDialog(true)}
+                        className="w-full rounded-xl"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar novo
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConsumidorFinal}
+                        className="w-full rounded-xl"
+                      >
+                        Consumidor final
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
+
+
+          {/* Resize handle: Cliente | Produtos */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group hover:bg-primary/5 transition-colors"
+            style={{ left: `${columnWidths.customer}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'customer-products')}
+            title="Arraste para redimensionar (cliente × produtos)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary group-hover:w-1 transition-all rounded-full" />
+          </div>
+
+          {/* Coluna 2 — Produtos */}
+          <div className="space-y-4 order-2 min-w-0 lg:h-full lg:min-h-0 lg:flex lg:flex-col">
+            <Card className="lg:flex-1 lg:min-h-0 lg:flex lg:flex-col rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <CardHeader className="lg:py-3 px-4 shrink-0 flex-row items-center justify-between space-y-0 border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[11px] font-black shadow-sm">2</div>
+                  <CardTitle className="text-[11px] font-black uppercase tracking-widest text-zinc-500">Produtos</CardTitle>
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {filteredProducts.length} itens
+                </span>
+              </CardHeader>
+              <CardContent className="space-y-3 lg:flex-1 lg:min-h-0 lg:flex lg:flex-col p-4 bg-zinc-50/50 dark:bg-zinc-950/30">
+                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Buscar produto..."
+                    placeholder="Buscar produto por nome, SKU ou EAN..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
                   />
                 </div>
 
-                <ScrollArea className="h-[calc(100vh-260px)] lg:h-[700px]">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <ScrollArea className="h-[calc(100vh-260px)] lg:h-auto lg:flex-1 lg:min-h-0">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {filteredProducts.map(product => (
                       <Card
                         key={product.id}
-                        className="cursor-pointer hover:shadow-lg transition-shadow relative"
+                        className="cursor-pointer hover:border-primary hover:shadow-md transition-all relative rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm group"
                         onClick={() => handleProductClick(product)}
                       >
                         {product.variations && product.variations.length > 0 && (
@@ -1912,7 +2202,7 @@ export default function PDV() {
                             type="button"
                             size="icon"
                             variant="secondary"
-                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-90 hover:opacity-100"
+                            className="absolute top-2 left-2 z-10 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
                             title="Ajustar estoque"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1922,59 +2212,57 @@ export default function PDV() {
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                         )}
-                        <CardContent className="p-2 lg:p-3 space-y-2">
-                          {product.image_url && (
-                            <div className="w-full h-32 lg:h-60 bg-muted rounded overflow-hidden">
+                        <CardContent className="p-3 space-y-2">
+                          <div className="aspect-square w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center">
+                            {product.image_url ? (
                               <img
                                 src={product.image_url}
                                 alt={product.name}
                                 className="w-full h-full object-cover"
                               />
-                            </div>
-                          )}
+                            ) : (
+                              <Package className="w-8 h-8 text-zinc-300 dark:text-zinc-700" />
+                            )}
+                          </div>
                           <div>
-                            <h3 className="font-semibold text-sm line-clamp-2">
+                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">
+                              {product.category}
+                            </p>
+                            <h3 className="font-bold text-xs lg:text-sm leading-snug break-words line-clamp-2 text-zinc-800 dark:text-zinc-100">
                               {product.name}
                             </h3>
-                            <div className="flex gap-1 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                {product.category}
-                              </Badge>
+                            <div className="flex gap-1 mt-1 flex-wrap">
                               {product.sold_by_weight && (
-                                <Badge variant="default" className="text-xs bg-green-600">
-                                  Por kg
-                                </Badge>
+                                <Badge variant="default" className="text-[9px] bg-emerald-600">Por kg</Badge>
                               )}
                               {product.minimum_quantity && product.minimum_quantity > 1 && (
-                                <Badge variant="default" className="text-xs">
-                                  Min: {product.minimum_quantity}
-                                </Badge>
+                                <Badge variant="outline" className="text-[9px]">Min: {product.minimum_quantity}</Badge>
                               )}
                             </div>
                           </div>
-                           <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
+                          <div className="flex items-end justify-between pt-1">
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[10px] text-emerald-600 font-bold">
+                                {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
+                              </span>
                               {isPdvPromoActive(product) ? (
                                 <>
-                                  <span className="text-[11px] text-muted-foreground line-through leading-none">
-                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  <span className="text-[10px] text-muted-foreground line-through leading-none">
+                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}
                                   </span>
-                                  <span className="text-lg font-bold text-green-600 dark:text-green-400 leading-none">
-                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                  <span className="text-base lg:text-lg font-black text-emerald-600 leading-tight">
+                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-lg font-bold text-primary leading-none">
-                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}{product.sold_by_weight && '/kg'}
+                                <span className="text-base lg:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
                                 </span>
                               )}
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
-                                {paymentMethod === 'cash' ? 'Dinheiro' : paymentMethod === 'debit' ? 'Débito' : paymentMethod === 'credit' ? 'Crédito' : 'PIX'}
-                              </span>
                             </div>
-                            <Badge variant="secondary" className="text-xs">
-                              {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
-                            </Badge>
+                            <div className="p-1.5 bg-primary/10 text-primary rounded-lg shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                              <Plus className="w-4 h-4" />
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -1985,11 +2273,22 @@ export default function PDV() {
             </Card>
           </div>
 
-          {/* Carrinho e Pagamento */}
+
+          {/* Resize handle: Produtos | Carrinho */}
+          <div
+            className="hidden lg:flex absolute top-0 bottom-0 w-4 cursor-col-resize z-20 items-center justify-center group hover:bg-primary/5 transition-colors"
+            style={{ left: `${columnWidths.customer + columnWidths.products}%`, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => startResize(e, 'products-cart')}
+            title="Arraste para redimensionar (produtos × carrinho)"
+          >
+            <div className="w-0.5 h-12 bg-border group-hover:bg-primary group-hover:w-1 transition-all rounded-full" />
+          </div>
+
+          {/* Coluna 3 — Carrinho e Pagamento */}
           <div
             id="pdv-cart-panel"
             className={cn(
-              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:block lg:space-y-4',
+              'lg:static lg:inset-auto lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-y-auto lg:block lg:space-y-4 order-3 min-w-0 lg:h-full lg:min-h-0 lg:pr-1',
               mobileCartOpen
                 ? 'fixed inset-0 z-50 bg-background overflow-y-auto p-3 pb-32 space-y-4'
                 : 'hidden'
@@ -2009,6 +2308,82 @@ export default function PDV() {
                 <X className="w-5 h-5" />
               </Button>
             </div>
+
+            {/* Identificação do cliente — primeiro passo (mobile) */}
+            <Card className="border-primary/20 lg:hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Identificação do cliente
+                  {selectedCustomer && customerSelectedAt && (
+                    <Badge variant="outline" className="ml-auto text-[10px] font-mono">
+                      em atendimento
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {selectedCustomer ? (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold truncate">
+                          {selectedCustomer.company_name || selectedCustomer.full_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {selectedCustomer.cnpj ? `CNPJ: ${selectedCustomer.cnpj}` : selectedCustomer.cpf ? `CPF: ${selectedCustomer.cpf}` : '—'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0"
+                        onClick={() => setSelectedCustomer(null)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <CustomerPdvInsights customer={selectedCustomer} tier={customerTier} />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      Comece digitando o <strong>CPF</strong> ou <strong>CNPJ</strong> do cliente para liberar o painel com perfil de compra, pagamento preferido e tempo de atendimento.
+                    </p>
+                    <CustomerSearchCombobox
+                      placeholder="CPF, CNPJ ou nome do cliente..."
+                      onSelect={(customer) => {
+                        setSelectedCustomer(customer);
+                        const tier = getTierForScore(tiers, customer.score || 0);
+                        if (tier?.block_purchase) {
+                          toast({
+                            title: `Atenção — cliente ${tier.name}`,
+                            description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
+                          });
+                        }
+                      }}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => setShowCustomerDialog(true)}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Cadastrar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConsumidorFinal}
+                      >
+                        Consumidor final
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between gap-2">
@@ -2172,7 +2547,33 @@ export default function PDV() {
                         </Button>
                       )}
                     </div>
+                    {customerTier && customerTier.allow_discount && !customerTier.block_purchase && customerTier.discount_percent > 0 && (() => {
+                      const subtotal = calculateSubtotal();
+                      const disc = (subtotal * customerTier.discount_percent) / 100;
+                      const currentVal = parseFloat((discountInput || '').replace(',', '.')) || 0;
+                      const already = Math.abs(currentVal - disc) < 0.01;
+                      return (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={already ? 'secondary' : 'outline'}
+                          className="w-full border-emerald-500/40 text-emerald-700 hover:bg-emerald-50"
+                          disabled={already || subtotal <= 0}
+                          onClick={() => setDiscountInput(disc.toFixed(2).replace('.', ','))}
+                        >
+                          <Award className="w-3.5 h-3.5 mr-1.5" />
+                          {already
+                            ? `Desconto do nível ${customerTier.name} aplicado (${customerTier.discount_percent}%)`
+                            : `Aplicar ${customerTier.discount_percent}% — nível ${customerTier.name}`}
+                        </Button>
+                      );
+                    })()}
                   </div>
+                  {selectedCustomer && customerTier && !customerTier.allow_discount && !customerTier.block_purchase && (
+                    <p className="text-[11px] text-orange-600 font-medium">
+                      Cliente nível {customerTier.name} não permite descontos.
+                    </p>
+                  )}
 
                   {getDiscountValue() !== 0 && (
                     <div className="space-y-1 text-sm">
@@ -2307,9 +2708,9 @@ export default function PDV() {
                                 {customerTier.block_purchase && (
                                   <span className="text-xs font-semibold text-destructive">Venda bloqueada</span>
                                 )}
-                                {!customerTier.block_purchase && customerTier.discount_percent > 0 && (
+                                {!customerTier.block_purchase && customerTier.allow_discount && customerTier.discount_percent > 0 && (
                                   <span className="text-xs font-semibold text-emerald-600">
-                                    {customerTier.discount_percent}% off aplicado
+                                    {customerTier.discount_percent}% off disponível
                                   </span>
                                 )}
                                 {!customerTier.allow_discount && !customerTier.block_purchase && (
@@ -2326,6 +2727,44 @@ export default function PDV() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        {/* Seletor de tipo de nota fiscal para este cliente */}
+                        <div className="mt-3 pt-3 border-t border-primary/20 space-y-1.5">
+                          <Label className="text-xs">Tipo de nota fiscal</Label>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={(selectedCustomer.preferred_emission_type || 'nfce') === 'nfce' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfce' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfce' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NFC-e
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={selectedCustomer.preferred_emission_type === 'nfe' ? 'default' : 'outline'}
+                              className="flex-1"
+                              onClick={async () => {
+                                const updated = { ...selectedCustomer, preferred_emission_type: 'nfe' };
+                                setSelectedCustomer(updated);
+                                await supabase.from('customers').update({ preferred_emission_type: 'nfe' }).eq('id', selectedCustomer.id);
+                              }}
+                            >
+                              NF-e
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {selectedCustomer.preferred_emission_type === 'nfe'
+                              ? 'NF-e exige endereço completo do destinatário.'
+                              : 'NFC-e usa apenas nome e documento.'}
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -2335,17 +2774,13 @@ export default function PDV() {
                             const tier = getTierForScore(tiers, customer.score || 0);
                             if (tier?.block_purchase) {
                               toast({
-                                title: `Cliente ${tier.name}`,
-                                description: 'Venda bloqueada para este cliente.',
-                                variant: 'destructive',
+                                title: `Atenção — cliente ${tier.name}`,
+                                description: 'Há restrição registrada. A venda exigirá confirmação e justificativa ao finalizar.',
                               });
-                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount && !discountInput) {
-                              const subtotal = calculateSubtotal();
-                              const disc = (subtotal * tier.discount_percent) / 100;
-                              setDiscountInput(disc.toFixed(2).replace('.', ','));
+                            } else if (tier && tier.discount_percent > 0 && tier.allow_discount) {
                               toast({
-                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off`,
-                                description: `Desconto de R$ ${disc.toFixed(2)} aplicado automaticamente.`,
+                                title: `Cliente ${tier.name} · ${tier.discount_percent}% off disponível`,
+                                description: 'Clique em "Aplicar desconto do nível" para liberar.',
                               });
                             } else {
                               toast({
@@ -2672,318 +3107,448 @@ export default function PDV() {
 
 
       <Dialog open={showCustomerDialog} onOpenChange={setShowCustomerDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Cadastrar Cliente</DialogTitle>
-            <DialogDescription>
-              Preencha os dados do cliente para vincular à venda
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Toggle Pessoa Física / Jurídica */}
-            <div className="space-y-2">
-              <Label>Tipo de cliente *</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={customerForm.doc_type === 'cpf' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cpf' })}
-                >
-                  Pessoa Física (CPF)
-                </Button>
-                <Button
-                  type="button"
-                  variant={customerForm.doc_type === 'cnpj' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setCustomerForm({ ...customerForm, doc_type: 'cnpj' })}
-                >
-                  Pessoa Jurídica (CNPJ)
-                </Button>
-              </div>
-            </div>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0 sm:rounded-2xl">
+          {(() => {
+            const isCnpj = customerForm.doc_type === 'cnpj';
+            const docDigits = (isCnpj ? customerForm.cnpj : customerForm.cpf).replace(/\D/g, '');
+            const docComplete = isCnpj ? docDigits.length === 14 : docDigits.length === 11;
+            const cnpjRequiredFilled =
+              customerForm.full_name.trim() !== '' &&
+              customerForm.cep.replace(/\D/g, '').length === 8 &&
+              customerForm.street.trim() !== '' &&
+              customerForm.number.trim() !== '' &&
+              customerForm.neighborhood.trim() !== '' &&
+              customerForm.municipio.trim() !== '' &&
+              customerForm.uf.trim() !== '' &&
+              customerForm.codigo_municipio_ibge.trim() !== '' &&
+              (customerForm.ie_indicador !== '1' || customerForm.inscricao_estadual.trim() !== '');
+            const requiredFilled = docComplete && (isCnpj ? cnpjRequiredFilled : customerForm.full_name.trim() !== '');
+            const step1Complete = docComplete;
+            const step2Complete = requiredFilled;
+            return (
+              <>
+                {/* Header */}
+                <div className="px-6 pt-6 pb-4 flex items-start justify-between border-b border-border/50">
+                  <div>
+                    <DialogTitle className="text-xl font-bold tracking-tight">Cadastro do Cliente</DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground mt-1">
+                      Preencha os dados para vincular à venda
+                    </DialogDescription>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerDialog(false)}
+                    className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="full_name">
-                {customerForm.doc_type === 'cnpj' ? 'Nome do responsável *' : 'Nome Completo *'}
-              </Label>
-              <Input
-                id="full_name"
-                placeholder={customerForm.doc_type === 'cnpj' ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
-                value={customerForm.full_name}
-                onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
-              />
-            </div>
-
-            {customerForm.doc_type === 'cnpj' && (
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Razão social / Nome fantasia</Label>
-                <Input
-                  id="company_name"
-                  placeholder="Nome da empresa"
-                  value={customerForm.company_name}
-                  onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
-                />
-              </div>
-            )}
-
-            {customerForm.doc_type === 'cpf' ? (
-              <div className="space-y-2">
-                <Label htmlFor="cpf">CPF *</Label>
-                <div className="relative">
-                  <Input
-                    id="cpf"
-                    placeholder="000.000.000-00"
-                    value={customerForm.cpf}
-                    onChange={(e) => {
-                      const digits = sanitizeNumericInput(e.target.value).slice(0, 11);
-                      setCustomerForm({ ...customerForm, cpf: formatCPF(digits) });
-                      if (digits.length === 11) lookupCpf(digits);
-                    }}
-                    maxLength={14}
-                    inputMode="numeric"
+                {/* Stepper */}
+                <div className="px-6 py-4 flex items-center gap-2">
+                  <StepIndicator
+                    step={1}
+                    label="Documento"
+                    active={true}
+                    complete={step1Complete}
                   />
-                  {cpfLoading && (
-                    <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                  <div className={cn('h-1 flex-1 rounded-full transition-colors', step1Complete ? 'bg-primary' : 'bg-muted')} />
+                  <StepIndicator
+                    step={2}
+                    label="Dados"
+                    active={step1Complete}
+                    complete={step2Complete}
+                  />
+                  <div className={cn('h-1 flex-1 rounded-full transition-colors', step2Complete ? 'bg-primary' : 'bg-muted')} />
+                  <StepIndicator
+                    step={3}
+                    label="Opcional"
+                    active={step2Complete}
+                    complete={false}
+                  />
+                </div>
+
+                <div className="px-6 py-2 space-y-6">
+                  {/* Step 1 — Documento */}
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="documento" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                        CPF ou CNPJ <span className="text-primary">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="documento"
+                          placeholder="Digite CPF (11) ou CNPJ (14)"
+                          value={isCnpj ? customerForm.cnpj : customerForm.cpf}
+                          onChange={(e) => {
+                            const digits = sanitizeNumericInput(e.target.value).slice(0, 14);
+                            const willBeCnpj = digits.length > 11;
+                            if (willBeCnpj) {
+                              const f = digits
+                                .replace(/^(\d{2})(\d)/, '$1.$2')
+                                .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                                .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                                .replace(/(\d{4})(\d)/, '$1-$2');
+                              setCustomerForm({ ...customerForm, doc_type: 'cnpj', cnpj: f, cpf: '' });
+                              if (digits.length === 14) lookupCnpj(digits);
+                            } else {
+                              setCustomerForm({ ...customerForm, doc_type: 'cpf', cpf: formatCPF(digits), cnpj: '' });
+                              if (digits.length === 11) lookupCpf(digits);
+                            }
+                          }}
+                          maxLength={18}
+                          inputMode="numeric"
+                          className="pr-16 py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded uppercase tracking-tighter">
+                            {isCnpj ? 'CNPJ' : 'CPF'}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Identificação automática por quantidade de dígitos.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 2 — Dados obrigatórios */}
+                  {docComplete && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="full_name" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                          {isCnpj ? 'Nome do responsável' : 'Nome Completo'} <span className="text-primary">*</span>
+                        </Label>
+                        <Input
+                          id="full_name"
+                          placeholder={isCnpj ? 'Nome do contato/responsável' : 'Nome completo do cliente'}
+                          value={customerForm.full_name}
+                          onChange={(e) => setCustomerForm({ ...customerForm, full_name: e.target.value })}
+                          className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                        />
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Obrigatório para emissão de {isCnpj ? 'NF-e' : 'NFC-e'}.
+                        </p>
+                      </div>
+
+                      {isCnpj && (
+                        <>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="company_name" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Razão social / Nome fantasia <span className="text-primary">*</span>
+                            </Label>
+                            <Input
+                              id="company_name"
+                              placeholder="Nome da empresa"
+                              value={customerForm.company_name}
+                              onChange={(e) => setCustomerForm({ ...customerForm, company_name: e.target.value })}
+                              className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="cep" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              CEP <span className="text-primary">*</span>
+                            </Label>
+                            <div className="relative">
+                              <Input
+                                id="cep"
+                                placeholder="00000-000"
+                                value={customerForm.cep}
+                                onChange={(e) => {
+                                  const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                  setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                  if (digits.length === 8) lookupCep(digits);
+                                }}
+                                onBlur={(e) => {
+                                  const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                  if (digits.length === 8) lookupCep(digits);
+                                }}
+                                onPaste={(e) => {
+                                  const pasted = e.clipboardData.getData('text');
+                                  const digits = sanitizeNumericInput(pasted).slice(0, 8);
+                                  if (digits.length === 8) {
+                                    e.preventDefault();
+                                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                    lookupCep(digits);
+                                  }
+                                }}
+                                maxLength={9}
+                                inputMode="numeric"
+                                autoComplete="postal-code"
+                                className="pr-10 py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                              {cepLoading && (
+                                <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor="street" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Rua <span className="text-primary">*</span>
+                            </Label>
+                            <Input
+                              id="street"
+                              placeholder="Nome da rua"
+                              value={customerForm.street}
+                              onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
+                              className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="number" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Número <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="number"
+                                placeholder="123"
+                                value={customerForm.number}
+                                onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="neighborhood" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Bairro <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="neighborhood"
+                                placeholder="Bairro"
+                                value={customerForm.neighborhood}
+                                onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-1.5 col-span-2">
+                              <Label htmlFor="municipio" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Município <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="municipio"
+                                placeholder="Cidade"
+                                value={customerForm.municipio}
+                                onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="uf" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                UF <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="uf"
+                                placeholder="SP"
+                                maxLength={2}
+                                value={customerForm.uf}
+                                onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                              Dados fiscais obrigatórios para NF-e
+                            </p>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="codigo_municipio_ibge" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Código IBGE do município <span className="text-primary">*</span>
+                              </Label>
+                              <Input
+                                id="codigo_municipio_ibge"
+                                placeholder="Ex: 3550308"
+                                value={customerForm.codigo_municipio_ibge}
+                                onChange={(e) =>
+                                  setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
+                                }
+                                maxLength={7}
+                                className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                              />
+                              <p className="text-[11px] text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="ie_indicador" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                Indicador de Inscrição Estadual <span className="text-primary">*</span>
+                              </Label>
+                              <Select
+                                value={customerForm.ie_indicador}
+                                onValueChange={(v) =>
+                                  setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
+                                }
+                              >
+                                <SelectTrigger id="ie_indicador" className="py-3 rounded-xl border-input focus:ring-primary/20 focus:border-primary">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
+                                  <SelectItem value="2">2 - Contribuinte isento</SelectItem>
+                                  <SelectItem value="9">9 - Não contribuinte</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {customerForm.ie_indicador === '1' && (
+                              <div className="space-y-1.5">
+                                <Label htmlFor="inscricao_estadual" className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                                  Inscrição Estadual <span className="text-primary">*</span>
+                                </Label>
+                                <Input
+                                  id="inscricao_estadual"
+                                  placeholder="Somente números"
+                                  value={customerForm.inscricao_estadual}
+                                  onChange={(e) =>
+                                    setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                                  }
+                                  inputMode="numeric"
+                                  className="py-3 rounded-xl border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 3 — Dados opcionais */}
+                  {requiredFilled && (
+                    <div className="pt-4 border-t border-border/50 space-y-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                        Dados Opcionais
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="customer_email" className="text-xs font-medium text-muted-foreground">
+                            E-mail
+                          </Label>
+                          <Input
+                            id="customer_email"
+                            type="email"
+                            placeholder="cliente@email.com"
+                            value={customerForm.email}
+                            onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="customer_phone" className="text-xs font-medium text-muted-foreground">
+                            Telefone
+                          </Label>
+                          <Input
+                            id="customer_phone"
+                            type="tel"
+                            placeholder="(00) 00000-0000"
+                            value={formatPhone(customerForm.phone)}
+                            onChange={(e) => setCustomerForm({ ...customerForm, phone: sanitizeNumericInput(e.target.value).slice(0, 11) })}
+                            maxLength={15}
+                            inputMode="tel"
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                          />
+                        </div>
+                        {!isCnpj && (
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="customer_cep_opt" className="text-xs font-medium text-muted-foreground">
+                                  CEP
+                                </Label>
+                                <Input
+                                  id="customer_cep_opt"
+                                  placeholder="00000-000"
+                                  value={customerForm.cep}
+                                  onChange={(e) => {
+                                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
+                                    if (digits.length === 8) lookupCep(digits);
+                                  }}
+                                  onBlur={(e) => {
+                                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
+                                    if (digits.length === 8) lookupCep(digits);
+                                  }}
+                                  maxLength={9}
+                                  inputMode="numeric"
+                                  className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                                />
+                                <p className="text-[11px] text-muted-foreground">Preenche endereço automaticamente (opcional).</p>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="customer_number_opt" className="text-xs font-medium text-muted-foreground">
+                                  Número da casa
+                                </Label>
+                                <Input
+                                  id="customer_number_opt"
+                                  placeholder="123, Apto 4..."
+                                  value={customerForm.number}
+                                  onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
+                                  className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                                />
+                                <p className="text-[11px] text-muted-foreground">Opcional — preencha se quiser guardar o número.</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {isCnpj && customerForm.ie_indicador !== '1' && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="inscricao_estadual" className="text-xs font-medium text-muted-foreground">
+                            Inscrição Estadual
+                          </Label>
+                          <Input
+                            id="inscricao_estadual"
+                            placeholder="Deixe em branco se isento/não contribuinte"
+                            value={customerForm.inscricao_estadual}
+                            onChange={(e) =>
+                              setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
+                            }
+                            inputMode="numeric"
+                            className="bg-muted/30 py-2.5 rounded-lg border-input focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
+                        <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-muted-foreground leading-tight">
+                          Para CPF não é necessário endereço nem inscrição estadual.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Validamos o CPF e buscamos cadastro existente automaticamente.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="cnpj"
-                    placeholder="00.000.000/0000-00"
-                    value={customerForm.cnpj}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCustomerForm({ ...customerForm, cnpj: v });
-                      const digits = v.replace(/\D/g, '');
-                      if (digits.length === 14) lookupCnpj(digits);
-                    }}
-                    maxLength={18}
-                  />
+
+                {/* Footer */}
+                <div className="px-6 py-5 mt-2 flex items-center gap-3 bg-muted/30 border-t border-border/50">
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={cnpjLoading}
-                    onClick={() => lookupCnpj(customerForm.cnpj.replace(/\D/g, ''))}
+                    onClick={() => setShowCustomerDialog(false)}
+                    className="flex-1 py-3 rounded-xl text-foreground hover:bg-muted transition-all"
                   >
-                    {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveCustomer}
+                    disabled={savingCustomer}
+                    className="flex-[2] py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    {savingCustomer ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Preenche automaticamente os dados via Receita Federal (BrasilAPI).
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="cep">CEP *</Label>
-              <div className="relative">
-                <Input
-                  id="cep"
-                  placeholder="00000-000"
-                  value={customerForm.cep}
-                  onChange={(e) => {
-                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                    setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                    if (digits.length === 8) lookupCep(digits);
-                  }}
-                  onBlur={(e) => {
-                    const digits = sanitizeNumericInput(e.target.value).slice(0, 8);
-                    if (digits.length === 8) lookupCep(digits);
-                  }}
-                  onPaste={(e) => {
-                    const pasted = e.clipboardData.getData('text');
-                    const digits = sanitizeNumericInput(pasted).slice(0, 8);
-                    if (digits.length === 8) {
-                      e.preventDefault();
-                      setCustomerForm({ ...customerForm, cep: formatCEP(digits) });
-                      lookupCep(digits);
-                    }
-                  }}
-                  maxLength={9}
-                  inputMode="numeric"
-                  autoComplete="postal-code"
-                />
-                {cepLoading && (
-                  <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">Endereço preenchido automaticamente via CEP.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="street">Rua *</Label>
-              <Input
-                id="street"
-                placeholder="Nome da rua"
-                value={customerForm.street}
-                onChange={(e) => setCustomerForm({ ...customerForm, street: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="number">Número *</Label>
-                <Input
-                  id="number"
-                  placeholder="123"
-                  value={customerForm.number}
-                  onChange={(e) => setCustomerForm({ ...customerForm, number: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="neighborhood">Bairro *</Label>
-                <Input
-                  id="neighborhood"
-                  placeholder="Bairro"
-                  value={customerForm.neighborhood}
-                  onChange={(e) => setCustomerForm({ ...customerForm, neighborhood: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label htmlFor="municipio">Município {customerForm.doc_type === 'cnpj' && '*'}</Label>
-                <Input
-                  id="municipio"
-                  placeholder="Cidade"
-                  value={customerForm.municipio}
-                  onChange={(e) => setCustomerForm({ ...customerForm, municipio: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="uf">UF {customerForm.doc_type === 'cnpj' && '*'}</Label>
-                <Input
-                  id="uf"
-                  placeholder="SP"
-                  maxLength={2}
-                  value={customerForm.uf}
-                  onChange={(e) => setCustomerForm({ ...customerForm, uf: e.target.value.toUpperCase() })}
-                />
-              </div>
-            </div>
-
-            {customerForm.doc_type === 'cpf' && (
-              <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                <Label htmlFor="inscricao_estadual_cpf" className="text-xs font-semibold">
-                  Inscrição Estadual (opcional — produtor rural)
-                </Label>
-                <Input
-                  id="inscricao_estadual_cpf"
-                  placeholder="Somente números (deixe em branco se não tiver)"
-                  value={customerForm.inscricao_estadual}
-                  onChange={(e) =>
-                    setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
-                  }
-                  inputMode="numeric"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Preencha apenas se o cliente PF tiver IE (ex.: produtor rural).
-                </p>
-              </div>
-            )}
-
-            {customerForm.doc_type === 'cnpj' && (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-3">
-                <p className="text-xs font-semibold text-orange-900">
-                  Dados obrigatórios para emissão de NF-e
-                </p>
-
-                <div className="space-y-2">
-                  <Label htmlFor="codigo_municipio_ibge">Código IBGE do município *</Label>
-                  <Input
-                    id="codigo_municipio_ibge"
-                    placeholder="Ex: 3550308"
-                    value={customerForm.codigo_municipio_ibge}
-                    onChange={(e) =>
-                      setCustomerForm({ ...customerForm, codigo_municipio_ibge: e.target.value.replace(/\D/g, '') })
-                    }
-                    maxLength={7}
-                  />
-                  <p className="text-xs text-muted-foreground">Preenchido automaticamente ao buscar pelo CNPJ.</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ie_indicador">Indicador de Inscrição Estadual *</Label>
-                  <Select
-                    value={customerForm.ie_indicador}
-                    onValueChange={(v) =>
-                      setCustomerForm({ ...customerForm, ie_indicador: v as '1' | '2' | '9' })
-                    }
-                  >
-                    <SelectTrigger id="ie_indicador">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 - Contribuinte de ICMS</SelectItem>
-                      <SelectItem value="2">2 - Contribuinte isento</SelectItem>
-                      <SelectItem value="9">9 - Não contribuinte</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inscricao_estadual">
-                    Inscrição Estadual {customerForm.ie_indicador === '1' ? '*' : '(opcional)'}
-                  </Label>
-                  <Input
-                    id="inscricao_estadual"
-                    placeholder={customerForm.ie_indicador === '1' ? 'Somente números' : 'Deixe em branco se isento/não contribuinte'}
-                    value={customerForm.inscricao_estadual}
-                    onChange={(e) =>
-                      setCustomerForm({ ...customerForm, inscricao_estadual: e.target.value.replace(/\D/g, '') })
-                    }
-                    inputMode="numeric"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Você pode informar a IE mesmo selecionando "Isento" ou "Não contribuinte".
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customer_email">E-mail (recomendado)</Label>
-                  <Input
-                    id="customer_email"
-                    type="email"
-                    placeholder="contato@empresa.com.br"
-                    value={customerForm.email}
-                    onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">Para envio automático do XML/DANFE da NF-e.</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowCustomerDialog(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSaveCustomer}
-                disabled={savingCustomer}
-                className="flex-1 bg-orange-500 hover:bg-orange-600"
-              >
-                {savingCustomer ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-                {savingCustomer ? 'Salvando...' : 'Salvar Cliente'}
-              </Button>
-            </div>
-          </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
+
 
       {/* Diálogo de entrada de peso */}
       <Dialog open={showWeightDialog} onOpenChange={setShowWeightDialog}>
@@ -3420,6 +3985,15 @@ export default function PDV() {
           />
         </Suspense>
       )}
+
+      <CustomerScoreDialog
+        open={!!scoreDialogCustomer}
+        onOpenChange={(v) => { if (!v) setScoreDialogCustomer(null); }}
+        customer={scoreDialogCustomer}
+        compact
+      />
+
     </div>
+
   );
 }

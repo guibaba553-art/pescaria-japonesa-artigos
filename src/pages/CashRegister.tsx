@@ -139,9 +139,11 @@ export default function CashRegister() {
     const additions = Number(movementTotals.additions || 0);
     const withdrawals = Number(movementTotals.withdrawals || 0);
     const cashSales = Number(salesSummary.cash || 0);
-    const troco = Number(movementTotals.change || 0);
-
-    return Number((opening + additions - withdrawals + cashSales - troco).toFixed(2));
+    // Importante: NÃO subtrair o troco aqui. O `cashSales` (orders.total_amount)
+    // já é o valor líquido da venda (sem o troco). O movimento automático de
+    // troco existe apenas para registro/auditoria — subtraí-lo causaria
+    // dupla baixa do troco no esperado em caixa.
+    return Number((opening + additions - withdrawals + cashSales).toFixed(2));
   }, [currentRegister, salesSummary.cash, movementTotals]);
 
   const loadRegisterActivity = async (register: Pick<CashRegister, 'id' | 'opened_at'>, closedAt?: string) => {
@@ -333,8 +335,7 @@ export default function CashRegister() {
         Number(currentRegister!.opening_amount || 0) +
         Number(activity.movementTotals.additions || 0) -
         Number(activity.movementTotals.withdrawals || 0) +
-        Number(activity.salesSummary.cash || 0) -
-        Number(activity.movementTotals.change || 0)
+        Number(activity.salesSummary.cash || 0)
       ).toFixed(2));
 
       const { error } = await supabase.from('cash_registers').update({

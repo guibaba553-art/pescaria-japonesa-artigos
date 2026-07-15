@@ -74,7 +74,10 @@ describe('MyPaymentMethods — guarda de token antes do INSERT', () => {
     expect(!!(t && t.length >= 10)).toBe(false);
   });
   it('toast de erro quando token inválido', () => {
-    const msg = ''.length < 10 ? 'Falha ao tokenizar cartão. Tente novamente.' : '';
+    const t: string = '';
+    const msg = !t || t.length < 10
+      ? 'Falha ao tokenizar cartão. Tente novamente.'
+      : '';
     expect(msg).toBe('Falha ao tokenizar cartão. Tente novamente.');
   });
 });

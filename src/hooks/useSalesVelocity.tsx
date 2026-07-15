@@ -31,28 +31,47 @@ export function useSalesVelocity(opts: Options = {}) {
     const since = new Date();
     since.setDate(since.getDate() - daysWindow);
 
-    // 1. Buscar pedidos não cancelados no período
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('id, created_at, status')
-      .gte('created_at', since.toISOString())
-      .in('status', ['em_preparo', 'enviado', 'entregado', 'retirado']);
+    // 1. Buscar pedidos não cancelados no período (paginado, supera limite de 1000)
+    const PAGE = 1000;
+    const orders: { id: string }[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id')
+        .gte('created_at', since.toISOString())
+        .in('status', ['em_preparo', 'enviado', 'entregado', 'retirado'])
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      orders.push(...data);
+      if (data.length < PAGE) break;
+    }
 
-    const orderIds = (orders ?? []).map((o) => o.id);
+    const orderIds = orders.map((o) => o.id);
     if (orderIds.length === 0) {
       setVelocities({});
       setLoading(false);
       return;
     }
 
-    // 2. Buscar itens desses pedidos
-    const { data: items } = await supabase
-      .from('order_items')
-      .select('product_id, quantity, order_id')
-      .in('order_id', orderIds);
+    // 2. Buscar itens desses pedidos (paginado por chunks de orderIds + range)
+    const items: { product_id: string; quantity: number }[] = [];
+    const CHUNK = 200;
+    for (let i = 0; i < orderIds.length; i += CHUNK) {
+      const slice = orderIds.slice(i, i + CHUNK);
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('product_id, quantity')
+          .in('order_id', slice)
+          .range(from, from + PAGE - 1);
+        if (error || !data || data.length === 0) break;
+        items.push(...(data as any));
+        if (data.length < PAGE) break;
+      }
+    }
 
     // 3. Buscar estoque atual de todos os produtos vendidos
-    const productIds = Array.from(new Set((items ?? []).map((i) => i.product_id)));
+    const productIds = Array.from(new Set(items.map((i) => i.product_id)));
     const { data: products } = await supabase
       .from('products')
       .select('id, stock')
@@ -62,7 +81,7 @@ export function useSalesVelocity(opts: Options = {}) {
 
     // 4. Agregar quantidades vendidas por produto
     const soldMap = new Map<string, number>();
-    (items ?? []).forEach((it) => {
+    items.forEach((it) => {
       soldMap.set(it.product_id, (soldMap.get(it.product_id) ?? 0) + Number(it.quantity));
     });
 

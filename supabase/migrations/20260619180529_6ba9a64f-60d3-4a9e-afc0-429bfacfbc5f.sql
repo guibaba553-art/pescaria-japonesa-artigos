@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS installments smallint NOT NULL DEFAULT 1;

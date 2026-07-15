@@ -1,0 +1,1 @@
+ALTER TABLE public.nfe_emissions ALTER COLUMN order_id DROP NOT NULL;

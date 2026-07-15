@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Eye, Users, MousePointerClick, TrendingUp, Activity, CalendarDays } from 'lucide-react';
+import { format, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
@@ -70,22 +71,26 @@ function classifyReferrer(ref: string | null): string {
   }
 }
 
-export function SiteAnalytics() {
+export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; rangeEnd?: Date } = {}) {
   const [loading, setLoading] = useState(true);
-  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders30d: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
+  const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
   const [topPages, setTopPages] = useState<PageStat[]>([]);
   const [sources, setSources] = useState<SourceStat[]>([]);
 
+  const today = new Date();
+  const start = startOfDay(rangeStart ?? new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const end = endOfDay(rangeEnd ?? today);
+  const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1);
+
   useEffect(() => {
     load();
-  }, []);
+  }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
 
   const load = async () => {
     setLoading(true);
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-    const sinceIso = since.toISOString();
+    const sinceIso = start.toISOString();
+    const untilIso = end.toISOString();
 
     // Buscar IDs de admins e funcionários para excluir das estatísticas
     const { data: staffRoles } = await supabase
@@ -98,6 +103,7 @@ export function SiteAnalytics() {
       .from('site_visits')
       .select('path, referrer, session_id, created_at, user_id')
       .gte('created_at', sinceIso)
+      .lte('created_at', untilIso)
       .order('created_at', { ascending: true })
       .limit(10000);
 
@@ -114,6 +120,7 @@ export function SiteAnalytics() {
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .gte('created_at', sinceIso)
+        .lte('created_at', untilIso)
         .eq('source', 'site'),
     ]);
 
@@ -128,11 +135,10 @@ export function SiteAnalytics() {
       entry.visits++;
       if (v.session_id) entry.sessions.add(v.session_id);
     }
-    // fill last 30 days
+
+    // Fill every day in the selected range
     const daily: DailyVisit[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    for (const d of eachDayOfInterval({ start, end })) {
       const key = d.toISOString().slice(0, 10);
       const entry = byDay.get(key);
       daily.push({
@@ -201,7 +207,7 @@ export function SiteAnalytics() {
     const orders = ordersCount ?? 0;
     const conversion = totalVisitors > 0 ? (orders / totalVisitors) * 100 : 0;
 
-    const todayKey = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const todayKey = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     const todayEntry = daily.find(d => d.date === todayKey);
     const avgPerDay = daily.length > 0 ? rows.length / daily.length : 0;
 
@@ -209,7 +215,7 @@ export function SiteAnalytics() {
       visits: rows.length,
       visitors: totalVisitors,
       conversion,
-      orders30d: orders,
+      orders,
       today: todayEntry?.visits ?? 0,
       todayVisitors: todayEntry?.visitors ?? 0,
       avgPerDay,
@@ -230,7 +236,7 @@ export function SiteAnalytics() {
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Visitas (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Visitas</CardTitle>
             <Eye className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -248,11 +254,11 @@ export function SiteAnalytics() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Pedidos (30d)</CardTitle>
+            <CardTitle className="text-sm font-medium">Pedidos</CardTitle>
             <MousePointerClick className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totals.orders30d}</div>
+            <div className="text-2xl font-bold">{totals.orders}</div>
           </CardContent>
         </Card>
         <Card>
@@ -282,7 +288,7 @@ export function SiteAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totals.avgPerDay.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">visitas/dia (30d)</p>
+            <p className="text-xs text-muted-foreground">visitas/dia</p>
           </CardContent>
         </Card>
       </div>
@@ -290,8 +296,10 @@ export function SiteAnalytics() {
       {/* Daily visits chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Visitas por dia (últimos 30 dias)</CardTitle>
-          <CardDescription>Total de visitas e visitantes únicos por dia</CardDescription>
+          <CardTitle>Visitas por dia</CardTitle>
+          <CardDescription>
+            {format(start, 'dd/MM/yyyy')} até {format(end, 'dd/MM/yyyy')}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>

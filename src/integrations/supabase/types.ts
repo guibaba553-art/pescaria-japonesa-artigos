@@ -1,4 +1,3 @@
-Connecting to db 5432
 export type Json =
   | string
   | number
@@ -759,6 +758,8 @@ export type Database = {
           municipio: string | null
           neighborhood: string
           number: string
+          phone: string | null
+          preferred_emission_type: string | null
           score: number
           street: string
           uf: string | null
@@ -781,6 +782,8 @@ export type Database = {
           municipio?: string | null
           neighborhood: string
           number: string
+          phone?: string | null
+          preferred_emission_type?: string | null
           score?: number
           street: string
           uf?: string | null
@@ -803,6 +806,8 @@ export type Database = {
           municipio?: string | null
           neighborhood?: string
           number?: string
+          phone?: string | null
+          preferred_emission_type?: string | null
           score?: number
           street?: string
           uf?: string | null
@@ -925,6 +930,7 @@ export type Database = {
         Row: {
           can_access_cash_register: boolean
           can_access_catalog: boolean
+          can_access_customers: boolean
           can_access_dashboard: boolean
           can_access_fiscal: boolean
           can_access_orders: boolean
@@ -939,6 +945,7 @@ export type Database = {
         Insert: {
           can_access_cash_register?: boolean
           can_access_catalog?: boolean
+          can_access_customers?: boolean
           can_access_dashboard?: boolean
           can_access_fiscal?: boolean
           can_access_orders?: boolean
@@ -953,6 +960,7 @@ export type Database = {
         Update: {
           can_access_cash_register?: boolean
           can_access_catalog?: boolean
+          can_access_customers?: boolean
           can_access_dashboard?: boolean
           can_access_fiscal?: boolean
           can_access_orders?: boolean
@@ -1242,7 +1250,7 @@ export type Database = {
           nfe_key: string | null
           nfe_number: string | null
           nfe_xml_url: string | null
-          order_id: string
+          order_id: string | null
           products_count: number | null
           protocolo: string | null
           ref_focus: string | null
@@ -1266,7 +1274,7 @@ export type Database = {
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
-          order_id: string
+          order_id?: string | null
           products_count?: number | null
           protocolo?: string | null
           ref_focus?: string | null
@@ -1290,7 +1298,7 @@ export type Database = {
           nfe_key?: string | null
           nfe_number?: string | null
           nfe_xml_url?: string | null
-          order_id?: string
+          order_id?: string | null
           products_count?: number | null
           protocolo?: string | null
           ref_focus?: string | null
@@ -1437,6 +1445,7 @@ export type Database = {
           delivery_type: string
           id: string
           idempotency_key: string | null
+          installments: number
           last_payment_attempt_at: string | null
           notes: string | null
           nsu: string | null
@@ -1446,6 +1455,7 @@ export type Database = {
           payment_id: string | null
           payment_method: string | null
           payment_received_at: string | null
+          pdv_service_time_seconds: number | null
           pix_attempts: number | null
           pix_expiration: string | null
           platform_fee: number | null
@@ -1489,6 +1499,7 @@ export type Database = {
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          installments?: number
           last_payment_attempt_at?: string | null
           notes?: string | null
           nsu?: string | null
@@ -1498,6 +1509,7 @@ export type Database = {
           payment_id?: string | null
           payment_method?: string | null
           payment_received_at?: string | null
+          pdv_service_time_seconds?: number | null
           pix_attempts?: number | null
           pix_expiration?: string | null
           platform_fee?: number | null
@@ -1541,6 +1553,7 @@ export type Database = {
           delivery_type?: string
           id?: string
           idempotency_key?: string | null
+          installments?: number
           last_payment_attempt_at?: string | null
           notes?: string | null
           nsu?: string | null
@@ -1550,6 +1563,7 @@ export type Database = {
           payment_id?: string | null
           payment_method?: string | null
           payment_received_at?: string | null
+          pdv_service_time_seconds?: number | null
           pix_attempts?: number | null
           pix_expiration?: string | null
           platform_fee?: number | null
@@ -2847,6 +2861,7 @@ export type Database = {
         }
         Returns: Json
       }
+      can_access_pdv: { Args: { _user_id: string }; Returns: boolean }
       check_fiscal_rate_limit: {
         Args: {
           p_function_name: string
@@ -3309,6 +3324,3 @@ export const Constants = {
     },
   },
 } as const
-
-A new version of Supabase CLI is available: v2.109.0 (currently installed v2.98.1)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

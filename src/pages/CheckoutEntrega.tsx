@@ -647,13 +647,15 @@ export default function CheckoutEntrega() {
             usedGateway = fallbackGateway;
           } catch (fallbackErr: any) {
             // Ambos falharam — rollback
-            await supabase.rpc('release_promo_limits', {
-              p_items: items.map(item => ({
-                product_id: item.id,
-                variation_id: item.variationId || null,
-                quantity: item.quantity,
-              })),
-            }).catch(() => {});
+            try {
+              await supabase.rpc('release_promo_limits', {
+                p_items: items.map(item => ({
+                  product_id: item.id,
+                  variation_id: item.variationId || null,
+                  quantity: item.quantity,
+                })),
+              });
+            } catch { /* ignore */ }
             await supabase.from('orders')
               .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
               .eq('id', orderData.id);
@@ -673,13 +675,16 @@ export default function CheckoutEntrega() {
           p_ttl_minutes: 30,
         });
         if (resvError) {
-          await supabase.rpc('release_promo_limits', {
-            p_items: items.map(item => ({
-              product_id: item.id,
-              variation_id: item.variationId || null,
-              quantity: item.quantity,
-            })),
-          }).catch(() => {});
+          // Race condition rara: estoque esgotou entre a verificação e a geração do QR
+          try {
+            await supabase.rpc('release_promo_limits', {
+              p_items: items.map(item => ({
+                product_id: item.id,
+                variation_id: item.variationId || null,
+                quantity: item.quantity,
+              })),
+            });
+          } catch { /* ignore */ }
           await supabase.from('orders')
             .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
             .eq('id', orderData.id);
