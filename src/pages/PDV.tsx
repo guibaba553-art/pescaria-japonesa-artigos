@@ -1771,13 +1771,12 @@ export default function PDV() {
 
     } catch (error: any) {
       // Rollback manual: se criamos o pedido mas algo falhou depois,
-      // remove o pedido órfão para não poluir relatórios.
+      // cancela o pedido órfão para manter histórico completo.
       if (createdOrderId) {
         try {
-          await supabase.from('order_items').delete().eq('order_id', createdOrderId);
-          await supabase.from('orders').delete().eq('id', createdOrderId);
+          await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', createdOrderId);
         } catch (cleanupError) {
-          console.error('Falha ao limpar pedido órfão:', cleanupError);
+          console.error('Falha ao cancelar pedido órfão:', cleanupError);
         }
       }
       toast({

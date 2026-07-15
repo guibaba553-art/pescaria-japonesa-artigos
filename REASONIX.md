@@ -52,7 +52,7 @@
 | `npm run preview` | Preview production build |
 | `npm test` | `vitest run` (single run) |
 | `npm run test:watch` | `vitest` (watch mode) |
-| `npm run test:functions` | `DENO_TEST=1 deno test --allow-net --allow-env --no-check supabase/functions/tests/` — Edge Function integration tests (requires `supabase start`). Imports real `handleRequest`, mocks external APIs (Asaas/AbacatePay) via `mock_gateways.ts`, uses real local Supabase for auth + DB. |
+| `npm run test:functions` | `DENO_TEST=1 deno test --allow-net --allow-env --no-check supabase/functions/tests/` — Edge Function integration tests (requires `supabase start`). Imports real `handleRequest`, mocks external APIs (Asaas/Mercado Pago) via `mock_gateways.ts`, uses real local Supabase for auth + DB. |
 
 ## Architecture — route pages
 
@@ -87,7 +87,7 @@ Routes are lazy-loaded in `src/App.tsx` via `React.lazy`. Each page is a functio
 
 - **TDD mandatory** — toda implementação ou correção de bug deve começar por um teste que falha, depois a implementação, depois validar que o teste passa. Sem exceções.
 - **Test files must correspond to a source module** — nunca crie arquivos catch-all (`paymentCorrections.test.ts`). Cada `__tests__/Foo.test.ts` testa `Foo.ts`.
-- **Edge Function tests testam os handlers reais** — importam `handleRequest` diretamente, mockam apenas APIs externas (Asaas/AbacatePay) via interceptação de `fetch`. O Supabase local é usado real para auth + DB fixtures.
+- **Edge Function tests testam os handlers reais** — importam `handleRequest` diretamente, mockam apenas APIs externas (Asaas/Mercado Pago) via interceptação de `fetch`. O Supabase local é usado real para auth + DB fixtures.
 - **`@/` path alias** maps to `src/` (Vite + Vitest configured)
 - **Test files** live in `__tests__/` dir adjacent to the module under test
 - **Page components** use `export default function` (required by `React.lazy`)
@@ -108,7 +108,7 @@ Routes are lazy-loaded in `src/App.tsx` via `React.lazy`. Each page is a functio
 - **Vite chunk config** isolates `@huggingface/transformers` and `onnxruntime` into a separate chunk to avoid init errors
 - **Playwright** is a devDependency but no e2e tests directory exists yet
 - **Zod v4** — import from `zod` (not `zod/v4`)
-- **TDD** — todo PR deve incluir testes que comprovem a correção/feature. Testes de Edge Function rodam no Deno (`npm run test:functions`) e precisam do `supabase start`. O `mock_gateways.ts` intercepta `fetch` para Asaas/AbacatePay; o resto (auth, DB) é real.
+- **TDD** — todo PR deve incluir testes que comprovem a correção/feature. Testes de Edge Function rodam no Deno (`npm run test:functions`) e precisam do `supabase start`. O `mock_gateways.ts` intercepta `fetch` para Asaas/Mercado Pago; o resto (auth, DB) é real.
 - **`autoRefreshToken: false`** — ao criar `createClient` em Edge Functions que serão testadas, sempre passe `{ auth: { autoRefreshToken: false, persistSession: false } }` para evitar leaks de `setInterval` do GoTrue nos testes Deno.
 
 ## Notes
@@ -120,7 +120,7 @@ The following project skills are available in `.reasonix/skills/`:
 | Skill | Description |
 |-------|-------------|
 | `testing-practices` | Testing conventions (Vitest frontend, Deno Edge Functions, mocked external APIs) |
-| `abacatepay` | Integrate AbacatePay payments (Pix, card, subscriptions, webhooks, MRR, etc.) with full reference material (rules, examples, tools, tests, utils) bundled locally; also supports direct API interaction via curl (agent mode) |
+| `abacatepay` | ⚠️ Removido — substituído por Mercado Pago + Asaas com roteamento por valor (ver `src/lib/pixGatewayRouter.ts`) |
 
 ## Business rules
 

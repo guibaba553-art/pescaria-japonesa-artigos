@@ -171,6 +171,7 @@ serve(async (req) => {
           .from("orders")
           .update({
             status: "em_preparo",
+            payment_method: payment.billingType === "PIX" ? "pix" : "credit_card",
             updated_at: new Date().toISOString(),
           })
           .eq("id", orderId);
@@ -196,6 +197,7 @@ serve(async (req) => {
             .from("orders")
             .update({
               status: "em_preparo",
+              payment_method: "pix",
               updated_at: now,
             })
             .eq("id", orderId);

@@ -22,6 +22,8 @@ import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
 import { useProductVariations } from '@/hooks/useProductVariations';
 import { SubcategorySelect } from '@/components/SubcategorySelect';
+import { BrandSelect } from '@/components/BrandSelect';
+import { SupplierSelect } from '@/components/SupplierSelect';
 import { ImageThumbWithBgRemoval } from '@/components/ImageThumbWithBgRemoval';
 import { BarcodeInput } from '@/components/BarcodeInput';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
@@ -57,9 +59,8 @@ const EMPTY_PRODUCT: Product = {
   minimum_quantity: 1,
   sku: '',
   sold_by_weight: false,
-  brand: '',
-  pound_test: '',
-  size: '',
+  brand_id: '',
+  supplier_id: '',
   subcategory: '',
 };
 
@@ -103,9 +104,8 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
   const [pdvNoMarkup, setPdvNoMarkup] = useState((product as any).pdv_no_markup || false);
-  const [brand, setBrand] = useState(product.brand || '');
-  const [poundTest, setPoundTest] = useState(product.pound_test || '');
-  const [size, setSize] = useState(product.size || '');
+  const [brandId, setBrandId] = useState(product.brand_id || '');
+  const [supplierId, setSupplierId] = useState(product.supplier_id || '');
 
   // Preço PDV (PIX/Dinheiro). Débito e Crédito são calculados pela fórmula fixa.
   const [pricePdv, setPricePdv] = useState((product as any).price_pdv?.toString() || '');
@@ -411,9 +411,8 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
       setSoldByWeight(product.sold_by_weight || false);
       setPdvOnly((product as any).pdv_only || false);
       setPdvNoMarkup((product as any).pdv_no_markup || false);
-      setBrand(product.brand || '');
-      setPoundTest(product.pound_test || '');
-      setSize(product.size || '');
+      setBrandId(product.brand_id || '');
+      setSupplierId(product.supplier_id || '');
       setPricePdv((product as any).price_pdv != null ? (Math.round(Number((product as any).price_pdv) * 100) / 100).toFixed(2) : '');
       setCost((product as any).cost?.toString() || '');
       setFreightPct((product as any).freight_pct?.toString() || '');
@@ -655,9 +654,8 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
         minimum_quantity: minimumQuantity ? parseInt(minimumQuantity) : 1,
         min_stock: minStock ? parseInt(minStock) : 0,
         sold_by_weight: soldByWeight,
-        brand: brand || null,
-        pound_test: poundTest || null,
-        size: size || null,
+        brand_id: brandId || null,
+        supplier_id: supplierId || null,
         images: allImageUrls,
         image_url: allImageUrls[0] || null,
         featured,
@@ -1727,6 +1725,26 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                   value={subcategory}
                   onChange={setSubcategory}
                   triggerId="edit-subcategory"
+                />
+              </div>
+            </div>
+
+            {/* Linha 1.5: Marca, Fornecedor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand">Marca</Label>
+                <BrandSelect
+                  value={brandId}
+                  onChange={setBrandId}
+                  triggerId="edit-brand"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-supplier">Fornecedor</Label>
+                <SupplierSelect
+                  value={supplierId}
+                  onChange={setSupplierId}
+                  triggerId="edit-supplier"
                 />
               </div>
             </div>

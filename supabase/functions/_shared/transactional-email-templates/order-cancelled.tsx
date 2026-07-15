@@ -83,7 +83,7 @@ const OrderCancelledEmail = ({
             • O PIX não foi pago dentro do prazo
             <br />• O pagamento por cartão foi recusado pelo banco ou pelo sistema
             antifraude
-            <br />• Não houve confirmação do pagamento pelo Mercado Pago
+            <br />• Não houve confirmação do pagamento pelo gateway
           </Text>
 
           <Hr style={divider} />

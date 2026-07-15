@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, Trash2, ChevronDown, ChevronRight, Clock, PackageCheck, Store, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X, Undo2 } from 'lucide-react';
+import { Package, Truck, CheckCircle, ChevronDown, ChevronRight, Clock, PackageCheck, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X, XCircle, Undo2, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { statusConfig, getStatusLabel, getNextStatus, getNextStatusLabel } from '@/lib/orderStatus';
 
 function ConfirmReturnDialogContent({
   order, customerName, customerCpf, onConfirm,
@@ -71,6 +72,72 @@ function ConfirmReturnDialogContent({
   );
 }
 
+function ConfirmPickupReturnDialogContent({
+  order, customerName, customerCpf, onConfirm, isRefunding, hasPayment, gwLabel, methodLabel,
+}: {
+  order: any;
+  customerName: string;
+  customerCpf: string;
+  onConfirm: (isDefect: boolean, shouldRefund: boolean) => void;
+  isRefunding: boolean;
+  hasPayment: boolean;
+  gwLabel: string;
+  methodLabel: string;
+}) {
+  const [isDefect, setIsDefect] = useState(false);
+  const [shouldRefund, setShouldRefund] = useState(hasPayment);
+  return (
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Confirmar devolução (retirada na loja)</AlertDialogTitle>
+        <AlertDialogDescription asChild>
+          <div>
+            <p className="mb-3">
+              O cliente trouxe o produto de volta à loja? Ao confirmar, o pedido será marcado como <strong>devolvido</strong> e o <strong>estoque será reposto automaticamente</strong>.
+            </p>
+            <div className="p-3 bg-muted rounded-md text-sm space-y-1">
+              <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+              <div><strong>Cliente:</strong> {customerName}</div>
+              <div><strong>CPF:</strong> {customerCpf}</div>
+              <div><strong>Total:</strong> R$ {Number(order.total_amount).toFixed(2)}</div>
+              <div><strong>Itens a repor no estoque:</strong> {order.order_items.length}</div>
+            </div>
+            <label className="mt-3 flex items-start gap-2 p-3 rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 cursor-pointer">
+              <Checkbox checked={isDefect} onCheckedChange={(v) => setIsDefect(!!v)} className="mt-0.5" />
+              <div className="text-sm">
+                <span className="font-semibold">Devolução por defeito do produto</span>
+                <div className="text-xs text-muted-foreground">Marque se foi por defeito — o cliente <strong>não perderá pontos</strong> na sua classificação.</div>
+              </div>
+            </label>
+            {hasPayment && (
+              <label className="mt-3 flex items-start gap-2.5 p-3 rounded-md border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20 cursor-pointer">
+                <Checkbox checked={shouldRefund} onCheckedChange={(v) => setShouldRefund(!!v)} className="mt-0.5" />
+                <div className="text-sm">
+                  <span className="font-semibold">Estornar pagamento automaticamente</span>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Valor de <strong>R$ {Number(order.total_amount).toFixed(2)}</strong> será devolvido ao cliente via {gwLabel || 'gateway'}.
+                    {order.payment_method === 'credit_card' || order.card_brand ? ' Para cartão, aparece na próxima fatura (1–2 ciclos).' : ''}
+                  </div>
+                </div>
+              </label>
+            )}
+          </div>
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+        <AlertDialogAction
+          onClick={() => onConfirm(isDefect, shouldRefund)}
+          disabled={isRefunding}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          {isRefunding ? 'Processando...' : 'Confirmar Devolução'}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  );
+}
+
 interface OrderItem {
   id: string;
   quantity: number;
@@ -95,7 +162,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -105,9 +172,16 @@ interface Order {
   shipping_label_url?: string | null;
   shipping_label_order_id?: string | null;
   payment_id?: string | null;
+  payment_gateway?: string | null;
+  payment_method?: string | null;
+  asaas_payment_id?: string | null;
+  card_brand?: string | null;
+  card_last_digits?: string | null;
+  qr_code_base64?: string | null;
   order_items: OrderItem[];
   nfe_emissions?: NFEEmission[];
   refunded_amount?: number;
+  cancellation_reason?: string;
 }
 
 interface Profile {
@@ -115,93 +189,175 @@ interface Profile {
   cpf: string | null;
 }
 
-const statusConfig = {
-  aguardando_pagamento: {
-    label: 'Aguardando Pagamento',
-    icon: Clock,
-    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
-    accentClass: 'border-l-orange-500',
-  },
-  em_preparo: {
-    label: 'Em Preparo',
-    icon: Package,
-    badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20',
-    accentClass: 'border-l-amber-500',
-  },
-  aguardando_envio: {
-    label: 'Aguardando Envio',
-    icon: PackageCheck,
-    badgeClass: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20',
-    accentClass: 'border-l-indigo-500',
-  },
-  enviado: {
-    label: 'Enviado',
-    icon: Truck,
-    badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/20',
-    accentClass: 'border-l-blue-500',
-  },
-  entregado: {
-    label: 'Entregue',
-    icon: CheckCircle,
-    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
-    accentClass: 'border-l-emerald-500',
-  },
-  retirado: {
-    label: 'Retirado',
-    icon: CheckCircle,
-    badgeClass: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/20',
-    accentClass: 'border-l-emerald-600',
-  },
-  cancelado: {
-    label: 'Cancelado',
-    icon: Clock,
-    badgeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/20',
-    accentClass: 'border-l-red-500',
-  },
-  devolucao_solicitada: {
-    label: 'Devolução em Trânsito',
-    icon: Truck,
-    badgeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
-    accentClass: 'border-l-orange-500',
-  },
-  devolvido: {
-    label: 'Devolvido',
-    icon: Undo2,
-    badgeClass: 'bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/40 hover:bg-red-600/20',
-    accentClass: 'border-l-red-600',
-  },
-} as const;
+// Diálogo de cancelamento de pedido — admin deve fornecer uma razão
+function CancelOrderDialog({
+  orderId,
+  customerName,
+  totalAmount,
+  paymentMethodLabel,
+  gwLabel,
+  cardBrand,
+  cardLastDigits,
+  onCancel,
+}: {
+  orderId: string;
+  customerName: string;
+  totalAmount: number;
+  paymentMethodLabel?: string;
+  gwLabel?: string;
+  cardBrand?: string;
+  cardLastDigits?: string;
+  onCancel: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [open, setOpen] = useState(false);
 
-// Etiqueta de status considerando o tipo de entrega (retirada na loja => "Pronto para Retirar")
-const getStatusLabel = (status: Order['status'], deliveryType: Order['delivery_type']): string => {
-  if (status === 'em_preparo' && deliveryType === 'pickup') return 'Pronto para Retirar';
-  return statusConfig[status].label;
-};
+  const handleConfirm = () => {
+    if (!reason.trim()) return;
+    onCancel(reason.trim());
+    setOpen(false);
+    setReason('');
+  };
 
-const getNextStatus = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): Order['status'] | null => {
-  if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
-  if (currentStatus === 'em_preparo') {
-    // Para entregas, "embalar" é feito exclusivamente pela Triagem (com leitura de SKU).
-    // Aqui só liberamos a transição direta para retirada (pickup).
-    if (deliveryType === 'pickup') return 'retirado';
-    return null;
-  }
-  if (currentStatus === 'aguardando_envio') return 'enviado';
-  if (currentStatus === 'enviado') return 'entregado';
-  return null;
-};
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 border border-destructive/30 rounded-md">
+          <X className="h-4 w-4" />
+          Cancelar Pedido
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div>
+              <p className="mb-3">Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.</p>
+              <div className="p-3 bg-muted rounded-md text-sm space-y-1 mb-3">
+                <div><strong>Pedido:</strong> #{orderId.slice(0, 8)}</div>
+                <div><strong>Cliente:</strong> {customerName}</div>
+                <div><strong>Total:</strong> R$ {totalAmount.toFixed(2)}</div>
+                {(paymentMethodLabel || gwLabel) && (
+                  <div><strong>Pagamento:</strong> {paymentMethodLabel ? `${paymentMethodLabel}${gwLabel ? ` via ${gwLabel}` : ''}` : gwLabel || ''}{cardBrand ? ` ${cardBrand}` : ''}{cardLastDigits ? ` final ${cardLastDigits}` : ''}</div>
+                )}
+              </div>
+              <label className="text-sm font-medium">Motivo do cancelamento</label>
+              <textarea
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Descreva o motivo do cancelamento..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Voltar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirm}
+            disabled={!reason.trim()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Confirmar Cancelamento
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
-const getNextStatusLabel = (currentStatus: Order['status'], deliveryType: Order['delivery_type']): string => {
-  if (currentStatus === 'aguardando_pagamento') {
-    return deliveryType === 'pickup' ? 'Marcar como Pronto para Retirar' : 'Marcar como Em Preparo';
-  }
-  if (currentStatus === 'em_preparo') {
-    return deliveryType === 'pickup' ? 'Marcar como Retirado' : 'Marcar como Embalado (Aguardando Envio)';
-  }
-  if (currentStatus === 'aguardando_envio') return 'Marcar como Enviado';
-  if (currentStatus === 'enviado') return 'Marcar como Entregue';
-  return 'Finalizado';
-};
+// Diálogo de cancelamento com opção de estorno — para pedidos já pagos
+function CancelOrderWithRefundDialog({
+  order,
+  customerName,
+  gwLabel,
+  methodLabel,
+  onCancelWithRefund,
+  onCancelOnly,
+  isRefunding,
+}: {
+  order: any;
+  customerName: string;
+  gwLabel: string;
+  methodLabel: string;
+  onCancelWithRefund: (reason: string) => void;
+  onCancelOnly: (reason: string) => void;
+  isRefunding: boolean;
+}) {
+  const [reason, setReason] = useState('');
+  const [shouldRefund, setShouldRefund] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  const handleConfirm = () => {
+    if (!reason.trim()) return;
+    if (shouldRefund) {
+      onCancelWithRefund(reason.trim());
+    } else {
+      onCancelOnly(reason.trim());
+    }
+    setOpen(false);
+    setReason('');
+    setShouldRefund(true);
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 border border-destructive/30 rounded-md">
+          <X className="h-4 w-4" />
+          Cancelar Pedido
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div>
+              <p className="mb-3">Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.</p>
+              <div className="p-3 bg-muted rounded-md text-sm space-y-1 mb-3">
+                <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                <div><strong>Cliente:</strong> {customerName}</div>
+                <div><strong>Total:</strong> R$ {Number(order.total_amount).toFixed(2)}</div>
+                <div><strong>Pagamento:</strong> {methodLabel ? `${methodLabel}${gwLabel ? ` via ${gwLabel}` : ''}` : gwLabel || ''}{order.card_brand ? ` ${order.card_brand}` : ''}{order.card_last_digits ? ` final ${order.card_last_digits}` : ''}</div>
+              </div>
+
+              <label className="flex items-start gap-2.5 p-3 rounded-md border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20 cursor-pointer">
+                <Checkbox checked={shouldRefund} onCheckedChange={(v) => setShouldRefund(!!v)} className="mt-0.5" />
+                <div className="text-sm">
+                  <span className="font-semibold">Estornar pagamento automaticamente</span>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    Valor de <strong>R$ {Number(order.total_amount).toFixed(2)}</strong> será devolvido ao cliente via {gwLabel || 'gateway'}.
+                    {order.payment_method === 'credit_card' && ' Para cartão, aparece na próxima fatura (1–2 ciclos).'}
+                  </div>
+                </div>
+              </label>
+
+              <label className="mt-3 text-sm font-medium block">Motivo do cancelamento</label>
+              <textarea
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Descreva o motivo do cancelamento..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Voltar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirm}
+            disabled={!reason.trim() || isRefunding}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isRefunding ? 'Estornando...' : shouldRefund ? 'Cancelar e Estornar' : 'Confirmar Cancelamento'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 const OrdersTable = ({ 
   orders, 
@@ -209,7 +365,6 @@ const OrdersTable = ({
   expandedOrders, 
   toggleOrderExpansion,
   updateOrderStatus,
-  deleteOrder,
   verifyPayment,
   trackingCodes,
   setTrackingCodes,
@@ -225,7 +380,6 @@ const OrdersTable = ({
   expandedOrders: Set<string>;
   toggleOrderExpansion: (orderId: string) => void;
   updateOrderStatus: (orderId: string, newStatus: Order['status'], extra?: Record<string, any>) => void;
-  deleteOrder: (orderId: string) => void;
   verifyPayment: (orderId: string) => void;
   trackingCodes: Record<string, string>;
   setTrackingCodes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -379,9 +533,20 @@ const OrdersTable = ({
                       <Badge variant="outline" className={`${cfg.badgeClass} border text-[10px] font-semibold uppercase tracking-wide`}>
                         {getStatusLabel(order.status, order.delivery_type)}
                       </Badge>
-                      <Badge variant="outline" className="text-[10px] font-medium">
-                        {order.delivery_type === 'pickup' ? '🏪 Retirada' : '🚚 Entrega'}
-                      </Badge>
+                      {order.delivery_type === 'pickup' ? (
+                        <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                          <Store className="w-4 h-4" /> Retirada
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                          <Truck className="w-4 h-4" /> Entrega
+                        </Badge>
+                      )}
+                      {order.status === 'cancelado' && order.cancellation_reason && order.cancellation_reason !== 'prazo_expirado' && order.cancellation_reason !== 'cancelado_admin' && (
+                        <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-semibold px-2 py-0.5 max-w-[200px] truncate">
+                          {order.cancellation_reason}
+                        </Badge>
+                      )}
                     </div>
                     <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
                     <p className="text-xs text-muted-foreground">
@@ -409,7 +574,7 @@ const OrdersTable = ({
               </div>
 
               {/* Ações */}
-              <div className="px-4 pb-4 flex flex-wrap items-center gap-2">
+              <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap">
                 <CollapsibleTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1">
                     {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -464,7 +629,7 @@ const OrdersTable = ({
                   </Button>
                 )}
 
-                {(order.status === 'entregado' || order.status === 'retirado') && (
+                {order.status === 'entregado' && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -488,7 +653,7 @@ const OrdersTable = ({
                               <div><strong>CPF:</strong> {customerCpf}</div>
                               <div><strong>Total:</strong> R$ {order.total_amount.toFixed(2)}</div>
                               <div><strong>Itens:</strong> {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}</div>
-                              <div><strong>Tipo:</strong> {order.delivery_type === 'pickup' ? '🏪 Retirada' : '🚚 Entrega'}</div>
+                              <div><strong>Tipo:</strong> Entrega</div>
                             </div>
                           </div>
                         </AlertDialogDescription>
@@ -505,6 +670,41 @@ const OrdersTable = ({
                     </AlertDialogContent>
                   </AlertDialog>
                 )}
+
+                {order.status === 'retirado' && (() => {
+                  const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
+                  const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
+                  const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
+                  return (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                        >
+                          <Undo2 className="h-3.5 w-3.5" />
+                          Confirmar Devolução
+                        </Button>
+                      </AlertDialogTrigger>
+                      <ConfirmPickupReturnDialogContent
+                        order={order}
+                        customerName={customerName}
+                        customerCpf={customerCpf}
+                        onConfirm={(isDefect, shouldRefund) => {
+                          if (shouldRefund) {
+                            refundPayment(order.id);
+                          }
+                          updateOrderStatus(order.id, 'devolvido', { return_is_defect: isDefect });
+                        }}
+                        isRefunding={refundingOrders.has(order.id)}
+                        hasPayment={hasPayment}
+                        gwLabel={gwLabel}
+                        methodLabel={methodLabel}
+                      />
+                    </AlertDialog>
+                  );
+                })()}
 
                 {order.status === 'devolucao_solicitada' && (
                   <>
@@ -540,12 +740,14 @@ const OrdersTable = ({
                   </>
                 )}
 
-                {/* Botão Estornar — disponível em devolução solicitada/devolvida quando há payment_id online */}
-                {(order.status === 'devolucao_solicitada' || order.status === 'devolvido') && order.payment_id && (() => {
+                {/* Botão Estornar — disponível em devolvido + cancelado quando há pagamento online */}
+                {(order.status === 'devolvido' || order.status === 'cancelado') && (order.payment_id || order.payment_gateway) && (() => {
                   const refunded = order.refunded_amount ?? 0;
                   const remaining = Number(order.total_amount) - refunded;
                   const fullyRefunded = remaining <= 0.01;
                   const isLoading = refundingOrders.has(order.id);
+                  const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || 'gateway';
+                  const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || 'online';
                   return (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -563,10 +765,11 @@ const OrdersTable = ({
                           <AlertDialogTitle>Estornar pagamento ao cliente</AlertDialogTitle>
                           <AlertDialogDescription asChild>
                             <div>
-                              O valor será devolvido ao cliente diretamente pelo <strong>gateway de pagamento</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
+                              O valor será devolvido ao cliente diretamente pelo <strong>{gwLabel}</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
                               <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
                                 <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
                                 <div><strong>Cliente:</strong> {customerName}</div>
+                                <div><strong>Método:</strong> {methodLabel}{order.card_brand ? ` ${order.card_brand}` : ''}{order.card_last_digits ? ` final ${order.card_last_digits}` : ''}</div>
                                 <div><strong>Total do pedido:</strong> R$ {Number(order.total_amount).toFixed(2)}</div>
                                 {refunded > 0 && (
                                   <div><strong>Já estornado:</strong> R$ {refunded.toFixed(2)}</div>
@@ -595,38 +798,45 @@ const OrdersTable = ({
                   );
                 })()}
 
-                <div className="ml-auto">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive h-8 w-8">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                          <div>
-                            Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
-                            <div className="mt-2 p-2 bg-muted rounded-md text-sm">
-                              <strong>Pedido:</strong> {order.id.slice(0, 8)}...<br />
-                              <strong>Cliente:</strong> {customerName}<br />
-                              <strong>Total:</strong> R$ {order.total_amount.toFixed(2)}
-                            </div>
-                          </div>
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteOrder(order.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Tenho Certeza
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div>
+                  {(order.status === 'aguardando_pagamento' || order.status === 'em_preparo' || order.status === 'pronto_retirada') && (
+                    (() => {
+                      const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
+                      const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
+                      const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
+
+                      return hasPayment ? (
+                        // Cancelamento com opção de estorno integrado
+                        <CancelOrderWithRefundDialog
+                          order={order}
+                          customerName={customerName}
+                          gwLabel={gwLabel}
+                          methodLabel={methodLabel}
+                          onCancelWithRefund={(reason) => {
+                            // 1. Estornar via refund-payment
+                            refundPayment(order.id);
+                            // 2. Cancelar pedido
+                            updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason });
+                          }}
+                          onCancelOnly={(reason) => {
+                            updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason });
+                          }}
+                          isRefunding={refundingOrders.has(order.id)}
+                        />
+                      ) : (
+                        <CancelOrderDialog
+                          orderId={order.id}
+                          customerName={customerName}
+                          totalAmount={order.total_amount}
+                          paymentMethodLabel={methodLabel}
+                          gwLabel={gwLabel}
+                          cardBrand={order.card_brand}
+                          cardLastDigits={order.card_last_digits}
+                          onCancel={(reason) => updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason })}
+                        />
+                      );
+                    })()
+                  )}
                 </div>
               </div>
 
@@ -673,6 +883,59 @@ const OrdersTable = ({
                       </div>
                     </div>
                   </div>
+
+                  {/* Reembolso — exibido para pedidos cancelados com pagamento */}
+                  {order.status === 'cancelado' && (order.payment_gateway || order.payment_id) && (
+                    <div className="bg-background rounded-lg border p-3">
+                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
+                        💰 Reembolso
+                      </h4>
+                      {(() => {
+                        const gwName = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || 'Gateway';
+                        const methodName = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.payment_method || 'Online';
+                        const refunded = order.refunded_amount ?? 0;
+                        const total = Number(order.total_amount);
+                        const fullyRefunded = refunded >= total - 0.01;
+                        return (
+                          <div className="space-y-2 text-sm">
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase">Provedor</p>
+                                <p className="font-semibold">{gwName}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase">Método</p>
+                                <p className="font-semibold">
+                                  {methodName}
+                                  {order.card_brand ? ` ${order.card_brand}` : ''}
+                                  {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase">Status</p>
+                                <Badge
+                                  variant={fullyRefunded ? 'secondary' : 'outline'}
+                                  className={fullyRefunded ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'}
+                                >
+                                  {fullyRefunded ? '✅ Reembolsado' : '⏳ Pendente'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase">Valor total</p>
+                                <p className="font-semibold">R$ {total.toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] text-muted-foreground uppercase">Estornado</p>
+                                <p className="font-semibold text-emerald-600 dark:text-emerald-400">R$ {refunded.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* NF-e */}
                   {order.nfe_emissions && order.nfe_emissions.length > 0 && (
@@ -795,6 +1058,7 @@ export function OrdersManagement() {
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
+  const [prepFilter, setPrepFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -1104,42 +1368,6 @@ export function OrdersManagement() {
     }
   };
 
-  const deleteOrder = async (orderId: string) => {
-    // Primeiro deletar os itens do pedido
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .delete()
-      .eq('order_id', orderId);
-
-    if (itemsError) {
-      toast({
-        title: 'Erro ao deletar itens',
-        description: itemsError.message,
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    // Depois deletar o pedido
-    const { error: orderError } = await supabase
-      .from('orders')
-      .delete()
-      .eq('id', orderId);
-
-    if (orderError) {
-      toast({
-        title: 'Erro ao deletar pedido',
-        description: orderError.message,
-        variant: 'destructive'
-      });
-    } else {
-      toast({
-        title: 'Pedido deletado',
-        description: 'O pedido foi removido com sucesso.'
-      });
-      loadOrders();
-    }
-  };
 
   const refundPayment = async (orderId: string) => {
     setRefundingOrders(prev => new Set(prev).add(orderId));
@@ -1294,12 +1522,12 @@ export function OrdersManagement() {
 
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
-    paraEnviar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'delivery'),
-    prontoRetirar: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
-    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
+    emPreparacao: siteOrders.filter(o => o.status === 'em_preparo' || o.status === 'aguardando_envio'),
+    prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
     devolucoes: siteOrders.filter(o => o.status === 'devolvido' || o.status === 'devolucao_solicitada'),
+    cancelados: siteOrders.filter(o => o.status === 'cancelado'),
   };
 
   const tableProps = {
@@ -1307,7 +1535,6 @@ export function OrdersManagement() {
     expandedOrders,
     toggleOrderExpansion,
     updateOrderStatus,
-    deleteOrder,
     verifyPayment,
     trackingCodes,
     setTrackingCodes,
@@ -1319,7 +1546,14 @@ export function OrdersManagement() {
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
-  const renderSiteTabs = () => (
+  const renderSiteTabs = () => {
+    const prepFiltered = site.emPreparacao.filter(o => {
+      if (prepFilter === 'delivery') return o.delivery_type === 'delivery';
+      if (prepFilter === 'pickup') return o.delivery_type === 'pickup';
+      return true;
+    });
+
+    return (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
         <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-7 gap-1">
@@ -1330,30 +1564,23 @@ export function OrdersManagement() {
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="para-enviar" className="shrink-0">
+          <TabsTrigger value="em-preparacao" className="shrink-0">
             <Package className="w-4 h-4 mr-2" />
-            Para Enviar
-            {site.paraEnviar.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.paraEnviar.length}</Badge>
+            Em Preparação
+            {site.emPreparacao.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="pronto-retirar" className="shrink-0">
             <Store className="w-4 h-4 mr-2" />
-            Pronto p/ Retirar
+            Pronto para Retirada
             {site.prontoRetirar.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="aguardando-envio" className="shrink-0">
-            <PackageCheck className="w-4 h-4 mr-2" />
-            Aguardando Envio
-            {site.aguardandoEnvio.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="em-caminho" className="shrink-0">
             <Truck className="w-4 h-4 mr-2" />
-            Em Caminho
+            Em Transporte
             {site.emCaminho.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
             )}
@@ -1377,18 +1604,69 @@ export function OrdersManagement() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger
+            value="cancelados"
+            className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+          >
+            <XCircle className="w-4 h-4 mr-2" />
+            Cancelados
+            {site.cancelados.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+                {site.cancelados.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
       </div>
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
-      <TabsContent value="para-enviar"><OrdersTable orders={site.paraEnviar} {...tableProps} /></TabsContent>
+      <TabsContent value="em-preparacao">
+        {/* Filtro interno: Todos / Entrega / Retirada */}
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
+          <div className="flex gap-2">
+            {(['all', 'delivery', 'pickup'] as const).map((f) => {
+              const isActive = prepFilter === f;
+              // Estilo para botão ativo — reforça a cor do filtro em vez de usar laranja padrão
+              const activeClass =
+                f === 'all'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : f === 'delivery'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600';
+              // Estilo para botão inativo — outline com hover mais contrastado
+              const inactiveClass =
+                f === 'all'
+                  ? ''
+                  : f === 'delivery'
+                  ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:text-blue-800 dark:hover:text-blue-200'
+                  : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:text-emerald-800 dark:hover:text-emerald-200';
+              return (
+                <Button
+                  key={f}
+                  size="default"
+                  variant={isActive ? 'default' : 'outline'}
+                  onClick={() => setPrepFilter(f)}
+                  className={`gap-1.5 text-sm px-4 ${isActive ? activeClass : inactiveClass}`}
+                >
+                  {f === 'all' && null}
+                  {f === 'delivery' && <Truck className={`w-4 h-4 ${isActive ? '' : 'text-blue-600 dark:text-blue-400'}`} />}
+                  {f === 'pickup' && <Store className={`w-4 h-4 ${isActive ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />}
+                  {f === 'all' ? 'Todos' : f === 'delivery' ? 'Entrega' : 'Retirada'}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+        <OrdersTable orders={prepFiltered} {...tableProps} />
+      </TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
-      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
       <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
+      <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...tableProps} /></TabsContent>
     </Tabs>
-  );
+  );};
 
   const totalRevenue = orders
     .filter(o => o.status !== 'aguardando_pagamento')

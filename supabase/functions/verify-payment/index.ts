@@ -9,20 +9,8 @@ const corsHeaders = {
 
 const requestSchema = z.object({
   orderId: z.string().uuid('Invalid order ID format'),
-  gateway: z.enum(['mercadopago', 'abacatepay', 'asaas']).optional().default('mercadopago'),
+  gateway: z.enum(['mercadopago', 'asaas']).optional().default('mercadopago'),
 });
-
-// Mapeamento de status AbacatePay para o formato interno
-function mapAbacatePayStatus(status: string): string {
-  switch (status) {
-    case 'PAID': return 'approved';
-    case 'PENDING': return 'pending';
-    case 'EXPIRED': return 'expired';
-    case 'CANCELLED': return 'cancelled';
-    case 'REFUNDED': return 'refunded';
-    default: return status.toLowerCase();
-  }
-}
 
 // Mapeamento de status Asaas para o formato interno
 function mapAsaasStatus(status: string): string {
@@ -135,43 +123,6 @@ serve(async (req) => {
     let paymentData: Record<string, unknown>;
 
     switch (gateway) {
-      case 'abacatepay': {
-        // BUG-002: Suporte a polling AbacatePay via GET /v2/transparents/check
-        if (!order.payment_id) {
-          return new Response(
-            JSON.stringify({ error: 'Pedido sem ID de pagamento AbacatePay' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const abacatepayApiKey = Deno.env.get('ABACATEPAY_API_KEY');
-        if (!abacatepayApiKey) {
-          throw new Error('ABACATEPAY_API_KEY not configured');
-        }
-
-        const response = await fetch(
-          `https://api.abacatepay.com/v2/transparents/check?id=${order.payment_id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${abacatepayApiKey}`,
-            }
-          }
-        );
-
-        if (!response.ok) {
-          console.error('Erro ao buscar pagamento no AbacatePay:', response.status);
-          return new Response(
-            JSON.stringify({ error: 'Erro ao consultar AbacatePay' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const abacatepayData = await response.json();
-        paymentStatus = mapAbacatePayStatus(abacatepayData?.data?.status || '');
-        paymentData = abacatepayData?.data || {};
-        break;
-      }
-
       case 'asaas': {
         // Suporte a polling Asaas via GET /v3/payments/{id}
         const asaasPaymentId = order.asaas_payment_id || order.payment_id;

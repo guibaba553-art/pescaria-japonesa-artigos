@@ -15,7 +15,7 @@ interface PixPaymentDialogProps {
   ticketUrl?: string;
   expiresAt?: string;
   orderId: string;
-  gateway?: 'abacatepay' | 'asaas';
+  gateway?: 'mercadopago' | 'asaas';
   onRefreshPix?: () => void;
   onPaymentConfirmed?: () => void;
 }
@@ -28,7 +28,7 @@ export function PixPaymentDialog({
   ticketUrl,
   expiresAt,
   orderId,
-  gateway = 'abacatepay',
+  gateway = 'mercadopago',
   onRefreshPix,
   onPaymentConfirmed,
 }: PixPaymentDialogProps) {
@@ -244,7 +244,7 @@ export function PixPaymentDialog({
               onClick={() => window.open(ticketUrl, '_blank')}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              Abrir no {gateway === 'asaas' ? 'Asaas' : 'Mercado Pago'}
+              Abrir link do pagamento
             </Button>
           )}
 

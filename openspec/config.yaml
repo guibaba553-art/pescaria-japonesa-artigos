@@ -1,0 +1,50 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+context: |
+  Tech stack: React 18 + TypeScript 5 + Vite (SWC) + shadcn/ui + Tailwind CSS 3
+  Backend: Supabase (Postgres + Auth + Edge Functions em Deno)
+  State: TanStack React Query 5. Routes: React Router v6 (BrowserRouter, lazy loading).
+  Validation: Zod 4. Forms: React Hook Form + @hookform/resolvers.
+  Tests: Vitest + Testing Library (frontend), Deno test (Edge Functions).
+  TDD is mandatory — every implementation/correction starts with a test.
+  Payment gateway: Asaas (card 13-16 digits) + Mercado Pago (PIX), routed by value in src/lib/pixGatewayRouter.ts.
+  Dev server: npm run dev (port 8080).
+  Generated files that should NOT be edited manually: src/integrations/supabase/types.ts, supabase/migrations/*.sql.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+rules:
+  proposal:
+    - 'Structure: "## Why" (business justification) → "## What Changes" (bullet list) → "## Capabilities" (New/Modified) → "## Impact" (per-layer)'
+    - 'Write "Why" in Portuguese (project language), explaining the problem and why the current behavior is insufficient'
+    - '"What Changes" must be concrete bullet points, not prose'
+    - '"Capabilities" is a list of spec names this proposal introduces or modifies (maps to specs/<name>/spec.md)'
+    - '"Impact" must enumerate: Database, Components, Types, Tests, Dependencies per layer'
+  design:
+    - 'Structure: "## Context" → "## Goals / Non-Goals" → "## Decisions" → "## Data Model Changes" (if any) → "## Risks / Trade-offs" → "## Open Questions"'
+    - '"Context" describes current state and development approach (TDD mandatory)'
+    - '"Goals/Non-Goals" uses a bullet list, NOT a table'
+    - '"Decisions" uses "### Decision N: Title" format with Chosen + Alternatives table (| Alternative | Reason rejected |) + Rationale paragraphs'
+    - '"Risks/Trade-offs" uses a | Risk | Mitigation | table'
+    - Include ER diagrams or trigger flow diagrams in ASCII when relevant
+    - All decisions must include the alternatives considered and why they were rejected
+    - Must include a "Rollback" SQL script if database changes are involved
+  tasks:
+    - 'Structure: "## N. Area Title" with numbered "- [ ]" items grouped by area'
+    - Each group starts with a "##" heading describing the work area
+    - 'Items use "- [ ]" for pending, "- [x]" for completed'
+    - Tasks MUST be written in implementation order respecting dependencies
+    - For database work: items map 1:1 to SQL statements
+    - 'For testable work: prefix with "**Test:**" or "**Implement:**" explicitly'
+    - TDD is mandatory — every implementation task must have a preceding test task
+    - Items must be concrete enough that any developer can execute without asking for clarification
+  spec:
+    - 'Structure: "# <name> Specification" → "## ADDED Requirements" or "## MODIFIED Requirements" → "### Requirement: Title" → Scenario blocks'
+    - 'Each requirement starts with "The system SHALL" describing the behavior'
+    - 'Scenarios follow format: "#### Scenario: Title" → "- **WHEN** ..." → "- **THEN** ..."'
+    - Use SHALL for requirements (normative), not should/will/must
+    - Specs are immutable once a change is completed — new changes create new spec versions under changes/<name>/
+    - A spec file lives at specs/<capability-name>/spec.md and is the source of truth for that capability

@@ -53,6 +53,7 @@ interface Product {
   height_cm?: number | null;
   pdv_only?: boolean;
   supplier_id?: string | null;
+  brand_id?: string | null;
 }
 
 interface SupplierOpt { id: string; name: string; }
@@ -97,9 +98,6 @@ export function ProductsManagement() {
   const [soldByWeight, setSoldByWeight] = useState(false);
   const [pdvOnly, setPdvOnly] = useState(false);
   const [pdvNoMarkup, setPdvNoMarkup] = useState(false);
-  const [brand, setBrand] = useState('');
-  const [poundTest, setPoundTest] = useState('');
-  const [size, setSize] = useState('');
   const [images, setImages] = useState<File[]>([]);
   const [upscaleImages, setUpscaleImages] = useState(false);
   const [uploading, setUploading] = useState(false);

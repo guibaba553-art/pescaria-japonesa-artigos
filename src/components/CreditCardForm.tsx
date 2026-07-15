@@ -47,7 +47,7 @@ export interface CreditCardFormData {
     expiryYear: string;
     ccv: string;
   };
-  creditCardHolderInfo: {
+  creditCardHolderInfo?: {
     name: string;
     email: string;
     cpfCnpj: string;
@@ -567,9 +567,11 @@ export const CreditCardForm = forwardRef<CreditCardFormHandle, CreditCardFormPro
         return null;
       }
       setErrors([]);
-      return buildFormData();
+      const data = buildFormData();
+      onCardData?.(data);
+      return data;
     },
-  }), [validate, buildFormData]);
+  }), [validate, buildFormData, onCardData]);
 
   /* -------- Field change handlers -------- */
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {

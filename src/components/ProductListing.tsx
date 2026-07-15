@@ -91,7 +91,7 @@ export function ProductListing({
         .from('products')
         .select(`
           id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
-          category, subcategory, brand, pound_test, size,
+          category, subcategory, brand_id, brands(name), pound_test, size,
           image_url, stock, rating, featured, minimum_quantity,
           sold_by_weight, created_at,
           variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
@@ -121,7 +121,11 @@ export function ProductListing({
           toast({ title: 'Erro ao carregar produtos', description: error.message, variant: 'destructive' });
         }
       } else {
-        setProducts((data || []) as unknown as Product[]);
+        const mapped = (data || []).map((row: any) => ({
+          ...row,
+          brand: row.brands?.name ?? null,
+        }));
+        setProducts(mapped as unknown as Product[]);
       }
     } catch (err) {
       // Garante que loading=false mesmo se a promise rejeitar

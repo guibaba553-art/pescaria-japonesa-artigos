@@ -71,10 +71,10 @@ export async function handleRequest(req: Request): Promise<Response> {
     for (const order of orders) {
       const orderId = order.id as string;
       try {
-        // 1) Update status to cancelled
+        // 1) Update status to cancelled with reason
         const { error: updateErr } = await supabase
           .from("orders")
-          .update({ status: "cancelado" })
+          .update({ status: "cancelado", cancellation_reason: "prazo_expirado" })
           .eq("id", orderId)
           .eq("status", "aguardando_pagamento"); // re-check to avoid race
 

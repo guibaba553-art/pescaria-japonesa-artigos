@@ -8,11 +8,14 @@ type OrderStatus =
   | 'entregue'
   | 'entregado'
   | 'retirado'
+  | 'pronto_retirada'
   | 'cancelado';
 
 interface OrderTrackingTimelineProps {
   status: OrderStatus;
   deliveryType?: 'delivery' | 'pickup';
+  cancellationReason?: string;
+  isExpired?: boolean;
 }
 
 interface Step {
@@ -31,34 +34,59 @@ const deliverySteps: Step[] = [
 const pickupSteps: Step[] = [
   { key: 'pago', label: 'Pagamento', icon: CreditCard },
   { key: 'preparo', label: 'Em preparo', icon: Package },
-  { key: 'pronto', label: 'Pronto', icon: Store },
+  { key: 'pronto', label: 'Pronto para retirada', icon: Store },
   { key: 'retirado', label: 'Retirado', icon: CheckCircle2 },
 ];
 
 function getCurrentIndex(status: OrderStatus, isPickup: boolean): number {
   if (status === 'aguardando_pagamento') return 0;
-  if (status === 'em_preparo') return isPickup ? 2 : 1;
+  if (status === 'em_preparo') return isPickup ? 1 : 1;
+  if (status === 'pronto_retirada') return 2;
   if (status === 'enviado') return 2;
   if (status === 'entregue' || status === 'entregado') return 3;
   if (status === 'retirado') return 3;
   return -1;
 }
 
-export function OrderTrackingTimeline({ status, deliveryType }: OrderTrackingTimelineProps) {
+export function OrderTrackingTimeline({ status, deliveryType, cancellationReason, isExpired }: OrderTrackingTimelineProps) {
   const isPickup = deliveryType === 'pickup';
   const steps = isPickup ? pickupSteps : deliverySteps;
   const currentIdx = getCurrentIndex(status, isPickup);
-  const isCancelled = status === 'cancelado';
+  const isCancelled = status === 'cancelado' || isExpired;
 
   if (isCancelled) {
+    let title: string;
+    let description: string;
+    const isExpiredCase = isExpired || cancellationReason === 'prazo_expirado';
+
+    if (isExpiredCase) {
+      title = 'Prazo de pagamento expirado';
+      description = 'O prazo para pagamento deste pedido expirou.';
+    } else if (cancellationReason && cancellationReason !== 'cancelado_admin') {
+      title = 'Pedido cancelado';
+      description = cancellationReason;
+    } else {
+      title = 'Pedido cancelado';
+      description = 'Este pedido foi cancelado.';
+    }
+
     return (
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-destructive/5 border border-destructive/20">
+      <div
+        className={cn(
+          'flex items-center gap-3 p-4 rounded-xl border',
+          isExpiredCase
+            ? 'bg-muted border-muted-foreground/20'
+            : 'bg-destructive/5 border-destructive/20'
+        )}
+      >
         <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
           <XCircle className="w-5 h-5 text-destructive" />
         </div>
         <div>
-          <p className="font-semibold text-destructive">Pedido cancelado</p>
-          <p className="text-xs text-muted-foreground">Este pedido foi cancelado.</p>
+          <p className="font-semibold text-destructive">
+            {title}
+          </p>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
     );
@@ -86,6 +114,10 @@ export function OrderTrackingTimeline({ status, deliveryType }: OrderTrackingTim
           const isDone = idx < currentIdx;
           const isActive = idx === currentIdx;
           const Icon = step.icon;
+          const label =
+            idx === 0 && status === 'aguardando_pagamento'
+              ? 'Aguardando Pagamento'
+              : step.label;
           return (
             <div
               key={step.key}
@@ -105,10 +137,12 @@ export function OrderTrackingTimeline({ status, deliveryType }: OrderTrackingTim
               <span
                 className={cn(
                   'text-[10px] sm:text-xs font-medium text-center leading-tight',
-                  (isDone || isActive) ? 'text-foreground' : 'text-muted-foreground'
+                  isActive && 'text-primary font-semibold',
+                  isDone && !isActive && 'text-foreground',
+                  !isDone && !isActive && 'text-muted-foreground'
                 )}
               >
-                {step.label}
+                {label}
               </span>
             </div>
           );

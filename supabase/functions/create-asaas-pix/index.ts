@@ -218,6 +218,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       .update({
         asaas_payment_id: asaasPaymentId,
         payment_gateway: 'asaas',
+        payment_method: 'pix',
         qr_code: brCode,
         qr_code_base64: brCodeBase64,
         pix_expiration: pixExpiration,

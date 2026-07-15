@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -141,6 +142,12 @@ export default function AdminSalesAnalysis() {
   const [fetching, setFetching] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<UnifiedRow | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+
+  // Reseta o motivo ao abrir/fechar o diálogo de cancelamento
+  useEffect(() => {
+    if (cancelTarget) setCancelReason('');
+  }, [cancelTarget]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [itemsByOrder, setItemsByOrder] = useState<Record<string, OrderItem[]>>({});
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
@@ -626,9 +633,10 @@ export default function AdminSalesAnalysis() {
     setCancelling(true);
     try {
       if (cancelTarget.kind === 'order') {
+        const reason = cancelReason.trim() || 'cancelado_admin';
         const { error } = await supabase
           .from('orders')
-          .update({ status: 'cancelado' as any })
+          .update({ status: 'cancelado' as any, cancellation_reason: reason })
           .eq('id', cancelTarget.id);
         if (error) throw error;
 
@@ -1391,10 +1399,26 @@ export default function AdminSalesAnalysis() {
                 ? 'Esta venda salva (orçamento) será removida permanentemente.'
                 : 'O pedido será marcado como cancelado e deixará de contar nas somatórias de vendas confirmadas.'}
               {cancelTarget && (
-                <div className="mt-3 p-3 bg-muted rounded-lg text-sm">
-                  <div><strong>ID:</strong> #{cancelTarget.id.slice(0, 8)}</div>
-                  <div><strong>Total:</strong> {formatCurrency(cancelTarget.total_amount)}</div>
-                  <div><strong>Data:</strong> {format(new Date(cancelTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                <div className="mt-3 space-y-3">
+                  <div className="p-3 bg-muted rounded-lg text-sm">
+                    <div><strong>ID:</strong> #{cancelTarget.id.slice(0, 8)}</div>
+                    <div><strong>Total:</strong> {formatCurrency(cancelTarget.total_amount)}</div>
+                    <div><strong>Data:</strong> {format(new Date(cancelTarget.created_at), 'dd/MM/yyyy HH:mm')}</div>
+                  </div>
+                  {cancelTarget.kind === 'order' && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">
+                        Motivo do cancelamento (opcional)
+                      </label>
+                      <Textarea
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        placeholder="Ex: Cliente desistiu, problema com pagamento..."
+                        className="text-sm resize-none"
+                        rows={2}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </AlertDialogDescription>

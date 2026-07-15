@@ -13,7 +13,7 @@ export const PUBLIC_PRODUCT_COLUMNS = [
   'price',
   'category',
   'subcategory',
-  'brand',
+  'brand_id',
   'size',
   'pound_test',
   'image_url',

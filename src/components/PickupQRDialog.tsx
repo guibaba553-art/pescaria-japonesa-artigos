@@ -1,5 +1,5 @@
 import { QRCodeSVG } from "qrcode.react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Download, Printer, Store } from "lucide-react";
 
@@ -56,12 +56,9 @@ export function PickupQRDialog({ open, onOpenChange, orderId, shortId }: PickupQ
             <Store className="w-5 h-5 text-primary" />
             QR Code de Retirada
           </DialogTitle>
-          <DialogDescription>
-            Apresente este código ao funcionário no momento da retirada
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-4 py-4">
+        <div className="flex flex-col items-center gap-4 py-2">
           <div className="bg-white p-4 rounded-lg border-2 border-primary/20">
             <QRCodeSVG
               id="pickup-qr-svg"
@@ -73,6 +70,9 @@ export function PickupQRDialog({ open, onOpenChange, orderId, shortId }: PickupQ
           </div>
           <p className="text-xs font-mono text-muted-foreground">
             Pedido #{shortId || orderId.slice(0, 8)}
+          </p>
+          <p className="text-sm text-muted-foreground text-center max-w-[240px]">
+            Mostre este código ao funcionário na retirada
           </p>
         </div>
 

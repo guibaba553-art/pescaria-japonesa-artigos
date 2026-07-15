@@ -73,14 +73,11 @@ verify_jwt = false
 [functions.auth-email-hook]
 verify_jwt = false
 
-[functions.abacatepay-webhook]
-verify_jwt = false
-
 [functions.asaas-webhook]
 verify_jwt = false
 
-[functions.create-abacatepay-pix]
+[functions.create-asaas-pix]
 verify_jwt = true
 
-[functions.create-asaas-pix]
+[functions.create-mercadopago-pix]
 verify_jwt = true

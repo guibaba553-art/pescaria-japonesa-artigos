@@ -184,7 +184,7 @@ serve(async (req) => {
       }
 
       const brCode: string = qrCodeResult.payload || qrCodeResult.brCode || '';
-      const brCodeBase64: string = qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
+      const brCodeBase64: string = qrCodeResult.encodedImage || qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
       // Override Asaas expiration with our own 30 min window
       const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
@@ -204,22 +204,22 @@ serve(async (req) => {
       return { id: asaasPaymentId, brCode, brCodeBase64, expiresAt: pixExpiration };
     }
 
-    // ── Helper: create new AbacatePay PIX payment ───────────────────────────
-    async function createAbacatepayPix(): Promise<{
+    // ── Helper: create new Mercado Pago PIX payment ─────────────────────────
+    async function createMercadopagoPix(): Promise<{
       id: string;
       brCode: string;
       brCodeBase64: string;
       expiresAt: string;
     }> {
-      const abacatepayApiKey = Deno.env.get('ABACATEPAY_API_KEY');
-      if (!abacatepayApiKey) {
-        throw new Error('ABACATEPAY_API_KEY não configurada');
+      const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+      if (!accessToken) {
+        throw new Error('MERCADO_PAGO_ACCESS_TOKEN não configurada');
       }
 
       // Fetch user profile for customer info
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, cpf, phone')
+        .select('full_name, cpf')
         .eq('id', currentUser.id)
         .single();
 
@@ -227,65 +227,62 @@ serve(async (req) => {
         throw new Error('Perfil do usuário não encontrado');
       }
 
-      const customerPayload = {
-        name: profile.full_name || currentUser.email || 'Cliente',
-        taxId: profile.cpf || '',
-        ...(currentUser.email && { email: currentUser.email }),
-        ...(profile.phone && { cellphone: profile.phone }),
-      };
+      const idempotencyKey = crypto.randomUUID();
 
-      const amountInCents = Math.round(Number(currentOrder.total_amount) * 100);
-
-      const body = {
-        method: 'PIX',
-        data: {
-          amount: amountInCents,
-          expiresIn: 1800, // 30 minutes
-          externalId: orderId,
-          customer: customerPayload,
-          metadata: {
-            orderId,
-            userId: currentUser.id,
+      const paymentPayload = {
+        transaction_amount: Number(currentOrder.total_amount),
+        description: `Pedido ${orderId}`,
+        payment_method_id: 'pix',
+        payer: {
+          email: currentUser.email || '',
+          first_name: (profile.full_name || 'Cliente').split(' ')[0],
+          last_name: (profile.full_name || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
+          identification: {
+            type: 'CPF',
+            number: profile.cpf || '',
           },
         },
       };
 
-      const resp = await fetch('https://api.abacatepay.com/v2/transparents/create', {
+      const response = await fetch('https://api.mercadopago.com/v1/payments', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${abacatepayApiKey}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'X-Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(paymentPayload),
       });
 
-      const respData = await resp.json();
+      const paymentResult = await response.json();
 
-      if (!resp.ok || !respData.success) {
-        console.error('AbacatePay error', resp.status, respData);
-        throw new Error(respData.error || 'Erro ao gerar PIX no AbacatePay');
+      if (!response.ok) {
+        console.error('Mercado Pago error', response.status, paymentResult);
+        throw new Error(paymentResult?.message || 'Erro ao gerar PIX no Mercado Pago');
       }
 
-      const charge = respData.data;
+      const mpPaymentId: string = paymentResult.id;
+      const brCode: string = paymentResult.point_of_interaction?.transaction_data?.qr_code || '';
+      const brCodeBase64: string = paymentResult.point_of_interaction?.transaction_data?.qr_code_base64 || '';
+      const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
       // Update order with new payment data
-      const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
       await supabase
         .from('orders')
         .update({
-          payment_id: charge.id,
-          payment_gateway: 'abacatepay',
-          qr_code: charge.brCode || null,
-          qr_code_base64: charge.brCodeBase64 || null,
+          payment_id: String(mpPaymentId),
+          payment_gateway: 'mercadopago',
+          qr_code: brCode,
+          qr_code_base64: brCodeBase64,
           pix_expiration: pixExpiration,
           pix_attempts: (currentOrder.pix_attempts || 0) + 1,
         })
         .eq('id', orderId);
 
       return {
-        id: charge.id,
-        brCode: charge.brCode,
-        brCodeBase64: charge.brCodeBase64,
+        id: String(mpPaymentId),
+        brCode,
+        brCodeBase64,
         expiresAt: pixExpiration,
       };
     }
@@ -347,7 +344,7 @@ serve(async (req) => {
         const qrCodeResult = await qrCodeResponse.json();
 
         const brCode: string = qrCodeResult.payload || qrCodeResult.brCode || '';
-        const brCodeBase64: string = qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
+        const brCodeBase64: string = qrCodeResult.encodedImage || qrCodeResult.base64 || qrCodeResult.brCodeBase64 || '';
         // Override Asaas expiration with our own 30 min window
         const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
@@ -397,9 +394,9 @@ serve(async (req) => {
       );
     }
 
-    if (gateway === 'abacatepay' && order.payment_id) {
-      // Path 3: Existing AbacatePay payment — create new PIX (AbacatePay does not support re-querying same QR)
-      const newPayment = await createAbacatepayPix();
+    if (gateway === 'mercadopago' && order.payment_id) {
+      // Path 3: Existing Mercado Pago payment — create new PIX
+      const newPayment = await createMercadopagoPix();
 
       return new Response(
         JSON.stringify({

@@ -36,6 +36,7 @@ import { SavedMethod, PaymentOrder } from '@/types/payment';
 import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG } from '@/config/constants';
+import { selectPixGateway } from '@/lib/pixGatewayRouter';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
 
@@ -126,7 +127,7 @@ export default function CheckoutEntrega() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [processingStep, setProcessingStep] = useState('');
   const [pixCloseConfirmOpen, setPixCloseConfirmOpen] = useState(false);
-  const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string; gateway?: 'abacatepay' | 'asaas' }>({
+  const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string; gateway?: 'mercadopago' | 'asaas' }>({
     open: false,
     qrCode: '',
     qrCodeBase64: '',
@@ -455,7 +456,13 @@ export default function CheckoutEntrega() {
     setFinalizing(true);
     setProcessingStep('Validando dados...');
 
+    let createdOrderId: string | null = null;
+
     try {
+      if (items.length === 0) {
+        throw new Error('Carrinho vazio. Adicione produtos antes de finalizar o pedido.');
+      }
+
       // 1. Validar carrinho
       const { validateSiteCart } = await import('@/utils/siteCartValidation');
       const validation = await validateSiteCart(items);
@@ -494,13 +501,13 @@ export default function CheckoutEntrega() {
         .lt('created_at', fiveMinutesAgo);
       for (const ab of abandonedIds || []) {
         try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
-        try { await supabase.from('order_items').delete().eq('order_id', ab.id); } catch {}
+        try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', ab.id); } catch {}
       }
 
-      // DELETE único com WHERE — atômico, elimina race condition
+      // Cancelamento único com WHERE — atômico, elimina race condition
       await supabase
         .from('orders')
-        .delete()
+        .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
         .eq('user_id', user!.id)
         .eq('status', 'aguardando_pagamento')
         .is('payment_id', null)
@@ -543,6 +550,8 @@ export default function CheckoutEntrega() {
         throw new Error(orderError?.message || 'Erro ao criar pedido');
       }
 
+      createdOrderId = orderData.id;
+
       // 4. Criar itens do pedido
       const orderItems = items.map(item => ({
         order_id: orderData.id,
@@ -551,7 +560,10 @@ export default function CheckoutEntrega() {
         quantity: item.quantity,
         price_at_purchase: item.price,
       }));
-      await supabase.from('order_items').insert(orderItems);
+      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+      if (itemsErr) {
+        throw new Error('Erro ao criar itens do pedido: ' + itemsErr.message);
+      }
 
       // 5. Verificar disponibilidade de estoque (usa get_available_stock que considera reservas ativas)
       setProcessingStep('Verificando estoque...');
@@ -574,8 +586,7 @@ export default function CheckoutEntrega() {
         })),
       });
       if (promoError) {
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
         throw new Error(promoError.message || 'Limite de promoção atingido.');
       }
 
@@ -585,64 +596,57 @@ export default function CheckoutEntrega() {
       // 8. Processar pagamento conforme método selecionado
       if (selectedPayment === 'pix') {
         setProcessingStep('Gerando QR Code PIX...');
-        // PIX via AbacatePay Transparente com fallback Asaas
-        const amountInCents = Math.round((total + displayFreteValor) * 100);
 
-        // Busca dados completos do usuário para o customer
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, cpf, phone')
-          .eq('id', user!.id)
-          .single();
+        // Roteamento por valor: escolhe o gateway mais barato
+        const orderTotal = total + displayFreteValor;
+        const primaryGateway = selectPixGateway(orderTotal);
+        const fnName = primaryGateway === 'asaas'
+          ? 'create-asaas-pix'
+          : 'create-mercadopago-pix';
 
-        // Tenta AbacatePay primeiro
         let pixSuccess = false;
         let pixResult: any = null;
-        let usedGateway: 'abacatepay' | 'asaas' = 'abacatepay';
+        let usedGateway: 'mercadopago' | 'asaas' = primaryGateway;
 
+        // Tenta o gateway primário (escolhido por valor)
         try {
           const { data: pixData, error: pixError } = await supabase.functions.invoke(
-            'create-abacatepay-pix',
-            {
-              body: {
-                orderId: orderData.id,
-                amount: amountInCents,
-                description: `Pedido ${orderData.id.substring(0, 8)}`,
-                customerName: profile?.full_name || selectedAddress?.recipient_name || user?.user_metadata?.name,
-                customerTaxId: profile?.cpf || undefined,
-                customerEmail: user?.email,
-                customerCellphone: profile?.phone || undefined,
-              },
-            }
+            fnName,
+            { body: { orderId: orderData.id } },
           );
 
           if (!pixError && pixData?.success && pixData?.data) {
             pixSuccess = true;
             pixResult = pixData.data;
+          } else {
+            console.error(`[PIX] ${primaryGateway} falhou:`, pixError || pixData?.error);
           }
-        } catch (abacatepayErr) {
-          console.error('AbacatePay PIX error, trying fallback');
+        } catch (primaryErr) {
+          console.error(`[PIX] ${primaryGateway} exception:`, primaryErr);
         }
 
-        // Fallback: se AbacatePay falhou, tenta Asaas
+        // Fallback resiliente: se gateway primário falhou, tenta o alternativo
         if (!pixSuccess) {
+          const fallbackGateway: 'mercadopago' | 'asaas' = primaryGateway === 'asaas' ? 'mercadopago' : 'asaas';
+          const fallbackFn = fallbackGateway === 'asaas'
+            ? 'create-asaas-pix'
+            : 'create-mercadopago-pix';
+
           try {
-            const { data: asaasData, error: asaasError } = await supabase.functions.invoke(
-              'create-asaas-pix',
-              {
-                body: { orderId: orderData.id },
-              }
+            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke(
+              fallbackFn,
+              { body: { orderId: orderData.id } },
             );
 
-            if (asaasError || !asaasData?.success) {
-              throw new Error(asaasData?.error || asaasError?.message || 'PIX temporariamente indisponível');
+            if (fallbackError || !fallbackData?.success) {
+              throw new Error(fallbackData?.error || fallbackError?.message || 'PIX temporariamente indisponível');
             }
 
             pixSuccess = true;
-            pixResult = asaasData.data;
-            usedGateway = 'asaas';
-          } catch (asaasErr) {
-            // Ambos falharam — fazer rollback (sem reserva para liberar)
+            pixResult = fallbackData.data;
+            usedGateway = fallbackGateway;
+          } catch (fallbackErr: any) {
+            // Ambos falharam — rollback
             await supabase.rpc('release_promo_limits', {
               p_items: items.map(item => ({
                 product_id: item.id,
@@ -650,9 +654,10 @@ export default function CheckoutEntrega() {
                 quantity: item.quantity,
               })),
             }).catch(() => {});
-            await supabase.from('order_items').delete().eq('order_id', orderData.id);
-            await supabase.from('orders').delete().eq('id', orderData.id);
-            throw new Error('PIX temporariamente indisponível. Tente novamente mais tarde.');
+            await supabase.from('orders')
+              .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
+              .eq('id', orderData.id);
+            throw new Error(fallbackErr?.message || 'PIX temporariamente indisponível. Tente novamente mais tarde.');
           }
         }
 
@@ -668,7 +673,6 @@ export default function CheckoutEntrega() {
           p_ttl_minutes: 30,
         });
         if (resvError) {
-          // Race condition rara: estoque esgotou entre a verificação e a geração do QR
           await supabase.rpc('release_promo_limits', {
             p_items: items.map(item => ({
               product_id: item.id,
@@ -676,8 +680,9 @@ export default function CheckoutEntrega() {
               quantity: item.quantity,
             })),
           }).catch(() => {});
-          await supabase.from('order_items').delete().eq('order_id', orderData.id);
-          await supabase.from('orders').delete().eq('id', orderData.id);
+          await supabase.from('orders')
+            .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
+            .eq('id', orderData.id);
           throw new Error('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
         }
 
@@ -691,10 +696,6 @@ export default function CheckoutEntrega() {
           gateway: usedGateway,
         });
 
-        // Carrinho NÃO é limpo aqui — mantém visível no background
-        // para o usuário ver o valor correto enquanto paga via PIX.
-        // Só será limpo quando o pagamento for confirmado (via onPaymentConfirmed)
-        // ou quando o usuário navegar para /conta.
         return;
       }
 
@@ -764,7 +765,7 @@ export default function CheckoutEntrega() {
           clearCart();
 
           setProcessingStep('Redirecionando...');
-          navigate('/conta');
+          window.location.href = '/conta';
           return;
         } catch (cardErr: any) {
           setCardError(cardErr?.message || 'Erro ao processar pagamento');
@@ -776,6 +777,10 @@ export default function CheckoutEntrega() {
       }
 
     } catch (err: any) {
+      if (createdOrderId) {
+        // Limpar pedido órfão (criado mas sem pagamento ou com falha nos itens)
+        try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', createdOrderId); } catch {}
+      }
       toast.error(err?.message || 'Erro ao finalizar pedido');
     } finally {
       setFinalizing(false);
@@ -1279,13 +1284,11 @@ export default function CheckoutEntrega() {
         onRefreshPix={async () => {
           setProcessingStep('Gerando novo PIX...');
           try {
-            const gateway = pixDialog.gateway || 'abacatepay';
-            const fnName = gateway === 'asaas' ? 'create-asaas-pix' : 'create-abacatepay-pix';
-            const { data: newPix, error: pixError } = await supabase.functions.invoke(fnName, {
+            const { data: newPix, error: pixError } = await supabase.functions.invoke('refresh-pix', {
               body: { orderId: pixDialog.orderId },
             });
             if (pixError || !newPix?.success) {
-              toast.error('Erro ao gerar novo PIX. Tente novamente.');
+              toast.error(newPix?.error || 'Erro ao gerar novo PIX. Tente novamente.');
               return;
             }
             setPixDialog({
@@ -1294,7 +1297,8 @@ export default function CheckoutEntrega() {
               qrCodeBase64: newPix.data.brCodeBase64 || '',
               orderId: pixDialog.orderId,
               expiresAt: newPix.data.expiresAt,
-              gateway,
+              // Gateway não muda no refresh — refresh-pix lê do pedido
+              gateway: pixDialog.gateway || 'mercadopago',
             });
           } catch {
             toast.error('Erro ao gerar novo PIX.');
@@ -1320,7 +1324,7 @@ export default function CheckoutEntrega() {
                 clearCart();
                 setPixCloseConfirmOpen(false);
                 setPixDialog((prev) => ({ ...prev, open: false }));
-                navigate('/conta');
+                window.location.href = '/conta';
               }}
             >
               Ir para Minha Conta
