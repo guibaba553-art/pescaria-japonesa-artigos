@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Loader2, Trash2, Copy, ShoppingBasket, ChevronDown, ChevronRight, Plus, Package2,
@@ -15,6 +16,8 @@ interface ListRow {
   name: string;
   notes: string | null;
   created_at: string;
+  supplier_id: string | null;
+  is_auto: boolean;
 }
 
 interface ItemRow {
@@ -41,10 +44,10 @@ export function PurchaseLists() {
     setLoading(true);
     const { data: ls } = await supabase
       .from('purchase_lists')
-      .select('id, name, notes, created_at')
+      .select('id, name, notes, created_at, supplier_id, is_auto')
       .order('created_at', { ascending: false });
 
-    const lsRows = (ls ?? []) as ListRow[];
+    const lsRows = (ls ?? []) as unknown as ListRow[];
     setLists(lsRows);
 
     if (lsRows.length === 0) {
@@ -145,7 +148,12 @@ export function PurchaseLists() {
   };
 
   const handleDeleteList = async (id: string) => {
-    if (!confirm('Excluir esta lista e todos os seus itens?')) return;
+    const list = lists.find((l) => l.id === id);
+    const isAuto = list?.is_auto === true;
+    const message = isAuto
+      ? 'Esta é uma lista automática. Os itens poderão ser recriados na próxima verificação de estoque. Excluir mesmo assim?'
+      : 'Excluir esta lista e todos os seus itens?';
+    if (!confirm(message)) return;
     const { error } = await supabase.from('purchase_lists').delete().eq('id', id);
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
@@ -196,93 +204,123 @@ export function PurchaseLists() {
     );
   }
 
-  return (
-    <div className="space-y-3">
-      {lists.map((list) => {
-        const items = itemsByList[list.id] ?? [];
-        const isOpen = expanded[list.id];
-        return (
-          <Card key={list.id}>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  className="flex items-center gap-2 text-left flex-1 min-w-0"
-                  onClick={() => setExpanded((p) => ({ ...p, [list.id]: !p[list.id] }))}
-                >
-                  {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{list.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {items.length} {items.length === 1 ? 'item' : 'itens'}
+  const autoLists = lists.filter((l) => l.is_auto);
+  const manualLists = lists.filter((l) => !l.is_auto);
+
+  const renderListCard = (list: ListRow) => {
+    const items = itemsByList[list.id] ?? [];
+    const isOpen = expanded[list.id];
+    return (
+      <Card key={list.id}>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              className="flex items-center gap-2 text-left flex-1 min-w-0"
+              onClick={() => setExpanded((p) => ({ ...p, [list.id]: !p[list.id] }))}
+            >
+              {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+              <div className="min-w-0">
+                <div className="font-medium truncate flex items-center gap-2">
+                  {list.name}
+                  {list.is_auto && <Badge variant="secondary" className="text-[10px] shrink-0">Automática</Badge>}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {items.length} {items.length === 1 ? 'item' : 'itens'}
+                </div>
+              </div>
+            </button>
+            <Button size="sm" variant="outline" onClick={() => setSearchOpenForList(list.id)}>
+              <Plus className="w-3 h-3 mr-1" /> Produto
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleCopy(list)}>
+              <Copy className="w-3 h-3 mr-1" /> Copiar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => handleDeleteList(list.id)}>
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          </div>
+
+          {isOpen && (
+            <>
+              <div className="space-y-1 border-t pt-3">
+                {items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Lista vazia</p>
+                ) : (
+                  items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.quantity}
+                        onChange={(e) => handleQty(item, Math.max(0, Number(e.target.value) || 0))}
+                        className="w-16 h-9 rounded border bg-background px-2 text-sm shrink-0"
+                      />
+                      {item.product_image ? (
+                        <img
+                          src={item.product_image}
+                          alt={item.product_name}
+                          className="w-20 h-20 rounded-md object-cover bg-muted shrink-0"
+                        />
+                      ) : (
+                        <div className="w-20 h-20 rounded-md bg-muted flex items-center justify-center shrink-0">
+                          <Package2 className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 text-sm truncate">
+                        {item.product_name}
+                        {item.variation_name && (
+                          <span className="text-muted-foreground"> — {item.variation_name}</span>
+                        )}
+                      </div>
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
+                        <Trash2 className="w-3 h-3 text-muted-foreground" />
+                      </Button>
                     </div>
-                  </div>
-                </button>
-                <Button size="sm" variant="outline" onClick={() => setSearchOpenForList(list.id)}>
-                  <Plus className="w-3 h-3 mr-1" /> Produto
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleCopy(list)}>
-                  <Copy className="w-3 h-3 mr-1" /> Copiar
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDeleteList(list.id)}>
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </Button>
+                  ))
+                )}
               </div>
 
-              {isOpen && (
-                <>
-                  <div className="space-y-1 border-t pt-3">
-                    {items.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-4">Lista vazia</p>
-                    ) : (
-                      items.map((item) => (
-                        <div key={item.id} className="flex items-center gap-3 py-2">
-                          <input
-                            type="number"
-                            min={0}
-                            value={item.quantity}
-                            onChange={(e) => handleQty(item, Math.max(0, Number(e.target.value) || 0))}
-                            className="w-16 h-9 rounded border bg-background px-2 text-sm shrink-0"
-                          />
-                          {item.product_image ? (
-                            <img
-                              src={item.product_image}
-                              alt={item.product_name}
-                              className="w-20 h-20 rounded-md object-cover bg-muted shrink-0"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 rounded-md bg-muted flex items-center justify-center shrink-0">
-                              <Package2 className="w-8 h-8 text-muted-foreground" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0 text-sm truncate">
-                            {item.product_name}
-                            {item.variation_name && (
-                              <span className="text-muted-foreground"> — {item.variation_name}</span>
-                            )}
-                          </div>
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteItem(item.id)}>
-                            <Trash2 className="w-3 h-3 text-muted-foreground" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {items.length > 0 && (
-                    <Textarea
-                      readOnly
-                      value={buildText(list)}
-                      rows={Math.min(10, items.length + 1)}
-                      className="font-mono text-xs"
-                      onFocus={(e) => e.currentTarget.select()}
-                    />
-                  )}
-                </>
+              {items.length > 0 && (
+                <Textarea
+                  readOnly
+                  value={buildText(list)}
+                  rows={Math.min(10, items.length + 1)}
+                  className="font-mono text-xs"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
               )}
-            </CardContent>
-          </Card>
-        );
-      })}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {autoLists.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            🔄 Reposição Automática
+            <span className="text-sm font-normal text-muted-foreground">({autoLists.length})</span>
+          </h2>
+          <div className="space-y-3">
+            {autoLists.map(renderListCard)}
+          </div>
+        </section>
+      )}
+
+      {manualLists.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+            📋 Listas Manuais
+            <span className="text-sm font-normal text-muted-foreground">({manualLists.length})</span>
+          </h2>
+          <div className="space-y-3">
+            {manualLists.map(renderListCard)}
+          </div>
+        </section>
+      )}
 
       <ProductSearchDialog
         open={!!searchOpenForList}

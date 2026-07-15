@@ -51,7 +51,7 @@ export default function AdminTriagem() {
            nfe_emissions(id, nfe_number, danfe_url, status)`,
         )
         .eq('source', 'site')
-        .in('status', ['em_preparo', 'aguardando_envio'])
+        .in('status', ['em_preparo', 'aguardando_envio', 'pronto_retirada'])
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -114,7 +114,7 @@ export default function AdminTriagem() {
   };
 
   const pickupOrders = filterByQuery(
-    orders.filter((o) => o.delivery_type === 'pickup' && o.status === 'em_preparo'),
+    orders.filter((o) => o.delivery_type === 'pickup' && (o.status === 'pronto_retirada' || o.status === 'em_preparo')),
   );
   const packOrders = filterByQuery(
     orders.filter((o) => o.delivery_type === 'delivery' && o.status === 'em_preparo'),
@@ -164,10 +164,10 @@ export default function AdminTriagem() {
         return;
       }
 
-      if (data.status !== 'em_preparo') {
+      if (data.status !== 'em_preparo' && data.status !== 'pronto_retirada') {
         toast({
           title: 'Pedido não está em preparo',
-          description: `Status atual: ${data.status}. Triagem só abre pedidos em preparo.`,
+          description: `Status atual: ${data.status}. Triagem só abre pedidos em preparo ou prontos para retirada.`,
           variant: 'destructive',
         });
         return;

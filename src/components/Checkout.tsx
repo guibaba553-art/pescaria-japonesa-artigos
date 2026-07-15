@@ -459,8 +459,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         console.error('Erro ao liberar reserva de estoque:', reservationError);
       }
 
-      await supabase.from('order_items').delete().eq('order_id', orderId);
-      await supabase.from('orders').delete().eq('id', orderId);
+      await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderId);
     }
   };
 
@@ -625,8 +624,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           .is('payment_id', null);
         for (const ab of abandonedOrders || []) {
           try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
-          try { await supabase.from('order_items').delete().eq('order_id', ab.id); } catch {}
-          try { await supabase.from('orders').delete().eq('id', ab.id); } catch {}
+          try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', ab.id); } catch {}
         }
       } catch (cleanupErr) {
         console.warn('Falha ao limpar pedidos abandonados (seguindo mesmo assim):', cleanupErr);
@@ -702,7 +700,10 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         price_at_purchase: item.price
       }));
 
-      await supabase.from('order_items').insert(orderItems);
+      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+      if (itemsErr) {
+        throw new Error('Erro ao criar itens do pedido: ' + itemsErr.message);
+      }
 
       // Reserva estoque por 30 min para evitar oversell entre PIX/cartão e confirmação
       const { data: resvData, error: resvError } = await supabase.rpc('reserve_stock_for_order', {
@@ -715,8 +716,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         p_ttl_minutes: 30,
       });
       if (resvError) {
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
         throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
       }
 
@@ -732,8 +732,7 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       if (promoError) {
         // Libera reserva de estoque antes de remover o pedido, senão fica órfã por 30 min
         try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
-        await supabase.from('order_items').delete().eq('order_id', orderData.id);
-        await supabase.from('orders').delete().eq('id', orderData.id);
+        await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
         createdOrderId = null;
         throw new Error(promoError.message || 'Limite de promoção atingido.');
       }

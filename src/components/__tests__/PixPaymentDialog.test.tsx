@@ -219,7 +219,7 @@ describe('PixPaymentDialog — polling', () => {
     });
   });
 
-  it('deve chamar verify-payment com abacatepay por padrão', () => {
+  it('deve chamar verify-payment com mercadopago por padrão', () => {
     mockInvoke.mockResolvedValue({ data: { status: 'pending' }, error: null });
 
     render(<PixPaymentDialog {...defaultProps} />);
@@ -229,7 +229,7 @@ describe('PixPaymentDialog — polling', () => {
     });
 
     expect(mockInvoke).toHaveBeenCalledWith('verify-payment', {
-      body: { orderId: 'order-123', gateway: 'abacatepay' },
+      body: { orderId: 'order-123', gateway: 'mercadopago' },
     });
   });
 
@@ -285,7 +285,7 @@ describe('PixPaymentDialog — polling', () => {
 
 // ─── Gateway-Specific Tests ────────────────────────────────
 describe('PixPaymentDialog — gateways', () => {
-  it('deve usar abacatepay como gateway padrão', () => {
+  it('deve usar mercadopago como gateway padrão', () => {
     render(<PixPaymentDialog {...defaultProps} />);
 
     act(() => {
@@ -293,7 +293,7 @@ describe('PixPaymentDialog — gateways', () => {
     });
 
     expect(mockInvoke).toHaveBeenCalledWith('verify-payment', {
-      body: { orderId: 'order-123', gateway: 'abacatepay' },
+      body: { orderId: 'order-123', gateway: 'mercadopago' },
     });
   });
 });

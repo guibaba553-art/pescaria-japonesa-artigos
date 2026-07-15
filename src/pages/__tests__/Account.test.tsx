@@ -17,8 +17,9 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const mockUser = { id: 'user-123', email: 'test@test.com' };
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { id: 'user-123', email: 'test@test.com' }, loading: false, permissions: {} }),
+  useAuth: () => ({ user: mockUser, loading: false, permissions: {} }),
 }));
 
 vi.mock('@/hooks/useCart', () => ({
@@ -118,6 +119,7 @@ beforeEach(() => {
         or: vi.fn().mockReturnThis(),
         maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
         limit: vi.fn().mockReturnThis(),
+        range: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
         lte: vi.fn().mockReturnThis(),
         contains: vi.fn().mockReturnThis(),
@@ -176,6 +178,86 @@ describe('Account — página', () => {
   });
 });
 
+describe('Account — tipo de entrega/retirada', () => {
+  it('deve exibir dados do pedido em cada cartão', async () => {
+    const mockOrders = [
+      {
+        id: 'order-delivery-1',
+        status: 'entregue',
+        total_amount: 100,
+        shipping_cost: 15,
+        shipping_address: 'Rua Exemplo, 123 — Centro — Cidade/UF',
+        created_at: new Date().toISOString(),
+        delivery_type: 'delivery',
+        order_items: [],
+        nfe_emissions: [],
+      },
+      {
+        id: 'order-pickup-1',
+        status: 'retirado',
+        total_amount: 80,
+        shipping_cost: 0,
+        shipping_address: 'Retirada na loja',
+        created_at: new Date().toISOString(),
+        delivery_type: 'pickup',
+        order_items: [],
+        nfe_emissions: [],
+      },
+    ];
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'orders') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: mockOrders, error: null }),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          is: vi.fn().mockReturnThis(),
+          not: vi.fn().mockReturnThis(),
+          or: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          limit: vi.fn().mockReturnThis(),
+          range: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+          lte: vi.fn().mockReturnThis(),
+          contains: vi.fn().mockReturnThis(),
+          textSearch: vi.fn().mockReturnThis(),
+          update: vi.fn().mockResolvedValue({ data: null, error: null }),
+          insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          delete: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+        in: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        not: vi.fn().mockReturnThis(),
+        or: vi.fn().mockReturnThis(),
+        update: vi.fn().mockResolvedValue({ data: null, error: null }),
+        insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+      };
+    });
+
+    render(
+      <MemoryRouter>
+        <Account />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Ambos os pedidos devem mostrar o número formatado (primeiros 8 chars do ID)
+      expect(screen.getAllByText(/Pedido #order-/).length).toBe(2);
+      // Devem mostrar a data de compra
+      expect(screen.getAllByText(/Comprado em/).length).toBe(2);
+    });
+  });
+});
+
 describe('Account — pedidos pendentes', () => {
   it('deve consultar pedidos pendentes via get-order-payment', async () => {
     // Mock com 3 pedidos pendentes
@@ -188,7 +270,7 @@ describe('Account — pedidos pendentes', () => {
       qr_code_base64: i === 0 ? 'base64img' : null,
       pix_expiration: i === 0 ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : i === 1 ? new Date(Date.now() - 60 * 1000).toISOString() : null,
       payment_attempts: i === 2 ? 1 : 0,
-      payment_gateway: i === 0 ? 'abacatepay' : 'asaas',
+      payment_gateway: i === 0 ? 'mercadopago' : 'asaas',
     }));
 
     mockFrom.mockImplementation((table: string) => {
@@ -204,7 +286,8 @@ describe('Account — pedidos pendentes', () => {
           or: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           limit: vi.fn().mockReturnThis(),
-          gte: vi.fn().mockReturnThis(),
+          range: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
           lte: vi.fn().mockReturnThis(),
           contains: vi.fn().mockReturnThis(),
           textSearch: vi.fn().mockReturnThis(),
@@ -265,7 +348,8 @@ describe('Account — retentativa de cartão', () => {
           or: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           update: vi.fn().mockResolvedValue({ data: null, error: null }),
-          gte: vi.fn().mockReturnThis(),
+          range: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
           lte: vi.fn().mockReturnThis(),
           limit: vi.fn().mockReturnThis(),
         };
@@ -293,7 +377,7 @@ describe('Account — retentativa de cartão', () => {
     // processa os dados de forma síncrona, verificamos o comportamento
     await waitFor(() => {
       // A página deve carregar sem erro
-      expect(screen.getByText(/Minha Conta|Carregando/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Minha Conta|Carregando/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -325,7 +409,8 @@ describe('Account — retentativa de cartão', () => {
           or: vi.fn().mockReturnThis(),
           maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           update: vi.fn().mockResolvedValue({ data: null, error: null }),
-          gte: vi.fn().mockReturnThis(),
+          range: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
           lte: vi.fn().mockReturnThis(),
           limit: vi.fn().mockReturnThis(),
         };
@@ -349,7 +434,7 @@ describe('Account — retentativa de cartão', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Minha Conta|Carregando/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Minha Conta|Carregando/i).length).toBeGreaterThan(0);
     });
   });
 });

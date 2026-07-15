@@ -47,7 +47,10 @@ export interface Product {
   minimum_quantity?: number;
   sku?: string | null;
   sold_by_weight?: boolean;
+  /** Computado via JOIN brands(name) — não é coluna direta (products.brand foi dropada) */
   brand?: string | null;
+  brand_id?: string | null;
+  supplier_id?: string | null;
   pound_test?: string | null;
   size?: string | null;
   subcategory?: string | null;

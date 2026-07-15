@@ -490,6 +490,7 @@ serve(async (req) => {
           .from('orders')
           .update({
             payment_id: responseData.id.toString(),
+            payment_gateway: 'mercadopago',
             qr_code: responseData.point_of_interaction?.transaction_data?.qr_code,
             qr_code_base64: responseData.point_of_interaction?.transaction_data?.qr_code_base64,
             ticket_url: responseData.point_of_interaction?.transaction_data?.ticket_url,

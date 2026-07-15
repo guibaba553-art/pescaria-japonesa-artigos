@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { getGateway, type RefundParams } from "../_shared/refundGateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,7 @@ const requestSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -30,19 +31,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
-
-    if (!accessToken) {
-      return new Response(
-        JSON.stringify({ error: "MERCADO_PAGO_ACCESS_TOKEN não configurado" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Validate user (admin only)
     const token = authHeader.replace("Bearer ", "");
@@ -85,10 +76,12 @@ serve(async (req) => {
     }
     const { orderId, amount, reason } = parsed.data;
 
-    // Fetch order
+    // Fetch order with payment fields
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, payment_id, total_amount, status, user_id")
+      .select(
+        "id, payment_id, asaas_payment_id, payment_gateway, payment_method, total_amount, status, user_id",
+      )
       .eq("id", orderId)
       .single();
 
@@ -99,10 +92,43 @@ serve(async (req) => {
       });
     }
 
-    if (!order.payment_id) {
+    // Resolve gateway
+    const gatewayName = (order as any).payment_gateway;
+    if (!gatewayName) {
       return new Response(
         JSON.stringify({
-          error: "Este pedido não possui pagamento online para estornar",
+          error: "Este pedido não possui gateway de pagamento online",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    let gateway;
+    try {
+      gateway = getGateway(gatewayName);
+    } catch {
+      return new Response(
+        JSON.stringify({
+          error: `Gateway "${gatewayName}" não suporta reembolso pela API`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Resolve payment ID from the order
+    let paymentId: string;
+    try {
+      paymentId = gateway.getPaymentId(order as Record<string, unknown>);
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({
+          error: e?.message ?? "Pedido não possui ID de pagamento no gateway",
         }),
         {
           status: 400,
@@ -122,7 +148,7 @@ serve(async (req) => {
       (sum, r) => sum + Number(r.amount),
       0,
     );
-    const orderTotal = Number(order.total_amount);
+    const orderTotal = Number((order as any).total_amount);
     const remaining = orderTotal - alreadyRefunded;
 
     if (remaining <= 0.01) {
@@ -139,10 +165,28 @@ serve(async (req) => {
     }
 
     const refundAmount = amount ?? remaining;
+
+    // Validate partial refund support
+    const isFullRefund = Math.abs(refundAmount - orderTotal) <= 0.01 &&
+      alreadyRefunded <= 0.01;
+    if (!isFullRefund && !gateway.supportsPartialRefund) {
+      return new Response(
+        JSON.stringify({
+          error:
+            `Gateway "${gatewayName}" não suporta reembolso parcial. O valor total do pedido (R$ ${orderTotal.toFixed(2)}) deve ser estornado.`,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     if (refundAmount > remaining + 0.01) {
       return new Response(
         JSON.stringify({
-          error: `Valor solicitado (${refundAmount}) excede valor disponível (${remaining})`,
+          error:
+            `Valor solicitado (${refundAmount}) excede valor disponível (${remaining})`,
         }),
         {
           status: 400,
@@ -152,53 +196,43 @@ serve(async (req) => {
     }
 
     console.log(
-      `[refund-payment] Estornando R$ ${refundAmount} do pagamento ${order.payment_id} (pedido ${orderId})`,
+      `[refund-payment] Estornando R$ ${refundAmount} via ${gatewayName} (paymentId=${paymentId}, pedido=${orderId})`,
     );
 
-    // Call Mercado Pago refund API
-    const isPartial = Math.abs(refundAmount - orderTotal) > 0.01 ||
-      alreadyRefunded > 0;
+    // Execute refund via gateway abstraction
     const idempotencyKey = `refund-${orderId}-${Date.now()}`;
+    const refundParams: RefundParams = {
+      paymentId,
+      amount: refundAmount,
+      isFullRefund,
+      reason,
+      idempotencyKey,
+    };
 
-    const mpResponse = await fetch(
-      `https://api.mercadopago.com/v1/payments/${order.payment_id}/refunds`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "X-Idempotency-Key": idempotencyKey,
-        },
-        // Para estorno total, MP aceita body vazio. Para parcial, exige amount.
-        body: isPartial ? JSON.stringify({ amount: refundAmount }) : "{}",
-      },
-    );
+    const result = await gateway.createRefund(refundParams);
 
-    const mpData = await mpResponse.json();
-    console.log(
-      `[refund-payment] MP response status=${mpResponse.status}`,
-      mpData,
-    );
+    // Record refund in payment_refunds
+    const refundRecord = {
+      order_id: orderId,
+      payment_id: paymentId,
+      amount: refundAmount,
+      gateway: gatewayName,
+      gateway_refund_id: result.gatewayRefundId,
+      gateway_response: result.rawResponse ?? null,
+      status: result.status === "approved" ? "approved" : result.status === "rejected" ? "rejected" : "pending",
+      reason: reason ?? null,
+      error_message: result.errorMessage ?? null,
+      performed_by: user.id,
+    };
 
-    if (!mpResponse.ok) {
-      // Log failed attempt
-      await supabase.from("payment_refunds").insert({
-        order_id: orderId,
-        payment_id: order.payment_id,
-        amount: refundAmount,
-        status: "rejected",
-        reason: reason ?? null,
-        error_message: mpData?.message ||
-          mpData?.error ||
-          `HTTP ${mpResponse.status}`,
-        performed_by: user.id,
-      });
+    await supabase.from("payment_refunds").insert(refundRecord);
 
+    if (!result.success) {
       return new Response(
         JSON.stringify({
-          error: "Mercado Pago rejeitou o estorno",
-          details: mpData?.message || mpData?.error || "erro desconhecido",
-          mp_status: mpResponse.status,
+          error: "Gateway rejeitou o estorno",
+          details: result.errorMessage ?? "erro desconhecido",
+          gateway: gatewayName,
         }),
         {
           status: 400,
@@ -207,30 +241,17 @@ serve(async (req) => {
       );
     }
 
-    // Success - record refund
-    const refundStatus = mpData.status === "approved" ? "approved" : "pending";
-
-    await supabase.from("payment_refunds").insert({
-      order_id: orderId,
-      payment_id: order.payment_id,
-      amount: refundAmount,
-      mp_refund_id: String(mpData.id),
-      status: refundStatus,
-      reason: reason ?? null,
-      performed_by: user.id,
-    });
-
-    // Optionally send email to customer
+    // Success — optionally send email to customer
     try {
       const { data: userData } = await supabase.auth.admin.getUserById(
-        order.user_id as string,
+        (order as any).user_id as string,
       );
       const recipientEmail = userData?.user?.email;
       if (recipientEmail) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("full_name")
-          .eq("id", order.user_id)
+          .eq("id", (order as any).user_id)
           .maybeSingle();
 
         const customerName = profile?.full_name?.split(" ")[0] || undefined;
@@ -241,14 +262,16 @@ serve(async (req) => {
 
         await supabase.functions.invoke("send-transactional-email", {
           body: {
-            templateName: "order-cancelled", // reaproveita template (info de cancelamento/estorno)
+            templateName: "order-cancelled",
             recipientEmail,
-            idempotencyKey: `refund-${orderId}-${mpData.id}`,
+            idempotencyKey: `refund-email-${orderId}-${result.gatewayRefundId}`,
             templateData: {
               customerName,
               orderNumber,
               totalAmount,
-              paymentMethod: "Mercado Pago (estornado)",
+              paymentMethod: gatewayName === "mercadopago"
+                ? "Mercado Pago (estornado)"
+                : `${gatewayName} (estornado)`,
             },
           },
         });
@@ -260,11 +283,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        refundId: mpData.id,
+        refundId: result.gatewayRefundId,
+        gateway: gatewayName,
         amount: refundAmount,
-        status: refundStatus,
-        message: refundStatus === "approved"
-          ? "Estorno aprovado pelo Mercado Pago"
+        status: result.status,
+        message: result.status === "approved"
+          ? "Estorno aprovado pelo gateway"
           : "Estorno em processamento",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -274,7 +298,9 @@ serve(async (req) => {
     const msg = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+      headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
-});
+}
+
+serve(handleRequest);

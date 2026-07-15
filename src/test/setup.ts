@@ -7,6 +7,9 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+// Polyfill para cmdk / Command (usa scrollIntoView)
+Element.prototype.scrollIntoView = () => {};
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({

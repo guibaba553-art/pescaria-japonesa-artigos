@@ -333,6 +333,7 @@ export async function processAsaasCreditCardPayment(
       .update({
         asaas_payment_id: asaasPaymentId,
         payment_gateway: 'asaas',
+        payment_method: 'credit_card',
         payment_attempts: (order.payment_attempts || 0) + 1,
         last_payment_attempt_at: new Date().toISOString(),
       })
@@ -351,6 +352,7 @@ export async function processAsaasCreditCardPayment(
       status: 'em_preparo',
       asaas_payment_id: asaasPaymentId,
       payment_gateway: 'asaas',
+      payment_method: 'credit_card',
       payment_attempts: (order.payment_attempts || 0) + 1,
       last_payment_attempt_at: new Date().toISOString(),
     })

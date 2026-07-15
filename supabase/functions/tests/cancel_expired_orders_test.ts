@@ -8,7 +8,7 @@
 import { assertEquals, assert } from "jsr:@std/assert@^1";
 import { handleRequest } from "../cancel-expired-orders/index.ts";
 import { interceptFetch, setupEnv, mockInternalFn } from "./mock_gateways.ts";
-import { createOrder, deleteOrder } from "./helpers.ts";
+import { createOrder, deleteOrder, getJwt, SUPABASE_URL, ANON_KEY } from "./helpers.ts";
 
 setupEnv();
 interceptFetch();
@@ -57,9 +57,18 @@ Deno.test("cancela pedido com created_at > 1h atrás", async () => {
   // Pode haver outros pedidos expirados no banco de testes
   assert(body.processed >= 1, "deve ter processado ao menos 1 pedido");
 
-  // Verify the old order was cancelled
+  // Verify the old order was cancelled with reason
   const cancelResult = body.results?.find((res: any) => res.orderId === oldOid);
   assertEquals(cancelResult?.cancelled, true, "pedido antigo deve ser cancelado");
+
+  // Verify cancellation_reason was set to prazo_expirado
+  const jwt = await getJwt();
+  const checkResp = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${oldOid}&select=status,cancellation_reason`, {
+    headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` },
+  });
+  const [updatedOrder] = await checkResp.json();
+  assertEquals(updatedOrder?.status, "cancelado", "status deve ser cancelado");
+  assertEquals(updatedOrder?.cancellation_reason, "prazo_expirado", "cancellation_reason deve ser prazo_expirado");
 
   await deleteOrder(oldOid);
   mockInternalFn(null);

@@ -144,6 +144,7 @@ export function AddToPurchaseListDialog({
           variation_id: variationId,
           quantity,
           added_by: user.id,
+          is_auto: false,
         });
 
       if (insErr) {

@@ -37,6 +37,7 @@ interface OrderData {
   user_id: string;
   order_items: OrderItem[];
   profiles?: Profile | null;
+  cancellation_reason?: string;
 }
 
 export default function PickupOrder() {
@@ -72,7 +73,7 @@ export default function PickupOrder() {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id, total_amount, shipping_cost, shipping_address, status, delivery_type, source, created_at, user_id,
+          id, total_amount, shipping_cost, shipping_address, status, delivery_type, source, created_at, user_id, cancellation_reason,
           order_items(id, quantity, price_at_purchase, products(name, image_url))
         `)
         .eq("id", id)
@@ -243,8 +244,16 @@ export default function PickupOrder() {
               <>
                 <ShieldAlert className="w-12 h-12 text-destructive" />
                 <div>
-                  <h2 className="text-xl font-bold text-destructive">Pedido cancelado</h2>
-                  <p className="text-sm text-muted-foreground">Não pode ser entregue.</p>
+                  <h2 className="text-xl font-bold text-destructive">
+                    {order.cancellation_reason === 'prazo_expirado' ? 'Prazo de pagamento expirado' : 'Pedido cancelado'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {order.cancellation_reason === 'prazo_expirado'
+                      ? 'O prazo para pagamento deste pedido expirou.'
+                      : order.cancellation_reason && order.cancellation_reason !== 'cancelado_admin'
+                        ? order.cancellation_reason
+                        : 'Não pode ser entregue.'}
+                  </p>
                 </div>
               </>
             ) : !isPickup ? (

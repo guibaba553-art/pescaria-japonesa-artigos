@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from '@/hooks/useCart';
@@ -12,13 +12,13 @@ import { Separator } from '@/components/ui/separator';
 import { Package, Truck, CheckCircle, Home, Star, QrCode, FileText, Download, ExternalLink, Copy, Store, MapPin, User, CreditCard, Trash2, Mail, Loader2 } from 'lucide-react';
 import { ReviewDialog } from '@/components/ReviewDialog';
 import { PixPaymentDialog } from '@/components/PixPaymentDialog';
-import { CreditCardForm, type CreditCardFormData } from '@/components/CreditCardForm';
-import { PickupQRDialog } from '@/components/PickupQRDialog';
+import { CreditCardForm, type CreditCardFormHandle } from '@/components/CreditCardForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
 import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
+import { isOrderExpired } from '@/lib/orderStatus';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 import { PAYMENT_CONFIG } from '@/config/constants';
 import {
@@ -59,7 +59,7 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'cancelado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado';
   created_at: string;
   tracking_code?: string;
   delivery_type?: 'delivery' | 'pickup';
@@ -69,25 +69,10 @@ interface Order {
   ticket_url: string | null;
   pix_expiration: string | null;
   nfe_emissions?: NfeEmission[];
+  cancellation_reason?: string;
 }
 
-const statusConfig: Record<string, { label: string; icon: typeof Package; color: string }> = {
-  aguardando_pagamento: { label: 'Aguardando Pagamento', icon: Package, color: 'bg-orange-500' },
-  em_preparo: { label: 'Em Preparo', icon: Package, color: 'bg-yellow-500' },
-  enviado: { label: 'Enviado', icon: Truck, color: 'bg-blue-500' },
-  entregue: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
-  entregado: { label: 'Entregue', icon: CheckCircle, color: 'bg-green-500' },
-  retirado: { label: 'Retirado', icon: CheckCircle, color: 'bg-emerald-600' },
-  cancelado: { label: 'Cancelado', icon: Package, color: 'bg-red-500' },
-};
 
-const getStatusConfig = (status: string, deliveryType?: string) => {
-  const cfg = statusConfig[status] ?? { label: status, icon: Package, color: 'bg-gray-500' };
-  if (status === 'em_preparo' && deliveryType === 'pickup') {
-    return { ...cfg, label: 'Pronto para Retirar', color: 'bg-emerald-500' };
-  }
-  return cfg;
-};
 
 export default function Account() {
   const navigate = useNavigate();
@@ -110,14 +95,111 @@ export default function Account() {
     ticketUrl?: string;
     expiresAt?: string;
     orderId: string;
-    gateway?: 'abacatepay' | 'asaas';
+    gateway?: 'mercadopago' | 'asaas';
   } | null>(null);
-  const [pickupQROrderId, setPickupQROrderId] = useState<string | null>(null);
   const [trackingDialog, setTrackingDialog] = useState<{ orderId: string; code: string } | null>(null);
   const [refreshingPix, setRefreshingPix] = useState<string | null>(null);
   const [retryCardOrderId, setRetryCardOrderId] = useState<string | null>(null);
-  const [retryCardData, setRetryCardData] = useState<CreditCardFormData | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
+  const retryCardRef = useRef<CreditCardFormHandle>(null);
+
+  // Paginação e filtro
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'30d' | '90d' | '1y' | 'all'>('30d');
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const initialLoadDoneRef = useRef(false);
+  const paymentProcessedRef = useRef(false);
+
+  const fetchOrders = useCallback(async (pageNum: number, filter: string, append: boolean) => {
+    if (!user) return;
+
+    if (!append) setLoadingOrders(true);
+    else setLoadingMore(true);
+
+    let query = supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          *,
+          products (name, image_url)
+        ),
+        nfe_emissions (
+          id, status, nfe_number, nfe_key, danfe_url, nfe_xml_url, emitted_at
+        )
+      `)
+      .eq('user_id', user.id)
+      .or('source.is.null,source.neq.pdv');
+
+    if (filter !== 'all') {
+      const days = filter === '30d' ? 30 : filter === '90d' ? 90 : 365;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      query = query.gte('created_at', since.toISOString());
+    }
+
+    query = query
+      .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1)
+      .order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
+    if (!error && data) {
+      if (append) {
+        setOrders(prev => [...prev, ...(data as Order[])]);
+      } else {
+        setOrders(data as Order[]);
+        setPage(0);
+        initialLoadDoneRef.current = true;
+      }
+      setHasMore(data.length === PAGE_SIZE);
+
+      // Carregar avaliações existentes (apenas as do próprio usuário, via RPC)
+      const { data: reviews } = await supabase.rpc('get_my_reviewed_products');
+
+      if (reviews) {
+        const reviewedSet = new Set(
+          (reviews as { order_id: string; product_id: string }[]).map(
+            (r) => `${r.order_id}_${r.product_id}`,
+          ),
+        );
+        setReviewedProducts(reviewedSet);
+      }
+    }
+    setLoadingOrders(false);
+    setLoadingMore(false);
+  }, [user]);
+
+  const handleFilterChange = (filter: '30d' | '90d' | '1y' | 'all') => {
+    setDateFilter(filter);
+    setOrders([]);
+    setPage(0);
+    setHasMore(true);
+    fetchOrders(0, filter, false);
+  };
+
+  // Scroll infinito
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && initialLoadDoneRef.current) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchOrders(nextPage, dateFilter, true);
+        }
+      },
+      { rootMargin: '400px', threshold: 0 },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loadingOrders, page, dateFilter, fetchOrders]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -127,7 +209,7 @@ export default function Account() {
 
   useEffect(() => {
     if (user) {
-      loadOrders();
+      fetchOrders(0, dateFilter, false);
 
       // Configurar realtime para atualizar automaticamente quando pedidos mudarem
       const channel = supabase
@@ -142,7 +224,7 @@ export default function Account() {
           },
           (payload) => {
             console.log('Order status changed:', payload);
-            loadOrders(); // Recarregar pedidos automaticamente
+            fetchOrders(0, dateFilter, false);
           }
         )
         .subscribe();
@@ -153,32 +235,23 @@ export default function Account() {
     }
   }, [user]);
 
-  // Tratar retorno do checkout (Google Pay / cartão)
+  // Tratar retorno do checkout (Google Pay / cartão) — executa apenas uma vez
   useEffect(() => {
-    if (!user) return;
+    if (!user || paymentProcessedRef.current) return;
     const paymentParam = searchParams.get('payment');
     if (!paymentParam) return;
+    paymentProcessedRef.current = true;
 
     const pendingRaw = sessionStorage.getItem('pendingCheckout');
     const pending = pendingRaw ? (() => { try { return JSON.parse(pendingRaw); } catch { return null; } })() : null;
 
-    const cleanup = () => {
-      sessionStorage.removeItem('pendingCheckout');
-      searchParams.delete('payment');
-      searchParams.delete('status');
-      searchParams.delete('collection_status');
-      searchParams.delete('payment_id');
-      searchParams.delete('preference_id');
-      searchParams.delete('external_reference');
-      setSearchParams(searchParams, { replace: true });
-    };
+    sessionStorage.removeItem('pendingCheckout');
 
     if (paymentParam === 'success') {
       // Pagamento confirmado — limpar carrinho e atualizar pedidos
       clearCart();
       toast.success('✅ Pagamento confirmado!', { description: 'Seu pedido foi recebido e está sendo processado.' });
-      loadOrders();
-      cleanup();
+      fetchOrders(0, dateFilter, false);
       return;
     }
 
@@ -199,48 +272,10 @@ export default function Account() {
         paymentParam === 'failure' ? '❌ Pagamento não concluído' : 'Pagamento cancelado',
         { description: 'Seus itens continuam no carrinho. Você pode tentar novamente quando quiser.' }
       );
-      loadOrders();
-      cleanup();
+      fetchOrders(0, dateFilter, false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, searchParams.get('payment')]);
-
-  const loadOrders = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (
-          *,
-          products (name, image_url)
-        ),
-        nfe_emissions (
-          id, status, nfe_number, nfe_key, danfe_url, nfe_xml_url, emitted_at
-        )
-      `)
-      .eq('user_id', user.id)
-      .or('source.is.null,source.neq.pdv')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setOrders(data as Order[]);
-      
-      // Carregar avaliações existentes (apenas as do próprio usuário, via RPC)
-      const { data: reviews } = await supabase.rpc('get_my_reviewed_products');
-
-      if (reviews) {
-        const reviewedSet = new Set(
-          (reviews as { order_id: string; product_id: string }[]).map(
-            (r) => `${r.order_id}_${r.product_id}`,
-          ),
-        );
-        setReviewedProducts(reviewedSet);
-      }
-    }
-    setLoadingOrders(false);
-  };
+  }, [user]);
 
   const handleOpenReviewDialog = (orderId: string, productId: string, productName: string) => {
     setSelectedReview({ orderId, productId, productName });
@@ -248,7 +283,7 @@ export default function Account() {
   };
 
   const handleReviewSubmitted = () => {
-    loadOrders();
+    fetchOrders(0, dateFilter, false);
   };
 
   const handleOpenPixDialog = (order: Order) => {
@@ -259,7 +294,7 @@ export default function Account() {
         ticketUrl: order.ticket_url || undefined,
         expiresAt: order.pix_expiration || undefined,
         orderId: order.id,
-        gateway: (order as any).payment_gateway || 'abacatepay',
+        gateway: (order as any).payment_gateway || 'mercadopago',
       });
       setPixDialogOpen(true);
     }
@@ -279,18 +314,19 @@ export default function Account() {
 
       // Atualiza os dados do pedido com o novo QR
       if (data.data) {
+        const gateway = orders.find(o => o.id === orderId) ? (orders.find(o => o.id === orderId) as any)?.payment_gateway || 'mercadopago' : 'mercadopago';
         setSelectedPixPayment({
           qrCode: data.data.brCode || '',
           qrCodeBase64: data.data.brCodeBase64 || '',
           expiresAt: data.data.expiresAt,
           orderId,
-          gateway: 'asaas',
+          gateway,
         });
         setPixDialogOpen(true);
       }
 
       // Recarregar pedidos para atualizar lista
-      loadOrders();
+      fetchOrders(0, dateFilter, false);
     } catch (err: any) {
       toast.error('Erro ao gerar novo PIX', { description: err?.message });
     } finally {
@@ -299,7 +335,13 @@ export default function Account() {
   };
 
   const handleRetryCard = async () => {
-    if (!retryCardOrderId || !retryCardData) return;
+    if (!retryCardOrderId) return;
+
+    const cardData = retryCardRef.current?.getData();
+    if (!cardData) {
+      // getData já exibe erros de validação internamente
+      return;
+    }
 
     setRetryLoading(true);
     try {
@@ -316,17 +358,17 @@ export default function Account() {
       const { data: result, error } = await supabase.functions.invoke('retry-payment-asaas', {
         body: {
           orderId: retryCardOrderId,
-          installmentCount: retryCardData.installmentCount,
-          saveCard: retryCardData.saveCard,
-          creditCard: retryCardData.creditCard,
-          creditCardHolderInfo: retryCardData.creditCardHolderInfo,
-          creditCardToken: retryCardData.creditCardToken || undefined,
+          installmentCount: cardData.installmentCount,
+          saveCard: cardData.saveCard,
+          creditCard: cardData.creditCard,
+          creditCardHolderInfo: cardData.creditCardHolderInfo,
+          creditCardToken: cardData.creditCardToken || undefined,
           remoteIp,
           customerData: {
-            name: retryCardData.creditCardHolderInfo?.name || '',
-            email: retryCardData.creditCardHolderInfo?.email || '',
-            cpfCnpj: retryCardData.creditCardHolderInfo?.cpfCnpj || '',
-            phone: retryCardData.creditCardHolderInfo?.phone || (retryCardData.creditCardHolderInfo as any)?.mobilePhone || '',
+            name: cardData.creditCardHolderInfo?.name || '',
+            email: cardData.creditCardHolderInfo?.email || '',
+            cpfCnpj: cardData.creditCardHolderInfo?.cpfCnpj || '',
+            phone: cardData.creditCardHolderInfo?.phone || (cardData.creditCardHolderInfo as any)?.mobilePhone || '',
           },
         },
       });
@@ -339,14 +381,14 @@ export default function Account() {
         } else {
           toast.error('Cartão recusado', { description: `${attemptsLeft} tentativa(s) restante(s).` });
         }
-        loadOrders();
+        fetchOrders(0, dateFilter, false);
         return;
       }
 
       // Sucesso
       toast.success('✅ Pagamento aprovado!');
       setRetryCardOrderId(null);
-      loadOrders();
+      fetchOrders(0, dateFilter, false);
     } catch (err: any) {
       toast.error('Erro ao processar pagamento', { description: err?.message });
     } finally {
@@ -400,7 +442,7 @@ export default function Account() {
     window.location.href = `mailto:robertobaba2@gmail.com?subject=${subject}&body=${body}`;
   };
 
-  if (loading || loadingOrders) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
         <Header />
@@ -466,12 +508,9 @@ export default function Account() {
 
           <TabsContent value="pedidos" className="mt-6">
             {(() => {
-              const deliveryOrders = orders.filter(o => o.delivery_type !== 'pickup');
-              const pickupOrders = orders.filter(o => o.delivery_type === 'pickup');
 
               const renderOrder = (order: Order) => {
-                const cfg = getStatusConfig(order.status, order.delivery_type);
-                const StatusIcon = cfg.icon;
+                const expired = order.status === 'aguardando_pagamento' && isOrderExpired(order);
                 return (
                   <div key={order.id} className="border rounded-lg p-4 space-y-4">
                     <div className="flex justify-between items-start">
@@ -479,53 +518,36 @@ export default function Account() {
                         <p className="text-sm text-muted-foreground">
                           Pedido #{order.id.slice(0, 8)}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString('pt-BR', {
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Comprado em {new Date(order.created_at).toLocaleDateString('pt-BR', {
                             day: '2-digit',
                             month: 'long',
                             year: 'numeric'
                           })}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-2 items-end">
-                        <Badge className={cfg.color}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {cfg.label}
-                        </Badge>
-                        {order.status === 'aguardando_pagamento' && (
-                          <>
-                            {/* PIX válido — mostrar QR */}
-                            {order.qr_code && order.qr_code_base64 && order.pix_expiration && new Date(order.pix_expiration) > new Date() && (
+                      {(order.status === 'aguardando_pagamento' && !expired) && (
+                        <div className="flex flex-col gap-2 items-end">
+                          {/* PIX — mostra "Pagar com PIX" se ainda dentro do prazo */}
+                          {(() => {
+                            return (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleOpenPixDialog(order)}
+                                onClick={() => handleRefreshPix(order.id)}
+                                disabled={refreshingPix === order.id}
                               >
-                                <QrCode className="w-4 h-4 mr-2" />
-                                Ver QR Code PIX
+                                {refreshingPix === order.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <QrCode className="w-4 h-4 mr-2" />
+                                )}
+                                Pagar com PIX
                               </Button>
-                            )}
-                            {/* PIX expirado com tentativas restantes — regenerar */}
-                            {order.qr_code && order.pix_expiration && new Date(order.pix_expiration) <= new Date() && ((order as any).pix_attempts || 0) < 3 && (
-                              <div className="flex flex-col gap-2 items-end">
-                                <span className="text-xs text-red-500 font-medium">🔴 PIX expirado</span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleRefreshPix(order.id)}
-                                  disabled={refreshingPix === order.id}
-                                >
-                                  {refreshingPix === order.id ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  ) : (
-                                    <QrCode className="w-4 h-4 mr-2" />
-                                  )}
-                                  Gerar novo PIX
-                                </Button>
-                              </div>
-                            )}
-                            {/* Cartão recusado com opções combinadas */}
-                            {(order as any).payment_attempts > 0 && (
+                            );
+                          })()}
+                          {/* Cartão recusado com opções combinadas */}
+                          {(order as any).payment_attempts > 0 && (
                               <div className="flex flex-col gap-2 items-end">
                                 <span className="text-xs text-orange-500 font-medium">
                                   💳 Cartão recusado · {(order as any).payment_attempts} tentativa(s)
@@ -553,52 +575,27 @@ export default function Account() {
                                       ) : (
                                         <QrCode className="w-4 h-4 mr-2" />
                                       )}
-                                      {order.qr_code ? 'Ver QR Code PIX' : 'Pagar com PIX'}
+                                      Pagar com PIX
                                     </Button>
                                   )}
                                 </div>
                               </div>
                             )}
-                            {/* Sem PIX e sem cartão recusado — gerar PIX se ainda pode */}
-                            {!order.qr_code && (order as any).payment_attempts === 0 && ((order as any).pix_attempts || 0) < 3 && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRefreshPix(order.id)}
-                                disabled={refreshingPix === order.id}
-                              >
-                                {refreshingPix === order.id ? (
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                  <QrCode className="w-4 h-4 mr-2" />
-                                )}
-                                Pagar com PIX
-                              </Button>
-                            )}
-                            {/* Todas as formas esgotadas */}
                             {(order as any).payment_attempts >= PAYMENT_CONFIG.CARD_RETRY_MAX_ATTEMPTS && ((order as any).pix_attempts || 0) >= 3 && (
                               <span className="text-xs text-muted-foreground font-medium">
                                 Número máximo de tentativas excedido
                               </span>
                             )}
-                          </>
-                        )}
-                        {order.delivery_type === 'pickup' && order.status === 'em_preparo' && (
-                          <Button
-                            size="sm"
-                            onClick={() => setPickupQROrderId(order.id)}
-                          >
-                            <Store className="w-4 h-4 mr-2" />
-                            QR de Retirada
-                          </Button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Timeline visual de rastreamento */}
                     <OrderTrackingTimeline
                       status={order.status}
                       deliveryType={order.delivery_type}
+                      cancellationReason={order.cancellation_reason}
+                      isExpired={expired}
                     />
 
                     <Separator />
@@ -610,12 +607,16 @@ export default function Account() {
 
                         return (
                           <div key={item.id} className="flex gap-3 items-start">
-                            {item.products.image_url && (
+                            {item.products.image_url ? (
                               <img
                                 src={item.products.image_url}
                                 alt={item.products.name}
                                 className="w-16 h-16 object-cover rounded"
                               />
+                            ) : (
+                              <div className="w-16 h-16 rounded bg-muted flex items-center justify-center shrink-0">
+                                <Package className="w-6 h-6 text-muted-foreground" />
+                              </div>
                             )}
                             <div className="flex-1">
                               <p className="font-medium">{item.products.name}</p>
@@ -644,15 +645,11 @@ export default function Account() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="font-medium">
-                              R$ {(item.price_at_purchase * item.quantity).toFixed(2)}
-                            </p>
+
                           </div>
                         );
                       })}
                     </div>
-
-                    <Separator />
 
                     {order.tracking_code && (order.status === 'enviado' || order.status === 'entregue' || order.status === 'entregado') && (
                       <div className="p-3 bg-primary/5 rounded-md border border-primary/10 space-y-2">
@@ -727,13 +724,9 @@ export default function Account() {
 
                     <Separator />
 
-                    <div className="flex justify-between text-sm">
-                      <span>Frete:</span>
-                      <span>R$ {order.shipping_cost.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold">
-                      <span>Total:</span>
-                      <span className="text-primary">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total</span>
+                      <span className="text-lg font-bold text-primary">
                         R$ {order.total_amount.toFixed(2)}
                       </span>
                     </div>
@@ -742,52 +735,54 @@ export default function Account() {
               };
 
               return (
-                <Tabs defaultValue="entrega" className="w-full">
-                  <TabsList className="w-full grid grid-cols-2 h-11 rounded-full p-1 mb-4">
-                    <TabsTrigger value="entrega" className="rounded-full text-sm font-semibold gap-1.5">
-                      <Truck className="w-4 h-4" />
-                      Entrega
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                        {deliveryOrders.length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="retirada" className="rounded-full text-sm font-semibold gap-1.5">
-                      <Store className="w-4 h-4" />
-                      Retirada
-                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
-                        {pickupOrders.length}
-                      </Badge>
-                    </TabsTrigger>
-                  </TabsList>
+                <>
+                  {/* Filtro de data */}
+                  <div className="flex items-center gap-2 mb-4">
+                    {(['30d', '90d', '1y', 'all'] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => handleFilterChange(f)}
+                        className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                          dateFilter === f
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {f === '30d' ? '30 dias' : f === '90d' ? '90 dias' : f === '1y' ? '1 ano' : 'Tudo'}
+                      </button>
+                    ))}
+                  </div>
 
-                  <TabsContent value="entrega">
-                    <Card className="rounded-2xl border-border">
-                      <CardContent className="p-6 space-y-6">
-                        {deliveryOrders.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">
-                            Você ainda não fez nenhum pedido para entrega
-                          </p>
-                        ) : (
-                          deliveryOrders.map(renderOrder)
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="retirada">
-                    <Card className="rounded-2xl border-border">
-                      <CardContent className="p-6 space-y-6">
-                        {pickupOrders.length === 0 ? (
-                          <p className="text-muted-foreground text-center py-8">
-                            Você ainda não fez nenhum pedido para retirada
-                          </p>
-                        ) : (
-                          pickupOrders.map(renderOrder)
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                  <Card className="rounded-2xl border-border">
+                    <CardContent className="p-6 space-y-6">
+                      {loadingOrders && orders.length === 0 ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : orders.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">
+                          Nenhum pedido encontrado
+                        </p>
+                      ) : (
+                        <>
+                          {orders.map(renderOrder)}
+                          {/* Sentinel para scroll infinito */}
+                          <div ref={sentinelRef} className="h-4" />
+                          {loadingMore && (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                          {!hasMore && orders.length > 0 && (
+                            <p className="text-xs text-muted-foreground text-center pt-2">
+                              Todos os pedidos carregados
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
               );
             })()}
           </TabsContent>
@@ -901,8 +896,8 @@ export default function Account() {
           <div className="bg-card rounded-xl border p-6 max-w-lg mx-4 shadow-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold mb-4">Tentar novamente com outro cartão</h3>
             <CreditCardForm
+              ref={retryCardRef}
               totalAmount={orders.find(o => o.id === retryCardOrderId)?.total_amount || 0}
-              onCardData={setRetryCardData}
               onInstallmentChange={() => {}}
               loading={retryLoading}
               error={undefined}
@@ -911,20 +906,12 @@ export default function Account() {
               <Button variant="outline" onClick={() => setRetryCardOrderId(null)} disabled={retryLoading}>
                 Cancelar
               </Button>
-              <Button onClick={handleRetryCard} disabled={retryLoading || !retryCardData}>
+              <Button onClick={handleRetryCard} disabled={retryLoading}>
                 {retryLoading ? 'Processando...' : 'Tentar pagar'}
               </Button>
             </div>
           </div>
         </div>
-      )}
-
-      {pickupQROrderId && (
-        <PickupQRDialog
-          open={!!pickupQROrderId}
-          onOpenChange={(open) => !open && setPickupQROrderId(null)}
-          orderId={pickupQROrderId}
-        />
       )}
 
       {trackingDialog && (

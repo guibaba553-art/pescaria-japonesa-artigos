@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -47,6 +67,27 @@ export type Database = {
           ip_address?: string | null
           record_id?: string | null
           table_name?: string
+        }
+        Relationships: []
+      }
+      brands: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1393,7 +1434,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          asaas_payment_id: string | null
           authorization_code: string | null
+          cancellation_reason: string | null
           card_brand: string | null
           card_last_digits: string | null
           cash_received: number | null
@@ -1403,14 +1446,22 @@ export type Database = {
           id: string
           idempotency_key: string | null
           installments: number
+          last_payment_attempt_at: string | null
           notes: string | null
           nsu: string | null
+          payment_attempts: number | null
+          payment_due_at: string | null
+          payment_gateway: string | null
           payment_id: string | null
           payment_method: string | null
+          payment_received_at: string | null
           pdv_service_time_seconds: number | null
+          pix_attempts: number | null
           pix_expiration: string | null
+          platform_fee: number | null
           qr_code: string | null
           qr_code_base64: string | null
+          receipt_url: string | null
           return_is_defect: boolean
           shipping_address: string
           shipping_cep: string
@@ -1437,7 +1488,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_payment_id?: string | null
           authorization_code?: string | null
+          cancellation_reason?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
           cash_received?: number | null
@@ -1447,14 +1500,22 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           installments?: number
+          last_payment_attempt_at?: string | null
           notes?: string | null
           nsu?: string | null
+          payment_attempts?: number | null
+          payment_due_at?: string | null
+          payment_gateway?: string | null
           payment_id?: string | null
           payment_method?: string | null
+          payment_received_at?: string | null
           pdv_service_time_seconds?: number | null
+          pix_attempts?: number | null
           pix_expiration?: string | null
+          platform_fee?: number | null
           qr_code?: string | null
           qr_code_base64?: string | null
+          receipt_url?: string | null
           return_is_defect?: boolean
           shipping_address: string
           shipping_cep: string
@@ -1481,7 +1542,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_payment_id?: string | null
           authorization_code?: string | null
+          cancellation_reason?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
           cash_received?: number | null
@@ -1491,14 +1554,22 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           installments?: number
+          last_payment_attempt_at?: string | null
           notes?: string | null
           nsu?: string | null
+          payment_attempts?: number | null
+          payment_due_at?: string | null
+          payment_gateway?: string | null
           payment_id?: string | null
           payment_method?: string | null
+          payment_received_at?: string | null
           pdv_service_time_seconds?: number | null
+          pix_attempts?: number | null
           pix_expiration?: string | null
+          platform_fee?: number | null
           qr_code?: string | null
           qr_code_base64?: string | null
+          receipt_url?: string | null
           return_is_defect?: boolean
           shipping_address?: string
           shipping_cep?: string
@@ -1573,6 +1644,9 @@ export type Database = {
           amount: number
           created_at: string
           error_message: string | null
+          gateway: string | null
+          gateway_refund_id: string | null
+          gateway_response: Json | null
           id: string
           mp_refund_id: string | null
           order_id: string
@@ -1585,6 +1659,9 @@ export type Database = {
           amount: number
           created_at?: string
           error_message?: string | null
+          gateway?: string | null
+          gateway_refund_id?: string | null
+          gateway_response?: Json | null
           id?: string
           mp_refund_id?: string | null
           order_id: string
@@ -1597,6 +1674,9 @@ export type Database = {
           amount?: number
           created_at?: string
           error_message?: string | null
+          gateway?: string | null
+          gateway_refund_id?: string | null
+          gateway_response?: Json | null
           id?: string
           mp_refund_id?: string | null
           order_id?: string
@@ -1756,7 +1836,7 @@ export type Database = {
       }
       products: {
         Row: {
-          brand: string | null
+          brand_id: string | null
           category: string
           cest: string | null
           cfop: string | null
@@ -1814,7 +1894,7 @@ export type Database = {
           width_cm: number | null
         }
         Insert: {
-          brand?: string | null
+          brand_id?: string | null
           category: string
           cest?: string | null
           cfop?: string | null
@@ -1872,7 +1952,7 @@ export type Database = {
           width_cm?: number | null
         }
         Update: {
-          brand?: string | null
+          brand_id?: string | null
           category?: string
           cest?: string | null
           cfop?: string | null
@@ -1931,6 +2011,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "products_cost_group_id_fkey"
             columns: ["cost_group_id"]
             isOneToOne: false
@@ -1948,6 +2035,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          asaas_customer_id: string | null
           cep: string | null
           cpf: string | null
           created_at: string
@@ -1957,6 +2045,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          asaas_customer_id?: string | null
           cep?: string | null
           cpf?: string | null
           created_at?: string
@@ -1966,6 +2055,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          asaas_customer_id?: string | null
           cep?: string | null
           cpf?: string | null
           created_at?: string
@@ -2098,6 +2188,7 @@ export type Database = {
       }
       saved_payment_methods: {
         Row: {
+          asaas_credit_card_token: string | null
           card_brand: string | null
           card_exp_month: string | null
           card_exp_year: string | null
@@ -2112,6 +2203,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_credit_card_token?: string | null
           card_brand?: string | null
           card_exp_month?: string | null
           card_exp_year?: string | null
@@ -2126,6 +2218,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_credit_card_token?: string | null
           card_brand?: string | null
           card_exp_month?: string | null
           card_exp_year?: string | null
@@ -2717,6 +2810,27 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2786,7 +2900,7 @@ export type Database = {
       get_product_admin: {
         Args: { p_id: string }
         Returns: {
-          brand: string | null
+          brand_id: string | null
           category: string
           cest: string | null
           cfop: string | null
@@ -2891,7 +3005,7 @@ export type Database = {
       get_products_admin: {
         Args: never
         Returns: {
-          brand: string | null
+          brand_id: string | null
           category: string
           cest: string | null
           cfop: string | null
@@ -3044,6 +3158,7 @@ export type Database = {
         | "devolvido"
         | "devolucao_solicitada"
         | "aguardando_envio"
+        | "pronto_retirada"
       reward_effect:
         | "discount_percent"
         | "free_gift"
@@ -3177,6 +3292,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "employee", "user"],
@@ -3192,6 +3310,7 @@ export const Constants = {
         "devolvido",
         "devolucao_solicitada",
         "aguardando_envio",
+        "pronto_retirada",
       ],
       reward_effect: [
         "discount_percent",

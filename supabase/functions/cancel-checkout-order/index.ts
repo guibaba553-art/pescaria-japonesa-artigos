@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -21,7 +21,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -84,12 +86,14 @@ serve(async (req) => {
       });
     }
 
-    // Delete order_items first (FK), then order
-    await supabase.from('order_items').delete().eq('order_id', orderId);
-    const { error: delErr } = await supabase.from('orders').delete().eq('id', orderId);
+    // Cancel the order: set status to 'cancelado' (do NOT delete — orders must have full history)
+    const { error: updateErr } = await supabase
+      .from('orders')
+      .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
+      .eq('id', orderId);
 
-    if (delErr) {
-      console.error('Delete order error', delErr);
+    if (updateErr) {
+      console.error('Cancel order error', updateErr);
       return new Response(JSON.stringify({ error: 'Failed to cancel order' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,4 +108,8 @@ serve(async (req) => {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}
+
+if (!Deno.env.get("DENO_TEST")) {
+  serve((req) => handleRequest(req));
+}
