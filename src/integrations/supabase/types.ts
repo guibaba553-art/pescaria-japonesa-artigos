@@ -1393,6 +1393,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          asaas_payment_id: string | null
           authorization_code: string | null
           card_brand: string | null
           card_last_digits: string | null
@@ -1405,6 +1406,7 @@ export type Database = {
           installments: number
           notes: string | null
           nsu: string | null
+          payment_gateway: string | null
           payment_id: string | null
           payment_method: string | null
           pdv_service_time_seconds: number | null
@@ -1437,6 +1439,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_payment_id?: string | null
           authorization_code?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
@@ -1449,6 +1452,7 @@ export type Database = {
           installments?: number
           notes?: string | null
           nsu?: string | null
+          payment_gateway?: string | null
           payment_id?: string | null
           payment_method?: string | null
           pdv_service_time_seconds?: number | null
@@ -1481,6 +1485,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_payment_id?: string | null
           authorization_code?: string | null
           card_brand?: string | null
           card_last_digits?: string | null
@@ -1493,6 +1498,7 @@ export type Database = {
           installments?: number
           notes?: string | null
           nsu?: string | null
+          payment_gateway?: string | null
           payment_id?: string | null
           payment_method?: string | null
           pdv_service_time_seconds?: number | null
