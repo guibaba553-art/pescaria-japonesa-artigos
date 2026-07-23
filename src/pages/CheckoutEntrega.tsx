@@ -35,7 +35,7 @@ import { toast } from 'sonner';
 import { SavedMethod, PaymentOrder } from '@/types/payment';
 import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
-import { SHIPPING_CONFIG } from '@/config/constants';
+import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
@@ -125,6 +125,7 @@ export default function CheckoutEntrega() {
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState('');
   const [pixCloseConfirmOpen, setPixCloseConfirmOpen] = useState(false);
   const [pixDialog, setPixDialog] = useState<{ open: boolean; qrCode: string; qrCodeBase64: string; orderId: string; expiresAt?: string; gateway?: 'mercadopago' | 'asaas' }>({
@@ -209,6 +210,7 @@ export default function CheckoutEntrega() {
   const paymentDeliveryReady = selectedOption !== '' && (selectedOption === 'pickup' || !!selectedShippingOption);
   const handlePaymentChange = (method: 'pix' | 'credit_card') => {
     setSelectedPayment(method);
+    setPendingOrderId(null);
   };
 
   const calculateShipping = useCallback(async (cepDestino: string) => {
@@ -456,12 +458,15 @@ export default function CheckoutEntrega() {
     setFinalizing(true);
     setProcessingStep('Validando dados...');
 
-    let createdOrderId: string | null = null;
+    let createdOrderId: string | null = pendingOrderId;
 
     try {
       if (items.length === 0) {
         throw new Error('Carrinho vazio. Adicione produtos antes de finalizar o pedido.');
       }
+
+      // Se já existe um pedido pendente (retentativa de cartão), pula criação
+      if (!createdOrderId) {
 
       // 1. Validar carrinho
       const { validateSiteCart } = await import('@/utils/siteCartValidation');
@@ -593,6 +598,10 @@ export default function CheckoutEntrega() {
       // 7. Marcar pedido como colocado — impede duplicata se o usuário recarregar a página
       setOrderPlaced(true);
 
+      // Salva pendingOrderId para reutilização em caso de falha no cartão
+      setPendingOrderId(orderData.id);
+      }
+
       // 8. Processar pagamento conforme método selecionado
       if (selectedPayment === 'pix') {
         setProcessingStep('Gerando QR Code PIX...');
@@ -612,7 +621,7 @@ export default function CheckoutEntrega() {
         try {
           const { data: pixData, error: pixError } = await supabase.functions.invoke(
             fnName,
-            { body: { orderId: orderData.id } },
+            { body: { orderId: createdOrderId } },
           );
 
           if (!pixError && pixData?.success && pixData?.data) {
@@ -635,7 +644,7 @@ export default function CheckoutEntrega() {
           try {
             const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke(
               fallbackFn,
-              { body: { orderId: orderData.id } },
+              { body: { orderId: createdOrderId } },
             );
 
             if (fallbackError || !fallbackData?.success) {
@@ -658,7 +667,7 @@ export default function CheckoutEntrega() {
             } catch { /* ignore */ }
             await supabase.from('orders')
               .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-              .eq('id', orderData.id);
+              .eq('id', createdOrderId);
             throw new Error(fallbackErr?.message || 'PIX temporariamente indisponível. Tente novamente mais tarde.');
           }
         }
@@ -666,7 +675,7 @@ export default function CheckoutEntrega() {
         // Reservar estoque após PIX gerado com sucesso
         setProcessingStep('Reservando estoque...');
         const { error: resvError } = await supabase.rpc('reserve_stock_for_order', {
-          p_order_id: orderData.id,
+          p_order_id: createdOrderId,
           p_items: items.map(item => ({
             product_id: item.id,
             variation_id: item.variationId || null,
@@ -687,7 +696,7 @@ export default function CheckoutEntrega() {
           } catch { /* ignore */ }
           await supabase.from('orders')
             .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-            .eq('id', orderData.id);
+            .eq('id', createdOrderId);
           throw new Error('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
         }
 
@@ -696,7 +705,7 @@ export default function CheckoutEntrega() {
           open: true,
           qrCode: pixResult.brCode || '',
           qrCodeBase64: pixResult.brCodeBase64 || '',
-          orderId: orderData.id,
+          orderId: createdOrderId,
           expiresAt: pixResult.expiresAt,
           gateway: usedGateway,
         });
@@ -706,6 +715,13 @@ export default function CheckoutEntrega() {
 
       if (selectedPayment === 'credit_card') {
         setProcessingStep('Processando pagamento...');
+
+        const orderTotal = total + displayFreteValor;
+        if (orderTotal < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE) {
+          toast.error(`Pedidos via cartão devem ser de no mínimo R$ ${PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE.toFixed(2).replace('.', ',')}.`);
+          return;
+        }
+
         // Obtém dados validados do formulário via ref — mostra erros inline se inválido
         const cardData = creditCardRef.current?.getData();
         if (!cardData) {
@@ -734,11 +750,14 @@ export default function CheckoutEntrega() {
             remoteIp = '127.0.0.1';
           }
 
+          const isRetry = !!pendingOrderId;
+          const fnName = isRetry ? 'retry-payment-asaas' : 'create-payment-asaas';
+
           const { data: paymentResult, error: paymentError } = await supabase.functions.invoke(
-            'create-payment-asaas',
+            fnName,
             {
               body: {
-                orderId: orderData.id,
+          orderId: createdOrderId,
                 installmentCount: cardData.installmentCount,
                 saveCard: cardData.saveCard,
                 creditCard: cardData.creditCard,
@@ -768,6 +787,7 @@ export default function CheckoutEntrega() {
           // Pagamento aprovado
           toast.success('Pagamento aprovado!');
           clearCart();
+          setPendingOrderId(null);
 
           setProcessingStep('Redirecionando...');
           window.location.href = '/conta';
@@ -786,6 +806,7 @@ export default function CheckoutEntrega() {
         // Limpar pedido órfão (criado mas sem pagamento ou com falha nos itens)
         try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', createdOrderId); } catch {}
       }
+      setPendingOrderId(null);
       toast.error(err?.message || 'Erro ao finalizar pedido');
     } finally {
       setFinalizing(false);
@@ -1127,24 +1148,39 @@ export default function CheckoutEntrega() {
 
                 {/* Cartão de Crédito — Checkout Transparente Asaas */}
                 <div
-                  className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                    selectedPayment === 'credit_card'
-                      ? 'border-primary ring-2 ring-primary/30'
-                      : 'border-border hover:border-primary/40'
+                  className={`rounded-xl border p-4 transition-all ${
+                    (total + displayFreteValor) < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE
+                      ? 'opacity-50 cursor-not-allowed border-muted bg-muted/30'
+                      : selectedPayment === 'credit_card'
+                        ? 'border-primary ring-2 ring-primary/30 cursor-pointer'
+                        : 'border-border hover:border-primary/40 cursor-pointer'
                   }`}
-                  onClick={() => handlePaymentChange('credit_card')}
+                  onClick={() => (total + displayFreteValor) >= PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE && handlePaymentChange('credit_card')}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      selectedPayment === 'credit_card' ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                      (total + displayFreteValor) < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE
+                        ? 'border-muted-foreground/30'
+                        : selectedPayment === 'credit_card'
+                          ? 'border-primary bg-primary'
+                          : 'border-muted-foreground/40'
                     }`}>
-                      {selectedPayment === 'credit_card' && <Check className="w-3 h-3 text-primary-foreground" />}
+                      {selectedPayment === 'credit_card' && (total + displayFreteValor) >= PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE && <Check className="w-3 h-3 text-primary-foreground" />}
                     </div>
-                    <CreditCard className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <CreditCard className={`w-5 h-5 shrink-0 mt-0.5 ${(total + displayFreteValor) < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE ? 'text-muted-foreground/50' : 'text-primary'}`} />
                     <div className="flex-1">
-                      <p className="font-semibold">Cartão de Crédito</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">Cartão de Crédito</p>
+                        {(total + displayFreteValor) < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE && (
+                          <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-muted-foreground/30">
+                            Mínimo R$ 5,00
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        Pagamento seguro com checkout transparente — até 10x sem juros
+                        {(total + displayFreteValor) < PAYMENT_CONFIG.CARD_MIN_ORDER_VALUE
+                          ? 'Indisponível para pedidos abaixo de R$ 5,00'
+                          : 'Pagamento seguro com checkout transparente — até 10x sem juros'}
                       </p>
                     </div>
                   </div>
@@ -1185,24 +1221,6 @@ export default function CheckoutEntrega() {
                           is_default: a.is_default,
                         }))}
                       />
-                    </div>
-                  )}
-
-                  {/* Estado vazio: sem cartões salvos */}
-                  {selectedPayment === 'credit_card' && savedCards.length === 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Futuro: abrir dialog para cadastrar cartão
-                        }}
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Cadastrar cartão
-                      </Button>
                     </div>
                   )}
                 </div>

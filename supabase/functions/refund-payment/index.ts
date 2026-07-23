@@ -227,6 +227,21 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     await supabase.from("payment_refunds").insert(refundRecord);
 
+    const newRefundedTotal = alreadyRefunded + refundAmount;
+    const fullRefundComplete = Math.abs(newRefundedTotal - orderTotal) <= 0.01;
+
+    const orderUpdate: Record<string, unknown> = {
+      refunded_amount: newRefundedTotal,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (fullRefundComplete && order.status !== 'cancelado' && order.status !== 'devolvido') {
+      orderUpdate.status = 'cancelado';
+      orderUpdate.cancellation_reason = 'estorno_total';
+    }
+
+    await supabase.from("orders").update(orderUpdate).eq("id", orderId);
+
     if (!result.success) {
       return new Response(
         JSON.stringify({
