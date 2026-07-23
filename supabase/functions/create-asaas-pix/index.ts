@@ -159,7 +159,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const paymentPayload = {
       customer: customer.id,
       billingType: 'PIX',
-      value: Number(order.total_amount), // in reais (not cents)
+      value: Math.round(Number(order.total_amount) * 100) / 100, // in reais (not cents)
       dueDate,
     };
 

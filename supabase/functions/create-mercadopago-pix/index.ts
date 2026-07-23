@@ -212,7 +212,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const idempotencyKey = `pix-${orderId}-${Date.now()}`;
 
     const rawTotalAmount = order.total_amount;
-    const txAmount = Number(rawTotalAmount);
+    const txAmount = Math.round(Number(rawTotalAmount) * 100) / 100;
 
     console.log(
       `[create-mercadopago-pix] DEBUG — orderId=${orderId} rawTotalAmount=${rawTotalAmount} type=${typeof rawTotalAmount} txAmount=${txAmount}`,

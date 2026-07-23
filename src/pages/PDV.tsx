@@ -1440,7 +1440,7 @@ export default function PDV() {
   };
 
   const calculateTotal = () => {
-    return Math.max(0, calculateSubtotal() - getDiscountValue());
+    return Math.round(Math.max(0, calculateSubtotal() - getDiscountValue()) * 100) / 100;
   };
 
   const calculateChange = () => {

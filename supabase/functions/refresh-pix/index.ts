@@ -147,7 +147,7 @@ serve(async (req) => {
       const paymentPayload = {
         customer: customer.id,
         billingType: 'PIX',
-        value: Number(currentOrder.total_amount),
+        value: Math.round(Number(currentOrder.total_amount) * 100) / 100,
         dueDate,
       };
 
@@ -230,7 +230,7 @@ serve(async (req) => {
       const idempotencyKey = crypto.randomUUID();
 
       const paymentPayload = {
-        transaction_amount: Number(currentOrder.total_amount),
+        transaction_amount: Math.round(Number(currentOrder.total_amount) * 100) / 100,
         description: `Pedido ${orderId}`,
         payment_method_id: 'pix',
         payer: {

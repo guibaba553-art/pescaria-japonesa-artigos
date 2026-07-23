@@ -525,7 +525,7 @@ export default function CheckoutEntrega() {
         .from('orders')
         .insert({
           user_id: user!.id,
-          total_amount: total + displayFreteValor,
+          total_amount: Math.round((total + displayFreteValor) * 100) / 100,
           shipping_cost: displayFreteValor,
           shipping_address: address
             ? `${address.street}, ${address.number}${address.complement ? ` — ${address.complement}` : ''} — ${address.neighborhood}, ${address.city}/${address.state}`
