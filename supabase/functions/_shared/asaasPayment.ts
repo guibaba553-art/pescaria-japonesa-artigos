@@ -168,6 +168,15 @@ export async function processAsaasCreditCardPayment(
     );
   }
 
+  // Valor mínimo de R$ 5 para cartão de crédito (exigência Asaas)
+  const orderTotal = Number(order.total_amount);
+  if (orderTotal < 5) {
+    return new Response(
+      JSON.stringify({ error: 'Pedidos via cartão devem ser de no mínimo R$ 5,00.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
   // ── Delivery/pickup validation ────────────────────────────────────────
   if (!order.delivery_type || !['delivery', 'pickup'].includes(order.delivery_type)) {
     return new Response(

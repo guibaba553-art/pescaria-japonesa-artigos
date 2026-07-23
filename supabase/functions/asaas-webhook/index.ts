@@ -239,12 +239,38 @@ serve(async (req) => {
       case "PAYMENT_REFUNDED": {
         const now = new Date().toISOString();
 
+        const { data: refunds } = await supabase
+          .from("payment_refunds")
+          .select("amount")
+          .eq("order_id", orderId)
+          .eq("status", "approved");
+
+        const totalRefunded = (refunds ?? []).reduce(
+          (sum: number, r: any) => sum + Number(r.amount),
+          0,
+        );
+
+        const { data: orderData } = await supabase
+          .from("orders")
+          .select("total_amount")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        const orderTotal = Number(orderData?.total_amount ?? order.total_amount);
+        const isFullRefund = Math.abs(totalRefunded - orderTotal) <= 0.01;
+
+        const orderUpdate: Record<string, unknown> = {
+          refunded_amount: totalRefunded,
+          updated_at: now,
+        };
+        if (isFullRefund && order.status !== 'cancelado' && order.status !== 'devolvido') {
+          orderUpdate.status = 'cancelado';
+          orderUpdate.cancellation_reason = 'estorno_total';
+        }
+
         await supabase
           .from("orders")
-          .update({
-            status: "cancelado",
-            updated_at: now,
-          })
+          .update(orderUpdate)
           .eq("id", orderId);
 
         // Restore stock reservation
@@ -254,7 +280,7 @@ serve(async (req) => {
           /* non-fatal */
         }
 
-        console.log(`Order ${orderId} refunded and cancelled`);
+        console.log(`Order ${orderId} refunded: R$ ${totalRefunded} / R$ ${orderTotal}`);
 
         break;
       }
