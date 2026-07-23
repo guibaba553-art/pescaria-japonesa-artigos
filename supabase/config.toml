@@ -80,7 +80,7 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.create-mercadopago-pix]
-verify_jwt = true
+verify_jwt = false
 
 [functions.auto-emit-fiscal]
 verify_jwt = false

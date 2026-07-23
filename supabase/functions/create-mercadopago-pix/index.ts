@@ -5,6 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 export async function handleRequest(req: Request): Promise<Response> {
@@ -210,12 +211,22 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Create PIX payment via Mercado Pago ─────────────────────────────────
     const idempotencyKey = `pix-${orderId}-${Date.now()}`;
 
+    const rawTotalAmount = order.total_amount;
+    const txAmount = Number(rawTotalAmount);
+
     console.log(
-      `[create-mercadopago-pix] Criando PIX para pedido ${orderId} — valor R$ ${Number(order.total_amount).toFixed(2)}`,
+      `[create-mercadopago-pix] DEBUG — orderId=${orderId} rawTotalAmount=${rawTotalAmount} type=${typeof rawTotalAmount} txAmount=${txAmount}`,
     );
 
+    if (!Number.isFinite(txAmount) || txAmount <= 0) {
+      return new Response(
+        JSON.stringify({ error: `Valor total inválido: ${rawTotalAmount}`, success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const paymentPayload = {
-      transaction_amount: Number(order.total_amount),
+      transaction_amount: txAmount,
       description,
       payment_method_id: "pix",
       payer: {
@@ -228,6 +239,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         },
       },
     };
+
+    console.log(
+      `[create-mercadopago-pix] Payload: ${JSON.stringify({ ...paymentPayload, payer: undefined, payer_email: paymentPayload.payer.email })}`,
+    );
 
     const controller = new AbortController();
     const fetchTimeout = setTimeout(() => controller.abort(), 20_000);
@@ -260,8 +275,9 @@ export async function handleRequest(req: Request): Promise<Response> {
         `HTTP ${paymentResponse.status}`;
       console.error(
         "[create-mercadopago-pix] Erro Mercado Pago",
-        paymentResponse.status,
-        errorMessage,
+        "status:", paymentResponse.status,
+        "error:", errorMessage,
+        "full_response:", JSON.stringify(paymentResult),
       );
       return new Response(
         JSON.stringify({ success: false, error: errorMessage }),
