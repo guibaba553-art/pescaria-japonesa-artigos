@@ -515,8 +515,11 @@ const OrdersTable = ({
     const cfg = statusConfig[order.status];
     const StatusIcon = cfg.icon;
     const nextStatus = getNextStatus(order.status, order.delivery_type);
-    const customerName = profiles[order.user_id]?.name || 'Carregando...';
-    const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+    const profile = profiles[order.user_id];
+    const customerName = profile?.name
+      || (order as any).shipping_recipient_name
+      || `#${order.user_id.slice(0, 8)}`;
+    const customerCpf = profile?.cpf || 'N/A';
     const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
     const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
 
@@ -574,12 +577,15 @@ const OrdersTable = ({
                 <span><span className="opacity-70">Nome:</span> <span className="font-mono">{customerName}</span></span>
                 <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
                 <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
-                {methodLabel && (
-                  <span>
-                    <span className="opacity-70">Pagamento:</span>{' '}
-                    <span className="font-mono">{methodLabel}{gwLabel ? ` via ${gwLabel}` : ''}{order.card_brand ? ` ${order.card_brand}` : ''}{order.card_last_digits ? ` final ${order.card_last_digits}` : ''}</span>
+                <span>
+                  <span className="opacity-70">Pagamento:</span>{' '}
+                  <span className="font-mono">
+                    {methodLabel || gwLabel || '—'}
+                    {methodLabel && gwLabel ? ` via ${gwLabel}` : ''}
+                    {order.card_brand ? ` ${order.card_brand}` : ''}
+                    {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
                   </span>
-                )}
+                </span>
               </div>
 
               {/* Ações */}
