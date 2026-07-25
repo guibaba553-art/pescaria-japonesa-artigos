@@ -213,7 +213,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName
+          full_name: fullName,
+          cpf: cpf,
+          phone: phone,
         }
       }
     });
@@ -245,21 +247,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive"
       });
       return { error: new Error('EMAIL_ALREADY_EXISTS') };
-    }
-
-    // Atualizar perfil com CPF, telefone e (opcionalmente) CEP
-    if (data.user) {
-      const profileUpdate: { cpf: string; phone: string; cep?: string } = { cpf, phone };
-      if (cep && cep.length === 8) profileUpdate.cep = cep;
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update(profileUpdate)
-        .eq('id', data.user.id);
-
-      if (profileError) {
-        console.error('Erro ao atualizar perfil:', profileError);
-      }
     }
 
     toast({

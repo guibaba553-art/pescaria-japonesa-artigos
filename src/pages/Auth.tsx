@@ -23,6 +23,8 @@ export default function Auth() {
   const [loginPassword, setLoginPassword] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
+  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupCpf, setSignupCpf] = useState('');
   
@@ -74,6 +76,11 @@ export default function Auth() {
       toast.error('Você precisa aceitar os Termos de Uso e a Política de Privacidade.');
       return;
     }
+    if (signupPassword !== signupPasswordConfirm) {
+      setPasswordError('As senhas não conferem.');
+      return;
+    }
+    setPasswordError('');
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupPhone);
     setLoading(false);
@@ -285,6 +292,28 @@ export default function Auth() {
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha</Label>
                   <Input id="signup-password" type="password" placeholder="Mínimo 6 caracteres" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} className="h-11 rounded-xl" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-password-confirm" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Confirmar Senha</Label>
+                  <Input
+                    id="signup-password-confirm"
+                    type="password"
+                    placeholder="Repita sua senha"
+                    value={signupPasswordConfirm}
+                    onChange={(e) => {
+                      setSignupPasswordConfirm(e.target.value);
+                      setPasswordError('');
+                    }}
+                    onBlur={() => {
+                      if (signupPasswordConfirm && signupPassword !== signupPasswordConfirm) {
+                        setPasswordError('As senhas não conferem.');
+                      }
+                    }}
+                    required
+                    minLength={6}
+                    className="h-11 rounded-xl"
+                  />
+                  {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
                 </div>
                 <div className="flex items-start gap-2 pt-1">
                   <Checkbox id="accept-terms" checked={acceptedTerms} onCheckedChange={(c) => setAcceptedTerms(c === true)} className="mt-0.5" />
