@@ -99,23 +99,41 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
       .in('role', ['admin', 'employee']);
     const staffIds = Array.from(new Set((staffRoles || []).map((r: any) => r.user_id))).filter(Boolean);
 
-    let visitsQuery = supabase
-      .from('site_visits')
-      .select('path, referrer, session_id, created_at, user_id')
-      .gte('created_at', sinceIso)
-      .lte('created_at', untilIso)
-      .order('created_at', { ascending: true })
-      .limit(10000);
+    // Busca visitas paginadas para contornar o limite padrão de 1.000 linhas do PostgREST
+    const PAGE_SIZE = 1000;
+    let allVisits: any[] = [];
+    let page = 0;
+    let hasMore = true;
 
-    if (staffIds.length > 0) {
-      // Excluir visitas feitas por usuários staff (mantém anônimos com user_id null)
-      visitsQuery = visitsQuery.or(
-        `user_id.is.null,user_id.not.in.(${staffIds.join(',')})`
-      );
+    while (hasMore) {
+      let visitsQuery = supabase
+        .from('site_visits')
+        .select('path, referrer, session_id, created_at, user_id')
+        .gte('created_at', sinceIso)
+        .lte('created_at', untilIso)
+        .order('created_at', { ascending: true })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (staffIds.length > 0) {
+        // Excluir visitas feitas por usuários staff (mantém anônimos com user_id null)
+        visitsQuery = visitsQuery.or(
+          `user_id.is.null,user_id.not.in.(${staffIds.join(',')})`
+        );
+      }
+
+      const { data: visits, error } = await visitsQuery;
+      if (error) {
+        console.error('Erro ao carregar visitas:', error);
+        break;
+      }
+
+      const rows = visits || [];
+      allVisits = allVisits.concat(rows);
+      hasMore = rows.length === PAGE_SIZE;
+      page++;
     }
 
-    const [{ data: visits }, { count: ordersCount }] = await Promise.all([
-      visitsQuery,
+    const [{ count: ordersCount }] = await Promise.all([
       supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
@@ -124,7 +142,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
         .eq('source', 'site'),
     ]);
 
-    const rows = visits || [];
+    const rows = allVisits;
 
     // Daily aggregation
     const byDay = new Map<string, { visits: number; sessions: Set<string> }>();
