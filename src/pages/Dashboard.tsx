@@ -534,7 +534,7 @@ export default function Dashboard() {
           const order = orderMap.get(i.order_id);
           if (!order) return false;
           const d = new Date(order.created_at);
-          return order.status === 'entregado' && order.source !== 'pdv' && d >= start && d <= end;
+          return SITE_FINALIZED.has(order.status) && order.source !== 'pdv' && d >= start && d <= end;
         })
       );
 
