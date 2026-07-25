@@ -18,7 +18,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     return await processAsaasCreditCardPayment(req, body, {
-      checkDuplicateCharge: false,
+      checkDuplicateCharge: true,
       checkTimeWindow: true,
       forceInstallmentFields: true,
     });

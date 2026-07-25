@@ -349,7 +349,7 @@ export async function processAsaasCreditCardPayment(
       .eq('id', orderId);
 
     return new Response(
-      JSON.stringify({ success: true, payment: paymentData }),
+      JSON.stringify({ success: true, payment: paymentData, paymentStatus: paymentStatus }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }

@@ -68,6 +68,7 @@ vi.mock('@/config/constants', () => ({
     CARD_RETRY_WINDOW_MINUTES: 10,
     MAX_INSTALLMENTS: 10,
     MIN_INSTALLMENT_VALUE: 5,
+    CARD_MIN_ORDER_VALUE: 5,
   },
   SHIPPING_CONFIG: {
     ORIGIN_CEP: '78556100',

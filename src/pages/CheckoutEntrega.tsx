@@ -102,6 +102,7 @@ export default function CheckoutEntrega() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [savedCards, setSavedCards] = useState<SavedMethod[]>([]);
   const creditCardRef = useRef<CreditCardFormHandle>(null);
+  const finalizingRef = useRef(false);
   const [installments, setInstallments] = useState(1);
   const [shouldSaveCard, setShouldSaveCard] = useState(false);
   const [cardLoading, setCardLoading] = useState(false);
@@ -439,7 +440,7 @@ export default function CheckoutEntrega() {
   };
 
   const handleFinalizeOrder = async () => {
-    if (finalizing) return;
+    if (finalizingRef.current) return;
 
     // ── Validações de formulário (backend guard) ──────────────
     if (!selectedOption || !paymentDeliveryReady) {
@@ -455,6 +456,7 @@ export default function CheckoutEntrega() {
       return;
     }
 
+    finalizingRef.current = true;
     setFinalizing(true);
     setProcessingStep('Validando dados...');
 
@@ -491,11 +493,12 @@ export default function CheckoutEntrega() {
         }
       }
 
-      // 2. Limpar pedidos abandonados anteriores (apenas sem pagamento e criados há mais de 5 min)
+      // 2. Limpar pedidos abandonados anteriores
       // Usa condição WHERE no DELETE para evitar race condition entre SELECT e DELETE
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
-      // Libera reserva de estoque dos pedidos abandonados
+      // Query 1: pedidos sem payment_id nem asaas_payment_id (abandonados há > 5 min)
       const { data: abandonedIds } = await supabase
         .from('orders')
         .select('id')
@@ -504,7 +507,18 @@ export default function CheckoutEntrega() {
         .is('payment_id', null)
         .is('asaas_payment_id', null)
         .lt('created_at', fiveMinutesAgo);
-      for (const ab of abandonedIds || []) {
+
+      // Query 2: pedidos com asaas_payment_id mas muito antigos (zumbis > 2h)
+      const { data: zombieIds } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('status', 'aguardando_pagamento')
+        .not('asaas_payment_id', 'is', null)
+        .lt('created_at', twoHoursAgo);
+
+      // Libera reserva de estoque de todos os pedidos abandonados/zumbis
+      for (const ab of [...(abandonedIds || []), ...(zombieIds || [])]) {
         try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
         try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', ab.id); } catch {}
       }
@@ -518,6 +532,15 @@ export default function CheckoutEntrega() {
         .is('payment_id', null)
         .is('asaas_payment_id', null)
         .lt('created_at', fiveMinutesAgo);
+
+      // Cancelamento atômico para pedidos zumbis (> 2h com asaas_payment_id)
+      await supabase
+        .from('orders')
+        .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
+        .eq('user_id', user!.id)
+        .eq('status', 'aguardando_pagamento')
+        .not('asaas_payment_id', 'is', null)
+        .lt('created_at', twoHoursAgo);
 
       // 3. Montar dados do pedido
       const isPickup = selectedOption === 'pickup';
@@ -784,6 +807,14 @@ export default function CheckoutEntrega() {
             return;
           }
 
+          // Pagamento pendente de análise (ex: análise de risco do Asaas)
+          if (paymentResult?.paymentStatus && paymentResult.paymentStatus !== 'CONFIRMED') {
+            toast.info('Pagamento em análise. Você receberá uma notificação quando for aprovado.');
+            setPendingOrderId(null);
+            setCardLoading(false);
+            return;
+          }
+
           // Pagamento aprovado
           toast.success('Pagamento aprovado!');
           clearCart();
@@ -809,6 +840,7 @@ export default function CheckoutEntrega() {
       setPendingOrderId(null);
       toast.error(err?.message || 'Erro ao finalizar pedido');
     } finally {
+      finalizingRef.current = false;
       setFinalizing(false);
     }
   };
