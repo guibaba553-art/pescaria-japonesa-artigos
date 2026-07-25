@@ -237,8 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error };
     }
 
-    // Se o usuário já existe mas não há erro (conta não confirmada ainda)
-    if (data.user && !data.session) {
+    // Email já registrado: Supabase retorna user sem session mas com identities vazias
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
       toast({
         title: "Email já cadastrado",
         description: "Este email já possui uma conta. Verifique sua caixa de entrada ou faça login.",
