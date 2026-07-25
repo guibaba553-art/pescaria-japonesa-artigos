@@ -574,12 +574,15 @@ const OrdersTable = ({
                 <span><span className="opacity-70">Nome:</span> <span className="font-mono">{customerName}</span></span>
                 <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
                 <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
-                {methodLabel && (
-                  <span>
-                    <span className="opacity-70">Pagamento:</span>{' '}
-                    <span className="font-mono">{methodLabel}{gwLabel ? ` via ${gwLabel}` : ''}{order.card_brand ? ` ${order.card_brand}` : ''}{order.card_last_digits ? ` final ${order.card_last_digits}` : ''}</span>
+                <span>
+                  <span className="opacity-70">Pagamento:</span>{' '}
+                  <span className="font-mono">
+                    {methodLabel || gwLabel || '—'}
+                    {methodLabel && gwLabel ? ` via ${gwLabel}` : ''}
+                    {order.card_brand ? ` ${order.card_brand}` : ''}
+                    {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
                   </span>
-                )}
+                </span>
               </div>
 
               {/* Ações */}

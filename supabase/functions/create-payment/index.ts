@@ -490,6 +490,7 @@ serve(async (req) => {
           .from('orders')
           .update({
             payment_id: responseData.id.toString(),
+            payment_method: 'pix',
             payment_gateway: 'mercadopago',
             qr_code: responseData.point_of_interaction?.transaction_data?.qr_code,
             qr_code_base64: responseData.point_of_interaction?.transaction_data?.qr_code_base64,
@@ -839,8 +840,22 @@ serve(async (req) => {
 
       // Atualizar pedido com payment_id
       if (data.orderId && responseData.id) {
-        const updateData: any = { payment_id: responseData.id.toString() };
-        
+        const updateData: any = {
+          payment_id: responseData.id.toString(),
+          payment_method: data.paymentMethod === 'debit' ? 'debit_card' : 'credit_card',
+          payment_gateway: 'mercadopago',
+        };
+
+        if (responseData.payment_method_id) {
+          updateData.card_brand = responseData.payment_method_id;
+        }
+        if (responseData.card?.last_four_digits) {
+          updateData.card_last_digits = responseData.card.last_four_digits;
+        }
+        if (responseData.installments) {
+          updateData.installments = responseData.installments;
+        }
+
         if (responseData.status === 'approved') {
           updateData.status = 'em_preparo';
           console.log('Card payment approved instantly');
