@@ -239,9 +239,12 @@ export default function Dashboard() {
         }
       }
 
-      const delivered = (orders || []).filter((o) => o.status === 'entregado');
-      const pdvOrders = delivered.filter((o) => o.source === 'pdv');
-      const siteOrders = delivered.filter((o) => o.source !== 'pdv');
+      // PDV: só conta como receita quando entregue.
+      // Site: conta quando o pedido saiu do fluxo de pagamento (retirado, entregue, em preparo, pronto p/ retirada).
+      const SITE_FINALIZED = new Set(['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado']);
+      const pdvOrders = (orders || []).filter((o) => o.source === 'pdv' && o.status === 'entregado');
+      const siteOrders = (orders || []).filter((o) => o.source !== 'pdv' && SITE_FINALIZED.has(o.status));
+      const delivered = [...pdvOrders, ...siteOrders];
 
       setPdvStats(calcChannelStats(pdvOrders, range));
       setSiteStats(calcChannelStats(siteOrders, range));
