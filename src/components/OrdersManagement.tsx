@@ -1236,6 +1236,16 @@ export function OrdersManagement() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: Order['status'], extra?: Record<string, any>) => {
+    const currentOrder = orders.find(o => o.id === orderId);
+    if (currentOrder && currentOrder.status === 'aguardando_pagamento' && newStatus === 'em_preparo') {
+      toast({
+        title: 'Pagamento não verificado',
+        description: 'Use "Verificar Pagamento" para confirmar o pagamento antes de avançar o status.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('orders')
       .update({ status: newStatus as any, ...(extra || {}) })
@@ -1624,99 +1634,194 @@ export function OrdersManagement() {
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
-  const renderSiteTabs = () => {
-    return (
-    <Tabs defaultValue="sem-pagamento" className="space-y-4">
-      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-        <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
-          <TabsTrigger value="sem-pagamento" className="shrink-0">
-            <Clock className="w-4 h-4 mr-2" />
-            Sem Pagamento
-            {site.semPagamento.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="em-preparacao" className="shrink-0">
-            <Package className="w-4 h-4 mr-2" />
-            Em Preparação
-            {site.emPreparacao.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="pronto-retirar" className="shrink-0">
-            <Store className="w-4 h-4 mr-2" />
-            Retirada
-            {site.prontoRetirar.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="aguardando-envio" className="shrink-0">
-            <PackageCheck className="w-4 h-4 mr-2" />
-            Envio
-            {site.aguardandoEnvio.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="em-caminho" className="shrink-0">
-            <Truck className="w-4 h-4 mr-2" />
-            Em Transporte
-            {site.emCaminho.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="entregues" className="shrink-0">
-            <PackageCheck className="w-4 h-4 mr-2" />
-            Entregues
-            {site.entregues.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="devolucoes"
-            className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
-          >
-            <Undo2 className="w-4 h-4 mr-2" />
-            Devoluções
-            {site.devolucoes.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
-                {site.devolucoes.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger
-            value="cancelados"
-            className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
-          >
-            <XCircle className="w-4 h-4 mr-2" />
-            Cancelados
-            {site.cancelados.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
-                {site.cancelados.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-      </div>
+  const [flow, setFlow] = useState<'retirada' | 'entrega'>('retirada');
+  const hasPendingRetirada = site.prontoRetirar.length > 0;
+  const hasPendingEntrega = site.aguardandoEnvio.length > 0;
 
-      <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
-      <TabsContent value="em-preparacao">
-        <TriagemSection
-          orders={site.emPreparacao}
-          profiles={profiles}
-          onStatusChanged={loadOrders}
-          openLabelDialog={(o: Order) => setLabelOrder(o)}
-          cancelOrder={cancelOrder}
-          cancellingOrders={cancellingOrders}
-        />
-      </TabsContent>
-      <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
-      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
-      <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
-      <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
-      <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
-      <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...tableProps} /></TabsContent>
-    </Tabs>
-  );};
+  const renderSiteTabs = () => {
+    const sharedTabs = {
+      semPagamento: (
+        <TabsTrigger key="sem-pagamento" value="sem-pagamento" className="shrink-0">
+          <Clock className="w-4 h-4 mr-2" />
+          Sem Pagamento
+          {site.semPagamento.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
+          )}
+        </TabsTrigger>
+      ),
+      emPreparacao: (
+        <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
+          <Package className="w-4 h-4 mr-2" />
+          Em Preparação
+          {site.emPreparacao.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
+          )}
+        </TabsTrigger>
+      ),
+      devolucoes: (
+        <TabsTrigger
+          key="devolucoes"
+          value="devolucoes"
+          className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+        >
+          <Undo2 className="w-4 h-4 mr-2" />
+          Devoluções
+          {site.devolucoes.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+              {site.devolucoes.length}
+            </Badge>
+          )}
+        </TabsTrigger>
+      ),
+      cancelados: (
+        <TabsTrigger
+          key="cancelados"
+          value="cancelados"
+          className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+        >
+          <XCircle className="w-4 h-4 mr-2" />
+          Cancelados
+          {site.cancelados.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+              {site.cancelados.length}
+            </Badge>
+          )}
+        </TabsTrigger>
+      ),
+    };
+
+    return (
+      <div className="space-y-4">
+        {/* Segmented control */}
+        <div className="inline-flex rounded-lg bg-muted p-1">
+          <button
+            onClick={() => setFlow('retirada')}
+            className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+              flow === 'retirada'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Store className="w-4 h-4" />
+            Retirada
+            {hasPendingRetirada && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
+            )}
+          </button>
+          <button
+            onClick={() => setFlow('entrega')}
+            className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+              flow === 'entrega'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            Entrega
+            {hasPendingEntrega && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
+            )}
+          </button>
+        </div>
+
+        {/* Fluxo Retirada */}
+        {flow === 'retirada' && (
+          <Tabs defaultValue="sem-pagamento">
+            <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
+              <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
+                {sharedTabs.semPagamento}
+                {sharedTabs.emPreparacao}
+                <TabsTrigger value="pronto-retirar" className="shrink-0">
+                  <Store className="w-4 h-4 mr-2" />
+                  Retirada
+                  {site.prontoRetirar.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="retirados" className="shrink-0">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Retirados
+                  {site.retirados.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.retirados.length}</Badge>
+                  )}
+                </TabsTrigger>
+                {sharedTabs.devolucoes}
+                {sharedTabs.cancelados}
+              </TabsList>
+            </div>
+
+            <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
+            <TabsContent value="em-preparacao">
+              <TriagemSection
+                orders={site.emPreparacao}
+                profiles={profiles}
+                onStatusChanged={loadOrders}
+                openLabelDialog={(o: Order) => setLabelOrder(o)}
+                cancelOrder={cancelOrder}
+                cancellingOrders={cancellingOrders}
+              />
+            </TabsContent>
+            <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
+            <TabsContent value="retirados"><OrdersTable orders={site.retirados} {...tableProps} /></TabsContent>
+            <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
+            <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...tableProps} /></TabsContent>
+          </Tabs>
+        )}
+
+        {/* Fluxo Entrega */}
+        {flow === 'entrega' && (
+          <Tabs defaultValue="sem-pagamento">
+            <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
+              <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
+                {sharedTabs.semPagamento}
+                {sharedTabs.emPreparacao}
+                <TabsTrigger value="aguardando-envio" className="shrink-0">
+                  <PackageCheck className="w-4 h-4 mr-2" />
+                  Envio
+                  {site.aguardandoEnvio.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="em-caminho" className="shrink-0">
+                  <Truck className="w-4 h-4 mr-2" />
+                  Em Transporte
+                  {site.emCaminho.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="entregues" className="shrink-0">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Entregues
+                  {site.entregues.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
+                  )}
+                </TabsTrigger>
+                {sharedTabs.devolucoes}
+                {sharedTabs.cancelados}
+              </TabsList>
+            </div>
+
+            <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
+            <TabsContent value="em-preparacao">
+              <TriagemSection
+                orders={site.emPreparacao}
+                profiles={profiles}
+                onStatusChanged={loadOrders}
+                openLabelDialog={(o: Order) => setLabelOrder(o)}
+                cancelOrder={cancelOrder}
+                cancellingOrders={cancellingOrders}
+              />
+            </TabsContent>
+            <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
+            <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
+            <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
+            <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
+            <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...tableProps} /></TabsContent>
+          </Tabs>
+        )}
+      </div>
+    );
+  };
 
   const totalRevenue = orders
     .filter(o => o.status !== 'aguardando_pagamento')

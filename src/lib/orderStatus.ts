@@ -111,7 +111,7 @@ export function getNextStatus(
   currentStatus: OrderStatus,
   deliveryType: 'delivery' | 'pickup',
 ): OrderStatus | null {
-  if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
+  if (currentStatus === 'aguardando_pagamento') return null;
   if (currentStatus === 'em_preparo') {
     // Tanto delivery quanto pickup agora exigem triagem obrigatória (scan de SKU).
     return null;
@@ -129,9 +129,7 @@ export function getNextStatusLabel(
   currentStatus: OrderStatus,
   deliveryType: 'delivery' | 'pickup',
 ): string {
-  if (currentStatus === 'aguardando_pagamento') {
-    return deliveryType === 'pickup' ? 'Marcar como Em Preparo' : 'Marcar como Em Preparo';
-  }
+  if (currentStatus === 'aguardando_pagamento') return 'Finalizado';
   if (currentStatus === 'em_preparo') {
     return deliveryType === 'pickup'
       ? 'Marcar como Pronto para Retirar'
