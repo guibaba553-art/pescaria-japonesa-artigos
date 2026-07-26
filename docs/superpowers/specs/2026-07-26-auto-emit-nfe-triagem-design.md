@@ -25,7 +25,7 @@ Hoje a emissão de NF-e para pedidos do site é manual: o operador precisa clica
 | `src/integrations/supabase/types.ts` | **Editar** — adicionar campo ao tipo `focus_nfe_settings` |
 | `src/components/FocusNFeSettings.tsx` | **Editar** — novo toggle na UI |
 | `src/components/TriagemScanDialog.tsx` | **Editar** — auto-emissão no `handleConfirm` (modo pack) |
-| `src/components/OrdersManagement.tsx` | **Editar** — auto-emissão no `updateOrderStatus` (retirado) |
+| `src/components/OrdersManagement.tsx` | **Editar** — auto-emissão no `updateOrderStatus` (retirado) + exibição NF-e nos cards |
 
 ## Design Detalhado
 
@@ -144,6 +144,83 @@ if (newStatus === 'retirado') {
 }
 ```
 
+### 6. OrdersManagement.tsx — Exibição da NF-e nos Cards
+
+Adicionar badge de status da NF-e no cabeçalho do card (`renderOrderCard`, linha 522), visível assim que houver uma NF-e associada ao pedido (não apenas após auto-emissão).
+
+**No cabeçalho do card** (junto aos badges existentes, após o badge de tipo de entrega):
+
+```tsx
+{order.nfe_emissions?.length > 0 && (() => {
+  const latestNfe = order.nfe_emissions[order.nfe_emissions.length - 1];
+  const nfeStatusColors: Record<string, string> = {
+    autorizada: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    authorized: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    pendente: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+    pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+    rejeitada: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+    rejected: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+    error: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+    cancelada: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+    cancelled: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+  };
+  const colorClass = nfeStatusColors[latestNfe.status] || 'bg-muted text-muted-foreground border-border';
+  return (
+    <Badge variant="outline" className={`text-[10px] font-semibold uppercase tracking-wide ${colorClass}`}>
+      <Receipt className="w-3 h-3 mr-1" />
+      NF-e {latestNfe.nfe_number ? `Nº ${latestNfe.nfe_number}` : latestNfe.status}
+    </Badge>
+  );
+})()}
+```
+
+**Nos detalhes expandidos** (dentro do `CollapsibleContent`, ao expandir o card): mostrar lista de NF-es com links para DANFE/XML:
+
+```tsx
+{order.nfe_emissions?.length > 0 && (
+  <div className="px-4 pb-3 space-y-2">
+    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+      <Receipt className="w-3.5 h-3.5" /> Notas Fiscais
+    </h4>
+    {order.nfe_emissions.map((nfe: any) => (
+      <div key={nfe.id} className="flex items-center justify-between gap-2 text-sm bg-muted/40 rounded-md px-3 py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge variant="outline" className={`text-[10px] ${nfeStatusColors[nfe.status] || ''}`}>
+            {nfe.status}
+          </Badge>
+          {nfe.nfe_number && (
+            <span className="font-mono text-xs">Nº {nfe.nfe_number}</span>
+          )}
+          {nfe.emitted_at && (
+            <span className="text-xs text-muted-foreground">
+              {new Date(nfe.emitted_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {nfe.nfe_xml_url && (
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+              <a href={nfe.nfe_xml_url} target="_blank" rel="noopener noreferrer">XML</a>
+            </Button>
+          )}
+          <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+            <a href={`/api/download-danfe?key=${nfe.nfe_key || nfe.id}`} target="_blank" rel="noopener noreferrer">
+              <Printer className="w-3 h-3 mr-1" /> DANFE
+            </a>
+          </Button>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+**Query**: adicionar `danfe_url` ao select de `nfe_emissions` no `loadOrders` (linha 1145):
+
+```typescript
+.select('id, order_id, nfe_number, nfe_key, nfe_xml_url, danfe_url, status, emitted_at, error_message')
+```
+
 ## Fluxo Completo
 
 ```
@@ -191,3 +268,7 @@ if (newStatus === 'retirado') {
 - [ ] Retirada: NF-e NÃO é emitida se já existe autorizada
 - [ ] PDV: não afetado (não dispara auto-emissão indevida)
 - [ ] Toggle aparece e funciona no FocusNFeSettings
+- [ ] Card de pedido mostra badge NF-e quando há emissão associada
+- [ ] Badge NF-e colorido corretamente por status (verde=autorizada, amarelo=pendente, vermelho=rejeitada)
+- [ ] Card expandido mostra lista de NF-es com link DANFE e XML
+- [ ] Pedido sem NF-e não mostra badge nem seção de notas fiscais
