@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -1638,7 +1638,31 @@ export function OrdersManagement() {
   const hasPendingRetirada = site.prontoRetirar.length > 0;
   const hasPendingEntrega = site.aguardandoEnvio.length > 0;
 
-  const renderSiteTabs = () => {
+  const SiteTabs = memo(function SiteTabs({
+    site,
+    profiles,
+    loadOrders,
+    cancelOrder,
+    cancellingOrders,
+    flow,
+    setFlow,
+    hasPendingRetirada,
+    hasPendingEntrega,
+    tableProps,
+    setLabelOrder,
+  }: {
+    site: Record<string, Order[]>;
+    profiles: Record<string, { name: string; cpf: string }>;
+    loadOrders: () => void;
+    cancelOrder: (orderId: string, reason: string) => Promise<void>;
+    cancellingOrders: Set<string>;
+    flow: 'retirada' | 'entrega';
+    setFlow: (f: 'retirada' | 'entrega') => void;
+    hasPendingRetirada: boolean;
+    hasPendingEntrega: boolean;
+    tableProps: any;
+    setLabelOrder: (o: Order) => void;
+  }) {
     const sharedTabs = {
       semPagamento: (
         <TabsTrigger key="sem-pagamento" value="sem-pagamento" className="shrink-0">
@@ -1821,7 +1845,7 @@ export function OrdersManagement() {
         )}
       </div>
     );
-  };
+  });
 
   const totalRevenue = orders
     .filter(o => o.status !== 'aguardando_pagamento')
@@ -1862,7 +1886,19 @@ export function OrdersManagement() {
       </div>
 
       <CardContent className="p-3 md:p-6">
-        {renderSiteTabs()}
+        <SiteTabs
+          site={site}
+          profiles={profiles}
+          loadOrders={loadOrders}
+          cancelOrder={cancelOrder}
+          cancellingOrders={cancellingOrders}
+          flow={flow}
+          setFlow={setFlow}
+          hasPendingRetirada={hasPendingRetirada}
+          hasPendingEntrega={hasPendingEntrega}
+          tableProps={tableProps}
+          setLabelOrder={(o: Order) => setLabelOrder(o)}
+        />
       </CardContent>
 
       <MelhorEnvioLabelDialog
