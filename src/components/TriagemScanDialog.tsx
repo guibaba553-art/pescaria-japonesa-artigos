@@ -206,7 +206,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
     if (!order || !allScanned) return;
     setConfirming(true);
     try {
-      const newStatus = mode === 'pickup' ? 'retirado' : 'aguardando_envio';
+      const newStatus = mode === 'pickup' ? 'pronto_retirada' : 'aguardando_envio';
       const { data, error } = await supabase
         .from('orders')
         .update({ status: newStatus as any })
@@ -219,10 +219,10 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
       }
 
       toast({
-        title: mode === 'pickup' ? '✅ Retirada confirmada' : '✅ Pedido embalado',
+        title: mode === 'pickup' ? '✅ Triagem concluída' : '✅ Pedido embalado',
         description:
           mode === 'pickup'
-            ? `Pedido #${order.id.slice(0, 8)} marcado como retirado.`
+            ? `Pedido #${order.id.slice(0, 8)} marcado como pronto para retirada.`
             : `Pedido #${order.id.slice(0, 8)} aguardando coleta da transportadora.`,
       });
       onCompleted();
@@ -585,7 +585,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                 <CheckCircle2 className="w-4 h-4 mr-2" />
               )}
               {mode === 'pickup'
-                ? 'Confirmar retirada'
+                ? 'Marcar como Pronto para Retirada'
                 : 'Marcar como aguardando envio'}
             </Button>
           </DialogFooter>
