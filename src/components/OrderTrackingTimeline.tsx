@@ -59,7 +59,7 @@ export function OrderTrackingTimeline({ status, deliveryType, cancellationReason
   const isPickup = deliveryType === 'pickup';
   const steps = isPickup ? pickupSteps : deliverySteps;
   const currentIdx = getCurrentIndex(status, isPickup);
-  const isRefunded = status === 'reembolsado';
+  const isRefunded = status === 'reembolsado' || (status === 'cancelado' && refundAmount !== undefined && refundAmount > 0);
 
   if (isRefunded) {
     return (

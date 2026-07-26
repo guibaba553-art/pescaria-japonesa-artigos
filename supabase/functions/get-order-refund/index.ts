@@ -106,6 +106,19 @@ serve(async (req) => {
       return acc;
     }, {});
 
+    const addressParts = [
+      company.street,
+      company.number,
+      company.complement,
+      company.neighborhood,
+      company.city,
+      company.state,
+      company.cep,
+    ].filter(Boolean);
+    const address = addressParts.length > 0
+      ? `${addressParts.slice(0, -3).join(', ')}${addressParts.length > 3 ? ', ' : ''}${addressParts.slice(-3).join(' - ')}`
+      : null;
+
     return new Response(
       JSON.stringify({
         refund: {
@@ -121,9 +134,10 @@ serve(async (req) => {
         },
         company: {
           logoUrl: company.logo_url || null,
+          tradeName: company.trade_name || null,
           legalName: company.legal_name || null,
           cnpj: company.cnpj || null,
-          address: company.address || null,
+          address,
           email: company.email || null,
           phone: company.phone || null,
         },
