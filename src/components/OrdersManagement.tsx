@@ -1600,7 +1600,8 @@ export function OrdersManagement() {
     aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
-    entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
+    entregues: siteOrders.filter(o => o.status === 'entregado'),
+    retirados: siteOrders.filter(o => o.status === 'retirado'),
     devolucoes: siteOrders.filter(o => o.status === 'devolvido' || o.status === 'devolucao_solicitada'),
     cancelados: siteOrders.filter(o => o.status === 'cancelado'),
   };
@@ -1626,8 +1627,8 @@ export function OrdersManagement() {
   const renderSiteTabs = () => {
     return (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
-      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-8 gap-1">
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
+        <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
@@ -1642,18 +1643,18 @@ export function OrdersManagement() {
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="aguardando-envio" className="shrink-0">
-            <PackageCheck className="w-4 h-4 mr-2" />
-            Aguardando Envio
-            {site.aguardandoEnvio.length > 0 && (
-              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
-            )}
-          </TabsTrigger>
           <TabsTrigger value="pronto-retirar" className="shrink-0">
             <Store className="w-4 h-4 mr-2" />
-            Pronto para Retirada
+            Retirada
             {site.prontoRetirar.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="aguardando-envio" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Envio
+            {site.aguardandoEnvio.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="em-caminho" className="shrink-0">
@@ -1708,8 +1709,8 @@ export function OrdersManagement() {
           cancellingOrders={cancellingOrders}
         />
       </TabsContent>
-      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
+      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
       <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
