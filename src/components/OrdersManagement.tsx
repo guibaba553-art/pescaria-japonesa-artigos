@@ -390,6 +390,7 @@ const OrdersTable = ({
   refundingOrders: Set<string>;
   openLabelDialog: (order: Order) => void;
 }) => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'today' | '7days' | '30days' | 'all'>('all');
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
@@ -811,23 +812,36 @@ const OrdersTable = ({
                 })()}
 
                 <div>
-                  {(order.status === 'aguardando_pagamento' || order.status === 'em_preparo' || order.status === 'pronto_retirada') && (
-                    (() => {
-                      const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
-                      const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
-                      const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
+                {(order.status === 'aguardando_pagamento' || order.status === 'em_preparo' || order.status === 'pronto_retirada') && (
+                  (() => {
+                    const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
+                    const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
+                    const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
 
-                      return hasPayment ? (
-                        // Cancelamento com opção de estorno integrado
-                        <CancelOrderWithRefundDialog
+                    return hasPayment ? (
+                      // Cancelamento com opção de estorno integrado
+                      <CancelOrderWithRefundDialog
                           order={order}
                           customerName={customerName}
                           gwLabel={gwLabel}
                           methodLabel={methodLabel}
-                          onCancelWithRefund={(reason) => {
-                            // 1. Estornar via refund-payment
-                            refundPayment(order.id);
-                            // 2. Cancelar pedido
+                          onCancelWithRefund={async (reason) => {
+                            if (order.status === 'aguardando_pagamento') {
+                              // Verificar pagamento no gateway antes de estornar
+                              const { data, error } = await supabase.functions.invoke('verify-payment', {
+                                body: { orderId: order.id }
+                              });
+                              if (!error && data?.status === 'approved') {
+                                refundPayment(order.id);
+                              } else {
+                                toast({
+                                  title: 'Pagamento não confirmado',
+                                  description: 'Pedido cancelado sem estorno.'
+                                });
+                              }
+                            } else {
+                              refundPayment(order.id);
+                            }
                             updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason });
                           }}
                           onCancelOnly={(reason) => {
