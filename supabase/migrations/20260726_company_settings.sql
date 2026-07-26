@@ -18,6 +18,16 @@ CREATE POLICY "Service role gerencia company_settings" ON public.company_setting
   USING (auth.role() = 'service_role'::text)
   WITH CHECK (auth.role() = 'service_role'::text);
 
+-- Admins podem editar
+CREATE POLICY "Admins editam company_settings" ON public.company_settings
+  FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins atualizam company_settings" ON public.company_settings
+  FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+
 -- Permitir leitura pública (Footer, site)
 CREATE POLICY "Leitura pública de company_settings" ON public.company_settings
   FOR SELECT
