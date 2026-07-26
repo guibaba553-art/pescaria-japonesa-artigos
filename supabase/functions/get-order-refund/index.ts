@@ -121,8 +121,10 @@ serve(async (req) => {
         },
         company: {
           logoUrl: company.logo_url || null,
+          tradeName: company.trade_name || null,
           legalName: company.legal_name || null,
           cnpj: company.cnpj || null,
+          ie: company.ie || null,
           address: company.address || null,
           email: company.email || null,
           phone: company.phone || null,
