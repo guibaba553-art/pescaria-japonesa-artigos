@@ -33,6 +33,17 @@ export interface RefundResult {
   rawResponse?: Record<string, unknown>;
 }
 
+export interface GatewayRefundInfo {
+  /** Gateway's refund ID */
+  gatewayRefundId: string;
+  /** Amount in BRL */
+  amount: number;
+  /** Status: approved, pending, rejected */
+  status: "approved" | "pending" | "rejected";
+  /** ISO date string when refund was created */
+  createdAt: string;
+}
+
 export interface PaymentGateway {
   readonly name: string;
   /** Whether this gateway allows partial refunds */
@@ -41,6 +52,8 @@ export interface PaymentGateway {
   getPaymentId(order: Record<string, unknown>): string;
   /** Execute a refund via the gateway API */
   createRefund(params: RefundParams): Promise<RefundResult>;
+  /** List refunds for a payment via the gateway API */
+  listRefunds(paymentId: string): Promise<GatewayRefundInfo[]>;
 }
 
 // ── Registry ───────────────────────────────────────────────────────────────
@@ -134,6 +147,44 @@ const asaasGateway: PaymentGateway = {
       rawResponse: rawBody,
     };
   },
+
+  async listRefunds(paymentId: string): Promise<GatewayRefundInfo[]> {
+    const apiKey = Deno.env.get("ASAAS_API_KEY");
+    if (!apiKey) return [];
+
+    const env = Deno.env.get("ASAAS_ENVIRONMENT") === "production"
+      ? "api.asaas.com"
+      : "api-sandbox.asaas.com";
+
+    try {
+      const response = await fetch(
+        `https://${env}/v3/payments/${paymentId}/refunds`,
+        {
+          method: "GET",
+          headers: { "access_token": apiKey, "Content-Type": "application/json" },
+        },
+      );
+
+      const rawBody = await response.json().catch(() => null);
+      console.log(
+        `[refundGateway:asaas] GET /v3/payments/${paymentId}/refunds status=${response.status}`,
+        rawBody,
+      );
+
+      if (!response.ok) return [];
+
+      const refunds = (rawBody?.data ?? []) as any[];
+      return refunds.map((r: any) => ({
+        gatewayRefundId: String(r.id ?? ""),
+        amount: Number(r.value ?? 0),
+        status: r.status === "DONE" ? "approved" : r.status === "CANCELLED" ? "rejected" : "pending",
+        createdAt: r.dateCreated ?? r.createdDate ?? "",
+      }));
+    } catch (e) {
+      console.error(`[refundGateway:asaas] listRefunds error`, e);
+      return [];
+    }
+  },
 };
 
 // ── Mercado Pago ───────────────────────────────────────────────────────────
@@ -203,6 +254,43 @@ const mercadopagoGateway: PaymentGateway = {
       status: refundStatus,
       rawResponse: rawBody,
     };
+  },
+
+  async listRefunds(paymentId: string): Promise<GatewayRefundInfo[]> {
+    const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
+    if (!accessToken) return [];
+
+    try {
+      const response = await fetch(
+        `https://api.mercadopago.com/v1/payments/${paymentId}/refunds`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const rawBody = await response.json().catch(() => null);
+      console.log(
+        `[refundGateway:mercadopago] GET /v1/payments/${paymentId}/refunds status=${response.status}`,
+        rawBody,
+      );
+
+      if (!response.ok) return [];
+
+      const refunds = (Array.isArray(rawBody) ? rawBody : rawBody?.results ?? []) as any[];
+      return refunds.map((r: any) => ({
+        gatewayRefundId: String(r.id ?? ""),
+        amount: Number(r.amount ?? 0),
+        status: (r.status === "approved") ? "approved" : (r.status === "rejected" || r.status === "cancelled") ? "rejected" : "pending",
+        createdAt: r.date_created ?? "",
+      }));
+    } catch (e) {
+      console.error(`[refundGateway:mercadopago] listRefunds error`, e);
+      return [];
+    }
   },
 };
 

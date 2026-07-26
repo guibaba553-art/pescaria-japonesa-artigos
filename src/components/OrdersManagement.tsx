@@ -1451,11 +1451,23 @@ export function OrdersManagement() {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
       }
     } catch (err: any) {
-      toast({
-        title: 'Erro ao estornar',
-        description: err?.message || 'Não foi possível processar o estorno.',
-        variant: 'destructive',
+      const { data: checkData } = await supabase.functions.invoke('check-order-refund', {
+        body: { orderId },
       });
+
+      if (checkData?.found && checkData.totalApproved > 0) {
+        toast({
+          title: 'Estorno já registrado',
+          description: `R$ ${checkData.totalApproved.toFixed(2)} já foi estornado via ${checkData.refunds?.[0]?.gatewayRefundId?.slice(0, 8) ?? 'gateway'}.`,
+        });
+        loadOrders();
+      } else {
+        toast({
+          title: 'Erro ao estornar',
+          description: err?.message || 'Não foi possível processar o estorno.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setRefundingOrders(prev => {
         const next = new Set(prev);
