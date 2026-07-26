@@ -12,6 +12,7 @@ import {
   Store,
   ChevronRight,
   Loader2,
+  ScanBarcode,
 } from 'lucide-react';
 
 interface Order {
@@ -35,9 +36,10 @@ interface TriagemSectionProps {
   orders: Order[];
   profiles: Record<string, { name: string; cpf: string }>;
   onStatusChanged: () => void;
+  openLabelDialog: (order: Order) => void;
 }
 
-export function TriagemSection({ orders, profiles, onStatusChanged }: TriagemSectionProps) {
+export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDialog }: TriagemSectionProps) {
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
@@ -318,11 +320,33 @@ export function TriagemSection({ orders, profiles, onStatusChanged }: TriagemSec
                   </span>
                 </div>
 
-                {/* Ações: apenas indicador de clique para triagem */}
-                <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap">
-                  <Badge variant="secondary" className="gap-1 text-[10px] font-normal opacity-60">
+                {/* Ações */}
+                <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    onClick={() => openScanFor(order.id, order.delivery_type)}
+                    disabled={isLoading}
+                    className="gap-1"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ScanBarcode className="h-3.5 w-3.5" />
+                    )}
                     Clique para triagem
-                  </Badge>
+                  </Button>
+
+                  {order.delivery_type === 'delivery' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openLabelDialog(order)}
+                      className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                      Gerar Etiqueta
+                    </Button>
+                  )}
                 </div>
               </Card>
             );

@@ -1661,6 +1661,7 @@ export function OrdersManagement() {
           orders={site.emPreparacao}
           profiles={profiles}
           onStatusChanged={loadOrders}
+          openLabelDialog={(o: Order) => setLabelOrder(o)}
         />
       </TabsContent>
       <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
