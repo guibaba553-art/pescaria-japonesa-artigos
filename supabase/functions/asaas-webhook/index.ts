@@ -321,7 +321,7 @@ serve(async (req) => {
           updated_at: now,
         };
         if (isFullRefund && order.status !== 'cancelado' && order.status !== 'devolvido') {
-          orderUpdate.status = 'cancelado';
+          orderUpdate.status = 'reembolsado';
           orderUpdate.cancellation_reason = 'estorno_total';
         }
 

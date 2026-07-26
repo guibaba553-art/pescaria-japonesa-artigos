@@ -228,7 +228,7 @@ serve(async (req) => {
             // 3) Cancelar o pedido (volta de em_preparo → cancelado)
             const { error: cancelErr } = await supabase
               .from('orders')
-              .update({ status: 'cancelado' })
+              .update({ status: 'reembolsado' })
               .eq('id', order.id);
             if (cancelErr) {
               console.error('[payment-webhook] Erro ao cancelar pedido:', cancelErr);

@@ -236,7 +236,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     };
 
     if (fullRefundComplete && order.status !== 'cancelado' && order.status !== 'devolvido') {
-      orderUpdate.status = 'cancelado';
+      orderUpdate.status = 'reembolsado';
       orderUpdate.cancellation_reason = 'estorno_total';
     }
 
