@@ -10,7 +10,8 @@ export type OrderStatus =
   | 'cancelado'
   | 'devolucao_solicitada'
   | 'devolvido'
-  | 'pronto_retirada';
+  | 'pronto_retirada'
+  | 'reembolsado';
 
 export interface StatusConfigEntry {
   label: string;
@@ -79,6 +80,12 @@ export const statusConfig: Record<OrderStatus, StatusConfigEntry> = {
     icon: Undo2,
     badgeClass: 'bg-red-600/15 text-red-700 dark:text-red-400 border-red-600/40 hover:bg-red-600/20',
     accentClass: 'border-l-red-600',
+  },
+  reembolsado: {
+    label: 'Reembolsado',
+    icon: Undo2,
+    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20',
+    accentClass: 'border-l-emerald-500',
   },
 };
 

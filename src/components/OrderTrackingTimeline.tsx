@@ -1,5 +1,6 @@
-import { CheckCircle2, CreditCard, Package, Truck, Home, Store, XCircle } from 'lucide-react';
+import { CheckCircle2, CreditCard, Package, Truck, Home, Store, XCircle, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type OrderStatus =
   | 'aguardando_pagamento'
@@ -9,13 +10,19 @@ type OrderStatus =
   | 'entregado'
   | 'retirado'
   | 'pronto_retirada'
-  | 'cancelado';
+  | 'cancelado'
+  | 'reembolsado';
 
 interface OrderTrackingTimelineProps {
   status: OrderStatus;
   deliveryType?: 'delivery' | 'pickup';
   cancellationReason?: string;
   isExpired?: boolean;
+  refundAmount?: number;
+  refundDate?: string;
+  refundReason?: string;
+  onViewReceipt?: () => void;
+  onDownloadPdf?: () => void;
 }
 
 interface Step {
@@ -48,10 +55,53 @@ function getCurrentIndex(status: OrderStatus, isPickup: boolean): number {
   return -1;
 }
 
-export function OrderTrackingTimeline({ status, deliveryType, cancellationReason, isExpired }: OrderTrackingTimelineProps) {
+export function OrderTrackingTimeline({ status, deliveryType, cancellationReason, isExpired, refundAmount, refundDate, refundReason, onViewReceipt, onDownloadPdf }: OrderTrackingTimelineProps) {
   const isPickup = deliveryType === 'pickup';
   const steps = isPickup ? pickupSteps : deliverySteps;
   const currentIdx = getCurrentIndex(status, isPickup);
+  const isRefunded = status === 'reembolsado';
+
+  if (isRefunded) {
+    return (
+      <div className="flex flex-col gap-3 p-4 rounded-xl border bg-emerald-500/5 border-emerald-500/20">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+            <Undo2 className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-emerald-700 dark:text-emerald-400">
+              Pedido Reembolsado
+            </p>
+            {refundAmount !== undefined && (
+              <p className="text-sm text-muted-foreground">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(refundAmount)} estornado{refundDate ? ` em ${new Date(refundDate).toLocaleDateString('pt-BR')}` : ''}
+              </p>
+            )}
+            {refundReason && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1" title={refundReason}>
+                Motivo: {refundReason}
+              </p>
+            )}
+          </div>
+        </div>
+        {(onViewReceipt || onDownloadPdf) && (
+          <div className="flex items-center gap-2">
+            {onViewReceipt && (
+              <Button size="sm" variant="outline" onClick={onViewReceipt}>
+                Ver comprovante
+              </Button>
+            )}
+            {onDownloadPdf && (
+              <Button size="sm" variant="outline" onClick={onDownloadPdf}>
+                Baixar PDF
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const isCancelled = status === 'cancelado' || isExpired;
 
   if (isCancelled) {
