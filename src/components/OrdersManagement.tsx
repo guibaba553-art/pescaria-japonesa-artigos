@@ -1608,7 +1608,7 @@ export function OrdersManagement() {
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
     emPreparacao: siteOrders.filter(o => o.status === 'em_preparo'),
-    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
+    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio' && o.delivery_type !== 'pickup'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado'),
