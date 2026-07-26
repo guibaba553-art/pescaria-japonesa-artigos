@@ -160,7 +160,6 @@ export function Header() {
     { label: 'Catálogo', path: '/admin/catalogo', icon: Boxes, permKey: 'catalog' },
     { label: 'Pedidos', path: '/admin/pedidos', icon: ClipboardList, permKey: 'orders' },
     { label: 'Clientes', path: '/admin/clientes', icon: Users, adminOnly: true },
-    { label: 'Triagem', path: '/admin/triagem', icon: ScanLine, permKey: 'triagem' },
     { label: 'Análise', path: '/admin/analise', icon: BarChart3, permKey: 'sales_analysis' },
     { label: 'Funcionários', path: '/admin/funcionarios', icon: UserCog, adminOnly: true },
     { label: 'Vendas', path: '/pdv/sales-history', icon: History, permKey: 'pdv' },
