@@ -1332,7 +1332,17 @@ export function OrdersManagement() {
         body: { orderId }
       });
 
-      if (error) throw error;
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || 'Não foi possível verificar o pagamento. Tente novamente.');
+      }
 
       if (data.updated) {
         toast({
