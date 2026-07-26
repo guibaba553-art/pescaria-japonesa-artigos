@@ -109,6 +109,8 @@ export default function Account() {
     reason: string;
     status: string;
     transactionReceiptUrl?: string;
+    customerName?: string;
+    customerCpf?: string;
   } | null>(null);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refreshingPix, setRefreshingPix] = useState<string | null>(null);
@@ -155,6 +157,8 @@ export default function Account() {
       reason: data.refund.reason || '',
       status: data.refund.status,
       transactionReceiptUrl: data.refund.transactionReceiptUrl || undefined,
+      customerName: data.refund.customerName || undefined,
+      customerCpf: data.refund.customerCpf || undefined,
     });
     setRefundDialogOpen(true);
   };
@@ -179,7 +183,7 @@ export default function Account() {
       .eq('id', orderId)
       .single();
 
-    generateRefundPdf({
+    await generateRefundPdf({
       orderId,
       amount: data.refund.amount,
       date: data.refund.date,
@@ -188,6 +192,8 @@ export default function Account() {
       reason: data.refund.reason || '',
       status: data.refund.status,
       transactionReceiptUrl: data.refund.transactionReceiptUrl || undefined,
+      customerName: data.refund.customerName || undefined,
+      customerCpf: data.refund.customerCpf || undefined,
     });
   };
 
