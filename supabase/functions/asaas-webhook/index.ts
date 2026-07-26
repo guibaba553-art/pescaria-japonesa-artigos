@@ -245,7 +245,7 @@ serve(async (req) => {
           .eq("order_id", orderId)
           .eq("status", "approved");
 
-        const totalRefunded = (refunds ?? []).reduce(
+        let totalRefunded = (refunds ?? []).reduce(
           (sum: number, r: any) => sum + Number(r.amount),
           0,
         );
@@ -257,6 +257,63 @@ serve(async (req) => {
           .maybeSingle();
 
         const orderTotal = Number(orderData?.total_amount ?? order.total_amount);
+
+        // Se não há registros locais de estorno (ex: estorno manual via dashboard Asaas),
+        // busca os estornos diretamente da API Asaas e os registra localmente
+        if (totalRefunded <= 0.01) {
+          console.log(`No local refunds for order ${orderId}, fetching from Asaas API`);
+          try {
+            const asaasApiKey = Deno.env.get("ASAAS_API_KEY");
+            const asaasEnv = Deno.env.get("ASAAS_ENVIRONMENT") || "sandbox";
+            const baseUrl = asaasEnv === "production"
+              ? "https://api.asaas.com"
+              : "https://api-sandbox.asaas.com";
+
+            if (asaasApiKey && payment.id) {
+              const refundsRes = await fetch(
+                `${baseUrl}/v3/payments/${payment.id}/refunds`,
+                { headers: { "access_token": asaasApiKey } },
+              );
+
+              if (refundsRes.ok) {
+                const refundsData = await refundsRes.json();
+                const refundList = refundsData?.data ?? [];
+
+                for (const ref of refundList) {
+                  if (ref.status === "DONE" || ref.status === "PENDING") {
+                    totalRefunded += Number(ref.value ?? 0);
+
+                    // Insere no payment_refunds para rastreabilidade
+                    await supabase.from("payment_refunds").upsert({
+                      order_id: orderId,
+                      payment_id: payment.id,
+                      amount: Number(ref.value ?? 0),
+                      gateway: "asaas",
+                      gateway_refund_id: ref.id,
+                      gateway_response: ref,
+                      status: ref.status === "DONE" ? "approved" : "pending",
+                      reason: ref.description ?? "estorno manual (detectado via webhook)",
+                      performed_by: null,
+                    }, { onConflict: "gateway_refund_id", ignoreDuplicates: false });
+                  }
+                }
+
+                console.log(`Fetched ${refundList.length} refunds from Asaas: R$ ${totalRefunded}`);
+              } else {
+                // Fallback: se não conseguiu buscar, assume estorno total
+                totalRefunded = orderTotal;
+                console.log(`Failed to fetch refunds, assuming full refund: R$ ${totalRefunded}`);
+              }
+            } else {
+              // Sem chave de API, assume estorno total
+              totalRefunded = orderTotal;
+            }
+          } catch (e) {
+            console.error("Error fetching refunds from Asaas:", e);
+            totalRefunded = orderTotal;
+          }
+        }
+
         const isFullRefund = Math.abs(totalRefunded - orderTotal) <= 0.01;
 
         const orderUpdate: Record<string, unknown> = {
