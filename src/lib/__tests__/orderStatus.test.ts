@@ -46,8 +46,8 @@ describe('getNextStatus', () => {
     expect(getNextStatus('aguardando_pagamento', 'pickup')).toBe('em_preparo');
   });
 
-  it('returns pronto_retirada from em_preparo for pickup', () => {
-    expect(getNextStatus('em_preparo', 'pickup')).toBe('pronto_retirada');
+  it('returns null from em_preparo for pickup (requires triage)', () => {
+    expect(getNextStatus('em_preparo', 'pickup')).toBeNull();
   });
 
   it('returns null from em_preparo for delivery (goes through Triagem)', () => {

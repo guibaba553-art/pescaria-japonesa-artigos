@@ -25,7 +25,7 @@ import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { statusConfig, getStatusLabel, getNextStatus, getNextStatusLabel } from '@/lib/orderStatus';
-
+import { TriagemSection } from '@/components/admin/TriagemSection';
 function ConfirmReturnDialogContent({
   order, customerName, customerCpf, onConfirm,
 }: {
@@ -268,7 +268,7 @@ function CancelOrderDialog({
 }
 
 // Diálogo de cancelamento com verificação automática de estorno
-function CancelOrderWithRefundDialog({
+export function CancelOrderWithRefundDialog({
   order,
   customerName,
   gwLabel,
@@ -280,21 +280,32 @@ function CancelOrderWithRefundDialog({
   customerName: string;
   gwLabel: string;
   methodLabel: string;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string) => Promise<void>;
   isProcessing: boolean;
 }) {
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [dialogProcessing, setDialogProcessing] = useState(false);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!reason.trim()) return;
-    onCancel(reason.trim());
-    setOpen(false);
-    setReason('');
+    setError('');
+    setDialogProcessing(true);
+    try {
+      await onCancel(reason.trim());
+      setOpen(false);
+      setReason('');
+      setError('');
+    } catch (err: any) {
+      setError(err?.message || 'Ocorreu um erro ao cancelar o pedido. Tente novamente.');
+    } finally {
+      setDialogProcessing(false);
+    }
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setError(''); }}>
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 border border-destructive/30 rounded-md">
           <X className="h-4 w-4" />
@@ -320,12 +331,18 @@ function CancelOrderWithRefundDialog({
                 </p>
               </div>
 
+              {error && (
+                <div className="p-3 rounded-md border border-red-500/40 bg-red-50 dark:bg-red-950/20 mb-3">
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
+              )}
+
               <label className="text-sm font-medium block">Motivo do cancelamento</label>
               <textarea
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="Descreva o motivo do cancelamento..."
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => { setReason(e.target.value); setError(''); }}
                 rows={3}
               />
             </div>
@@ -335,10 +352,10 @@ function CancelOrderWithRefundDialog({
           <AlertDialogCancel>Voltar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={!reason.trim() || isProcessing}
+            disabled={!reason.trim() || isProcessing || dialogProcessing}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isProcessing ? 'Processando...' : 'Confirmar Cancelamento'}
+            {isProcessing || dialogProcessing ? 'Processando...' : 'Confirmar Cancelamento'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -816,7 +833,7 @@ const OrdersTable = ({
                           customerName={customerName}
                           gwLabel={gwLabel}
                           methodLabel={methodLabel}
-                          onCancel={(reason) => cancelOrder(order.id, reason)}
+                          onCancel={async (reason) => { await cancelOrder(order.id, reason); }}
                           isProcessing={cancellingOrders.has(order.id)}
                         />
                       ) : (
@@ -1055,7 +1072,6 @@ export function OrdersManagement() {
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
-  const [prepFilter, setPrepFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -1305,6 +1321,18 @@ export function OrdersManagement() {
     }
   };
 
+  const paymentStatusMessage = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pagamento ainda não foi confirmado. Aguarde o processamento.';
+      case 'expired': return 'Pagamento expirado. O prazo do PIX ou boleto venceu.';
+      case 'cancelled': return 'Pagamento cancelado.';
+      case 'rejected': return 'Pagamento recusado pelo banco ou sistema antifraude.';
+      case 'refunded': return 'Pagamento já foi estornado.';
+      case 'approved': return 'Pagamento aprovado.';
+      default: return `Status do pagamento: ${status}`;
+    }
+  };
+
   const verifyPayment = async (orderId: string) => {
     toast({
       title: 'Verificando pagamento...',
@@ -1316,7 +1344,17 @@ export function OrdersManagement() {
         body: { orderId }
       });
 
-      if (error) throw error;
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || 'Não foi possível verificar o pagamento. Tente novamente.');
+      }
 
       if (data.updated) {
         toast({
@@ -1352,7 +1390,7 @@ export function OrdersManagement() {
       } else {
         toast({
           title: 'Status do pagamento',
-          description: data.message,
+          description: paymentStatusMessage(data.status),
           variant: data.status === 'approved' ? 'default' : 'destructive'
         });
       }
@@ -1416,19 +1454,25 @@ export function OrdersManagement() {
     }
   };
 
-  const cancelOrder = async (orderId: string, reason: string) => {
+  const cancelOrder = async (orderId: string, reason: string): Promise<void> => {
     setCancellingOrders(prev => new Set(prev).add(orderId));
-    toast({
-      title: 'Cancelando pedido...',
-      description: 'Verificando pagamento e processando.',
-    });
 
     try {
       const { data, error } = await supabase.functions.invoke('cancel-order', {
         body: { orderId, cancellation_reason: reason },
       });
 
-      if (error) throw error;
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || 'Não foi possível cancelar o pedido. Tente novamente.');
+      }
 
       toast({
         title: data.refunded ? 'Pedido cancelado e estornado' : 'Pedido cancelado',
@@ -1438,11 +1482,8 @@ export function OrdersManagement() {
 
       loadOrders();
     } catch (err: any) {
-      toast({
-        title: 'Erro ao cancelar',
-        description: err?.message || 'Não foi possível cancelar o pedido.',
-        variant: 'destructive',
-      });
+      const message = err?.message || 'Não foi possível cancelar o pedido.';
+      throw new Error(message);
     } finally {
       setCancellingOrders(prev => {
         const next = new Set(prev);
@@ -1555,7 +1596,8 @@ export function OrdersManagement() {
 
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
-    emPreparacao: siteOrders.filter(o => o.status === 'em_preparo' || o.status === 'aguardando_envio'),
+    emPreparacao: siteOrders.filter(o => o.status === 'em_preparo'),
+    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
@@ -1582,16 +1624,10 @@ export function OrdersManagement() {
   };
 
   const renderSiteTabs = () => {
-    const prepFiltered = site.emPreparacao.filter(o => {
-      if (prepFilter === 'delivery') return o.delivery_type === 'delivery';
-      if (prepFilter === 'pickup') return o.delivery_type === 'pickup';
-      return true;
-    });
-
     return (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-7 gap-1">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-8 gap-1">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
@@ -1604,6 +1640,13 @@ export function OrdersManagement() {
             Em Preparação
             {site.emPreparacao.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="aguardando-envio" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Aguardando Envio
+            {site.aguardandoEnvio.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="pronto-retirar" className="shrink-0">
@@ -1656,45 +1699,16 @@ export function OrdersManagement() {
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="em-preparacao">
-        {/* Filtro interno: Todos / Entrega / Retirada */}
-        <div className="flex items-center gap-3 mb-5">
-          <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
-          <div className="flex gap-2">
-            {(['all', 'delivery', 'pickup'] as const).map((f) => {
-              const isActive = prepFilter === f;
-              // Estilo para botão ativo — reforça a cor do filtro em vez de usar laranja padrão
-              const activeClass =
-                f === 'all'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : f === 'delivery'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600';
-              // Estilo para botão inativo — outline com hover mais contrastado
-              const inactiveClass =
-                f === 'all'
-                  ? ''
-                  : f === 'delivery'
-                  ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:text-blue-800 dark:hover:text-blue-200'
-                  : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:text-emerald-800 dark:hover:text-emerald-200';
-              return (
-                <Button
-                  key={f}
-                  size="default"
-                  variant={isActive ? 'default' : 'outline'}
-                  onClick={() => setPrepFilter(f)}
-                  className={`gap-1.5 text-sm px-4 ${isActive ? activeClass : inactiveClass}`}
-                >
-                  {f === 'all' && null}
-                  {f === 'delivery' && <Truck className={`w-4 h-4 ${isActive ? '' : 'text-blue-600 dark:text-blue-400'}`} />}
-                  {f === 'pickup' && <Store className={`w-4 h-4 ${isActive ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />}
-                  {f === 'all' ? 'Todos' : f === 'delivery' ? 'Entrega' : 'Retirada'}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-        <OrdersTable orders={prepFiltered} {...tableProps} />
+        <TriagemSection
+          orders={site.emPreparacao}
+          profiles={profiles}
+          onStatusChanged={loadOrders}
+          openLabelDialog={(o: Order) => setLabelOrder(o)}
+          cancelOrder={cancelOrder}
+          cancellingOrders={cancellingOrders}
+        />
       </TabsContent>
+      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>

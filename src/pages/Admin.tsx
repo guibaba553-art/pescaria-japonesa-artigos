@@ -88,13 +88,6 @@ export default function Admin() {
       perm: 'orders',
     },
     {
-      title: 'Triagem',
-      desc: 'Conferir retiradas e embalar envios por código de barras',
-      icon: ScanBarcode,
-      path: '/admin/triagem',
-      perm: 'triagem',
-    },
-    {
       title: 'Clientes',
       desc: 'Cadastro de clientes (PF/PJ) para PDV e NF-e',
       icon: UserSquare2,
