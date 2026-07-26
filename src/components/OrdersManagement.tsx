@@ -1715,7 +1715,7 @@ export function OrdersManagement() {
     };
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 w-full">
         {/* Segmented control */}
         <div className="inline-flex rounded-lg bg-muted p-1">
           <button
@@ -1752,7 +1752,7 @@ export function OrdersManagement() {
         {flow === 'retirada' && (
           <Tabs defaultValue="sem-pagamento">
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-              <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1">
                 {sharedTabs.semPagamento}
                 {sharedTabs.emPreparacao}
                 <TabsTrigger value="pronto-retirar" className="shrink-0">
@@ -1796,7 +1796,7 @@ export function OrdersManagement() {
         {flow === 'entrega' && (
           <Tabs defaultValue="sem-pagamento">
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-              <TabsList className="inline-flex flex-nowrap w-max gap-1 mx-auto">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1">
                 {sharedTabs.semPagamento}
                 {sharedTabs.emPreparacao}
                 <TabsTrigger value="aguardando-envio" className="shrink-0">
