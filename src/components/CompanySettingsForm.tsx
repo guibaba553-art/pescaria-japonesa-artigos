@@ -9,6 +9,7 @@ import { Save, Loader2, Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface CompanySettings {
+  logo_url?: string;
   legal_name?: string;
   cnpj?: string;
   cep?: string;
@@ -124,6 +125,24 @@ export function CompanySettingsForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="logo_url">URL da Logo</Label>
+          <Input
+            id="logo_url"
+            placeholder="https://...logo.png"
+            value={settings.logo_url || ''}
+            onChange={(e) => handleChange('logo_url', e.target.value)}
+          />
+          {settings.logo_url && (
+            <div className="mt-2 p-2 bg-muted rounded-lg inline-block">
+              <img src={settings.logo_url} alt="Logo preview" className="h-10 object-contain" />
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            URL pública da imagem da logo. Aparece no cabeçalho do comprovante de reembolso.
+          </p>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="legal_name">Razão Social</Label>
           <Input

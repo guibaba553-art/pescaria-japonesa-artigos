@@ -20,6 +20,7 @@ CREATE POLICY "Service role gerencia company_settings" ON public.company_setting
 
 -- Valores padrão
 INSERT INTO public.company_settings (key, value) VALUES
+  ('logo_url', ''),
   ('legal_name', 'JapasPesca Comércio de Alimentos Ltda'),
   ('cnpj', '00.000.000/0001-00'),
   ('address', 'Rua Exemplo, 123 — Bairro — Cidade/SP — CEP 00000-000'),

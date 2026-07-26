@@ -120,6 +120,7 @@ serve(async (req) => {
           customerCpf: profile?.cpf || null,
         },
         company: {
+          logoUrl: company.logo_url || null,
           legalName: company.legal_name || null,
           cnpj: company.cnpj || null,
           address: company.address || null,

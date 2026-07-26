@@ -167,6 +167,7 @@ export default function Account() {
       customerName: data.refund.customerName || undefined,
       customerCpf: data.refund.customerCpf || undefined,
       company: data.company ? {
+        logoUrl: data.company.logoUrl,
         legalName: data.company.legalName,
         cnpj: data.company.cnpj,
         address: data.company.address,
@@ -209,6 +210,7 @@ export default function Account() {
       customerName: data.refund.customerName || undefined,
       customerCpf: data.refund.customerCpf || undefined,
       company: data.company ? {
+        logoUrl: data.company.logoUrl,
         legalName: data.company.legalName,
         cnpj: data.company.cnpj,
         address: data.company.address,
