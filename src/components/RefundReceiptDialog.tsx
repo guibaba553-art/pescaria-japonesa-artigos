@@ -74,6 +74,15 @@ async function loadImageAsDataUrl(url: string): Promise<string> {
   });
 }
 
+function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 export async function generateRefundPdf(data: RefundReceiptData) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -84,8 +93,12 @@ export async function generateRefundPdf(data: RefundReceiptData) {
   if (logoUrl) {
     try {
       const logoImg = await loadImageAsDataUrl(logoUrl);
-      doc.addImage(logoImg, 'PNG', margin, y, 30, 15);
-      y += 20;
+      const logoProps = await getImageDimensions(logoImg);
+      const maxWidth = 35;
+      const ratio = maxWidth / logoProps.width;
+      const logoH = logoProps.height * ratio;
+      doc.addImage(logoImg, 'PNG', margin, y, maxWidth, logoH);
+      y += logoH + 5;
     } catch (_) {
       y += 2;
     }
