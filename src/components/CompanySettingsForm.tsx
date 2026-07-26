@@ -3,16 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Save, Loader2, Search } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface CompanySettings {
   legal_name?: string;
   cnpj?: string;
   cep?: string;
-  address?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
   email?: string;
   phone?: string;
 }
@@ -61,17 +65,14 @@ export function CompanySettingsForm() {
       const r = await fetch(`https://viacep.com.br/ws/${cep.replace(/\D/g, '')}/json/`);
       const d = await r.json();
       if (!d.erro) {
-        const addr = [
-          d.logradouro || '',
-          d.bairro ? `— ${d.bairro}` : '',
-          d.localidade && d.uf ? `— ${d.localidade}/${d.uf}` : '',
-          `— CEP ${formatCEP(cep)}`,
-        ].filter(Boolean).join(' ');
         setSettings((prev) => ({
           ...prev,
-          address: addr,
+          street: d.logradouro || prev.street || '',
+          neighborhood: d.bairro || prev.neighborhood || '',
+          city: d.localidade || prev.city || '',
+          state: d.uf || prev.state || '',
         }));
-        toast({ title: 'CEP encontrado', description: `${d.localidade}/${d.uf} — ${d.logradouro || d.bairro}` });
+        toast({ title: 'CEP encontrado', description: `${d.localidade}/${d.uf}` });
       } else {
         toast({ title: 'CEP não encontrado', description: 'Verifique o número e tente novamente.', variant: 'destructive' });
       }
@@ -144,45 +145,92 @@ export function CompanySettingsForm() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cep">CEP</Label>
-          <div className="relative">
-            <Input
-              id="cep"
-              inputMode="numeric"
-              placeholder="00000-000"
-              value={formatCEP(settings.cep || '')}
-              onChange={handleCepChange}
-            />
-            {cepSearching && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              </span>
-            )}
-            {!cepSearching && (settings.cep || '').replace(/\D/g, '').length === 8 && (
-              <button
-                type="button"
-                onClick={() => lookupCep(settings.cep || '')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                title="Buscar CEP novamente"
-              >
-                <Search className="w-4 h-4" />
-              </button>
-            )}
+        {/* CEP + Número */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="cep">CEP</Label>
+            <div className="relative">
+              <Input
+                id="cep"
+                inputMode="numeric"
+                placeholder="00000-000"
+                value={formatCEP(settings.cep || '')}
+                onChange={handleCepChange}
+              />
+              {cepSearching && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Digite o CEP para preencher automaticamente.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Digite o CEP para preencher o endereço automaticamente.
-          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="number">Número</Label>
+            <Input
+              id="number"
+              placeholder="Nº"
+              value={settings.number || ''}
+              onChange={(e) => handleChange('number', e.target.value)}
+            />
+          </div>
         </div>
 
+        {/* Logradouro */}
         <div className="space-y-1.5">
-          <Label htmlFor="address">Endereço Completo</Label>
-          <Textarea
-            id="address"
-            placeholder="Rua, número — Bairro — Cidade/UF — CEP 00000-000"
-            value={settings.address || ''}
-            onChange={(e) => handleChange('address', e.target.value)}
-            rows={2}
+          <Label htmlFor="street">Logradouro</Label>
+          <Input
+            id="street"
+            placeholder="Rua, Av..."
+            value={settings.street || ''}
+            onChange={(e) => handleChange('street', e.target.value)}
+          />
+        </div>
+
+        {/* Bairro + Cidade + UF */}
+        <div className="grid grid-cols-[1fr_1fr_80px] gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="neighborhood">Bairro</Label>
+            <Input
+              id="neighborhood"
+              placeholder="Bairro"
+              value={settings.neighborhood || ''}
+              onChange={(e) => handleChange('neighborhood', e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="city">Cidade</Label>
+            <Input
+              id="city"
+              placeholder="Cidade"
+              value={settings.city || ''}
+              onChange={(e) => handleChange('city', e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="state">UF</Label>
+            <Input
+              id="state"
+              placeholder="UF"
+              maxLength={2}
+              value={(settings.state || '').toUpperCase()}
+              onChange={(e) => handleChange('state', e.target.value.toUpperCase())}
+            />
+          </div>
+        </div>
+
+        {/* Complemento */}
+        <div className="space-y-1.5">
+          <Label htmlFor="complement">
+            Complemento <span className="text-muted-foreground">(opcional)</span>
+          </Label>
+          <Input
+            id="complement"
+            placeholder="Apto, bloco, etc."
+            value={settings.complement || ''}
+            onChange={(e) => handleChange('complement', e.target.value)}
           />
         </div>
 

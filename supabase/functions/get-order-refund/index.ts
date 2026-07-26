@@ -71,6 +71,17 @@ serve(async (req) => {
       .eq('id', order.user_id)
       .single();
 
+    const { data: companyRows } = await supabase
+      .from('company_settings')
+      .select('key, value');
+
+    const company: Record<string, string> = {};
+    if (companyRows) {
+      for (const c of companyRows) {
+        company[c.key] = c.value || '';
+      }
+    }
+
     const { data: refunds, error: refundError } = await supabase
       .from('payment_refunds')
       .select('*')
@@ -109,6 +120,20 @@ serve(async (req) => {
           transactionReceiptUrl: transactionReceiptUrl || null,
           customerName: profile?.full_name || null,
           customerCpf: profile?.cpf || null,
+        },
+        company: {
+          legalName: company.legal_name || null,
+          cnpj: company.cnpj || null,
+          address: [
+            company.street || '',
+            company.number || '',
+            company.complement ? `— ${company.complement}` : '',
+            company.neighborhood ? `— ${company.neighborhood}` : '',
+            company.city && company.state ? `— ${company.city}/${company.state}` : '',
+            company.cep ? `— CEP ${company.cep}` : '',
+          ].filter(Boolean).join(' ') || null,
+          email: company.email || null,
+          phone: company.phone || null,
         },
       }),
       {
