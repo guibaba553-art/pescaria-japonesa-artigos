@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, memo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -1072,6 +1072,7 @@ export function OrdersManagement() {
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
+  const [flow, setFlow] = useState<'retirada' | 'entrega'>('retirada');
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -1607,7 +1608,7 @@ export function OrdersManagement() {
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
     emPreparacao: siteOrders.filter(o => o.status === 'em_preparo'),
-    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
+    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio' && o.delivery_type !== 'pickup'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado'),
@@ -1634,11 +1635,10 @@ export function OrdersManagement() {
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
-  const [flow, setFlow] = useState<'retirada' | 'entrega'>('retirada');
   const hasPendingRetirada = site.prontoRetirar.length > 0;
   const hasPendingEntrega = site.aguardandoEnvio.length > 0;
 
-  const SiteTabs = memo(function SiteTabs({
+  const SiteTabs = function SiteTabs({
     site,
     profiles,
     loadOrders,
@@ -1845,7 +1845,7 @@ export function OrdersManagement() {
         )}
       </div>
     );
-  });
+  };
 
   const totalRevenue = orders
     .filter(o => o.status !== 'aguardando_pagamento')

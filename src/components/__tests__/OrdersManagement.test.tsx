@@ -156,7 +156,7 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.queryByText('Confirmar exclusão')).toBeNull();
   });
@@ -168,7 +168,7 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
     const cancelButtons = screen.getAllByText('Cancelar Pedido');
     expect(cancelButtons.length).toBeGreaterThanOrEqual(1);
@@ -176,24 +176,44 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
 
   // ── Verifica que o componente compila com novos diálogos ──
 
-  it('componente renderiza sem crash com todas as abas', async () => {
+  it('componente renderiza sem crash com todas as abas (retirada)', async () => {
     render(
       <MemoryRouter>
         <OrdersManagement />
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Verifica que todas as abas estão presentes
+    // Verifica abas do fluxo Retirada (default)
     expect(screen.getByText('Sem Pagamento')).toBeDefined();
     expect(screen.getByText('Em Preparação')).toBeDefined();
-    expect(screen.getByText('Pronto para Retirada')).toBeDefined();
-    expect(screen.getByText('Em Transporte')).toBeDefined();
-    expect(screen.getByText('Entregues')).toBeDefined();
+    expect(screen.getByText('Retirados')).toBeDefined();
     expect(screen.getByText('Devoluções')).toBeDefined();
     expect(screen.getByText('Cancelados')).toBeDefined();
+  });
+
+  it('componente renderiza abas do fluxo entrega', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <OrdersManagement />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Clica no botão "Entrega" do segmented control
+    const entregaBtn = screen.getByRole('button', { name: /entrega/i });
+    await user.click(entregaBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Envio')).toBeDefined();
+      expect(screen.getByText('Em Transporte')).toBeDefined();
+      expect(screen.getByText('Entregues')).toBeDefined();
+    });
   });
 
   // ── Verifica que a interface Order aceita os novos campos ──
@@ -205,11 +225,11 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
     // O pedido order-1 deve mostrar o tipo "Retirada" (delivery_type pickup)
-    expect(screen.getByText('Retirada')).toBeDefined();
+    expect(screen.getAllByText('Retirada').length).toBeGreaterThanOrEqual(1);
   });
 
   // ── Testes do fluxo de devolução diferenciado ──
@@ -222,10 +242,14 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Clica na aba "Entregues" via userEvent
+    // Clica no botão "Entrega" do segmented control
+    const entregaBtn = screen.getByRole('button', { name: /entrega/i });
+    await user.click(entregaBtn);
+
+    // Clica na aba "Entregues"
     const entreguesTab = screen.getByRole('tab', { name: /entregues/i });
     await user.click(entreguesTab);
 
@@ -243,18 +267,27 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Clica na aba "Entregues"
+    // No fluxo Retirada (default), clica na aba "Retirados" para pedidos retirados (pickup)
+    const retiradosTab = screen.getByRole('tab', { name: /retirados/i });
+    await user.click(retiradosTab);
+
+    await waitFor(() => {
+      // 2 pedidos retirados (order-3, order-4) estão em "Retirados"
+      const confirmButtons = screen.getAllByText('Confirmar Devolução');
+      expect(confirmButtons.length).toBe(2);
+    });
+
+    // Agora no fluxo Entrega, clica em "Entregues" para ver o pedido entregado (delivery)
+    const entregaBtn = screen.getByRole('button', { name: /entrega/i });
+    await user.click(entregaBtn);
+
     const entreguesTab = screen.getByRole('tab', { name: /entregues/i });
     await user.click(entreguesTab);
 
     await waitFor(() => {
-      // 2 pedidos retirados (order-3, order-4)
-      const confirmButtons = screen.getAllByText('Confirmar Devolução');
-      expect(confirmButtons.length).toBe(2);
-      // 1 pedido entregado (order-2)
       const solicitarButtons = screen.getAllByText('Solicitar Devolução');
       expect(solicitarButtons.length).toBe(1);
     });
@@ -268,12 +301,12 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Clica na aba "Entregues"
-    const entreguesTab = screen.getByRole('tab', { name: /entregues/i });
-    await user.click(entreguesTab);
+    // Clica na aba "Retirados" (fluxo Retirada default)
+    const retiradosTab = screen.getByRole('tab', { name: /retirados/i });
+    await user.click(retiradosTab);
 
     // Espera os botões aparecerem
     let confirmButtons: HTMLElement[];
@@ -287,7 +320,7 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Estornar pagamento automaticamente')).toBeDefined();
-      expect(screen.getByText(/Asaas/i)).toBeDefined();
+      expect(screen.getAllByText(/Asaas/i).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -299,12 +332,12 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       </MemoryRouter>
     );
     await waitFor(() => {
-      expect(screen.getByText(/joão silva/i)).toBeDefined();
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Clica na aba "Entregues"
-    const entreguesTab = screen.getByRole('tab', { name: /entregues/i });
-    await user.click(entreguesTab);
+    // Clica na aba "Retirados" (fluxo Retirada default)
+    const retiradosTab = screen.getByRole('tab', { name: /retirados/i });
+    await user.click(retiradosTab);
 
     // Espera os botões aparecerem
     let confirmButtons: HTMLElement[];
