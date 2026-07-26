@@ -1153,6 +1153,7 @@ export type Database = {
           ambiente: string
           auto_emit_nfce_pdv: boolean
           auto_emit_nfe_pedido_pago: boolean
+          auto_emit_nfe_triagem: boolean
           cfop_interestadual: string
           cfop_padrao: string
           created_at: string
@@ -1174,6 +1175,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
@@ -1195,6 +1197,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
