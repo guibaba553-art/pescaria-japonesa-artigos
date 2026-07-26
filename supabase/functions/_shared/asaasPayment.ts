@@ -42,8 +42,7 @@ export interface PaymentConfig {
   checkDuplicateCharge: boolean;
   /** Enforce 10-minute window since last payment attempt — true for retry */
   checkTimeWindow: boolean;
-  /** Always send installmentCount + installmentValue — true for retry */
-  forceInstallmentFields: boolean;
+
 }
 
 export async function processAsaasCreditCardPayment(
@@ -245,8 +244,8 @@ export async function processAsaasCreditCardPayment(
     remoteIp,
   };
 
-  // Installment fields: create sends only when ≥2; retry always sends
-  if (config.forceInstallmentFields || Number(installmentCount) >= 2) {
+  // Installment fields: only send when ≥2 parcels (1x = à vista, not installment)
+  if (Number(installmentCount) >= 2) {
     const total = Number(order.total_amount);
     const count = Number(installmentCount);
     const installmentValue = Math.floor(total * 100 / count) / 100;

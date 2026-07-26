@@ -20,7 +20,6 @@ serve(async (req) => {
     return await processAsaasCreditCardPayment(req, body, {
       checkDuplicateCharge: true,
       checkTimeWindow: true,
-      forceInstallmentFields: true,
     });
   } catch (error) {
     console.error('Erro em retry-payment-asaas:', error);

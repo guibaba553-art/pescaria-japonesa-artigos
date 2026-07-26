@@ -20,7 +20,6 @@ export async function handleRequest(req: Request): Promise<Response> {
     return await processAsaasCreditCardPayment(req, body, {
       checkDuplicateCharge: true,
       checkTimeWindow: false,
-      forceInstallmentFields: false,
     });
   } catch (error) {
     console.error('Erro em create-payment-asaas:', error);
