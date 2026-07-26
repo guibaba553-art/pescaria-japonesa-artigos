@@ -1752,7 +1752,7 @@ export function OrdersManagement() {
         {flow === 'retirada' && (
           <Tabs defaultValue="sem-pagamento">
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-              <TabsList className="inline-flex flex-nowrap w-full gap-1">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
                 {sharedTabs.semPagamento}
                 {sharedTabs.emPreparacao}
                 <TabsTrigger value="pronto-retirar" className="shrink-0">
@@ -1796,7 +1796,7 @@ export function OrdersManagement() {
         {flow === 'entrega' && (
           <Tabs defaultValue="sem-pagamento">
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-              <TabsList className="inline-flex flex-nowrap w-full gap-1">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
                 {sharedTabs.semPagamento}
                 {sharedTabs.emPreparacao}
                 <TabsTrigger value="aguardando-envio" className="shrink-0">
