@@ -57,30 +57,21 @@ function maskCpf(cpf: string): string {
   return `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
 }
 
-async function loadImageAsDataUrl(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
-function getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.width, height: img.height });
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
+async function loadLogo(url: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const blob = await resp.blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(bitmap, 0, 0);
+    return { dataUrl: canvas.toDataURL('image/png'), width: bitmap.width, height: bitmap.height };
+  } catch {
+    return null;
+  }
 }
 
 export async function generateRefundPdf(data: RefundReceiptData) {
@@ -91,15 +82,14 @@ export async function generateRefundPdf(data: RefundReceiptData) {
 
   const logoUrl = data.company?.logoUrl || data.logoUrl;
   if (logoUrl) {
-    try {
-      const logoImg = await loadImageAsDataUrl(logoUrl);
-      const logoProps = await getImageDimensions(logoImg);
+    const logo = await loadLogo(logoUrl);
+    if (logo) {
       const maxWidth = 35;
-      const ratio = maxWidth / logoProps.width;
-      const logoH = logoProps.height * ratio;
-      doc.addImage(logoImg, 'PNG', margin, y, maxWidth, logoH);
+      const ratio = maxWidth / logo.width;
+      const logoH = logo.height * ratio;
+      doc.addImage(logo.dataUrl, 'PNG', margin, y, maxWidth, logoH);
       y += logoH + 5;
-    } catch (_) {
+    } else {
       y += 2;
     }
   }
