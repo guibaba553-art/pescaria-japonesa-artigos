@@ -1704,6 +1704,8 @@ export function OrdersManagement() {
           profiles={profiles}
           onStatusChanged={loadOrders}
           openLabelDialog={(o: Order) => setLabelOrder(o)}
+          cancelOrder={cancelOrder}
+          cancellingOrders={cancellingOrders}
         />
       </TabsContent>
       <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>

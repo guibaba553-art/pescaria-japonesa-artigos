@@ -4,15 +4,30 @@ import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { TriagemScanDialog, TriagemOrder } from '@/components/TriagemScanDialog';
+import { CancelOrderWithRefundDialog } from '@/components/OrdersManagement';
 import { statusConfig, getStatusLabel } from '@/lib/orderStatus';
 import {
   Package,
   Truck,
   Store,
   ChevronRight,
+  ChevronDown,
   Loader2,
   ScanBarcode,
+  XCircle,
 } from 'lucide-react';
 
 interface Order {
@@ -26,10 +41,12 @@ interface Order {
   delivery_type: 'delivery' | 'pickup';
   payment_gateway?: string | null;
   payment_method?: string | null;
+  payment_id?: string | null;
+  asaas_payment_id?: string | null;
   card_brand?: string | null;
   card_last_digits?: string | null;
   qr_code_base64?: string | null;
-  order_items: Array<{ id: string; quantity: number; products: { name: string } }>;
+  order_items: Array<{ id: string; quantity: number; price_at_purchase?: number; products: { name: string } }>;
 }
 
 interface TriagemSectionProps {
@@ -37,15 +54,18 @@ interface TriagemSectionProps {
   profiles: Record<string, { name: string; cpf: string }>;
   onStatusChanged: () => void;
   openLabelDialog: (order: Order) => void;
+  cancelOrder: (orderId: string, reason: string) => Promise<void>;
+  cancellingOrders: Set<string>;
 }
 
-export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDialog }: TriagemSectionProps) {
+export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDialog, cancelOrder, cancellingOrders }: TriagemSectionProps) {
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'pickup' | 'pack'>('pickup');
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const lastHandledQrRef = useRef<string | null>(null);
 
   const filteredOrders = useMemo(() => {
@@ -55,6 +75,15 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
       return true;
     });
   }, [orders, filter]);
+
+  const toggleExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
 
   const fetchOrderDetail = useCallback(async (orderId: string): Promise<TriagemOrder | null> => {
     setLoadingOrderId(orderId);
@@ -211,7 +240,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
 
   return (
     <div>
-      {/* Sub-filter: Todos / Entrega / Retirada */}
+      {/* Sub-filter */}
       <div className="flex items-center gap-3 mb-5">
         <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
         <div className="flex gap-2">
@@ -249,106 +278,212 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
             const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
             const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
             const isLoading = loadingOrderId === order.id;
+            const isExpanded = expandedOrders.has(order.id);
+            const subtotal = order.order_items.reduce((s, it) => s + (it.price_at_purchase || 0) * (it.quantity || 0), 0);
+            const total = subtotal + (order.shipping_cost || 0);
+            const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
 
             return (
-              <Card
+              <Collapsible
                 key={order.id}
-                onClick={() => !isLoading && openScanFor(order.id, order.delivery_type)}
-                className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden cursor-pointer group ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
+                open={isExpanded}
+                onOpenChange={() => toggleExpansion(order.id)}
               >
-                {/* Header do card */}
-                <div className="p-4 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${cfg.badgeClass} border`}>
-                      <StatusIcon className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
-                        <Badge variant="outline" className={`${cfg.badgeClass} border text-[10px] font-semibold uppercase tracking-wide`}>
-                          {getStatusLabel(order.status as any, order.delivery_type)}
-                        </Badge>
-                        {order.delivery_type === 'pickup' ? (
-                          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
-                            <Store className="w-4 h-4" /> Retirada
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
-                            <Truck className="w-4 h-4" /> Entrega
-                          </Badge>
-                        )}
+                <Card
+                  onClick={() => !isLoading && openScanFor(order.id, order.delivery_type)}
+                  className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden cursor-pointer group ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  {/* Header do card */}
+                  <div className="p-4 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${cfg.badgeClass} border`}>
+                        <StatusIcon className="w-5 h-5" />
                       </div>
-                      <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleString('pt-BR', {
-                          day: '2-digit', month: '2-digit', year: 'numeric',
-                          hour: '2-digit', minute: '2-digit',
-                        })}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                          <Badge variant="outline" className={`${cfg.badgeClass} border text-[10px] font-semibold uppercase tracking-wide`}>
+                            {getStatusLabel(order.status as any, order.delivery_type)}
+                          </Badge>
+                          {order.delivery_type === 'pickup' ? (
+                            <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                              <Store className="w-4 h-4" /> Retirada
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                              <Truck className="w-4 h-4" /> Entrega
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(order.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 flex items-center gap-2">
+                      <div>
+                        <p className="text-2xl font-bold text-primary leading-tight">
+                          R$ {total.toFixed(2)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                        </p>
+                      </div>
+                      {isLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      )}
                     </div>
                   </div>
-                  <div className="text-right shrink-0 flex items-center gap-2">
-                    <div>
-                      <p className="text-2xl font-bold text-primary leading-tight">
-                        R$ {order.total_amount.toFixed(2)}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
-                      </p>
-                    </div>
-                    {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    )}
-                  </div>
-                </div>
 
-                {/* Meta row */}
-                <div className="px-4 pb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground border-t pt-3">
-                  <span><span className="opacity-70">Nome:</span> <span className="font-mono">{customerName}</span></span>
-                  <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
-                  <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
-                  <span>
-                    <span className="opacity-70">Pagamento:</span>{' '}
-                    <span className="font-mono">
-                      {methodLabel || gwLabel || '—'}
-                      {methodLabel && gwLabel ? ` via ${gwLabel}` : ''}
-                      {order.card_brand ? ` ${order.card_brand}` : ''}
-                      {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
+                  {/* Meta row */}
+                  <div className="px-4 pb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground border-t pt-3">
+                    <span><span className="opacity-70">Nome:</span> <span className="font-mono">{customerName}</span></span>
+                    <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
+                    <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
+                    <span>
+                      <span className="opacity-70">Pagamento:</span>{' '}
+                      <span className="font-mono">
+                        {methodLabel || gwLabel || '—'}
+                        {methodLabel && gwLabel ? ` via ${gwLabel}` : ''}
+                        {order.card_brand ? ` ${order.card_brand}` : ''}
+                        {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
+                      </span>
                     </span>
-                  </span>
-                </div>
+                  </div>
 
-                {/* Ações */}
-                <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    size="sm"
-                    onClick={() => openScanFor(order.id, order.delivery_type)}
-                    disabled={isLoading}
-                    className="gap-1"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ScanBarcode className="h-3.5 w-3.5" />
-                    )}
-                    Clique para triagem
-                  </Button>
+                  {/* Ações */}
+                  <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        {isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                      </Button>
+                    </CollapsibleTrigger>
 
-                  {order.delivery_type === 'delivery' && (
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => openLabelDialog(order)}
-                      className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+                      onClick={() => openScanFor(order.id, order.delivery_type)}
+                      disabled={isLoading}
+                      className="gap-1"
                     >
-                      <Truck className="h-3.5 w-3.5" />
-                      Gerar Etiqueta
+                      {isLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ScanBarcode className="h-3.5 w-3.5" />
+                      )}
+                      Clique para triagem
                     </Button>
-                  )}
-                </div>
-              </Card>
+
+                    {order.delivery_type === 'delivery' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openLabelDialog(order)}
+                        className="gap-1 border-blue-500/40 text-blue-600 hover:bg-blue-500/10 dark:text-blue-400"
+                      >
+                        <Truck className="h-3.5 w-3.5" />
+                        Gerar Etiqueta
+                      </Button>
+                    )}
+
+                    {hasPayment ? (
+                      <CancelOrderWithRefundDialog
+                        order={order}
+                        customerName={customerName}
+                        gwLabel={gwLabel}
+                        methodLabel={methodLabel}
+                        onCancel={(reason) => cancelOrder(order.id, reason)}
+                        isProcessing={cancellingOrders.has(order.id)}
+                      />
+                    ) : (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 dark:text-red-400"
+                            disabled={cancellingOrders.has(order.id)}
+                          >
+                            {cancellingOrders.has(order.id) ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5" />
+                            )}
+                            Cancelar Pedido
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Cancelar pedido</AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                              <div>
+                                Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
+                                <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                                  <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                                  <div><strong>Cliente:</strong> {customerName}</div>
+                                  <div><strong>Total:</strong> R$ {total.toFixed(2)}</div>
+                                </div>
+                              </div>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Voltar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => cancelOrder(order.id, 'cancelado_admin')}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              Confirmar cancelamento
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+
+                  {/* Detalhes expandidos */}
+                  <CollapsibleContent onClick={(e) => e.stopPropagation()}>
+                    <div className="px-4 pb-4 border-t space-y-4">
+                      <div className="pt-4 space-y-2">
+                        <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">Itens do Pedido</h4>
+                        {order.order_items.map((item, idx) => (
+                          <div key={item.id || idx} className="flex items-center justify-between text-sm">
+                            <span className="flex-1 min-w-0">
+                              <span className="font-medium">{item.products?.name || 'Produto'}</span>
+                              <span className="text-muted-foreground ml-2">x{item.quantity}</span>
+                            </span>
+                            <span className="font-mono text-sm shrink-0 ml-4">
+                              R$ {((item.price_at_purchase || 0) * (item.quantity || 0)).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1.5 pt-2 border-t">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="font-mono">R$ {subtotal.toFixed(2)}</span>
+                        </div>
+                        {order.shipping_cost > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Frete</span>
+                            <span className="font-mono">R$ {order.shipping_cost.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                          <span>Total</span>
+                          <span className="font-mono">R$ {total.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
             );
           })}
         </div>
