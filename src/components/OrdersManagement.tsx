@@ -1608,6 +1608,8 @@ export function OrdersManagement() {
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
     emPreparacao: siteOrders.filter(o => o.status === 'em_preparo'),
+    emPreparacaoDelivery: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type !== 'pickup'),
+    emPreparacaoPickup: siteOrders.filter(o => o.status === 'em_preparo' && o.delivery_type === 'pickup'),
     aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio' && o.delivery_type !== 'pickup'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
@@ -1670,15 +1672,6 @@ export function OrdersManagement() {
           Sem Pagamento
           {site.semPagamento.length > 0 && (
             <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
-          )}
-        </TabsTrigger>
-      ),
-      emPreparacao: (
-        <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
-          <Package className="w-4 h-4 mr-2" />
-          Em Preparação
-          {site.emPreparacao.length > 0 && (
-            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
           )}
         </TabsTrigger>
       ),
@@ -1754,7 +1747,13 @@ export function OrdersManagement() {
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
               <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
                 {sharedTabs.semPagamento}
-                {sharedTabs.emPreparacao}
+                <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
+                  <Package className="w-4 h-4 mr-2" />
+                  Em Preparação
+                  {site.emPreparacaoPickup.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoPickup.length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="pronto-retirar" className="shrink-0">
                   <Store className="w-4 h-4 mr-2" />
                   Retirada
@@ -1777,7 +1776,7 @@ export function OrdersManagement() {
             <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
             <TabsContent value="em-preparacao">
               <TriagemSection
-                orders={site.emPreparacao}
+                orders={site.emPreparacaoPickup}
                 profiles={profiles}
                 onStatusChanged={loadOrders}
                 openLabelDialog={(o: Order) => setLabelOrder(o)}
@@ -1798,7 +1797,13 @@ export function OrdersManagement() {
             <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
               <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
                 {sharedTabs.semPagamento}
-                {sharedTabs.emPreparacao}
+                <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
+                  <Package className="w-4 h-4 mr-2" />
+                  Em Preparação
+                  {site.emPreparacaoDelivery.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoDelivery.length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="aguardando-envio" className="shrink-0">
                   <PackageCheck className="w-4 h-4 mr-2" />
                   Envio
@@ -1828,7 +1833,7 @@ export function OrdersManagement() {
             <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
             <TabsContent value="em-preparacao">
               <TriagemSection
-                orders={site.emPreparacao}
+                orders={site.emPreparacaoDelivery}
                 profiles={profiles}
                 onStatusChanged={loadOrders}
                 openLabelDialog={(o: Order) => setLabelOrder(o)}
