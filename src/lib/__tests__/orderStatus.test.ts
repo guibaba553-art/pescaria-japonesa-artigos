@@ -38,12 +38,12 @@ describe('getStatusLabel', () => {
 });
 
 describe('getNextStatus', () => {
-  it('returns em_preparo from aguardando_pagamento for delivery', () => {
-    expect(getNextStatus('aguardando_pagamento', 'delivery')).toBe('em_preparo');
+  it('returns null from aguardando_pagamento (transition only via payment verification)', () => {
+    expect(getNextStatus('aguardando_pagamento', 'delivery')).toBeNull();
   });
 
-  it('returns em_preparo from aguardando_pagamento for pickup', () => {
-    expect(getNextStatus('aguardando_pagamento', 'pickup')).toBe('em_preparo');
+  it('returns null from aguardando_pagamento for pickup (transition only via payment verification)', () => {
+    expect(getNextStatus('aguardando_pagamento', 'pickup')).toBeNull();
   });
 
   it('returns null from em_preparo for pickup (requires triage)', () => {
@@ -80,12 +80,12 @@ describe('getNextStatus', () => {
 });
 
 describe('getNextStatusLabel', () => {
-  it('returns "Marcar como Em Preparo" from aguardando_pagamento for pickup', () => {
-    expect(getNextStatusLabel('aguardando_pagamento', 'pickup')).toBe('Marcar como Em Preparo');
+  it('returns "Finalizado" from aguardando_pagamento (no manual advance)', () => {
+    expect(getNextStatusLabel('aguardando_pagamento', 'pickup')).toBe('Finalizado');
   });
 
-  it('returns "Marcar como Em Preparo" from aguardando_pagamento for delivery', () => {
-    expect(getNextStatusLabel('aguardando_pagamento', 'delivery')).toBe('Marcar como Em Preparo');
+  it('returns "Finalizado" from aguardando_pagamento for delivery (no manual advance)', () => {
+    expect(getNextStatusLabel('aguardando_pagamento', 'delivery')).toBe('Finalizado');
   });
 
   it('returns "Marcar como Pronto para Retirar" from em_preparo for pickup', () => {
