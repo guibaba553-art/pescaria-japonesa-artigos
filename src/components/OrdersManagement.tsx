@@ -1451,19 +1451,14 @@ export function OrdersManagement() {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
       }
     } catch (err: any) {
-      const { data: existingRefunds } = await supabase
-        .from('payment_refunds')
-        .select('amount, status, gateway_refund_id')
-        .eq('order_id', orderId)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(1);
+      const { data: checkData } = await supabase.functions.invoke('check-order-refund', {
+        body: { orderId },
+      });
 
-      if (existingRefunds && existingRefunds.length > 0) {
-        const refund = existingRefunds[0];
+      if (checkData?.found && checkData.totalApproved > 0) {
         toast({
           title: 'Estorno já registrado',
-          description: `R$ ${Number(refund.amount).toFixed(2)} já foi estornado (ID: ${refund.gateway_refund_id?.slice(0, 8) ?? '—'}).`,
+          description: `R$ ${checkData.totalApproved.toFixed(2)} já foi estornado via ${checkData.refunds?.[0]?.gatewayRefundId?.slice(0, 8) ?? 'gateway'}.`,
         });
         loadOrders();
       } else {
