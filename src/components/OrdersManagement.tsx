@@ -267,38 +267,30 @@ function CancelOrderDialog({
   );
 }
 
-// Diálogo de cancelamento com opção de estorno — para pedidos já pagos
+// Diálogo de cancelamento com verificação automática de estorno
 function CancelOrderWithRefundDialog({
   order,
   customerName,
   gwLabel,
   methodLabel,
-  onCancelWithRefund,
-  onCancelOnly,
-  isRefunding,
+  onCancel,
+  isProcessing,
 }: {
   order: any;
   customerName: string;
   gwLabel: string;
   methodLabel: string;
-  onCancelWithRefund: (reason: string) => void;
-  onCancelOnly: (reason: string) => void;
-  isRefunding: boolean;
+  onCancel: (reason: string) => void;
+  isProcessing: boolean;
 }) {
   const [reason, setReason] = useState('');
-  const [shouldRefund, setShouldRefund] = useState(true);
   const [open, setOpen] = useState(false);
 
   const handleConfirm = () => {
     if (!reason.trim()) return;
-    if (shouldRefund) {
-      onCancelWithRefund(reason.trim());
-    } else {
-      onCancelOnly(reason.trim());
-    }
+    onCancel(reason.trim());
     setOpen(false);
     setReason('');
-    setShouldRefund(true);
   };
 
   return (
@@ -322,18 +314,13 @@ function CancelOrderWithRefundDialog({
                 <div><strong>Pagamento:</strong> {methodLabel ? `${methodLabel}${gwLabel ? ` via ${gwLabel}` : ''}` : gwLabel || ''}{order.card_brand ? ` ${order.card_brand}` : ''}{order.card_last_digits ? ` final ${order.card_last_digits}` : ''}</div>
               </div>
 
-              <label className="flex items-start gap-2.5 p-3 rounded-md border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20 cursor-pointer">
-                <Checkbox checked={shouldRefund} onCheckedChange={(v) => setShouldRefund(!!v)} className="mt-0.5" />
-                <div className="text-sm">
-                  <span className="font-semibold">Estornar pagamento automaticamente</span>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Valor de <strong>R$ {Number(order.total_amount).toFixed(2)}</strong> será devolvido ao cliente via {gwLabel || 'gateway'}.
-                    {order.payment_method === 'credit_card' && ' Para cartão, aparece na próxima fatura (1–2 ciclos).'}
-                  </div>
-                </div>
-              </label>
+              <div className="p-3 rounded-md border border-blue-500/40 bg-blue-50 dark:bg-blue-950/20 mb-3">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  O sistema verificará o pagamento e estornará automaticamente se confirmado.
+                </p>
+              </div>
 
-              <label className="mt-3 text-sm font-medium block">Motivo do cancelamento</label>
+              <label className="text-sm font-medium block">Motivo do cancelamento</label>
               <textarea
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="Descreva o motivo do cancelamento..."
@@ -348,10 +335,10 @@ function CancelOrderWithRefundDialog({
           <AlertDialogCancel>Voltar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={!reason.trim() || isRefunding}
+            disabled={!reason.trim() || isProcessing}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isRefunding ? 'Estornando...' : shouldRefund ? 'Cancelar e Estornar' : 'Confirmar Cancelamento'}
+            {isProcessing ? 'Processando...' : 'Confirmar Cancelamento'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -373,6 +360,8 @@ const OrdersTable = ({
   emittingNFCe,
   refundPayment,
   refundingOrders,
+  cancellingOrders,
+  cancelOrder,
   openLabelDialog,
 }: {
   orders: Order[];
@@ -388,6 +377,8 @@ const OrdersTable = ({
   emittingNFCe: Set<string>;
   refundPayment: (orderId: string) => void;
   refundingOrders: Set<string>;
+  cancellingOrders: Set<string>;
+  cancelOrder: (orderId: string, reason: string) => void;
   openLabelDialog: (order: Order) => void;
 }) => {
   const { toast } = useToast();
@@ -819,35 +810,14 @@ const OrdersTable = ({
                     const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão de Crédito' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
 
                     return hasPayment ? (
-                      // Cancelamento com opção de estorno integrado
+                      // Cancelamento com verificação automática de estorno
                       <CancelOrderWithRefundDialog
                           order={order}
                           customerName={customerName}
                           gwLabel={gwLabel}
                           methodLabel={methodLabel}
-                          onCancelWithRefund={async (reason) => {
-                            if (order.status === 'aguardando_pagamento') {
-                              // Verificar pagamento no gateway antes de estornar
-                              const { data, error } = await supabase.functions.invoke('verify-payment', {
-                                body: { orderId: order.id }
-                              });
-                              if (!error && data?.status === 'approved') {
-                                refundPayment(order.id);
-                              } else {
-                                toast({
-                                  title: 'Pagamento não confirmado',
-                                  description: 'Pedido cancelado sem estorno.'
-                                });
-                              }
-                            } else {
-                              refundPayment(order.id);
-                            }
-                            updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason });
-                          }}
-                          onCancelOnly={(reason) => {
-                            updateOrderStatus(order.id, 'cancelado', { cancellation_reason: reason });
-                          }}
-                          isRefunding={refundingOrders.has(order.id)}
+                          onCancel={(reason) => cancelOrder(order.id, reason)}
+                          isProcessing={cancellingOrders.has(order.id)}
                         />
                       ) : (
                         <CancelOrderDialog
@@ -1084,6 +1054,7 @@ export function OrdersManagement() {
   const [emittingNFCe, setEmittingNFCe] = useState<Set<string>>(new Set());
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
+  const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
   const [prepFilter, setPrepFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const { toast } = useToast();
 
@@ -1445,6 +1416,42 @@ export function OrdersManagement() {
     }
   };
 
+  const cancelOrder = async (orderId: string, reason: string) => {
+    setCancellingOrders(prev => new Set(prev).add(orderId));
+    toast({
+      title: 'Cancelando pedido...',
+      description: 'Verificando pagamento e processando.',
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('cancel-order', {
+        body: { orderId, cancellation_reason: reason },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: data.refunded ? 'Pedido cancelado e estornado' : 'Pedido cancelado',
+        description: data.message,
+        variant: data.error ? 'destructive' : 'default',
+      });
+
+      loadOrders();
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao cancelar',
+        description: err?.message || 'Não foi possível cancelar o pedido.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCancellingOrders(prev => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
   const emitNFCe = async (orderId: string) => {
     setEmittingNFCe(prev => new Set(prev).add(orderId));
     toast({
@@ -1569,6 +1576,8 @@ export function OrdersManagement() {
     emittingNFCe,
     refundPayment,
     refundingOrders,
+    cancellingOrders,
+    cancelOrder,
     openLabelDialog: (o: Order) => setLabelOrder(o),
   };
 
