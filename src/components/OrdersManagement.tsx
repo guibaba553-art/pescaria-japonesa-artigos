@@ -25,7 +25,7 @@ import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { statusConfig, getStatusLabel, getNextStatus, getNextStatusLabel } from '@/lib/orderStatus';
-
+import { TriagemSection } from '@/components/admin/TriagemSection';
 function ConfirmReturnDialogContent({
   order, customerName, customerCpf, onConfirm,
 }: {
@@ -1055,7 +1055,6 @@ export function OrdersManagement() {
   const [labelOrder, setLabelOrder] = useState<Order | null>(null);
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
   const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
-  const [prepFilter, setPrepFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const { toast } = useToast();
 
   const toggleOrderExpansion = (orderId: string) => {
@@ -1555,7 +1554,8 @@ export function OrdersManagement() {
 
   const site = {
     semPagamento: siteOrders.filter(o => o.status === 'aguardando_pagamento'),
-    emPreparacao: siteOrders.filter(o => o.status === 'em_preparo' || o.status === 'aguardando_envio'),
+    emPreparacao: siteOrders.filter(o => o.status === 'em_preparo'),
+    aguardandoEnvio: siteOrders.filter(o => o.status === 'aguardando_envio'),
     prontoRetirar: siteOrders.filter(o => o.status === 'pronto_retirada' && o.delivery_type === 'pickup'),
     emCaminho: siteOrders.filter(o => o.status === 'enviado'),
     entregues: siteOrders.filter(o => o.status === 'entregado' || o.status === 'retirado'),
@@ -1582,16 +1582,10 @@ export function OrdersManagement() {
   };
 
   const renderSiteTabs = () => {
-    const prepFiltered = site.emPreparacao.filter(o => {
-      if (prepFilter === 'delivery') return o.delivery_type === 'delivery';
-      if (prepFilter === 'pickup') return o.delivery_type === 'pickup';
-      return true;
-    });
-
     return (
     <Tabs defaultValue="sem-pagamento" className="space-y-4">
       <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto scrollbar-hide">
-        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-7 gap-1">
+        <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-8 gap-1">
           <TabsTrigger value="sem-pagamento" className="shrink-0">
             <Clock className="w-4 h-4 mr-2" />
             Sem Pagamento
@@ -1604,6 +1598,13 @@ export function OrdersManagement() {
             Em Preparação
             {site.emPreparacao.length > 0 && (
               <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacao.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="aguardando-envio" className="shrink-0">
+            <PackageCheck className="w-4 h-4 mr-2" />
+            Aguardando Envio
+            {site.aguardandoEnvio.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="pronto-retirar" className="shrink-0">
@@ -1656,45 +1657,12 @@ export function OrdersManagement() {
 
       <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
       <TabsContent value="em-preparacao">
-        {/* Filtro interno: Todos / Entrega / Retirada */}
-        <div className="flex items-center gap-3 mb-5">
-          <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
-          <div className="flex gap-2">
-            {(['all', 'delivery', 'pickup'] as const).map((f) => {
-              const isActive = prepFilter === f;
-              // Estilo para botão ativo — reforça a cor do filtro em vez de usar laranja padrão
-              const activeClass =
-                f === 'all'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : f === 'delivery'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600';
-              // Estilo para botão inativo — outline com hover mais contrastado
-              const inactiveClass =
-                f === 'all'
-                  ? ''
-                  : f === 'delivery'
-                  ? 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:text-blue-800 dark:hover:text-blue-200'
-                  : 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:text-emerald-800 dark:hover:text-emerald-200';
-              return (
-                <Button
-                  key={f}
-                  size="default"
-                  variant={isActive ? 'default' : 'outline'}
-                  onClick={() => setPrepFilter(f)}
-                  className={`gap-1.5 text-sm px-4 ${isActive ? activeClass : inactiveClass}`}
-                >
-                  {f === 'all' && null}
-                  {f === 'delivery' && <Truck className={`w-4 h-4 ${isActive ? '' : 'text-blue-600 dark:text-blue-400'}`} />}
-                  {f === 'pickup' && <Store className={`w-4 h-4 ${isActive ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />}
-                  {f === 'all' ? 'Todos' : f === 'delivery' ? 'Entrega' : 'Retirada'}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-        <OrdersTable orders={prepFiltered} {...tableProps} />
+        <TriagemSection
+          orders={site.emPreparacao}
+          onStatusChanged={loadOrders}
+        />
       </TabsContent>
+      <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
       <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
       <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
       <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
