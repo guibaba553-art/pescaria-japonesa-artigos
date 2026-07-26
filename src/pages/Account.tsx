@@ -18,6 +18,7 @@ import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
 import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
+import { RefundReceiptDialog, generateRefundPdf } from '@/components/RefundReceiptDialog';
 import { isOrderExpired } from '@/lib/orderStatus';
 import { OrderTrackingDialog } from '@/components/OrderTrackingDialog';
 import { PAYMENT_CONFIG } from '@/config/constants';
@@ -59,7 +60,7 @@ interface Order {
   total_amount: number;
   shipping_cost: number;
   shipping_address: string;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'enviado' | 'entregue' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'reembolsado';
   created_at: string;
   tracking_code?: string;
   delivery_type?: 'delivery' | 'pickup';
@@ -70,6 +71,7 @@ interface Order {
   pix_expiration: string | null;
   nfe_emissions?: NfeEmission[];
   cancellation_reason?: string;
+  refunded_amount?: number;
 }
 
 
@@ -98,6 +100,26 @@ export default function Account() {
     gateway?: 'mercadopago' | 'asaas';
   } | null>(null);
   const [trackingDialog, setTrackingDialog] = useState<{ orderId: string; code: string } | null>(null);
+  const [refundReceiptData, setRefundReceiptData] = useState<{
+    orderId: string;
+    amount: number;
+    date: string;
+    paymentMethod: string;
+    gatewayRefundId: string;
+    reason: string;
+    status: string;
+    transactionReceiptUrl?: string;
+    customerName?: string;
+    customerCpf?: string;
+    company?: {
+      legalName?: string;
+      cnpj?: string;
+      address?: string;
+      email?: string;
+      phone?: string;
+    };
+  } | null>(null);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refreshingPix, setRefreshingPix] = useState<string | null>(null);
   const [retryCardOrderId, setRetryCardOrderId] = useState<string | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
@@ -112,6 +134,91 @@ export default function Account() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const initialLoadDoneRef = useRef(false);
   const paymentProcessedRef = useRef(false);
+
+  const handleViewRefundReceipt = async (orderId: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) return;
+
+    const { data, error } = await supabase.functions.invoke('get-order-refund', {
+      body: { orderId },
+    });
+
+    if (error || !data?.refund) {
+      toast.error('Erro ao carregar comprovante', { description: 'Tente novamente mais tarde.' });
+      return;
+    }
+
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('payment_method')
+      .eq('id', orderId)
+      .single();
+
+    setRefundReceiptData({
+      orderId,
+      amount: data.refund.amount,
+      date: data.refund.date,
+      paymentMethod: orderData?.payment_method || '',
+      gatewayRefundId: data.refund.gatewayRefundId,
+      reason: data.refund.reason || '',
+      status: data.refund.status,
+      transactionReceiptUrl: data.refund.transactionReceiptUrl || undefined,
+      customerName: data.refund.customerName || undefined,
+      customerCpf: data.refund.customerCpf || undefined,
+      company: data.company ? {
+        logoUrl: data.company.logoUrl,
+        legalName: data.company.legalName,
+        cnpj: data.company.cnpj,
+        address: data.company.address,
+        email: data.company.email,
+        phone: data.company.phone,
+      } : undefined,
+    });
+    setRefundDialogOpen(true);
+  };
+
+  const handleDownloadRefundPdf = async (orderId: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) return;
+
+    const { data, error } = await supabase.functions.invoke('get-order-refund', {
+      body: { orderId },
+    });
+
+    if (error || !data?.refund) {
+      toast.error('Erro ao gerar PDF', { description: 'Tente novamente mais tarde.' });
+      return;
+    }
+
+    const { data: orderData } = await supabase
+      .from('orders')
+      .select('payment_method')
+      .eq('id', orderId)
+      .single();
+
+    await generateRefundPdf({
+      orderId,
+      amount: data.refund.amount,
+      date: data.refund.date,
+      paymentMethod: orderData?.payment_method || '',
+      gatewayRefundId: data.refund.gatewayRefundId,
+      reason: data.refund.reason || '',
+      status: data.refund.status,
+      transactionReceiptUrl: data.refund.transactionReceiptUrl || undefined,
+      customerName: data.refund.customerName || undefined,
+      customerCpf: data.refund.customerCpf || undefined,
+      company: data.company ? {
+        logoUrl: data.company.logoUrl,
+        legalName: data.company.legalName,
+        cnpj: data.company.cnpj,
+        address: data.company.address,
+        email: data.company.email,
+        phone: data.company.phone,
+      } : undefined,
+    });
+  };
 
   const fetchOrders = useCallback(async (pageNum: number, filter: string, append: boolean) => {
     if (!user) return;
@@ -596,6 +703,10 @@ export default function Account() {
                       deliveryType={order.delivery_type}
                       cancellationReason={order.cancellation_reason}
                       isExpired={expired}
+                      refundAmount={order.refunded_amount}
+                      refundReason={order.cancellation_reason}
+                      onViewReceipt={() => handleViewRefundReceipt(order.id)}
+                      onDownloadPdf={() => handleDownloadRefundPdf(order.id)}
                     />
 
                     <Separator />
@@ -920,6 +1031,14 @@ export default function Account() {
           onOpenChange={(open) => !open && setTrackingDialog(null)}
           orderId={trackingDialog.orderId}
           trackingCode={trackingDialog.code}
+        />
+      )}
+
+      {refundReceiptData && (
+        <RefundReceiptDialog
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          data={refundReceiptData}
         />
       )}
     </div>

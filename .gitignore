@@ -29,3 +29,4 @@ supabase/seed.sql
 *.njsproj
 *.sln
 *.sw?
+.worktrees/

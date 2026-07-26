@@ -239,7 +239,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     // Atualizar status do pedido
     const orderUpdate: Record<string, unknown> = {
-      status: "cancelado",
+      status: refunded ? "reembolsado" : "cancelado",
       cancellation_reason,
       updated_at: new Date().toISOString(),
     };

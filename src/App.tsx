@@ -42,6 +42,7 @@ const PickupOrder = lazy(() => import("./pages/PickupOrder"));
 const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const StockMigration = lazy(() => import("./pages/StockMigration"));
 const AdminErrors = lazy(() => import("./pages/AdminErrors"));
+const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 // const StockAudit = lazy(() => import("./pages/StockAudit")); // desativado
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 
@@ -110,6 +111,7 @@ const App = () => (
                 <Route path="/admin/lgpd" element={<AdminLGPD />} />
                 <Route path="/admin/migracao-estoque" element={<StockMigration />} />
                 <Route path="/admin/erros" element={<AdminErrors />} />
+                <Route path="/admin/configuracoes" element={<AdminSettings />} />
                 {/* Auditoria de estoque temporariamente desativada */}
                 <Route path="/meus-dados" element={<Navigate to="/conta" replace />} />
                 <Route path="/checkout" element={<CheckoutPage />} />

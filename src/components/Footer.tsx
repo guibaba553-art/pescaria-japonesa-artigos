@@ -1,9 +1,81 @@
 import { Instagram, Mail, Phone, MapPin, ArrowUpRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import japaLogo from "@/assets/japa-logo.png";
+
+interface FooterSettings {
+  trade_name?: string;
+  legal_name?: string;
+  cnpj?: string;
+  ie?: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  cep?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram_url?: string;
+  logo_url?: string;
+  google_maps_url?: string;
+}
+
+function formatCEP(cep: string): string {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length === 8) return digits.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+  return cep;
+}
+
+// Valores originais hardcoded como fallback
+const DEFAULTS: FooterSettings = {
+  legal_name: 'G. SEITI GARCIA BABA LTDA',
+  trade_name: 'Japas Pesca',
+  cnpj: '33.169.502/0001-08',
+  ie: '13.900.915-9',
+  street: 'Av. das Itaúbas',
+  number: '2281',
+  neighborhood: 'Jardim Paraíso',
+  city: 'Sinop',
+  state: 'MT',
+  cep: '78556100',
+  phone: '(66) 99921-1712',
+  whatsapp: '5566999211712',
+  email: 'robertobaba2@gmail.com',
+  instagram_url: 'https://www.instagram.com/japafishing_/?hl=en',
+  google_maps_url: 'https://www.google.com/maps/place/JAPA+PESCA+E+CONVENIENCIA/@-11.8707654,-55.5063804,13z',
+};
 
 const Footer = () => {
   const navigate = useNavigate();
+  const [s, setSettings] = useState<FooterSettings>(DEFAULTS);
+
+  useEffect(() => {
+    supabase
+      .from('company_settings' as any)
+      .select('key, value')
+      .then(({ data, error }: any) => {
+        if (!error && data) {
+          const map = { ...DEFAULTS };
+          for (const row of data) {
+            if (row.value) (map as any)[row.key] = row.value;
+          }
+          setSettings(map);
+        }
+      });
+  }, []);
+
+  const address = [
+    s.street, s.number,
+    s.neighborhood ? `— ${s.neighborhood}` : null,
+    s.city && s.state ? `— ${s.city}/${s.state}` : null,
+    s.cep ? `— CEP ${formatCEP(s.cep)}` : null,
+  ].filter(Boolean).join(' ');
+
+  const logoImg = s.logo_url || japaLogo;
+  const brandName = s.trade_name || 'Japas Pesca';
 
   return (
     <footer className="bg-background border-t border-border">
@@ -17,7 +89,7 @@ const Footer = () => {
             </h2>
             <div className="flex flex-col sm:flex-row gap-3 lg:justify-end">
               <a
-                href="https://wa.me/5566999211712"
+                href={`https://wa.me/${s.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-foreground text-background font-medium text-sm hover:bg-foreground/90 transition-colors btn-press"
@@ -39,41 +111,33 @@ const Footer = () => {
         <div className="grid grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 mb-16">
           <div className="col-span-2 lg:col-span-4">
             <button onClick={() => navigate('/')} className="flex items-center gap-2.5 mb-5">
-              <img src={japaLogo} alt="JAPAS Pesca" className="h-9 w-9 object-contain" />
+              <img src={logoImg} alt={s.trade_name || 'JAPAS Pesca'} className="h-9 w-9 object-contain" />
               <span className="text-lg font-display font-bold tracking-tight">
-                JAPAS<span className="text-primary">.</span>
+                {brandName}<span className="text-primary">.</span>
               </span>
             </button>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mb-6">
-              Loja especializada em artigos de pesca em Sinop, MT. Equipamentos
+              Loja especializada em artigos de pesca em {s.city}, {s.state}. Equipamentos
               selecionados, atendimento de quem entende, frete pra todo Brasil.
             </p>
             <div className="flex gap-2">
-              <a
-                href="https://www.instagram.com/japafishing_/?hl=en"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background hover:border-foreground transition-all"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href="https://wa.me/5566999211712"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background hover:border-foreground transition-all"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
+              {s.instagram_url && (
+                <a href={s.instagram_url} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+                  className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background hover:border-foreground transition-all">
+                  <Instagram className="w-4 h-4" />
+                </a>
+              )}
+              {s.whatsapp && (
+                <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"
+                  className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-foreground hover:text-background hover:border-foreground transition-all">
+                  <Phone className="w-4 h-4" />
+                </a>
+              )}
             </div>
           </div>
 
           <div className="lg:col-span-2 lg:col-start-6">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
-              Loja
-            </h3>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">Loja</h3>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li><button onClick={() => navigate('/produtos')} className="hover:text-foreground transition-colors">Todos os produtos</button></li>
               <li><button onClick={() => navigate('/produtos?category=Iscas')} className="hover:text-foreground transition-colors">Iscas</button></li>
@@ -84,9 +148,7 @@ const Footer = () => {
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
-              Conta
-            </h3>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">Conta</h3>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li><button onClick={() => navigate('/conta')} className="hover:text-foreground transition-colors">Minha conta</button></li>
               <li><button onClick={() => navigate('/auth')} className="hover:text-foreground transition-colors">Entrar</button></li>
@@ -94,9 +156,7 @@ const Footer = () => {
           </div>
 
           <div className="lg:col-span-2">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
-              Institucional
-            </h3>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">Institucional</h3>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
               <li><Link to="/politica-privacidade" className="hover:text-foreground transition-colors">Privacidade</Link></li>
               <li><Link to="/termos-de-uso" className="hover:text-foreground transition-colors">Termos de uso</Link></li>
@@ -106,33 +166,41 @@ const Footer = () => {
           </div>
 
           <div className="col-span-2 lg:col-span-2">
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
-              Contato
-            </h3>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">Contato</h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
-              <li>
-                <a href="https://wa.me/5566999211712" target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 hover:text-foreground transition-colors">
-                  <Phone className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
-                  <span>(66) 99921-1712</span>
-                </a>
-              </li>
-              <li>
-                <a href="mailto:robertobaba2@gmail.com" className="flex items-start gap-2 hover:text-foreground transition-colors">
-                  <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
-                  <span className="break-all">robertobaba2@gmail.com</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://www.google.com/maps/place/JAPA+PESCA+E+CONVENIENCIA/@-11.8707654,-55.5063804,13z/data=!4m6!3m5!1s0x93a77fbf26565e51:0x633b0bafc2828a26!8m2!3d-11.8646827!4d-55.5131974"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-2 hover:text-foreground transition-colors"
-                >
-                  <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
-                  <span>Sinop, MT</span>
-                </a>
-              </li>
+              {s.phone && (
+                <li>
+                  <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-start gap-2 hover:text-foreground transition-colors">
+                    <Phone className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                    <span>{s.phone}</span>
+                  </a>
+                </li>
+              )}
+              {s.email && (
+                <li>
+                  <a href={`mailto:${s.email}`} className="flex items-start gap-2 hover:text-foreground transition-colors">
+                    <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                    <span className="break-all">{s.email}</span>
+                  </a>
+                </li>
+              )}
+              {s.city && s.state && (
+                <li>
+                  {s.google_maps_url ? (
+                    <a href={s.google_maps_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-start gap-2 hover:text-foreground transition-colors">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                      <span>{s.city}, {s.state}</span>
+                    </a>
+                  ) : (
+                    <span className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                      <span>{s.city}, {s.state}</span>
+                    </span>
+                  )}
+                </li>
+              )}
             </ul>
           </div>
         </div>
@@ -140,11 +208,14 @@ const Footer = () => {
         {/* Bottom */}
         <div className="border-t border-border pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-xs text-muted-foreground">
           <div className="space-y-1">
-            <p className="font-medium text-foreground">JAPA PESCA E CONVENIENCIA LTDA</p>
-            <p>G. SEITI GARCIA BABA LTDA · CNPJ 33.169.502/0001-08 · IE 13.900.915-9</p>
-            <p>Av. das Itaúbas, 2281 — Jardim Paraíso, Sinop/MT — CEP 78556-100</p>
+            <p className="font-medium text-foreground">{s.legal_name}</p>
+            <p>
+              {[s.cnpj ? `CNPJ ${s.cnpj}` : null, s.ie ? `IE ${s.ie}` : null]
+                .filter(Boolean).join(' · ')}
+            </p>
+            <p>{address}</p>
           </div>
-          <p>&copy; {new Date().getFullYear()} JAPAS. Todos os direitos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} {brandName}. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

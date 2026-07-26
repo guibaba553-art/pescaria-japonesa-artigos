@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
@@ -60,21 +60,12 @@ interface TriagemSectionProps {
 
 export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDialog, cancelOrder, cancellingOrders }: TriagemSectionProps) {
   const { toast } = useToast();
-  const [filter, setFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'pickup' | 'pack'>('pickup');
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const lastHandledQrRef = useRef<string | null>(null);
-
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      if (filter === 'delivery') return o.delivery_type === 'delivery';
-      if (filter === 'pickup') return o.delivery_type === 'pickup';
-      return true;
-    });
-  }, [orders, filter]);
 
   const toggleExpansion = (orderId: string) => {
     setExpandedOrders(prev => {
@@ -168,7 +159,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
   };
 
   const openOrderById = useCallback(async (orderId: string) => {
-    const found = filteredOrders.find((o) => o.id.toLowerCase() === orderId);
+    const found = orders.find((o) => o.id.toLowerCase() === orderId);
     if (found) {
       openScanFor(found.id, found.delivery_type);
       return;
@@ -178,7 +169,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
     setDialogMode(detail.delivery_type === 'pickup' ? 'pickup' : 'pack');
     setSelectedOrder(detail);
     setScanOpen(true);
-  }, [filteredOrders, openScanFor, fetchOrderDetail]);
+  }, [orders, openScanFor, fetchOrderDetail]);
 
   useEffect(() => {
     let buffer = '';
@@ -226,51 +217,16 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
     lastHandledQrRef.current = null;
   }, [onStatusChanged]);
 
-  const activeBtnClass = (f: string) => {
-    if (f === 'all') return 'bg-primary text-primary-foreground hover:bg-primary/90';
-    if (f === 'delivery') return 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600';
-    return 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600';
-  };
-
-  const inactiveBtnClass = (f: string) => {
-    if (f === 'all') return '';
-    if (f === 'delivery') return 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 hover:text-blue-800 dark:hover:text-blue-200';
-    return 'border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 hover:text-emerald-800 dark:hover:text-emerald-200';
-  };
-
   return (
     <div>
-      {/* Sub-filter */}
-      <div className="flex items-center gap-3 mb-5">
-        <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
-        <div className="flex gap-2">
-          {(['all', 'delivery', 'pickup'] as const).map((f) => {
-            const isActive = filter === f;
-            return (
-              <Button
-                key={f}
-                size="default"
-                variant={isActive ? 'default' : 'outline'}
-                onClick={() => setFilter(f)}
-                className={`gap-1.5 text-sm px-4 ${isActive ? activeBtnClass(f) : inactiveBtnClass(f)}`}
-              >
-                {f === 'delivery' && <Truck className={`w-4 h-4 ${isActive ? '' : 'text-blue-600 dark:text-blue-400'}`} />}
-                {f === 'pickup' && <Store className={`w-4 h-4 ${isActive ? '' : 'text-emerald-600 dark:text-emerald-400'}`} />}
-                {f === 'all' ? 'Todos' : f === 'delivery' ? 'Entrega' : 'Retirada'}
-              </Button>
-            );
-          })}
-        </div>
-      </div>
-
-      {filteredOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
           <Package className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">Nenhum pedido em preparo aguardando triagem.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredOrders.map((order) => {
+          {orders.map((order) => {
             const cfg = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.em_preparo;
             const StatusIcon = cfg.icon;
             const customerName = profiles[order.user_id]?.name || 'Carregando...';
