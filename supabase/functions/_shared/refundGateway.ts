@@ -70,19 +70,44 @@ export function getGateway(name: string): PaymentGateway {
 
 // ── Asaas ──────────────────────────────────────────────────────────────────
 
+function asaasEnv(): string {
+  return Deno.env.get("ASAAS_ENVIRONMENT") === "production"
+    ? "api.asaas.com"
+    : "api-sandbox.asaas.com";
+}
+
+function asaasApiKey(): string | undefined {
+  return Deno.env.get("ASAAS_API_KEY");
+}
+
+async function asaasFetchPayment(paymentId: string): Promise<Record<string, unknown> | null> {
+  const apiKey = asaasApiKey();
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(
+      `https://${asaasEnv()}/v3/payments/${paymentId}`,
+      { method: "GET", headers: { "access_token": apiKey, "Content-Type": "application/json" } },
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 const asaasGateway: PaymentGateway = {
   name: "asaas",
   supportsPartialRefund: true,
 
   getPaymentId(order: Record<string, unknown>): string {
-    // Asaas stores the payment ID in asaas_payment_id column
     const id = (order as any).asaas_payment_id;
     if (!id) throw new Error("Pedido não possui asaas_payment_id");
     return String(id);
   },
 
   async createRefund(params: RefundParams): Promise<RefundResult> {
-    const apiKey = Deno.env.get("ASAAS_API_KEY");
+    const apiKey = asaasApiKey();
     if (!apiKey) {
       return {
         success: false,
@@ -92,32 +117,35 @@ const asaasGateway: PaymentGateway = {
       };
     }
 
-    const env = Deno.env.get("ASAAS_ENVIRONMENT") === "production"
-      ? "api.asaas.com"
-      : "api-sandbox.asaas.com";
+    const env = asaasEnv();
+    const requestBody: Record<string, unknown> = { value: params.amount };
+    if (params.reason) requestBody.description = params.reason;
 
-    const requestBody: Record<string, unknown> = {
-      value: params.amount,
-    };
-    if (params.reason) {
-      requestBody.description = params.reason;
+    // Detecta se é crédito: busca o pagamento para obter billingType e installment
+    const payment = await asaasFetchPayment(params.paymentId);
+    const billingType = (payment as any)?.billingType as string | undefined;
+    const installmentId = (payment as any)?.installment as string | undefined;
+
+    const isCreditCard = billingType === "CREDIT_CARD" && !!installmentId;
+
+    let endpoint: string;
+    if (isCreditCard) {
+      endpoint = `https://${env}/v3/installments/${installmentId}/refund`;
+      console.log(
+        `[refundGateway:asaas] POST /v3/installments/${installmentId}/refund (cartão crédito) value=${params.amount}`,
+      );
+    } else {
+      endpoint = `https://${env}/v3/payments/${params.paymentId}/refund`;
+      console.log(
+        `[refundGateway:asaas] POST /v3/payments/${params.paymentId}/refund value=${params.amount}`,
+      );
     }
 
-    console.log(
-      `[refundGateway:asaas] POST /v3/payments/${params.paymentId}/refund value=${params.amount}`,
-    );
-
-    const response = await fetch(
-      `https://${env}/v3/payments/${params.paymentId}/refund`,
-      {
-        method: "POST",
-        headers: {
-          "access_token": apiKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      },
-    );
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "access_token": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
 
     const rawBody = await response.json().catch(() => null);
     console.log(
@@ -137,27 +165,39 @@ const asaasGateway: PaymentGateway = {
       };
     }
 
-    // Asaas refund response: { id: "ref_xxx", status: "DONE"|"PENDING", ... }
-    const refundStatus = rawBody?.status === "DONE" ? "approved" : "pending";
+    // Para crédito (installment), o refund vem dentro de rawBody.refunds[] ou no status do installment
+    // Para PIX/boleto, o id do refund é o próprio payment id e status é o status do payment
+    let gatewayRefundId: string;
+    let refundStatus: "approved" | "pending" | "rejected";
+
+    if (isCreditCard) {
+      const refunds = rawBody?.refunds as any[] | undefined;
+      const latestRefund = refunds?.[refunds.length - 1];
+      gatewayRefundId = String(latestRefund?.id ?? installmentId ?? "");
+      refundStatus = latestRefund?.status === "DONE" ? "approved" : "pending";
+    } else {
+      gatewayRefundId = String(rawBody?.id ?? "");
+      refundStatus = rawBody?.status === "DONE" ? "approved" : "pending";
+    }
 
     return {
       success: true,
-      gatewayRefundId: String(rawBody?.id ?? ""),
+      gatewayRefundId,
       status: refundStatus,
       rawResponse: rawBody,
     };
   },
 
   async listRefunds(paymentId: string): Promise<GatewayRefundInfo[]> {
-    const apiKey = Deno.env.get("ASAAS_API_KEY");
+    const apiKey = asaasApiKey();
     if (!apiKey) return [];
 
-    const env = Deno.env.get("ASAAS_ENVIRONMENT") === "production"
-      ? "api.asaas.com"
-      : "api-sandbox.asaas.com";
+    const env = asaasEnv();
+    const refunds: GatewayRefundInfo[] = [];
 
     try {
-      const response = await fetch(
+      // Buscar refunds do payment (funciona para PIX/boleto)
+      const payResponse = await fetch(
         `https://${env}/v3/payments/${paymentId}/refunds`,
         {
           method: "GET",
@@ -165,25 +205,58 @@ const asaasGateway: PaymentGateway = {
         },
       );
 
-      const rawBody = await response.json().catch(() => null);
+      const payBody = await payResponse.json().catch(() => null);
       console.log(
-        `[refundGateway:asaas] GET /v3/payments/${paymentId}/refunds status=${response.status}`,
-        rawBody,
+        `[refundGateway:asaas] GET /v3/payments/${paymentId}/refunds status=${payResponse.status}`,
       );
 
-      if (!response.ok) return [];
+      if (payResponse.ok) {
+        const payRefunds = (payBody?.data ?? []) as any[];
+        for (const r of payRefunds) {
+          refunds.push({
+            gatewayRefundId: String(r.id ?? ""),
+            amount: Number(r.value ?? 0),
+            status: r.status === "DONE" ? "approved" : r.status === "CANCELLED" ? "rejected" : "pending",
+            createdAt: r.dateCreated ?? r.createdDate ?? "",
+          });
+        }
+      }
 
-      const refunds = (rawBody?.data ?? []) as any[];
-      return refunds.map((r: any) => ({
-        gatewayRefundId: String(r.id ?? ""),
-        amount: Number(r.value ?? 0),
-        status: r.status === "DONE" ? "approved" : r.status === "CANCELLED" ? "rejected" : "pending",
-        createdAt: r.dateCreated ?? r.createdDate ?? "",
-      }));
+      // Se for crédito, buscar também refunds do installment
+      const payment = await asaasFetchPayment(paymentId);
+      const installmentId = (payment as any)?.installment as string | undefined;
+
+      if (installmentId) {
+        const insResponse = await fetch(
+          `https://${env}/v3/installments/${installmentId}/refunds`,
+          {
+            method: "GET",
+            headers: { "access_token": apiKey, "Content-Type": "application/json" },
+          },
+        );
+
+        const insBody = await insResponse.json().catch(() => null);
+        console.log(
+          `[refundGateway:asaas] GET /v3/installments/${installmentId}/refunds status=${insResponse.status}`,
+        );
+
+        if (insResponse.ok) {
+          const insRefunds = (insBody?.data ?? []) as any[];
+          for (const r of insRefunds) {
+            refunds.push({
+              gatewayRefundId: String(r.id ?? ""),
+              amount: Number(r.value ?? 0),
+              status: r.status === "DONE" ? "approved" : r.status === "CANCELLED" ? "rejected" : "pending",
+              createdAt: r.dateCreated ?? r.createdDate ?? "",
+            });
+          }
+        }
+      }
     } catch (e) {
       console.error(`[refundGateway:asaas] listRefunds error`, e);
-      return [];
     }
+
+    return refunds;
   },
 };
 
