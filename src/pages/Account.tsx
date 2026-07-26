@@ -111,7 +111,10 @@ export default function Account() {
     transactionReceiptUrl?: string;
     customerName?: string;
     customerCpf?: string;
+    logoUrl?: string;
     company?: {
+      logoUrl?: string;
+      tradeName?: string;
       legalName?: string;
       cnpj?: string;
       address?: string;
@@ -168,6 +171,7 @@ export default function Account() {
       customerCpf: data.refund.customerCpf || undefined,
       company: data.company ? {
         logoUrl: data.company.logoUrl,
+        tradeName: data.company.tradeName,
         legalName: data.company.legalName,
         cnpj: data.company.cnpj,
         address: data.company.address,

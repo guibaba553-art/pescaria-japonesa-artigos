@@ -106,6 +106,15 @@ serve(async (req) => {
       return acc;
     }, {});
 
+    const companyAddress = [
+      company.street,
+      company.number,
+      company.complement || null,
+      company.neighborhood ? `— ${company.neighborhood}` : null,
+      company.city && company.state ? `— ${company.city}/${company.state}` : null,
+      company.cep ? `— CEP ${company.cep.replace(/^(\d{5})(\d{3})$/, '$1-$2')}` : null,
+    ].filter(Boolean).join(' ') || null;
+
     return new Response(
       JSON.stringify({
         refund: {
@@ -125,7 +134,7 @@ serve(async (req) => {
           legalName: company.legal_name || null,
           cnpj: company.cnpj || null,
           ie: company.ie || null,
-          address: company.address || null,
+          address: companyAddress,
           email: company.email || null,
           phone: company.phone || null,
         },
