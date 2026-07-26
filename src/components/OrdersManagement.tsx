@@ -268,7 +268,7 @@ function CancelOrderDialog({
 }
 
 // Diálogo de cancelamento com verificação automática de estorno
-function CancelOrderWithRefundDialog({
+export function CancelOrderWithRefundDialog({
   order,
   customerName,
   gwLabel,
@@ -833,7 +833,7 @@ const OrdersTable = ({
                           customerName={customerName}
                           gwLabel={gwLabel}
                           methodLabel={methodLabel}
-                          onCancel={(reason) => cancelOrder(order.id, reason)}
+                          onCancel={async (reason) => { await cancelOrder(order.id, reason); }}
                           isProcessing={cancellingOrders.has(order.id)}
                         />
                       ) : (
@@ -1321,6 +1321,18 @@ export function OrdersManagement() {
     }
   };
 
+  const paymentStatusMessage = (status: string): string => {
+    switch (status) {
+      case 'pending': return 'Pagamento ainda não foi confirmado. Aguarde o processamento.';
+      case 'expired': return 'Pagamento expirado. O prazo do PIX ou boleto venceu.';
+      case 'cancelled': return 'Pagamento cancelado.';
+      case 'rejected': return 'Pagamento recusado pelo banco ou sistema antifraude.';
+      case 'refunded': return 'Pagamento já foi estornado.';
+      case 'approved': return 'Pagamento aprovado.';
+      default: return `Status do pagamento: ${status}`;
+    }
+  };
+
   const verifyPayment = async (orderId: string) => {
     toast({
       title: 'Verificando pagamento...',
@@ -1378,7 +1390,7 @@ export function OrdersManagement() {
       } else {
         toast({
           title: 'Status do pagamento',
-          description: data.message,
+          description: paymentStatusMessage(data.status),
           variant: data.status === 'approved' ? 'default' : 'destructive'
         });
       }
