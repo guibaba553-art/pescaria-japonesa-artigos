@@ -5,11 +5,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TriagemScanDialog, TriagemOrder } from '@/components/TriagemScanDialog';
+import { statusConfig, getStatusLabel } from '@/lib/orderStatus';
 import {
   Package,
   Truck,
   Store,
-  User,
   ChevronRight,
   Loader2,
 } from 'lucide-react';
@@ -21,16 +21,23 @@ interface Order {
   status: string;
   created_at: string;
   user_id: string;
+  shipping_cep: string;
   delivery_type: 'delivery' | 'pickup';
+  payment_gateway?: string | null;
+  payment_method?: string | null;
+  card_brand?: string | null;
+  card_last_digits?: string | null;
+  qr_code_base64?: string | null;
   order_items: Array<{ id: string; quantity: number; products: { name: string } }>;
 }
 
 interface TriagemSectionProps {
   orders: Order[];
+  profiles: Record<string, { name: string; cpf: string }>;
   onStatusChanged: () => void;
 }
 
-export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps) {
+export function TriagemSection({ orders, profiles, onStatusChanged }: TriagemSectionProps) {
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'delivery' | 'pickup'>('all');
   const [selectedOrder, setSelectedOrder] = useState<TriagemOrder | null>(null);
@@ -46,8 +53,6 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
       return true;
     });
   }, [orders, filter]);
-
-  // --- Fetch full TriagemOrder detail when opening dialog ---
 
   const fetchOrderDetail = useCallback(async (orderId: string): Promise<TriagemOrder | null> => {
     setLoadingOrderId(orderId);
@@ -117,8 +122,6 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
     }
   }, [toast]);
 
-  // --- Open dialog for an order ---
-
   const openScanFor = useCallback(async (orderId: string, deliveryType: string) => {
     const detail = await fetchOrderDetail(orderId);
     if (!detail) return;
@@ -127,14 +130,6 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
     setScanOpen(true);
   }, [fetchOrderDetail]);
 
-  // --- Card click handler ---
-
-  const handleCardClick = useCallback((order: Order) => {
-    openScanFor(order.id, order.delivery_type);
-  }, [openScanFor]);
-
-  // --- QR / Barcode detection ---
-
   const extractOrderId = (raw: string): string | null => {
     const uuidRe = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
     const m = raw.match(uuidRe);
@@ -142,13 +137,11 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
   };
 
   const openOrderById = useCallback(async (orderId: string) => {
-    // Check if the order is in our current filteredOrders list
     const found = filteredOrders.find((o) => o.id.toLowerCase() === orderId);
     if (found) {
       openScanFor(found.id, found.delivery_type);
       return;
     }
-    // Not in list — fetch from DB directly
     const detail = await fetchOrderDetail(orderId);
     if (!detail) return;
     setDialogMode(detail.delivery_type === 'pickup' ? 'pickup' : 'pack');
@@ -156,7 +149,6 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
     setScanOpen(true);
   }, [filteredOrders, openScanFor, fetchOrderDetail]);
 
-  // Global keyboard listener for barcode scanners
   useEffect(() => {
     let buffer = '';
     let lastTime = 0;
@@ -203,8 +195,6 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
     lastHandledQrRef.current = null;
   }, [onStatusChanged]);
 
-  // --- Render ---
-
   const activeBtnClass = (f: string) => {
     if (f === 'all') return 'bg-primary text-primary-foreground hover:bg-primary/90';
     if (f === 'delivery') return 'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600';
@@ -249,62 +239,92 @@ export function TriagemSection({ orders, onStatusChanged }: TriagemSectionProps)
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredOrders.map((o) => {
-            const totalUnits = o.order_items.reduce((s, it) => s + (it.quantity || 0), 0);
-            const isLoading = loadingOrderId === o.id;
+          {filteredOrders.map((order) => {
+            const cfg = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.em_preparo;
+            const StatusIcon = cfg.icon;
+            const customerName = profiles[order.user_id]?.name || 'Carregando...';
+            const customerCpf = profiles[order.user_id]?.cpf || 'N/A';
+            const gwLabel = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
+            const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
+            const isLoading = loadingOrderId === order.id;
+
             return (
-              <button
-                key={o.id}
-                onClick={() => handleCardClick(o)}
-                disabled={isLoading}
-                className={`group text-left bg-card border-2 rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer
-                  ${o.delivery_type === 'pickup'
-                    ? 'border-l-4 border-l-emerald-500 hover:border-emerald-500/40'
-                    : 'border-l-4 border-l-blue-500 hover:border-blue-500/40'}
-                  ${isLoading ? 'opacity-60 pointer-events-none' : ''}
-                `}
+              <Card
+                key={order.id}
+                onClick={() => !isLoading && openScanFor(order.id, order.delivery_type)}
+                className={`border-l-4 ${cfg.accentClass} transition-all hover:shadow-md overflow-hidden cursor-pointer group ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold">#{o.id.slice(0, 8)}</span>
-                      {o.delivery_type === 'pickup' ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                          <Store className="w-3 h-3 mr-1" /> Retirada
+                {/* Header do card */}
+                <div className="p-4 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${cfg.badgeClass} border`}>
+                      <StatusIcon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                        <Badge variant="outline" className={`${cfg.badgeClass} border text-[10px] font-semibold uppercase tracking-wide`}>
+                          {getStatusLabel(order.status as any, order.delivery_type)}
                         </Badge>
-                      ) : (
-                        <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30">
-                          <Truck className="w-3 h-3 mr-1" /> Envio
-                        </Badge>
-                      )}
+                        {order.delivery_type === 'pickup' ? (
+                          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300">
+                            <Store className="w-4 h-4" /> Retirada
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs font-semibold px-3 py-1 flex items-center gap-1.5 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300">
+                            <Truck className="w-4 h-4" /> Entrega
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(order.created_at).toLocaleString('pt-BR', {
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 flex items-center gap-2">
+                    <div>
+                      <p className="text-2xl font-bold text-primary leading-tight">
+                        R$ {order.total_amount.toFixed(2)}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                      </p>
                     </div>
                     {isLoading ? (
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1.5">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Carregando detalhes...</span>
-                      </div>
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     ) : (
-                      <div className="flex items-center gap-1.5 text-sm text-foreground/80 mt-1.5">
-                        <User className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="truncate">{'Clique para triagem'}</span>
-                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                {/* Meta row */}
+                <div className="px-4 pb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground border-t pt-3">
+                  <span><span className="opacity-70">Nome:</span> <span className="font-mono">{customerName}</span></span>
+                  <span><span className="opacity-70">CPF:</span> <span className="font-mono">{customerCpf}</span></span>
+                  <span><span className="opacity-70">CEP:</span> <span className="font-mono">{order.shipping_cep || 'N/A'}</span></span>
                   <span>
-                    {o.order_items.length} item(ns) · {totalUnits} unidade(s)
-                  </span>
-                  <span className="font-bold text-foreground">
-                    {o.total_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    <span className="opacity-70">Pagamento:</span>{' '}
+                    <span className="font-mono">
+                      {methodLabel || gwLabel || '—'}
+                      {methodLabel && gwLabel ? ` via ${gwLabel}` : ''}
+                      {order.card_brand ? ` ${order.card_brand}` : ''}
+                      {order.card_last_digits ? ` final ${order.card_last_digits}` : ''}
+                    </span>
                   </span>
                 </div>
-                <div className="text-[11px] text-muted-foreground mt-1">
-                  {new Date(o.created_at).toLocaleString('pt-BR')}
+
+                {/* Ações: apenas indicador de clique para triagem */}
+                <div className="px-4 pb-4 flex items-center gap-1.5 md:gap-2 flex-wrap">
+                  <Badge variant="secondary" className="gap-1 text-[10px] font-normal opacity-60">
+                    Clique para triagem
+                  </Badge>
                 </div>
-              </button>
+              </Card>
             );
           })}
         </div>

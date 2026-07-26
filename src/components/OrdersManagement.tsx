@@ -1659,6 +1659,7 @@ export function OrdersManagement() {
       <TabsContent value="em-preparacao">
         <TriagemSection
           orders={site.emPreparacao}
+          profiles={profiles}
           onStatusChanged={loadOrders}
         />
       </TabsContent>
