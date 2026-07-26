@@ -1,6 +1,9 @@
 -- Adiciona o status 'reembolsado' como estado final nas transições de pedido.
 -- Pedidos reembolsados não podem transitar para nenhum outro status.
 
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'reembolsado';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_amount numeric;
+
 CREATE OR REPLACE FUNCTION public.validate_order_status_transition()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
 DECLARE
