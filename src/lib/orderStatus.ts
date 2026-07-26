@@ -113,9 +113,7 @@ export function getNextStatus(
 ): OrderStatus | null {
   if (currentStatus === 'aguardando_pagamento') return 'em_preparo';
   if (currentStatus === 'em_preparo') {
-    // Delivery: embalagem é feita exclusivamente pela Triagem (com leitura de SKU).
-    // Pickup: precisa marcar como pronto para retirada primeiro.
-    if (deliveryType === 'pickup') return 'pronto_retirada';
+    // Tanto delivery quanto pickup agora exigem triagem obrigatória (scan de SKU).
     return null;
   }
   if (currentStatus === 'pronto_retirada') return 'retirado';
