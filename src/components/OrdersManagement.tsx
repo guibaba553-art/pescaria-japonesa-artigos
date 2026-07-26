@@ -280,21 +280,32 @@ function CancelOrderWithRefundDialog({
   customerName: string;
   gwLabel: string;
   methodLabel: string;
-  onCancel: (reason: string) => void;
+  onCancel: (reason: string) => Promise<void>;
   isProcessing: boolean;
 }) {
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [dialogProcessing, setDialogProcessing] = useState(false);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!reason.trim()) return;
-    onCancel(reason.trim());
-    setOpen(false);
-    setReason('');
+    setError('');
+    setDialogProcessing(true);
+    try {
+      await onCancel(reason.trim());
+      setOpen(false);
+      setReason('');
+      setError('');
+    } catch (err: any) {
+      setError(err?.message || 'Ocorreu um erro ao cancelar o pedido. Tente novamente.');
+    } finally {
+      setDialogProcessing(false);
+    }
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
+    <AlertDialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setError(''); }}>
       <AlertDialogTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive h-8 border border-destructive/30 rounded-md">
           <X className="h-4 w-4" />
@@ -320,12 +331,18 @@ function CancelOrderWithRefundDialog({
                 </p>
               </div>
 
+              {error && (
+                <div className="p-3 rounded-md border border-red-500/40 bg-red-50 dark:bg-red-950/20 mb-3">
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
+              )}
+
               <label className="text-sm font-medium block">Motivo do cancelamento</label>
               <textarea
                 className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 placeholder="Descreva o motivo do cancelamento..."
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => { setReason(e.target.value); setError(''); }}
                 rows={3}
               />
             </div>
@@ -335,10 +352,10 @@ function CancelOrderWithRefundDialog({
           <AlertDialogCancel>Voltar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={!reason.trim() || isProcessing}
+            disabled={!reason.trim() || isProcessing || dialogProcessing}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isProcessing ? 'Processando...' : 'Confirmar Cancelamento'}
+            {isProcessing || dialogProcessing ? 'Processando...' : 'Confirmar Cancelamento'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1415,19 +1432,25 @@ export function OrdersManagement() {
     }
   };
 
-  const cancelOrder = async (orderId: string, reason: string) => {
+  const cancelOrder = async (orderId: string, reason: string): Promise<void> => {
     setCancellingOrders(prev => new Set(prev).add(orderId));
-    toast({
-      title: 'Cancelando pedido...',
-      description: 'Verificando pagamento e processando.',
-    });
 
     try {
       const { data, error } = await supabase.functions.invoke('cancel-order', {
         body: { orderId, cancellation_reason: reason },
       });
 
-      if (error) throw error;
+      if (error) {
+        const ctx: any = (error as any).context;
+        let serverMsg = '';
+        try {
+          if (ctx && typeof ctx.json === 'function') {
+            const j = await ctx.json();
+            serverMsg = j?.error || '';
+          }
+        } catch {}
+        throw new Error(serverMsg || 'Não foi possível cancelar o pedido. Tente novamente.');
+      }
 
       toast({
         title: data.refunded ? 'Pedido cancelado e estornado' : 'Pedido cancelado',
@@ -1437,11 +1460,8 @@ export function OrdersManagement() {
 
       loadOrders();
     } catch (err: any) {
-      toast({
-        title: 'Erro ao cancelar',
-        description: err?.message || 'Não foi possível cancelar o pedido.',
-        variant: 'destructive',
-      });
+      const message = err?.message || 'Não foi possível cancelar o pedido.';
+      throw new Error(message);
     } finally {
       setCancellingOrders(prev => {
         const next = new Set(prev);
