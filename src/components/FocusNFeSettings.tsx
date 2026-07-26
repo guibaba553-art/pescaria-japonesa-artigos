@@ -85,6 +85,7 @@ export function FocusNFeSettings() {
     ncm_padrao: '',
     auto_emit_nfce_pdv: false,
     auto_emit_nfe_pedido_pago: false,
+    auto_emit_nfe_triagem: false,
   });
 
   useEffect(() => {
@@ -121,6 +122,7 @@ export function FocusNFeSettings() {
           ncm_padrao: settings.ncm_padrao || '',
           auto_emit_nfce_pdv: settings.auto_emit_nfce_pdv,
           auto_emit_nfe_pedido_pago: settings.auto_emit_nfe_pedido_pago,
+          auto_emit_nfe_triagem: settings.auto_emit_nfe_triagem ?? false,
         });
       }
     } catch (e: any) {
@@ -450,6 +452,18 @@ export function FocusNFeSettings() {
             <Switch
               checked={form.auto_emit_nfe_pedido_pago}
               onCheckedChange={(v) => setForm({ ...form, auto_emit_nfe_pedido_pago: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Emitir NF-e ao concluir triagem / retirar</Label>
+              <p className="text-sm text-muted-foreground">
+                Entrega: emite ao embalar. Retirada: emite quando o cliente retirar.
+              </p>
+            </div>
+            <Switch
+              checked={form.auto_emit_nfe_triagem}
+              onCheckedChange={(v) => setForm({ ...form, auto_emit_nfe_triagem: v })}
             />
           </div>
         </CardContent>
