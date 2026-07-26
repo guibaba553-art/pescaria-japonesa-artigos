@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Download, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
+import QRCode from 'qrcode';
 
 interface RefundReceiptData {
   orderId: string;
@@ -12,6 +13,8 @@ interface RefundReceiptData {
   reason: string;
   status: string;
   transactionReceiptUrl?: string;
+  customerName?: string;
+  customerCpf?: string;
 }
 
 interface RefundReceiptDialogProps {
@@ -39,26 +42,86 @@ const paymentMethodLabels: Record<string, string> = {
   boleto: 'Boleto',
 };
 
-export function generateRefundPdf(data: RefundReceiptData) {
+const COMPANY = {
+  name: 'JapasPesca',
+  legalName: 'JapasPesca Comércio de Alimentos Ltda',
+  cnpj: '00.000.000/0001-00',
+  address: 'Rua Exemplo, 123 — Bairro — Cidade/SP — CEP 00000-000',
+  email: 'sac@japaspesca.com.br',
+  phone: '(11) 0000-0000',
+};
+
+function maskCpf(cpf: string): string {
+  if (!cpf || cpf.length < 11) return cpf || '—';
+  return `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
+}
+
+export async function generateRefundPdf(data: RefundReceiptData) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  let y = 20;
+  const margin = 20;
+  let y = 18;
 
-  doc.setFontSize(18);
+  doc.setFontSize(20);
   doc.setTextColor(0, 128, 0);
-  doc.text('Comprovante de Reembolso', pageWidth / 2, y, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMPROVANTE DE REEMBOLSO', pageWidth / 2, y, { align: 'center' });
 
-  y += 10;
+  y += 8;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text('JapasPesca', pageWidth / 2, y, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Nº ${data.orderId.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`, pageWidth / 2, y, { align: 'center' });
 
-  y += 12;
-  doc.setDrawColor(220, 220, 220);
-  doc.line(15, y, pageWidth - 15, y);
+  y += 4;
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`, pageWidth / 2, y, { align: 'center' });
+
+  y += 10;
+  doc.setDrawColor(0, 128, 0);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
 
   y += 10;
   doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DO EMITENTE', margin, y);
+
+  y += 7;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  doc.text(`${COMPANY.legalName}`, margin, y);
+  y += 4;
+  doc.text(`CNPJ: ${COMPANY.cnpj}`, margin, y);
+  y += 4;
+  doc.text(`${COMPANY.address}`, margin, y);
+  y += 4;
+  doc.text(`E-mail: ${COMPANY.email}  |  Tel: ${COMPANY.phone}`, margin, y);
+
+  y += 9;
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DO CLIENTE', margin, y);
+
+  y += 7;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Nome: ${data.customerName || '—'}`, margin, y);
+  y += 4;
+  doc.text(`CPF: ${maskCpf(data.customerCpf || '')}`, margin, y);
+
+  y += 9;
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DADOS DO REEMBOLSO', margin, y);
+
+  y += 7;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
 
   const rows: [string, string][] = [
@@ -67,27 +130,54 @@ export function generateRefundPdf(data: RefundReceiptData) {
     ['Data do reembolso', formatDate(data.date)],
     ['Método de pagamento', paymentMethodLabels[data.paymentMethod] || data.paymentMethod],
     ['ID da transação', data.gatewayRefundId],
-    ['Motivo', data.reason || '\u2014'],
+    ['Motivo', data.reason || '—'],
     ['Status', data.status === 'approved' ? 'Aprovado' : data.status === 'pending' ? 'Pendente' : data.status],
   ];
 
-  doc.setFontSize(11);
+  const col1X = margin;
+  const col2X = margin + 55;
+
   for (const [label, value] of rows) {
     doc.setFont('helvetica', 'bold');
-    doc.text(`${label}:`, 20, y);
+    doc.text(`${label}:`, col1X, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(value, 80, y);
-    y += 8;
+    doc.text(value, col2X, y);
+    y += 5;
   }
 
-  y += 10;
-  doc.setDrawColor(220, 220, 220);
-  doc.line(15, y, pageWidth - 15, y);
+  y += 6;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, pageWidth - margin, y);
 
-  y += 8;
+  y += 6;
+  const receiptId = `${data.orderId.slice(0, 8)}-${Date.now().toString(36).toUpperCase()}`;
+  const verifyUrl = `https://japaspesca.com.br/verificar-reembolso/${receiptId}`;
+
+  try {
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 120, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', margin, y, 25, 25);
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Escaneie para verificar a autenticidade', margin + 28, y + 8);
+    doc.text('deste comprovante em nosso site.', margin + 28, y + 13);
+  } catch (_) {
+  }
+
+  y += 30;
+  doc.setDrawColor(0, 128, 0);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, pageWidth - margin, y);
+
+  y += 6;
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, y, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Este documento é um comprovante oficial de reembolso emitido por JapasPesca.', pageWidth / 2, y, { align: 'center' });
+  y += 4;
+  doc.text('Em caso de dúvidas, entre em contato: sac@japaspesca.com.br | (11) 0000-0000', pageWidth / 2, y, { align: 'center' });
+  y += 4;
+  doc.text(`Verifique a autenticidade em: ${verifyUrl}`, pageWidth / 2, y, { align: 'center' });
 
   doc.save(`comprovante-reembolso-${data.orderId.slice(0, 8)}.pdf`);
 }
@@ -109,6 +199,7 @@ export function RefundReceiptDialog({ open, onOpenChange, data }: RefundReceiptD
           <div className="space-y-2">
             {[
               ['Pedido', `#${data.orderId.slice(0, 8).toUpperCase()}`],
+              ...(data.customerName ? [['Cliente', data.customerName] as [string, string]] : []),
               ['Valor reembolsado', formatBRL(data.amount)],
               ['Data', formatDate(data.date)],
               ['Método de pagamento', paymentMethodLabels[data.paymentMethod] || data.paymentMethod],

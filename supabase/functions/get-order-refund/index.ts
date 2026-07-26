@@ -65,6 +65,12 @@ serve(async (req) => {
       });
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, cpf')
+      .eq('id', order.user_id)
+      .single();
+
     const { data: refunds, error: refundError } = await supabase
       .from('payment_refunds')
       .select('*')
@@ -101,6 +107,8 @@ serve(async (req) => {
           reason: refund.reason,
           status: refund.status,
           transactionReceiptUrl: transactionReceiptUrl || null,
+          customerName: profile?.full_name || null,
+          customerCpf: profile?.cpf || null,
         },
       }),
       {
