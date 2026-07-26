@@ -97,6 +97,15 @@ serve(async (req) => {
     const refund = refunds[0];
     const transactionReceiptUrl = refund.gateway_response?.transactionReceiptUrl as string | undefined;
 
+    const { data: companySettings } = await supabase
+      .from('company_settings')
+      .select('key, value');
+
+    const company = (companySettings || []).reduce((acc: Record<string, string>, row: { key: string; value: string }) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {});
+
     return new Response(
       JSON.stringify({
         refund: {
@@ -109,6 +118,13 @@ serve(async (req) => {
           transactionReceiptUrl: transactionReceiptUrl || null,
           customerName: profile?.full_name || null,
           customerCpf: profile?.cpf || null,
+        },
+        company: {
+          legalName: company.legal_name || null,
+          cnpj: company.cnpj || null,
+          address: company.address || null,
+          email: company.email || null,
+          phone: company.phone || null,
         },
       }),
       {

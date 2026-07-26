@@ -15,6 +15,13 @@ interface RefundReceiptData {
   transactionReceiptUrl?: string;
   customerName?: string;
   customerCpf?: string;
+  company?: {
+    legalName?: string;
+    cnpj?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+  };
 }
 
 interface RefundReceiptDialogProps {
@@ -40,15 +47,6 @@ const paymentMethodLabels: Record<string, string> = {
   debit_card: 'Cartão de Débito',
   pix: 'PIX',
   boleto: 'Boleto',
-};
-
-const COMPANY = {
-  name: 'JapasPesca',
-  legalName: 'JapasPesca Comércio de Alimentos Ltda',
-  cnpj: '00.000.000/0001-00',
-  address: 'Rua Exemplo, 123 — Bairro — Cidade/SP — CEP 00000-000',
-  email: 'sac@japaspesca.com.br',
-  phone: '(11) 0000-0000',
 };
 
 function maskCpf(cpf: string): string {
@@ -91,13 +89,13 @@ export async function generateRefundPdf(data: RefundReceiptData) {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(60, 60, 60);
-  doc.text(`${COMPANY.legalName}`, margin, y);
+  doc.text(`${data.company?.legalName || 'JapasPesca'}`, margin, y);
   y += 4;
-  doc.text(`CNPJ: ${COMPANY.cnpj}`, margin, y);
+  doc.text(`CNPJ: ${data.company?.cnpj || '—'}`, margin, y);
   y += 4;
-  doc.text(`${COMPANY.address}`, margin, y);
+  doc.text(`${data.company?.address || '—'}`, margin, y);
   y += 4;
-  doc.text(`E-mail: ${COMPANY.email}  |  Tel: ${COMPANY.phone}`, margin, y);
+  doc.text(`E-mail: ${data.company?.email || '—'}  |  Tel: ${data.company?.phone || '—'}`, margin, y);
 
   y += 9;
   doc.setFontSize(11);
@@ -175,7 +173,7 @@ export async function generateRefundPdf(data: RefundReceiptData) {
   doc.setFont('helvetica', 'normal');
   doc.text('Este documento é um comprovante oficial de reembolso emitido por JapasPesca.', pageWidth / 2, y, { align: 'center' });
   y += 4;
-  doc.text('Em caso de dúvidas, entre em contato: sac@japaspesca.com.br | (11) 0000-0000', pageWidth / 2, y, { align: 'center' });
+  doc.text(`Em caso de dúvidas, entre em contato: ${data.company?.email || ''} | ${data.company?.phone || ''}`, pageWidth / 2, y, { align: 'center' });
   y += 4;
   doc.text(`Verifique a autenticidade em: ${verifyUrl}`, pageWidth / 2, y, { align: 'center' });
 
