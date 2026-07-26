@@ -57,7 +57,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, payment_id, asaas_payment_id, payment_gateway, payment_method, total_amount, status, user_id")
+      .select("id, payment_id, asaas_payment_id, asaas_installment_id, payment_gateway, payment_method, total_amount, status, user_id")
       .eq("id", orderId)
       .single();
 
@@ -107,7 +107,10 @@ async function handleRequest(req: Request): Promise<Response> {
 
     console.log(`[check-order-refund] Consultando gateway ${gatewayName} paymentId=${paymentId}`);
 
-    const gatewayRefunds = await gateway.listRefunds(paymentId);
+    const gatewayRefunds = await gateway.listRefunds(
+      paymentId,
+      (order as any).asaas_installment_id ?? undefined,
+    );
 
     if (gatewayRefunds.length === 0) {
       return new Response(
