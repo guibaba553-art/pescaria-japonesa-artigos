@@ -18,12 +18,27 @@ CREATE POLICY "Service role gerencia company_settings" ON public.company_setting
   USING (auth.role() = 'service_role'::text)
   WITH CHECK (auth.role() = 'service_role'::text);
 
+-- Permitir leitura pública (Footer, site)
+CREATE POLICY "Leitura pública de company_settings" ON public.company_settings
+  FOR SELECT
+  USING (true);
+
 -- Valores padrão
 INSERT INTO public.company_settings (key, value) VALUES
   ('logo_url', ''),
-  ('legal_name', 'JapasPesca Comércio de Alimentos Ltda'),
-  ('cnpj', '00.000.000/0001-00'),
-  ('address', 'Rua Exemplo, 123 — Bairro — Cidade/SP — CEP 00000-000'),
-  ('email', 'sac@japaspesca.com.br'),
-  ('phone', '(11) 0000-0000')
+  ('trade_name', 'Japas Pesca'),
+  ('legal_name', 'G. SEITI GARCIA BABA LTDA'),
+  ('cnpj', '33.169.502/0001-08'),
+  ('ie', '13.900.915-9'),
+  ('cep', '78556100'),
+  ('street', 'Av. das Itaúbas'),
+  ('number', '2281'),
+  ('complement', ''),
+  ('neighborhood', 'Jardim Paraíso'),
+  ('city', 'Sinop'),
+  ('state', 'MT'),
+  ('phone', '(66) 99921-1712'),
+  ('whatsapp', '5566999211712'),
+  ('email', 'robertobaba2@gmail.com'),
+  ('instagram_url', 'https://www.instagram.com/japafishing_/?hl=en')
 ON CONFLICT (key) DO NOTHING;

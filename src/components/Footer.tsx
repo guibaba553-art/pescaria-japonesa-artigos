@@ -31,8 +31,8 @@ function formatCEP(cep: string): string {
 
 // Valores originais hardcoded como fallback
 const DEFAULTS: FooterSettings = {
-  legal_name: 'JAPA PESCA E CONVENIENCIA LTDA',
-  trade_name: 'G. SEITI GARCIA BABA LTDA',
+  legal_name: 'G. SEITI GARCIA BABA LTDA',
+  trade_name: 'Japas Pesca',
   cnpj: '33.169.502/0001-08',
   ie: '13.900.915-9',
   street: 'Av. das Itaúbas',
@@ -75,7 +75,7 @@ const Footer = () => {
   ].filter(Boolean).join(' ');
 
   const logoImg = s.logo_url || japaLogo;
-  const brandName = s.trade_name === 'G. SEITI GARCIA BABA LTDA' ? 'JAPAS' : (s.trade_name || 'JAPAS').split(' ')[0];
+  const brandName = s.trade_name || 'Japas Pesca';
 
   return (
     <footer className="bg-background border-t border-border">
@@ -210,7 +210,7 @@ const Footer = () => {
           <div className="space-y-1">
             <p className="font-medium text-foreground">{s.legal_name}</p>
             <p>
-              {[s.trade_name, s.cnpj ? `CNPJ ${s.cnpj}` : null, s.ie ? `IE ${s.ie}` : null]
+              {[s.cnpj ? `CNPJ ${s.cnpj}` : null, s.ie ? `IE ${s.ie}` : null]
                 .filter(Boolean).join(' · ')}
             </p>
             <p>{address}</p>
