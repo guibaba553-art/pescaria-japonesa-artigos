@@ -307,7 +307,7 @@ export function PromotionsManagement() {
 
   const renderBulkEditor = (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     const setBulk = (patch: Partial<Draft>) => setDrafts({ ...drafts, [key]: { ...draft, ...patch } });
     const onSaleCount = product.variations.filter((v) => v.on_sale).length;
     return (
