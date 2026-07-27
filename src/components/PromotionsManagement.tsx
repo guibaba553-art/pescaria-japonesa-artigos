@@ -4,8 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save } from 'lucide-react';
+import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { isPromoActive } from '@/utils/promoPrice';
 
