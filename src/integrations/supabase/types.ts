@@ -2905,6 +2905,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_finished_promotions: { Args: never; Returns: Json }
       extract_uf_from_address: { Args: { p_address: string }; Returns: string }
       get_available_stock: {
         Args: { p_product_id: string; p_variation_id?: string }
