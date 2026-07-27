@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
-import { isPromoActive } from '@/utils/promoPrice';
+import { isPromoActive, isPromoScheduled } from '@/utils/promoPrice';
 
 /** Converte texto colado (dd/mm/yyyy [hh:mm], ISO, datetime-local) para o formato do input datetime-local. */
 function parsePastedDate(raw: string): string | null {
