@@ -87,6 +87,7 @@ type Channel = 'site' | 'pdv' | 'both';
 interface Draft {
   mode: Mode;
   amount: string;
+  startsAt: string;
   endsAt: string;
   limitQty: string;
   channel: Channel;
@@ -99,18 +100,20 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
+      startsAt: toLocalDateTime(startsAt),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
       channel,
     };
   }
-  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
+  return { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
+
 
 function computeFinalPrice(basePrice: number, draft: Draft): number {
   const v = parseFloat(draft.amount) || 0;
