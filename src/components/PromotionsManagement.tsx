@@ -209,7 +209,7 @@ export function PromotionsManagement() {
   };
   const applyBulkToVariations = async (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft = drafts[key] || { mode: 'percent', amount: '10', endsAt: '', limitQty: '' };
+    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
     setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
