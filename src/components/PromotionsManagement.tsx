@@ -417,6 +417,7 @@ export function PromotionsManagement() {
     id: string,
     basePrice: number,
     salePrice: number | null,
+    startsAt: string | null,
     endsAt: string | null,
     onSale: boolean,
     limitQty: number | null,
@@ -429,12 +430,13 @@ export function PromotionsManagement() {
   ) => {
     const key = `${table}:${id}`;
     const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
-    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty, initialChannel);
+    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
+    const scheduled = startsAt ? new Date(startsAt) > new Date() : false;
     const soldOut = limitQty != null && soldQty >= limitQty;
-    const isActuallyActive = onSale && !expired && !soldOut;
+    const isActuallyActive = onSale && !expired && !soldOut && !scheduled;
     const fPct = Number(freightPct || 0) / 100;
     const oPct = Number(opCostPct || 0) / 100;
     const tPct = Number(taxPct || 0) / 100;
@@ -451,7 +453,7 @@ export function PromotionsManagement() {
               key={m}
               size="sm"
               variant={draft.mode === m ? 'default' : 'outline'}
-              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
             >
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
@@ -465,7 +467,7 @@ export function PromotionsManagement() {
                 key={c}
                 size="sm"
                 variant={draft.channel === c ? 'default' : 'outline'}
-                onClick={() => updateDraft(key, { channel: c }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+                onClick={() => updateDraft(key, { channel: c }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
               >
                 {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
               </Button>
@@ -482,8 +484,25 @@ export function PromotionsManagement() {
               min={0}
               step={draft.mode === 'percent' ? 1 : 0.01}
               value={draft.amount}
-              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
               className="w-32"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
+            <Input
+              type="datetime-local"
+              value={draft.startsAt}
+              onChange={(e) => updateDraft(key, { startsAt: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) {
+                  e.preventDefault();
+                  updateDraft(key, { startsAt: parsed }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
+                }
+              }}
+              className="w-56"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -491,13 +510,13 @@ export function PromotionsManagement() {
             <Input
               type="datetime-local"
               value={draft.endsAt}
-              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
               onPaste={(e) => {
                 const text = e.clipboardData.getData('text');
                 const parsed = parsePastedDate(text);
                 if (parsed) {
                   e.preventDefault();
-                  updateDraft(key, { endsAt: parsed }, basePrice, salePrice, endsAt, limitQty, initialChannel);
+                  updateDraft(key, { endsAt: parsed }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
                 }
               }}
               className="w-56"
@@ -511,10 +530,11 @@ export function PromotionsManagement() {
               step={1}
               placeholder="Ex: 10"
               value={draft.limitQty}
-              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
               className="w-32"
             />
           </div>
+
           <div className="text-sm">
             <div className="text-muted-foreground line-through">R$ {basePrice.toFixed(2)}</div>
             <div className="font-semibold text-green-600">
