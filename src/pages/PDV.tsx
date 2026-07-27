@@ -1394,6 +1394,7 @@ export default function PDV() {
           sale_ends_at: (item.variation as any).sale_ends_at ?? item.product.sale_ends_at ?? null,
           sale_limit_qty: (item.variation as any).sale_limit_qty ?? item.product.sale_limit_qty ?? null,
           sale_sold_qty: (item.variation as any).sale_sold_qty ?? item.product.sale_sold_qty ?? null,
+          sale_channel: (item.variation as any).sale_channel ?? item.product.sale_channel ?? null,
         },
         paymentMethod,
       );
