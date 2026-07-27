@@ -76,8 +76,9 @@ const FlashDealsCountdown = () => {
       // 2) IDs de produtos cujas variações estão em promoção
       const { data: promoVars } = await supabase
         .from("product_variations")
-        .select("product_id, sale_ends_at")
+        .select("product_id, sale_ends_at, sale_channel")
         .eq("on_sale", true)
+        .neq("sale_channel", "pdv")
         .not("sale_price", "is", null)
         .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`);
 
