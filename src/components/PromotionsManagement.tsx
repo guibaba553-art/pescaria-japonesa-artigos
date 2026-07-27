@@ -484,6 +484,14 @@ export function PromotionsManagement() {
               type="datetime-local"
               value={draft.endsAt}
               onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) {
+                  e.preventDefault();
+                  updateDraft(key, { endsAt: parsed }, basePrice, salePrice, endsAt, limitQty, initialChannel);
+                }
+              }}
               className="w-56"
             />
           </div>
