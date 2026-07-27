@@ -96,13 +96,12 @@ export default function ProductDetails() {
         .eq('product_id', id);
       
       if (variationsData) {
-        const normalizedVariations = (variationsData as ProductVariation[]).map((variation) => ({
-          ...variation,
-          price: sitePriceForVariation(variation, (prod as any).min_sale_price),
-        }));
-
-        setVariations(normalizedVariations);
+        // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
+        // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
+        // via sitePriceForVariation em cada componente.
+        setVariations(variationsData as ProductVariation[]);
       }
+
     }
     setLoading(false);
   };
