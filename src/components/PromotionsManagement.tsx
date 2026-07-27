@@ -381,10 +381,12 @@ export function PromotionsManagement() {
     cost: number,
     freightPct: number,
     opCostPct: number,
-    taxPct: number
+    taxPct: number,
+    saleChannel: string | null = 'both'
   ) => {
     const key = `${table}:${id}`;
-    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
+    const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
+    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty, initialChannel);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
@@ -406,11 +408,26 @@ export function PromotionsManagement() {
               key={m}
               size="sm"
               variant={draft.mode === m ? 'default' : 'outline'}
-              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty)}
+              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
             >
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
           ))}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Aplicar promoção em</label>
+          <div className="flex flex-wrap gap-2">
+            {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+              <Button
+                key={c}
+                size="sm"
+                variant={draft.channel === c ? 'default' : 'outline'}
+                onClick={() => updateDraft(key, { channel: c }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              >
+                {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+              </Button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
