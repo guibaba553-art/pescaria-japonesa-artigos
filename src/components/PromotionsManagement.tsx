@@ -183,14 +183,15 @@ export function PromotionsManagement() {
     (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
   ).length;
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
   };
 
-  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
-    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
+  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
+    const current = drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
     setDrafts({ ...drafts, [key]: { ...current, ...patch } });
   };
+
 
   const apply = async (
     table: 'products' | 'product_variations',
