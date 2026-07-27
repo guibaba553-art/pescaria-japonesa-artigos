@@ -681,6 +681,23 @@ export function PromotionsManagement() {
     await load();
   };
 
+  const selectedItems = useMemo(() => {
+    const out: { key: SelKey; name: string; sub: string; image?: string | null; price: number }[] = [];
+    for (const key of selected) {
+      const [table, id] = key.split(':') as ['products' | 'product_variations', string];
+      if (table === 'products') {
+        const p = products.find((x) => x.id === id);
+        if (p) out.push({ key, name: p.name, sub: p.category || 'Produto', image: p.image_url, price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) });
+      } else {
+        for (const p of products) {
+          const v = p.variations.find((x) => x.id === id);
+          if (v) { out.push({ key, name: `${p.name}`, sub: v.name, image: v.image_url || p.image_url, price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price) }); break; }
+        }
+      }
+    }
+    return out;
+  }, [selected, products]);
+
   const renderBatchTab = () => (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2">
@@ -770,6 +787,37 @@ export function PromotionsManagement() {
           )}
         </div>
       )}
+
+
+      {/* Painel de itens selecionados */}
+      {selected.size > 0 && (
+        <div className="rounded-lg border bg-card">
+          <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <ListChecks className="w-4 h-4" /> Itens selecionados ({selected.size})
+            </div>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="w-4 h-4 mr-1" /> Limpar tudo
+            </Button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y">
+            {selectedItems.map((it) => (
+              <div key={it.key} className="flex items-center gap-3 p-2">
+                {it.image ? <img src={it.image} alt="" className="w-8 h-8 rounded object-cover" /> : <div className="w-8 h-8 rounded bg-muted" />}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm truncate">{it.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{it.sub} • R$ {it.price.toFixed(2)}</div>
+                </div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleSel(it.key)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
 
       {/* Painel sticky de configuração */}
       <div className="sticky bottom-0 z-10 rounded-lg border-2 border-primary/40 bg-primary/5 backdrop-blur p-4 space-y-3 shadow-lg">
