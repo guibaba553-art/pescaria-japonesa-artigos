@@ -4,8 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save } from 'lucide-react';
+import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { isPromoActive } from '@/utils/promoPrice';
 
@@ -558,6 +560,284 @@ export function PromotionsManagement() {
     );
   };
 
+  // ═══════════════ MODO EM LOTE ═══════════════
+  type SelKey = string; // "products:<id>" | "product_variations:<id>"
+  const [selected, setSelected] = useState<Set<SelKey>>(new Set());
+  const [batchSearch, setBatchSearch] = useState('');
+  const [batchFilter, setBatchFilter] = useState<'all' | 'on_sale' | 'off'>('all');
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchSaving, setBatchSaving] = useState(false);
+
+  const toggleSel = (key: SelKey) => {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
+
+  const batchFiltered = useMemo(() => {
+    const q = batchSearch.trim().toLowerCase();
+    return products.filter((p) => {
+      if (q && !p.name.toLowerCase().includes(q)) return false;
+      if (batchFilter === 'on_sale') return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
+      if (batchFilter === 'off') return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
+      return true;
+    });
+  }, [products, batchSearch, batchFilter]);
+
+  const selectAllVisible = () => {
+    const n = new Set(selected);
+    batchFiltered.forEach((p) => {
+      if (p.variations.length === 0) n.add(`products:${p.id}`);
+      else p.variations.forEach((v) => n.add(`product_variations:${v.id}`));
+    });
+    setSelected(n);
+  };
+  const clearSelection = () => setSelected(new Set());
+
+  const applyBatch = async () => {
+    if (selected.size === 0) {
+      toast({ title: 'Selecione ao menos um item' });
+      return;
+    }
+    setBatchSaving(true);
+    const limitParsed = batchDraft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(batchDraft.limitQty)));
+    const endsAtIso = batchDraft.endsAt ? new Date(batchDraft.endsAt).toISOString() : null;
+    let ok = 0, skipped = 0;
+    const errors: string[] = [];
+
+    // Indexar preços base
+    const priceOf = (table: 'products' | 'product_variations', id: string): number => {
+      if (table === 'products') {
+        const p = products.find((x) => x.id === id);
+        return p ? Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) : 0;
+      }
+      for (const p of products) {
+        const v = p.variations.find((x) => x.id === id);
+        if (v) return Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+      }
+      return 0;
+    };
+
+    // Agrupar por tabela e por preço final (para poder usar .in())
+    const byTable: Record<'products' | 'product_variations', Map<number, string[]>> = {
+      products: new Map(),
+      product_variations: new Map(),
+    };
+
+    for (const key of selected) {
+      const [table, id] = key.split(':') as ['products' | 'product_variations', string];
+      const basePrice = priceOf(table, id);
+      const final = computeFinalPrice(basePrice, batchDraft);
+      if (basePrice <= 0 || final <= 0 || final >= basePrice) { skipped++; continue; }
+      const rounded = Number(final.toFixed(2));
+      const arr = byTable[table].get(rounded) || [];
+      arr.push(id);
+      byTable[table].set(rounded, arr);
+    }
+
+    for (const table of ['products', 'product_variations'] as const) {
+      for (const [finalPrice, ids] of byTable[table].entries()) {
+        const { error } = await supabase.from(table).update({
+          on_sale: true,
+          sale_price: finalPrice,
+          sale_ends_at: endsAtIso,
+          sale_limit_qty: limitParsed,
+          sale_channel: batchDraft.channel,
+        }).in('id', ids);
+        if (error) errors.push(`${table}: ${error.message}`);
+        else ok += ids.length;
+      }
+    }
+
+    setBatchSaving(false);
+    if (errors.length > 0) {
+      toast({ title: 'Alguns erros ocorreram', description: errors.slice(0, 3).join('\n'), variant: 'destructive' });
+    }
+    toast({
+      title: `Promoção aplicada em ${ok} item(ns)`,
+      description: skipped > 0 ? `${skipped} ignorados (preço inválido).` : undefined,
+    });
+    clearSelection();
+    await load();
+  };
+
+  const removeBatch = async () => {
+    if (selected.size === 0) return;
+    setBatchSaving(true);
+    const clear = { on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
+    const prodIds: string[] = [];
+    const varIds: string[] = [];
+    for (const key of selected) {
+      const [t, id] = key.split(':');
+      if (t === 'products') prodIds.push(id); else varIds.push(id);
+    }
+    if (prodIds.length) await supabase.from('products').update(clear).in('id', prodIds);
+    if (varIds.length) await supabase.from('product_variations').update(clear).in('id', varIds);
+    setBatchSaving(false);
+    toast({ title: `Promoção removida de ${prodIds.length + varIds.length} item(ns)` });
+    clearSelection();
+    await load();
+  };
+
+  const renderBatchTab = () => (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar produto..." value={batchSearch} onChange={(e) => setBatchSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex gap-1">
+          {(['all', 'on_sale', 'off'] as const).map((f) => (
+            <Button key={f} size="sm" variant={batchFilter === f ? 'default' : 'outline'} onClick={() => setBatchFilter(f)}>
+              {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1 sm:ml-auto">
+          <Button size="sm" variant="outline" onClick={selectAllVisible}>Selecionar visíveis</Button>
+          {selected.size > 0 && (
+            <Button size="sm" variant="outline" onClick={clearSelection}><X className="w-4 h-4 mr-1" />Limpar ({selected.size})</Button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+        </div>
+      ) : (
+        <div className="border rounded-lg divide-y max-h-[520px] overflow-y-auto">
+          {batchFiltered.map((p) => {
+            const hasVars = p.variations.length > 0;
+            if (!hasVars) {
+              const key = `products:${p.id}`;
+              const checked = selected.has(key);
+              return (
+                <label key={p.id} className="flex items-center gap-3 p-2.5 hover:bg-muted/40 cursor-pointer">
+                  <Checkbox checked={checked} onCheckedChange={() => toggleSel(key)} />
+                  {p.image_url ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" /> : <div className="w-9 h-9 rounded bg-muted" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{p.name}</div>
+                    <div className="text-[11px] text-muted-foreground">{p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}</div>
+                  </div>
+                  {isPromoActive(p) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                </label>
+              );
+            }
+            const varKeys = p.variations.map((v) => `product_variations:${v.id}`);
+            const allChecked = varKeys.every((k) => selected.has(k));
+            const someChecked = !allChecked && varKeys.some((k) => selected.has(k));
+            const toggleAll = () => {
+              setSelected((prev) => {
+                const n = new Set(prev);
+                if (allChecked) varKeys.forEach((k) => n.delete(k));
+                else varKeys.forEach((k) => n.add(k));
+                return n;
+              });
+            };
+            return (
+              <div key={p.id}>
+                <label className="flex items-center gap-3 p-2.5 bg-muted/20 hover:bg-muted/40 cursor-pointer">
+                  <Checkbox checked={allChecked ? true : someChecked ? 'indeterminate' : false} onCheckedChange={toggleAll} />
+                  {p.image_url ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" /> : <div className="w-9 h-9 rounded bg-muted" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{p.name}</div>
+                    <div className="text-[11px] text-muted-foreground">{p.category} • {p.variations.length} variações</div>
+                  </div>
+                </label>
+                {p.variations.map((v) => {
+                  const key = `product_variations:${v.id}`;
+                  const checked = selected.has(key);
+                  return (
+                    <label key={v.id} className="flex items-center gap-3 p-2 pl-10 hover:bg-muted/40 cursor-pointer">
+                      <Checkbox checked={checked} onCheckedChange={() => toggleSel(key)} />
+                      {v.image_url ? <img src={v.image_url} alt="" className="w-7 h-7 rounded object-cover" /> : <div className="w-7 h-7 rounded bg-muted" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{v.name}</div>
+                        <div className="text-[11px] text-muted-foreground">R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)} • Estoque: {v.stock}</div>
+                      </div>
+                      {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })}
+          {batchFiltered.length === 0 && (
+            <div className="text-center py-10 text-muted-foreground text-sm">Nenhum produto encontrado.</div>
+          )}
+        </div>
+      )}
+
+      {/* Painel sticky de configuração */}
+      <div className="sticky bottom-0 z-10 rounded-lg border-2 border-primary/40 bg-primary/5 backdrop-blur p-4 space-y-3 shadow-lg">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="font-semibold text-sm flex items-center gap-2">
+            <ListChecks className="w-4 h-4" />
+            {selected.size} item(ns) selecionado(s)
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {(['percent', 'value', 'price'] as Mode[]).map((m) => (
+            <Button key={m} size="sm" variant={batchDraft.mode === m ? 'default' : 'outline'} onClick={() => setBatchDraft({ ...batchDraft, mode: m })}>
+              {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Aplicar promoção em</label>
+          <div className="flex flex-wrap gap-2">
+            {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+              <Button key={c} size="sm" variant={batchDraft.channel === c ? 'default' : 'outline'} onClick={() => setBatchDraft({ ...batchDraft, channel: c })}>
+                {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">
+              {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+            </label>
+            <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01}
+              value={batchDraft.amount} onChange={(e) => setBatchDraft({ ...batchDraft, amount: e.target.value })} className="w-32" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Termina em</label>
+            <Input type="datetime-local" value={batchDraft.endsAt}
+              onChange={(e) => setBatchDraft({ ...batchDraft, endsAt: e.target.value })}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) { e.preventDefault(); setBatchDraft({ ...batchDraft, endsAt: parsed }); }
+              }} className="w-56" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Limite por item (opcional)</label>
+            <Input type="number" min={1} step={1} placeholder="Ex: 10"
+              value={batchDraft.limitQty} onChange={(e) => setBatchDraft({ ...batchDraft, limitQty: e.target.value })} className="w-32" />
+          </div>
+        </div>
+        {batchDraft.mode === 'price' && (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+            ⚠️ "Preço final" aplica o mesmo valor absoluto em todos os itens. Itens com preço base menor ou igual serão ignorados.
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={applyBatch} disabled={batchSaving || selected.size === 0}>
+            {batchSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            Aplicar em {selected.size} item(ns)
+          </Button>
+          <Button size="sm" variant="outline" onClick={removeBatch} disabled={batchSaving || selected.size === 0}>
+            <Trash2 className="w-4 h-4 mr-1" /> Remover promoção
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden border-0 shadow-sm">
       <PanelHeader
@@ -570,114 +850,123 @@ export function PromotionsManagement() {
         ]}
       />
       <CardContent className="p-4 md:p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar produto..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="flex gap-1">
-            {(['all', 'on_sale', 'off'] as const).map((f) => (
-              <Button
-                key={f}
-                size="sm"
-                variant={filter === f ? 'default' : 'outline'}
-                onClick={() => setFilter(f)}
-              >
-                {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <Tabs defaultValue="batch" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="batch" className="gap-2"><ListChecks className="w-4 h-4" /> Em lote</TabsTrigger>
+            <TabsTrigger value="individual" className="gap-2"><Tag className="w-4 h-4" /> Individual</TabsTrigger>
+          </TabsList>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">Nenhum produto encontrado.</div>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((p) => {
-              const hasVars = p.variations.length > 0;
-              const isOpen = expanded[p.id] ?? false;
-              const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-              return (
-                <div key={p.id} className="border rounded-lg overflow-hidden">
-                  <div className="flex items-center gap-3 p-3 bg-card">
-                    {hasVars ? (
-                      <button
-                        onClick={() => setExpanded({ ...expanded, [p.id]: !isOpen })}
-                        className="p-1 hover:bg-muted rounded"
-                      >
-                        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                    ) : (
-                      <div className="w-6" />
-                    )}
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover" />
-                    ) : (
-                      <div className="w-12 h-12 rounded bg-muted" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}
-                        {Number(p.min_sale_price) > 0 && (
-                          <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(preço site)</span>
+          <TabsContent value="batch">{renderBatchTab()}</TabsContent>
+
+          <TabsContent value="individual" className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar produto..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex gap-1">
+                {(['all', 'on_sale', 'off'] as const).map((f) => (
+                  <Button
+                    key={f}
+                    size="sm"
+                    variant={filter === f ? 'default' : 'outline'}
+                    onClick={() => setFilter(f)}
+                  >
+                    {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">Nenhum produto encontrado.</div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map((p) => {
+                  const hasVars = p.variations.length > 0;
+                  const isOpen = expanded[p.id] ?? false;
+                  const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
+                  return (
+                    <div key={p.id} className="border rounded-lg overflow-hidden">
+                      <div className="flex items-center gap-3 p-3 bg-card">
+                        {hasVars ? (
+                          <button
+                            onClick={() => setExpanded({ ...expanded, [p.id]: !isOpen })}
+                            className="p-1 hover:bg-muted rounded"
+                          >
+                            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        ) : (
+                          <div className="w-6" />
                         )}
-                        {hasVars && ` • ${p.variations.length} variações`}
-                      </div>
-                    </div>
-                    {anyOnSale && <Badge className="bg-green-600 hover:bg-green-600">Em promoção</Badge>}
-                  </div>
-
-                  {!hasVars && (
-                    <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
-                    </div>
-                  )}
-
-                  {hasVars && isOpen && (
-                    <div className="border-t bg-muted/20 p-3 space-y-3">
-                      {renderBulkEditor(p)}
-                      {p.variations.map((v) => (
-
-
-                        <div key={v.id} className="bg-card border rounded-md p-3">
-                          <div className="flex items-center gap-3 mb-3">
-                            {v.image_url ? (
-                              <img src={v.image_url} alt={v.name} className="w-10 h-10 rounded object-cover" />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-muted" />
+                        {p.image_url ? (
+                          <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-muted" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{p.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}
+                            {Number(p.min_sale_price) > 0 && (
+                              <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(preço site)</span>
                             )}
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate">{v.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)}
-                                {Number(v.min_sale_price) > 0 && (
-                                  <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(site)</span>
-                                )}
-                                {' '}• Estoque: {v.stock}
-                              </div>
-                            </div>
-                            {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
+                            {hasVars && ` • ${p.variations.length} variações`}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
                         </div>
-                      ))}
+                        {anyOnSale && <Badge className="bg-green-600 hover:bg-green-600">Em promoção</Badge>}
+                      </div>
+
+                      {!hasVars && (
+                        <div className="p-3 border-t">
+                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
+                        </div>
+                      )}
+
+                      {hasVars && isOpen && (
+                        <div className="border-t bg-muted/20 p-3 space-y-3">
+                          {renderBulkEditor(p)}
+                          {p.variations.map((v) => (
+                            <div key={v.id} className="bg-card border rounded-md p-3">
+                              <div className="flex items-center gap-3 mb-3">
+                                {v.image_url ? (
+                                  <img src={v.image_url} alt={v.name} className="w-10 h-10 rounded object-cover" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-muted" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">{v.name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)}
+                                    {Number(v.min_sale_price) > 0 && (
+                                      <span className="ml-1 text-[10px] uppercase tracking-wide text-primary">(site)</span>
+                                    )}
+                                    {' '}• Estoque: {v.stock}
+                                  </div>
+                                </div>
+                                {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
+                              </div>
+                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
