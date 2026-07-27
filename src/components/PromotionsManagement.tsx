@@ -149,12 +149,12 @@ export function PromotionsManagement() {
     (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
   ).length;
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
   };
 
-  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null) => {
-    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
+  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
+    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
     setDrafts({ ...drafts, [key]: { ...current, ...patch } });
   };
 
@@ -178,6 +178,7 @@ export function PromotionsManagement() {
       sale_price: Number(final.toFixed(2)),
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
+      sale_channel: draft.channel,
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
