@@ -9,6 +9,33 @@ import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save } from 'l
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { isPromoActive } from '@/utils/promoPrice';
 
+/** Converte texto colado (dd/mm/yyyy [hh:mm], ISO, datetime-local) para o formato do input datetime-local. */
+function parsePastedDate(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  // Já no formato do input
+  const local = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (local) return `${local[1]}-${local[2]}-${local[3]}T${local[4]}:${local[5]}`;
+  // dd/mm/yyyy [hh:mm[:ss]]
+  const br = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ ,T]+(\d{1,2}):(\d{2}))?/);
+  if (br) {
+    const dd = br[1].padStart(2, '0');
+    const mm = br[2].padStart(2, '0');
+    let yyyy = br[3];
+    if (yyyy.length === 2) yyyy = '20' + yyyy;
+    const hh = (br[4] ?? '23').padStart(2, '0');
+    const mi = (br[5] ?? '59').padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+  // Fallback: Date parse
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  return null;
+}
+
 interface Variation {
   id: string;
   product_id: string;
@@ -332,6 +359,14 @@ export function PromotionsManagement() {
               type="datetime-local"
               value={draft.endsAt}
               onChange={(e) => setBulk({ endsAt: e.target.value })}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) {
+                  e.preventDefault();
+                  setBulk({ endsAt: parsed });
+                }
+              }}
               className="w-56"
             />
           </div>
@@ -449,6 +484,14 @@ export function PromotionsManagement() {
               type="datetime-local"
               value={draft.endsAt}
               onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) {
+                  e.preventDefault();
+                  updateDraft(key, { endsAt: parsed }, basePrice, salePrice, endsAt, limitQty, initialChannel);
+                }
+              }}
               className="w-56"
             />
           </div>
