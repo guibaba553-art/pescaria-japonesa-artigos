@@ -898,6 +898,16 @@ export function PromotionsManagement() {
               value={batchDraft.amount} onChange={(e) => setBatchDraft({ ...batchDraft, amount: e.target.value })} className="w-32" />
           </div>
           <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
+            <Input type="datetime-local" value={batchDraft.startsAt}
+              onChange={(e) => setBatchDraft({ ...batchDraft, startsAt: e.target.value })}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) { e.preventDefault(); setBatchDraft({ ...batchDraft, startsAt: parsed }); }
+              }} className="w-56" />
+          </div>
+          <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Termina em</label>
             <Input type="datetime-local" value={batchDraft.endsAt}
               onChange={(e) => setBatchDraft({ ...batchDraft, endsAt: e.target.value })}
