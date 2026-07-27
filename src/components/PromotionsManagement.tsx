@@ -267,6 +267,7 @@ export function PromotionsManagement() {
         .update({
           on_sale: true,
           sale_price: Number(final.toFixed(2)),
+          sale_starts_at: startsAtIso,
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
           sale_channel: draft.channel,
