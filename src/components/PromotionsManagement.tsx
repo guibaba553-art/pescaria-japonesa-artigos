@@ -591,7 +591,7 @@ export function PromotionsManagement() {
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState<'all' | 'on_sale' | 'off'>('all');
-  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [batchSaving, setBatchSaving] = useState(false);
 
   const toggleSel = (key: SelKey) => {
