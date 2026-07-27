@@ -297,6 +297,21 @@ export function PromotionsManagement() {
             </Button>
           ))}
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Aplicar promoção em</label>
+          <div className="flex flex-wrap gap-2">
+            {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+              <Button
+                key={c}
+                size="sm"
+                variant={draft.channel === c ? 'default' : 'outline'}
+                onClick={() => setBulk({ channel: c })}
+              >
+                {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+              </Button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
