@@ -30,6 +30,7 @@ export interface PdvPricingFields {
   // Promoções do catálogo — refletidas no PDV
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
