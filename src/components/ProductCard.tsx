@@ -4,7 +4,7 @@ import { ShoppingCart, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Product } from '@/types/product';
 import { ProductQuantitySelector } from './ProductQuantitySelector';
-import { isPromoActive, usePromoExpiryTick } from '@/utils/promoPrice';
+import { effectiveVariationPrice, isPromoActive, usePromoExpiryTick } from '@/utils/promoPrice';
 import duckEasterEgg from '@/assets/duck-easter-egg.gif';
 
 interface ProductCardProps {
@@ -47,7 +47,11 @@ export function ProductCard({
 
   const hasVariations = product.variations && product.variations.length > 0;
   usePromoExpiryTick(product as any);
-  const isOnSale = isPromoActive(product);
+  const activeVariationPromos = hasVariations
+    ? product.variations!.filter((variation) => isPromoActive(variation))
+    : [];
+  const isProductOnSale = isPromoActive(product);
+  const isOnSale = isProductOnSale || activeVariationPromos.length > 0;
   // REGRA: no SITE o preço exibido é o "Valor mínimo de venda" (min_sale_price) quando definido.
   // O campo `price` é o preço médio usado no PDV — não é usado aqui no site (a menos que min_sale_price esteja vazio).
   const productMin = Number((product as any).min_sale_price) || 0;
@@ -58,16 +62,25 @@ export function ProductCard({
   // Preço efetivo: se está em promoção, usa sale_price; senão usa o preço normal do site
   const basePrice = isOnSale ? Number(product.sale_price) : normalPrice;
   // Para produtos com variações, usa o menor preço de site entre as variações (min_sale_price quando definido)
-  const variationMin = hasVariations
-    ? Math.min(
-        ...product.variations!
-          .map((v) => sitePriceFor(v.price, Number((v as any).min_sale_price) || 0))
-          .filter((p) => p > 0)
-      )
+  const variationPricePairs = hasVariations
+    ? product.variations!
+        .map((variation) => {
+          const normal = sitePriceFor(variation.price, Number((variation as any).min_sale_price) || 0);
+          const effective = effectiveVariationPrice(variation as any, product as any);
+          return { normal, effective };
+        })
+        .filter(({ normal, effective }) => normal > 0 && effective > 0 && isFinite(normal) && isFinite(effective))
+    : [];
+  const variationMin = variationPricePairs.length > 0
+    ? Math.min(...variationPricePairs.map(({ effective }) => effective))
+    : null;
+  const variationNormalForMin = variationMin != null
+    ? variationPricePairs.find(({ effective }) => effective === variationMin)?.normal ?? variationMin
     : null;
   const finalPrice = hasVariations && variationMin && isFinite(variationMin) ? variationMin : basePrice;
-  const discount = isOnSale
-    ? Math.round(((product.price - product.sale_price!) / product.price) * 100)
+  const discountBase = hasVariations ? variationNormalForMin : normalPrice;
+  const discount = isOnSale && discountBase && discountBase > finalPrice
+    ? Math.round(((discountBase - finalPrice) / discountBase) * 100)
     : 0;
 
   // 10x sem juros (para conversão)
@@ -144,8 +157,24 @@ export function ProductCard({
         {/* Price block — altura fixa para alinhar todos os cards */}
         <div className="space-y-0.5 mb-2 min-h-[88px]">
           {hasVariations ? (
-            <div className="text-base sm:text-lg font-display font-bold text-foreground">
-              A partir de {formatPrice(finalPrice)}
+            <div className="space-y-1">
+              {isOnSale && discountBase && discountBase > finalPrice ? (
+                <div className="text-xs text-muted-foreground line-through leading-none">
+                  {formatPrice(discountBase)}
+                </div>
+              ) : (
+                <div className="text-xs leading-none">&nbsp;</div>
+              )}
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-base sm:text-lg font-display font-bold text-foreground">
+                  A partir de {formatPrice(finalPrice)}
+                </span>
+                {isOnSale && discount > 0 && (
+                  <span className="text-[11px] font-bold text-primary">
+                    {discount}% OFF
+                  </span>
+                )}
+              </div>
             </div>
           ) : (
             <>
