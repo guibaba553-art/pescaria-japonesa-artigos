@@ -33,6 +33,8 @@ export interface PdvPricingFields {
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  // 'site' | 'pdv' | 'both'. No PDV, ignora promo restrita a 'site'.
+  sale_channel?: string | null;
 }
 
 // Acréscimos fixos por método (sobre o preço base = PIX)
