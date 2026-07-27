@@ -563,7 +563,8 @@ export function PromotionsManagement() {
 
                   {hasVars && isOpen && (
                     <div className="border-t bg-muted/20 p-3 space-y-3">
-                      {p.variations.map((v) => (
+                      {renderBulkEditor(p)}
+
                         <div key={v.id} className="bg-card border rounded-md p-3">
                           <div className="flex items-center gap-3 mb-3">
                             {v.image_url ? (
