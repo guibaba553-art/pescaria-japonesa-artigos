@@ -1002,7 +1002,7 @@ export function PromotionsManagement() {
 
                       {!hasVars && (
                         <div className="p-3 border-t">
-                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
+                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
                         </div>
                       )}
 
