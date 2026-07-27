@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 export interface PromoFields {
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
@@ -31,6 +32,10 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   const base = Number(item.price ?? 0);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
+  if (item.sale_starts_at) {
+    const starts = new Date(item.sale_starts_at);
+    if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
+  }
   if (item.sale_ends_at) {
     const ends = new Date(item.sale_ends_at);
     if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
@@ -41,6 +46,15 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   }
   return true;
 }
+
+/** Retorna true se a promo está agendada para o futuro (ainda não começou). */
+export function isPromoScheduled(item: PromoFields, now: Date = new Date()): boolean {
+  if (!item?.on_sale || !item.sale_starts_at) return false;
+  const starts = new Date(item.sale_starts_at);
+  if (isNaN(starts.getTime())) return false;
+  return starts.getTime() > now.getTime();
+}
+
 
 /** Preço efetivo de um produto SEM variação (ou do produto pai). */
 export function effectiveProductPrice(
