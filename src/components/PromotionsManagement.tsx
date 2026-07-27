@@ -672,6 +672,7 @@ export function PromotionsManagement() {
         const { error } = await supabase.from(table).update({
           on_sale: true,
           sale_price: finalPrice,
+          sale_starts_at: startsAtIso,
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
           sale_channel: batchDraft.channel,
