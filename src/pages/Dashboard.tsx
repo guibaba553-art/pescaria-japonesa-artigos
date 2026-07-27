@@ -965,6 +965,7 @@ export default function Dashboard() {
                         </Button>
                       ))}
                     </div>
+                    <DateRangeTextInputs range={range} setRange={setRange} setPeriod={setPeriod} />
                     <Calendar
                       initialFocus
                       mode="range"
@@ -979,6 +980,7 @@ export default function Dashboard() {
                         setPeriod('custom');
                       }}
                       numberOfMonths={2}
+                      className="pointer-events-auto"
                     />
                     <Button
                       className="w-full"
@@ -990,6 +992,7 @@ export default function Dashboard() {
                   </div>
                 </PopoverContent>
               </Popover>
+
               <Button
                 variant="outline"
                 onClick={exportCSV}
