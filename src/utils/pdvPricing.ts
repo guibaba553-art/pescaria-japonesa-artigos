@@ -81,6 +81,10 @@ export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): b
   const base = Number(p.price ?? 0);
   if (base <= 0) return false;
   if (Number(p.sale_price) >= base) return false;
+  if (p.sale_starts_at) {
+    const starts = new Date(p.sale_starts_at);
+    if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
+  }
   if (p.sale_ends_at) {
     const ends = new Date(p.sale_ends_at);
     if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
