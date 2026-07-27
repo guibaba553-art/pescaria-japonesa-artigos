@@ -297,7 +297,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from('product_variations')
-      .update({ on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .in('id', ids);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
