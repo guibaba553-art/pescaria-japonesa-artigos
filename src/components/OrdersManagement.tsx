@@ -162,7 +162,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'devolucao_solicitada' | 'devolvido' | 'reembolsado';
   created_at: string;
   user_id: string;
   shipping_cep: string;
