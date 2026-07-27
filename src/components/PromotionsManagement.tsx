@@ -359,6 +359,14 @@ export function PromotionsManagement() {
               type="datetime-local"
               value={draft.endsAt}
               onChange={(e) => setBulk({ endsAt: e.target.value })}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) {
+                  e.preventDefault();
+                  setBulk({ endsAt: parsed });
+                }
+              }}
               className="w-56"
             />
           </div>
