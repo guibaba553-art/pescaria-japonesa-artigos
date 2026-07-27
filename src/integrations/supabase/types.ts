@@ -1731,6 +1731,7 @@ export type Database = {
           price: number
           price_pdv: number | null
           product_id: string
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
@@ -1760,6 +1761,7 @@ export type Database = {
           price?: number
           price_pdv?: number | null
           product_id: string
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
@@ -1789,6 +1791,7 @@ export type Database = {
           price?: number
           price_pdv?: number | null
           product_id?: string
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
@@ -1859,6 +1862,7 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
@@ -1917,6 +1921,7 @@ export type Database = {
           price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
@@ -1975,6 +1980,7 @@ export type Database = {
           price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
@@ -2965,6 +2971,7 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
@@ -3009,6 +3016,7 @@ export type Database = {
           price: number
           price_pdv: number | null
           product_id: string
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
@@ -3070,6 +3078,7 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null

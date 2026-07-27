@@ -22,6 +22,7 @@ interface Variation {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  sale_channel: string | null;
   cost: number;
   freight_pct: number;
   op_cost_pct: number;
@@ -41,6 +42,7 @@ interface Product {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  sale_channel: string | null;
   cost: number;
   freight_pct: number;
   op_cost_pct: number;
@@ -49,12 +51,14 @@ interface Product {
 }
 
 type Mode = 'percent' | 'value' | 'price';
+type Channel = 'site' | 'pdv' | 'both';
 
 interface Draft {
   mode: Mode;
   amount: string;
   endsAt: string;
   limitQty: string;
+  channel: Channel;
 }
 
 function toLocalDateTime(iso: string | null) {
@@ -64,16 +68,17 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
+      channel,
     };
   }
-  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '' };
+  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
 
 function computeFinalPrice(basePrice: number, draft: Draft): number {
@@ -144,12 +149,12 @@ export function PromotionsManagement() {
     (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
   ).length;
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
   };
 
-  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null) => {
-    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty);
+  const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
+    const current = drafts[key] || buildDraft(basePrice, salePrice, endsAt, limitQty, channel);
     setDrafts({ ...drafts, [key]: { ...current, ...patch } });
   };
 
@@ -173,6 +178,7 @@ export function PromotionsManagement() {
       sale_price: Number(final.toFixed(2)),
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
+      sale_channel: draft.channel,
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
@@ -204,7 +210,7 @@ export function PromotionsManagement() {
   };
   const applyBulkToVariations = async (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft = drafts[key] || { mode: 'percent', amount: '10', endsAt: '', limitQty: '' };
+    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
     setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
@@ -226,6 +232,7 @@ export function PromotionsManagement() {
           sale_price: Number(final.toFixed(2)),
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
+          sale_channel: draft.channel,
         })
         .eq('id', v.id);
       if (error) errors.push(`${v.name}: ${error.message}`);
@@ -265,7 +272,7 @@ export function PromotionsManagement() {
 
   const renderBulkEditor = (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', endsAt: '', limitQty: '' };
+    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', endsAt: '', limitQty: '', channel: 'both' };
     const setBulk = (patch: Partial<Draft>) => setDrafts({ ...drafts, [key]: { ...draft, ...patch } });
     const onSaleCount = product.variations.filter((v) => v.on_sale).length;
     return (
@@ -289,6 +296,21 @@ export function PromotionsManagement() {
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
           ))}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Aplicar promoção em</label>
+          <div className="flex flex-wrap gap-2">
+            {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+              <Button
+                key={c}
+                size="sm"
+                variant={draft.channel === c ? 'default' : 'outline'}
+                onClick={() => setBulk({ channel: c })}
+              >
+                {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+              </Button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -359,10 +381,12 @@ export function PromotionsManagement() {
     cost: number,
     freightPct: number,
     opCostPct: number,
-    taxPct: number
+    taxPct: number,
+    saleChannel: string | null = 'both'
   ) => {
     const key = `${table}:${id}`;
-    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty);
+    const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
+    const draft = getDraft(key, basePrice, salePrice, endsAt, limitQty, initialChannel);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
@@ -384,11 +408,26 @@ export function PromotionsManagement() {
               key={m}
               size="sm"
               variant={draft.mode === m ? 'default' : 'outline'}
-              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty)}
+              onClick={() => updateDraft(key, { mode: m }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
             >
               {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
             </Button>
           ))}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Aplicar promoção em</label>
+          <div className="flex flex-wrap gap-2">
+            {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+              <Button
+                key={c}
+                size="sm"
+                variant={draft.channel === c ? 'default' : 'outline'}
+                onClick={() => updateDraft(key, { channel: c }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
+              >
+                {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+              </Button>
+            ))}
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
@@ -400,7 +439,7 @@ export function PromotionsManagement() {
               min={0}
               step={draft.mode === 'percent' ? 1 : 0.01}
               value={draft.amount}
-              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-32"
             />
           </div>
@@ -409,7 +448,7 @@ export function PromotionsManagement() {
             <Input
               type="datetime-local"
               value={draft.endsAt}
-              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-56"
             />
           </div>
@@ -421,7 +460,7 @@ export function PromotionsManagement() {
               step={1}
               placeholder="Ex: 10"
               value={draft.limitQty}
-              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-32"
             />
           </div>
@@ -557,7 +596,7 @@ export function PromotionsManagement() {
 
                   {!hasVars && (
                     <div className="p-3 border-t">
-                      {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0))}
+                      {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
                     </div>
                   )}
 
@@ -586,7 +625,7 @@ export function PromotionsManagement() {
                             </div>
                             {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
                           </div>
-                          {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0))}
+                          {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
                         </div>
                       ))}
                     </div>

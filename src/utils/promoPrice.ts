@@ -17,6 +17,7 @@ export interface PromoFields {
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
   price?: number | null;
 }
 
@@ -25,6 +26,8 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   if (!item) return false;
   if (!item.on_sale) return false;
   if (item.sale_price == null) return false;
+  // Canal da promoção: 'site' | 'pdv' | 'both'. No site, ignora 'pdv'.
+  if (item.sale_channel && item.sale_channel === 'pdv') return false;
   const base = Number(item.price ?? 0);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
