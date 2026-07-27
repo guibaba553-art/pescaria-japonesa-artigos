@@ -106,9 +106,37 @@ export function ProductVariationSelector({
                     </div>
                   </div>
                   <div className="pl-6 space-y-1">
-                    <div className="text-lg font-semibold text-primary">
-                      R$ {sitePriceForVariation(variation, productMinSalePrice).toFixed(2)}
-                    </div>
+                    {(() => {
+                      const promo = isPromoActive(variation as any);
+                      const sitePrice = sitePriceForVariation(variation, productMinSalePrice);
+                      const basePrice = Number((variation as any).min_sale_price) || Number(productMinSalePrice) || variation.price;
+                      const showStrike = promo && basePrice > sitePrice;
+                      const off = showStrike ? Math.round(((basePrice - sitePrice) / basePrice) * 100) : 0;
+                      return (
+                        <>
+                          {showStrike && (
+                            <div className="text-xs line-through text-muted-foreground leading-none">
+                              R$ {basePrice.toFixed(2).replace('.', ',')}
+                            </div>
+                          )}
+                          <div className="flex items-baseline gap-2">
+                            <div className="text-lg font-semibold text-primary">
+                              R$ {sitePrice.toFixed(2).replace('.', ',')}
+                            </div>
+                            {showStrike && (
+                              <span className="text-[10px] font-bold text-primary uppercase">
+                                {off}% OFF
+                              </span>
+                            )}
+                          </div>
+                          {promo && (
+                            <Badge className="text-[10px] bg-primary text-primary-foreground hover:bg-primary">
+                              Em promoção
+                            </Badge>
+                          )}
+                        </>
+                      );
+                    })()}
                     {isOutOfStock && (
                       <div className="text-xs text-muted-foreground">
                         <Badge variant="destructive" className="text-xs">
