@@ -211,6 +211,7 @@ export function PromotionsManagement() {
     const payload: any = {
       on_sale: true,
       sale_price: Number(final.toFixed(2)),
+      sale_starts_at: draft.startsAt ? new Date(draft.startsAt).toISOString() : null,
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
       sale_channel: draft.channel,
