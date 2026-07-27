@@ -151,16 +151,23 @@ export function usePromoExpiryTick(
     const now = Date.now();
     const candidates: number[] = [];
     const collect = (p?: PromoFields | null) => {
-      if (!p?.on_sale || !p.sale_ends_at) return;
-      const t = new Date(p.sale_ends_at).getTime();
-      if (!isNaN(t) && t > now) candidates.push(t);
+      if (!p?.on_sale) return;
+      if (p.sale_starts_at) {
+        const t = new Date(p.sale_starts_at).getTime();
+        if (!isNaN(t) && t > now) candidates.push(t);
+      }
+      if (p.sale_ends_at) {
+        const t = new Date(p.sale_ends_at).getTime();
+        if (!isNaN(t) && t > now) candidates.push(t);
+      }
     };
     collect(product);
     product.variations?.forEach(collect);
     if (candidates.length === 0) return;
     const next = Math.min(...candidates);
-    const delay = Math.min(next - now + 500, 2_147_000_000); // cap em ~24 dias
+    const delay = Math.min(next - now + 500, 2_147_000_000);
     const id = window.setTimeout(() => setTick((n) => n + 1), Math.max(delay, 100));
     return () => window.clearTimeout(id);
   }, [product]);
 }
+
