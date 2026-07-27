@@ -697,7 +697,7 @@ export function PromotionsManagement() {
   const removeBatch = async () => {
     if (selected.size === 0) return;
     setBatchSaving(true);
-    const clear = { on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
+    const clear = { on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
     const prodIds: string[] = [];
     const varIds: string[] = [];
     for (const key of selected) {
