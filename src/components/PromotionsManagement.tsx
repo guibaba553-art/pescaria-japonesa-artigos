@@ -365,6 +365,20 @@ export function PromotionsManagement() {
             />
           </div>
           <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
+            <Input
+              type="datetime-local"
+              value={draft.startsAt}
+              onChange={(e) => setBulk({ startsAt: e.target.value })}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                const parsed = parsePastedDate(text);
+                if (parsed) { e.preventDefault(); setBulk({ startsAt: parsed }); }
+              }}
+              className="w-56"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Termina em</label>
             <Input
               type="datetime-local"
