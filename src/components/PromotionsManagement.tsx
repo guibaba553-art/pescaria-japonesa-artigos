@@ -231,6 +231,7 @@ export function PromotionsManagement() {
           sale_price: Number(final.toFixed(2)),
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
+          sale_channel: draft.channel,
         })
         .eq('id', v.id);
       if (error) errors.push(`${v.name}: ${error.message}`);
