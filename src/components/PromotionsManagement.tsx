@@ -68,16 +68,17 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
+      channel,
     };
   }
-  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '' };
+  return { mode: 'percent', amount: '10', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
 
 function computeFinalPrice(basePrice: number, draft: Draft): number {
