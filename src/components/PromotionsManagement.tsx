@@ -22,6 +22,7 @@ interface Variation {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  sale_channel: string | null;
   cost: number;
   freight_pct: number;
   op_cost_pct: number;
@@ -41,6 +42,7 @@ interface Product {
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
+  sale_channel: string | null;
   cost: number;
   freight_pct: number;
   op_cost_pct: number;
@@ -49,12 +51,14 @@ interface Product {
 }
 
 type Mode = 'percent' | 'value' | 'price';
+type Channel = 'site' | 'pdv' | 'both';
 
 interface Draft {
   mode: Mode;
   amount: string;
   endsAt: string;
   limitQty: string;
+  channel: Channel;
 }
 
 function toLocalDateTime(iso: string | null) {
