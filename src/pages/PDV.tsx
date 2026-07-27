@@ -3015,6 +3015,7 @@ export default function PDV() {
                           sale_ends_at: (variation as any).sale_ends_at ?? selectedProduct.sale_ends_at ?? null,
                           sale_limit_qty: (variation as any).sale_limit_qty ?? selectedProduct.sale_limit_qty ?? null,
                           sale_sold_qty: (variation as any).sale_sold_qty ?? selectedProduct.sale_sold_qty ?? null,
+                          sale_channel: (variation as any).sale_channel ?? selectedProduct.sale_channel ?? null,
                         };
                         return isPdvPromoActive(merged) ? (
                           <div className="flex flex-col">
