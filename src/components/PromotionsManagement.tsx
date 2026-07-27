@@ -251,6 +251,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const endsAtIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
+    const startsAtIso = draft.startsAt ? new Date(draft.startsAt).toISOString() : null;
     let ok = 0;
     let skipped = 0;
     const errors: string[] = [];
