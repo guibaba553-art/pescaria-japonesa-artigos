@@ -681,95 +681,59 @@ export function PromotionsManagement() {
     await load();
   };
 
+  const selectedItems = useMemo(() => {
+    const out: { key: SelKey; name: string; sub: string; image?: string | null; price: number }[] = [];
+    for (const key of selected) {
+      const [table, id] = key.split(':') as ['products' | 'product_variations', string];
+      if (table === 'products') {
+        const p = products.find((x) => x.id === id);
+        if (p) out.push({ key, name: p.name, sub: p.category || 'Produto', image: p.image_url, price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) });
+      } else {
+        for (const p of products) {
+          const v = p.variations.find((x) => x.id === id);
+          if (v) { out.push({ key, name: `${p.name}`, sub: v.name, image: v.image_url || p.image_url, price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price) }); break; }
+        }
+      }
+    }
+    return out;
+  }, [selected, products]);
+
   const renderBatchTab = () => (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar produto..." value={batchSearch} onChange={(e) => setBatchSearch(e.target.value)} className="pl-9" />
-        </div>
-        <div className="flex gap-1">
-          {(['all', 'on_sale', 'off'] as const).map((f) => (
-            <Button key={f} size="sm" variant={batchFilter === f ? 'default' : 'outline'} onClick={() => setBatchFilter(f)}>
-              {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
-            </Button>
-          ))}
-        </div>
-        <div className="flex gap-1 sm:ml-auto">
-          <Button size="sm" variant="outline" onClick={selectAllVisible}>Selecionar visíveis</Button>
-          {selected.size > 0 && (
-            <Button size="sm" variant="outline" onClick={clearSelection}><X className="w-4 h-4 mr-1" />Limpar ({selected.size})</Button>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
-        </div>
-      ) : (
-        <div className="border rounded-lg divide-y max-h-[520px] overflow-y-auto">
-          {batchFiltered.map((p) => {
-            const hasVars = p.variations.length > 0;
-            if (!hasVars) {
-              const key = `products:${p.id}`;
-              const checked = selected.has(key);
-              return (
-                <label key={p.id} className="flex items-center gap-3 p-2.5 hover:bg-muted/40 cursor-pointer">
-                  <Checkbox checked={checked} onCheckedChange={() => toggleSel(key)} />
-                  {p.image_url ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" /> : <div className="w-9 h-9 rounded bg-muted" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{p.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}</div>
-                  </div>
-                  {isPromoActive(p) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
-                </label>
-              );
-            }
-            const varKeys = p.variations.map((v) => `product_variations:${v.id}`);
-            const allChecked = varKeys.every((k) => selected.has(k));
-            const someChecked = !allChecked && varKeys.some((k) => selected.has(k));
-            const toggleAll = () => {
-              setSelected((prev) => {
-                const n = new Set(prev);
-                if (allChecked) varKeys.forEach((k) => n.delete(k));
-                else varKeys.forEach((k) => n.add(k));
-                return n;
-              });
-            };
-            return (
-              <div key={p.id}>
-                <label className="flex items-center gap-3 p-2.5 bg-muted/20 hover:bg-muted/40 cursor-pointer">
-                  <Checkbox checked={allChecked ? true : someChecked ? 'indeterminate' : false} onCheckedChange={toggleAll} />
-                  {p.image_url ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" /> : <div className="w-9 h-9 rounded bg-muted" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{p.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{p.category} • {p.variations.length} variações</div>
-                  </div>
-                </label>
-                {p.variations.map((v) => {
-                  const key = `product_variations:${v.id}`;
-                  const checked = selected.has(key);
-                  return (
-                    <label key={v.id} className="flex items-center gap-3 p-2 pl-10 hover:bg-muted/40 cursor-pointer">
-                      <Checkbox checked={checked} onCheckedChange={() => toggleSel(key)} />
-                      {v.image_url ? <img src={v.image_url} alt="" className="w-7 h-7 rounded object-cover" /> : <div className="w-7 h-7 rounded bg-muted" />}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate">{v.name}</div>
-                        <div className="text-[11px] text-muted-foreground">R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)} • Estoque: {v.stock}</div>
-                      </div>
-                      {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
-                    </label>
-                  );
-                })}
-              </div>
-            );
-          })}
-          {batchFiltered.length === 0 && (
-            <div className="text-center py-10 text-muted-foreground text-sm">Nenhum produto encontrado.</div>
-          )}
+...
         </div>
       )}
+
+      {/* Painel de itens selecionados */}
+      {selected.size > 0 && (
+        <div className="rounded-lg border bg-card">
+          <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <ListChecks className="w-4 h-4" /> Itens selecionados ({selected.size})
+            </div>
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
+              <X className="w-4 h-4 mr-1" /> Limpar tudo
+            </Button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y">
+            {selectedItems.map((it) => (
+              <div key={it.key} className="flex items-center gap-3 p-2">
+                {it.image ? <img src={it.image} alt="" className="w-8 h-8 rounded object-cover" /> : <div className="w-8 h-8 rounded bg-muted" />}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm truncate">{it.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">{it.sub} • R$ {it.price.toFixed(2)}</div>
+                </div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleSel(it.key)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
 
       {/* Painel sticky de configuração */}
       <div className="sticky bottom-0 z-10 rounded-lg border-2 border-primary/40 bg-primary/5 backdrop-blur p-4 space-y-3 shadow-lg">
