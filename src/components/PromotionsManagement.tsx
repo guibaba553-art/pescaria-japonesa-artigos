@@ -202,8 +202,151 @@ export function PromotionsManagement() {
     setDrafts(next);
     await load();
   };
+  const applyBulkToVariations = async (product: Product) => {
+    const key = `bulk:${product.id}`;
+    const draft = drafts[key] || { mode: 'percent', amount: '10', endsAt: '', limitQty: '' };
+    if (product.variations.length === 0) return;
+    setSaving((s) => ({ ...s, [key]: true }));
+    const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
+    const endsAtIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
+    let ok = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+    for (const v of product.variations) {
+      const basePrice = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+      const final = computeFinalPrice(basePrice, draft);
+      if (basePrice <= 0 || final >= basePrice || final <= 0) {
+        skipped++;
+        continue;
+      }
+      const { error } = await supabase
+        .from('product_variations')
+        .update({
+          on_sale: true,
+          sale_price: Number(final.toFixed(2)),
+          sale_ends_at: endsAtIso,
+          sale_limit_qty: limitParsed,
+        })
+        .eq('id', v.id);
+      if (error) errors.push(`${v.name}: ${error.message}`);
+      else ok++;
+    }
+    setSaving((s) => ({ ...s, [key]: false }));
+    if (errors.length > 0) {
+      toast({ title: 'Alguns erros ocorreram', description: errors.slice(0, 3).join('\n'), variant: 'destructive' });
+    }
+    toast({
+      title: `Promoção aplicada em ${ok} variação(ões)`,
+      description: skipped > 0 ? `${skipped} ignoradas (preço inválido).` : undefined,
+    });
+    await load();
+  };
 
-  const renderEditor = (
+  const removeBulkFromVariations = async (product: Product) => {
+    const key = `bulk:${product.id}`;
+    const ids = product.variations.filter((v) => v.on_sale).map((v) => v.id);
+    if (ids.length === 0) {
+      toast({ title: 'Nenhuma variação em promoção' });
+      return;
+    }
+    setSaving((s) => ({ ...s, [key]: true }));
+    const { error } = await supabase
+      .from('product_variations')
+      .update({ on_sale: false, sale_price: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .in('id', ids);
+    setSaving((s) => ({ ...s, [key]: false }));
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: `Promoção removida de ${ids.length} variação(ões)` });
+    await load();
+  };
+
+  const renderBulkEditor = (product: Product) => {
+    const key = `bulk:${product.id}`;
+    const draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', endsAt: '', limitQty: '' };
+    const setBulk = (patch: Partial<Draft>) => setDrafts({ ...drafts, [key]: { ...draft, ...patch } });
+    const onSaleCount = product.variations.filter((v) => v.on_sale).length;
+    return (
+      <div className="rounded-md border-2 border-primary/40 bg-primary/5 p-3 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="font-semibold text-sm">Aplicar em todas as variações</div>
+            <div className="text-xs text-muted-foreground">
+              {product.variations.length} variações • {onSaleCount} em promoção
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {(['percent', 'value', 'price'] as Mode[]).map((m) => (
+            <Button
+              key={m}
+              size="sm"
+              variant={draft.mode === m ? 'default' : 'outline'}
+              onClick={() => setBulk({ mode: m })}
+            >
+              {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">
+              {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+            </label>
+            <Input
+              type="number"
+              min={0}
+              step={draft.mode === 'percent' ? 1 : 0.01}
+              value={draft.amount}
+              onChange={(e) => setBulk({ amount: e.target.value })}
+              className="w-32"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Termina em</label>
+            <Input
+              type="datetime-local"
+              value={draft.endsAt}
+              onChange={(e) => setBulk({ endsAt: e.target.value })}
+              className="w-56"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">Limite de peças (opcional, por variação)</label>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              placeholder="Ex: 10"
+              value={draft.limitQty}
+              onChange={(e) => setBulk({ limitQty: e.target.value })}
+              className="w-32"
+            />
+          </div>
+        </div>
+        {draft.mode === 'price' && (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+            ⚠️ "Preço final" aplica o mesmo valor absoluto em todas as variações. Variações cujo preço base seja menor ou igual serão ignoradas.
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => applyBulkToVariations(product)} disabled={saving[key]}>
+            {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            Aplicar em todas
+          </Button>
+          {onSaleCount > 0 && (
+            <Button size="sm" variant="outline" onClick={() => removeBulkFromVariations(product)} disabled={saving[key]}>
+              <Trash2 className="w-4 h-4 mr-1" /> Remover de todas
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+
     table: 'products' | 'product_variations',
     id: string,
     basePrice: number,
