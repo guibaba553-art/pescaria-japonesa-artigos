@@ -48,6 +48,7 @@ interface Variation {
   image_url: string | null;
   on_sale: boolean;
   sale_price: number | null;
+  sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
   sale_sold_qty: number;
