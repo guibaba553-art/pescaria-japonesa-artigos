@@ -92,6 +92,7 @@ interface ProductVariation {
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
 }
 
 interface Product {
