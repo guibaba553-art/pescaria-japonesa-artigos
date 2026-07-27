@@ -439,7 +439,7 @@ export function PromotionsManagement() {
               min={0}
               step={draft.mode === 'percent' ? 1 : 0.01}
               value={draft.amount}
-              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { amount: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-32"
             />
           </div>
@@ -448,7 +448,7 @@ export function PromotionsManagement() {
             <Input
               type="datetime-local"
               value={draft.endsAt}
-              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { endsAt: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-56"
             />
           </div>
@@ -460,7 +460,7 @@ export function PromotionsManagement() {
               step={1}
               placeholder="Ex: 10"
               value={draft.limitQty}
-              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty)}
+              onChange={(e) => updateDraft(key, { limitQty: e.target.value }, basePrice, salePrice, endsAt, limitQty, initialChannel)}
               className="w-32"
             />
           </div>
