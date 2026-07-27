@@ -64,8 +64,9 @@ const FlashDealsCountdown = () => {
       // 1) Produtos com promoção no próprio produto
       const { data: directData } = await supabase
         .from("products")
-        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
+        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
         .eq("on_sale", true)
+        .neq("sale_channel", "pdv")
         .gt("stock", 0)
         .not("sale_price", "is", null)
         .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
