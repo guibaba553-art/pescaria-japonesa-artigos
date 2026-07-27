@@ -346,8 +346,9 @@ export function PromotionsManagement() {
     );
   };
 
-
+  const renderEditor = (
     table: 'products' | 'product_variations',
+
     id: string,
     basePrice: number,
     salePrice: number | null,
