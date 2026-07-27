@@ -1153,6 +1153,7 @@ export type Database = {
           ambiente: string
           auto_emit_nfce_pdv: boolean
           auto_emit_nfe_pedido_pago: boolean
+          auto_emit_nfe_triagem: boolean
           cfop_interestadual: string
           cfop_padrao: string
           created_at: string
@@ -1174,6 +1175,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
@@ -1195,6 +1197,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
@@ -3188,6 +3191,7 @@ export type Database = {
         | "devolucao_solicitada"
         | "aguardando_envio"
         | "pronto_retirada"
+        | "reembolsado"
       reward_effect:
         | "discount_percent"
         | "free_gift"
@@ -3337,6 +3341,7 @@ export const Constants = {
         "devolucao_solicitada",
         "aguardando_envio",
         "pronto_retirada",
+        "reembolsado",
       ],
       reward_effect: [
         "discount_percent",
