@@ -84,7 +84,111 @@ function getPresetRange(key: Exclude<PeriodKey, 'custom'>): DateRange {
   return { from: startOfDay(from), to: endOfDay(to) };
 }
 
+/**
+ * Parse a dd/mm/yyyy (or d/m/yy, dd-mm-yyyy) string into a Date, or null if invalid.
+ * Accepts pasted values like "27/07/2026", "27-07-2026", "27.07.2026".
+ */
+function parseBRDate(input: string): Date | null {
+  const cleaned = input.trim().replace(/[.\-]/g, '/');
+  const m = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  const dd = parseInt(m[1], 10);
+  const mm = parseInt(m[2], 10);
+  let yyyy = parseInt(m[3], 10);
+  if (yyyy < 100) yyyy += 2000;
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  const d = new Date(yyyy, mm - 1, dd);
+  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+  return d;
+}
+
+function maskBRDate(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+function DateRangeTextInputs({
+  range,
+  setRange,
+  setPeriod,
+}: {
+  range: DateRange;
+  setRange: (r: DateRange) => void;
+  setPeriod: (p: PeriodKey) => void;
+}) {
+  const [fromStr, setFromStr] = useState(range.from ? format(range.from, 'dd/MM/yyyy') : '');
+  const [toStr, setToStr] = useState(range.to ? format(range.to, 'dd/MM/yyyy') : '');
+
+  useEffect(() => {
+    setFromStr(range.from ? format(range.from, 'dd/MM/yyyy') : '');
+    setToStr(range.to ? format(range.to, 'dd/MM/yyyy') : '');
+  }, [range.from, range.to]);
+
+  const commit = (nextFrom: string, nextTo: string) => {
+    const f = parseBRDate(nextFrom);
+    const t = parseBRDate(nextTo);
+    if (f && t) {
+      const [start, end] = f <= t ? [f, t] : [t, f];
+      setRange({ from: startOfDay(start), to: endOfDay(end) });
+      setPeriod('custom');
+    } else if (f && !nextTo) {
+      setRange({ from: startOfDay(f), to: endOfDay(f) });
+      setPeriod('custom');
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">De</label>
+        <Input
+          inputMode="numeric"
+          placeholder="dd/mm/aaaa"
+          value={fromStr}
+          onChange={(e) => setFromStr(maskBRDate(e.target.value))}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            if (pasted && /\d/.test(pasted)) {
+              e.preventDefault();
+              const masked = maskBRDate(pasted);
+              setFromStr(masked);
+              commit(masked, toStr);
+            }
+          }}
+          onBlur={() => commit(fromStr, toStr)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(fromStr, toStr); } }}
+          className="h-9"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">Até</label>
+        <Input
+          inputMode="numeric"
+          placeholder="dd/mm/aaaa"
+          value={toStr}
+          onChange={(e) => setToStr(maskBRDate(e.target.value))}
+          onPaste={(e) => {
+            const pasted = e.clipboardData.getData('text');
+            if (pasted && /\d/.test(pasted)) {
+              e.preventDefault();
+              const masked = maskBRDate(pasted);
+              setToStr(masked);
+              commit(fromStr, masked);
+            }
+          }}
+          onBlur={() => commit(fromStr, toStr)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit(fromStr, toStr); } }}
+          className="h-9"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
+
   const navigate = useNavigate();
   const { isAdmin, permissions, loading } = useAuth();
   const { toast } = useToast();
