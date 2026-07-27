@@ -633,6 +633,7 @@ export function PromotionsManagement() {
     setBatchSaving(true);
     const limitParsed = batchDraft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(batchDraft.limitQty)));
     const endsAtIso = batchDraft.endsAt ? new Date(batchDraft.endsAt).toISOString() : null;
+    const startsAtIso = batchDraft.startsAt ? new Date(batchDraft.startsAt).toISOString() : null;
     let ok = 0, skipped = 0;
     const errors: string[] = [];
 
