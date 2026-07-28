@@ -410,6 +410,24 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       cost_groups: {
         Row: {
           cost: number
@@ -1417,6 +1435,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           authorization_code: string | null
           cancellation_reason: string | null
@@ -1445,6 +1464,7 @@ export type Database = {
           qr_code: string | null
           qr_code_base64: string | null
           receipt_url: string | null
+          refunded_amount: number | null
           return_is_defect: boolean
           shipping_address: string
           shipping_cep: string
@@ -1471,6 +1491,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
@@ -1499,6 +1520,7 @@ export type Database = {
           qr_code?: string | null
           qr_code_base64?: string | null
           receipt_url?: string | null
+          refunded_amount?: number | null
           return_is_defect?: boolean
           shipping_address: string
           shipping_cep: string
@@ -1525,6 +1547,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
@@ -1553,6 +1576,7 @@ export type Database = {
           qr_code?: string | null
           qr_code_base64?: string | null
           receipt_url?: string | null
+          refunded_amount?: number | null
           return_is_defect?: boolean
           shipping_address?: string
           shipping_cep?: string
