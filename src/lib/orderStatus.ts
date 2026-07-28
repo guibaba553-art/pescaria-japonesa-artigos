@@ -147,3 +147,68 @@ export function getNextStatusLabel(
   if (currentStatus === 'enviado') return 'Marcar como Entregue';
   return 'Finalizado';
 }
+
+export type CancelledCategory = 'needs_refund' | 'no_payment' | 'refunded';
+
+export interface ClassifyInput {
+  status: string;
+  total_amount: number;
+  refunded_amount?: number | null;
+  payment_gateway?: string | null;
+  payment_id?: string | null;
+  asaas_payment_id?: string | null;
+}
+
+export function classifyCancelledOrder(order: ClassifyInput): CancelledCategory {
+  const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
+  const refunded = order.refunded_amount ?? 0;
+  const total = Number(order.total_amount);
+
+  if (refunded >= total - 0.01 || order.status === 'reembolsado') {
+    return 'refunded';
+  }
+  if (!hasPayment) {
+    return 'no_payment';
+  }
+  return 'needs_refund';
+}
+
+export interface ReasonConfig {
+  label: string;
+  icon: 'Clock' | 'UserX' | 'Store' | 'CheckCircle';
+  color: 'gray' | 'blue' | 'green';
+}
+
+export function getCancellationReasonConfig(reason?: string | null): ReasonConfig {
+  switch (reason) {
+    case 'prazo_expirado':
+      return { label: 'PIX não pago no prazo', icon: 'Clock', color: 'gray' };
+    case 'cancelado_pelo_cliente':
+      return { label: 'Cliente desistiu', icon: 'UserX', color: 'gray' };
+    case 'cancelado_admin':
+      return { label: 'Cancelado pela loja', icon: 'Store', color: 'blue' };
+    case 'estorno_total':
+      return { label: 'Estornado integralmente', icon: 'CheckCircle', color: 'green' };
+    default:
+      return { label: 'Cancelado', icon: 'Clock', color: 'gray' };
+  }
+}
+
+export function getGatewayUrl(gateway?: string | null, paymentId?: string | null): string | null {
+  if (!gateway || !paymentId) return null;
+  switch (gateway) {
+    case 'asaas': {
+      const env = (typeof window !== 'undefined'
+        ? (window as any).__ASAAS_ENV__
+        : 'sandbox') || 'sandbox';
+      const base = env === 'production'
+        ? 'https://www.asaas.com/payments'
+        : 'https://sandbox.asaas.com/payments';
+      return `${base}/${paymentId}`;
+    }
+    case 'mercadopago':
+      return `https://www.mercadopago.com.br/payments/${paymentId}`;
+    default:
+      return null;
+  }
+}
