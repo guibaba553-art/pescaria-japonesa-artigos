@@ -60,17 +60,55 @@ const FlashDealsCountdown = () => {
   useEffect(() => {
     const load = async () => {
       const nowIso = new Date().toISOString();
-      const { data } = await supabase
+
+      // 1) Produtos com promoção no próprio produto
+      const { data: directData } = await supabase
         .from("products")
-        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, variations:product_variations(*)`)
+        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
         .eq("on_sale", true)
+        .neq("sale_channel", "pdv")
         .gt("stock", 0)
         .not("sale_price", "is", null)
         .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
         .order("sale_ends_at", { ascending: true, nullsFirst: false })
-        .limit(8);
+        .limit(12);
 
-      setProducts(((data as Product[]) || []).slice(0, 4));
+      // 2) IDs de produtos cujas variações estão em promoção
+      const { data: promoVars } = await supabase
+        .from("product_variations")
+        .select("product_id, sale_ends_at, sale_channel")
+        .eq("on_sale", true)
+        .neq("sale_channel", "pdv")
+        .not("sale_price", "is", null)
+        .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`);
+
+      const varProductIds = Array.from(
+        new Set((promoVars || []).map((v: any) => v.product_id).filter(Boolean))
+      );
+
+      let varProducts: Product[] = [];
+      if (varProductIds.length > 0) {
+        const { data: vpData } = await supabase
+          .from("products")
+          .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
+          .in("id", varProductIds)
+          .eq("pdv_only", false)
+          .gt("stock", 0)
+          .limit(12);
+        varProducts = (vpData as Product[]) || [];
+      }
+
+      // Merge sem duplicar
+      const merged: Product[] = [];
+      const seen = new Set<string>();
+      for (const p of [...((directData as Product[]) || []), ...varProducts]) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          merged.push(p);
+        }
+      }
+
+      setProducts(merged.slice(0, 4));
       setLoading(false);
     };
     load();

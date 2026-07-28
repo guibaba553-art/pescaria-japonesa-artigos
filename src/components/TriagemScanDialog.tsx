@@ -225,6 +225,11 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
             ? `Pedido #${order.id.slice(0, 8)} marcado como pronto para retirada.`
             : `Pedido #${order.id.slice(0, 8)} aguardando coleta da transportadora.`,
       });
+
+      if (mode === 'pack') {
+        autoEmitirNfe(order.id);
+      }
+
       onCompleted();
       onOpenChange(false);
     } catch (err: any) {
@@ -294,6 +299,40 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
       });
     } finally {
       setEmittingNfe(false);
+    }
+  };
+
+  const autoEmitirNfe = async (orderId: string) => {
+    if (order?.nfe?.status === 'autorizada' || order?.nfe?.status === 'authorized') return;
+
+    try {
+      const { data: settings } = await supabase
+        .from('focus_nfe_settings')
+        .select('enabled, auto_emit_nfe_triagem')
+        .limit(1)
+        .maybeSingle();
+
+      if (!settings?.enabled || !settings?.auto_emit_nfe_triagem) return;
+
+      const { error } = await supabase.functions.invoke('emit-nfe', {
+        body: { orderId },
+      });
+
+      if (error) {
+        console.error('[Triagem] auto-emit NF-e error:', error);
+        toast({
+          title: 'Aviso',
+          description: 'Pedido embalado, mas houve erro ao emitir NF-e automaticamente.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'NF-e emitida',
+          description: 'A nota fiscal foi emitida automaticamente.',
+        });
+      }
+    } catch (err) {
+      console.error('[Triagem] auto-emit NF-e error:', err);
     }
   };
 

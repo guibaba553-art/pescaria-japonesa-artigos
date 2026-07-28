@@ -14,9 +14,11 @@ import { useEffect, useState } from 'react';
 export interface PromoFields {
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
   price?: number | null;
 }
 
@@ -25,9 +27,15 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   if (!item) return false;
   if (!item.on_sale) return false;
   if (item.sale_price == null) return false;
+  // Canal da promoção: 'site' | 'pdv' | 'both'. No site, ignora 'pdv'.
+  if (item.sale_channel && item.sale_channel === 'pdv') return false;
   const base = Number(item.price ?? 0);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
+  if (item.sale_starts_at) {
+    const starts = new Date(item.sale_starts_at);
+    if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
+  }
   if (item.sale_ends_at) {
     const ends = new Date(item.sale_ends_at);
     if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
@@ -38,6 +46,15 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   }
   return true;
 }
+
+/** Retorna true se a promo está agendada para o futuro (ainda não começou). */
+export function isPromoScheduled(item: PromoFields, now: Date = new Date()): boolean {
+  if (!item?.on_sale || !item.sale_starts_at) return false;
+  const starts = new Date(item.sale_starts_at);
+  if (isNaN(starts.getTime())) return false;
+  return starts.getTime() > now.getTime();
+}
+
 
 /** Preço efetivo de um produto SEM variação (ou do produto pai). */
 export function effectiveProductPrice(
@@ -134,16 +151,23 @@ export function usePromoExpiryTick(
     const now = Date.now();
     const candidates: number[] = [];
     const collect = (p?: PromoFields | null) => {
-      if (!p?.on_sale || !p.sale_ends_at) return;
-      const t = new Date(p.sale_ends_at).getTime();
-      if (!isNaN(t) && t > now) candidates.push(t);
+      if (!p?.on_sale) return;
+      if (p.sale_starts_at) {
+        const t = new Date(p.sale_starts_at).getTime();
+        if (!isNaN(t) && t > now) candidates.push(t);
+      }
+      if (p.sale_ends_at) {
+        const t = new Date(p.sale_ends_at).getTime();
+        if (!isNaN(t) && t > now) candidates.push(t);
+      }
     };
     collect(product);
     product.variations?.forEach(collect);
     if (candidates.length === 0) return;
     const next = Math.min(...candidates);
-    const delay = Math.min(next - now + 500, 2_147_000_000); // cap em ~24 dias
+    const delay = Math.min(next - now + 500, 2_147_000_000);
     const id = window.setTimeout(() => setTick((n) => n + 1), Math.max(delay, 100));
     return () => window.clearTimeout(id);
   }, [product]);
 }
+

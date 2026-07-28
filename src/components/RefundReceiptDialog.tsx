@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Download, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
+import japaLogo from '@/assets/japa-logo.png';
 
 interface RefundReceiptData {
   orderId: string;
@@ -80,7 +81,7 @@ export async function generateRefundPdf(data: RefundReceiptData) {
   const margin = 20;
   let y = 15;
 
-  const logoUrl = data.company?.logoUrl || data.logoUrl;
+  const logoUrl = data.company?.logoUrl || data.logoUrl || japaLogo;
   if (logoUrl) {
     try {
       const logoImg = await loadImageAsDataUrl(logoUrl);

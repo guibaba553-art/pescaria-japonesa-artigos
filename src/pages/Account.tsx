@@ -112,11 +112,13 @@ export default function Account() {
     customerName?: string;
     customerCpf?: string;
     company?: {
+      tradeName?: string;
       legalName?: string;
       cnpj?: string;
       address?: string;
       email?: string;
       phone?: string;
+      logoUrl?: string;
     };
   } | null>(null);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -168,6 +170,7 @@ export default function Account() {
       customerCpf: data.refund.customerCpf || undefined,
       company: data.company ? {
         logoUrl: data.company.logoUrl,
+        tradeName: data.company.tradeName,
         legalName: data.company.legalName,
         cnpj: data.company.cnpj,
         address: data.company.address,
@@ -211,6 +214,7 @@ export default function Account() {
       customerCpf: data.refund.customerCpf || undefined,
       company: data.company ? {
         logoUrl: data.company.logoUrl,
+        tradeName: data.company.tradeName,
         legalName: data.company.legalName,
         cnpj: data.company.cnpj,
         address: data.company.address,

@@ -92,6 +92,7 @@ interface ProductVariation {
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
 }
 
 interface Product {
@@ -117,6 +118,7 @@ interface Product {
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
 }
 
 interface CartItem {
@@ -1392,6 +1394,7 @@ export default function PDV() {
           sale_ends_at: (item.variation as any).sale_ends_at ?? item.product.sale_ends_at ?? null,
           sale_limit_qty: (item.variation as any).sale_limit_qty ?? item.product.sale_limit_qty ?? null,
           sale_sold_qty: (item.variation as any).sale_sold_qty ?? item.product.sale_sold_qty ?? null,
+          sale_channel: (item.variation as any).sale_channel ?? item.product.sale_channel ?? null,
         },
         paymentMethod,
       );
@@ -3012,6 +3015,7 @@ export default function PDV() {
                           sale_ends_at: (variation as any).sale_ends_at ?? selectedProduct.sale_ends_at ?? null,
                           sale_limit_qty: (variation as any).sale_limit_qty ?? selectedProduct.sale_limit_qty ?? null,
                           sale_sold_qty: (variation as any).sale_sold_qty ?? selectedProduct.sale_sold_qty ?? null,
+                          sale_channel: (variation as any).sale_channel ?? selectedProduct.sale_channel ?? null,
                         };
                         return isPdvPromoActive(merged) ? (
                           <div className="flex flex-col">

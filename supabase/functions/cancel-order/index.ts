@@ -117,21 +117,25 @@ export async function handleRequest(req: Request): Promise<Response> {
     const isAdmin = roles?.some((r) => r.role === "admin");
     const isEmployee = roles?.some((r) => r.role === "employee");
 
-    let canCancelOrder = isAdmin;
-    if (!canCancelOrder && isEmployee) {
-      const { data: empPerm } = await supabase
-        .from("employee_permissions")
-        .select("can_access_orders")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      canCancelOrder = empPerm?.can_access_orders === true;
-    }
-
-    if (!canCancelOrder) {
-      return new Response(
-        JSON.stringify({ error: "Apenas administradores podem cancelar pedidos" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    if (!isAdmin) {
+      if (isEmployee) {
+        const { data: perms } = await supabase
+          .from("employee_permissions")
+          .select("can_access_orders")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!perms?.can_access_orders) {
+          return new Response(
+            JSON.stringify({ error: "Você não tem permissão para cancelar pedidos" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } else {
+        return new Response(
+          JSON.stringify({ error: "Apenas administradores podem cancelar pedidos" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const body = await req.json();

@@ -250,9 +250,7 @@ export default function PickupOrder() {
                   <p className="text-sm text-muted-foreground">
                     {order.cancellation_reason === 'prazo_expirado'
                       ? 'O prazo para pagamento deste pedido expirou.'
-                      : order.cancellation_reason && order.cancellation_reason !== 'cancelado_admin'
-                        ? order.cancellation_reason
-                        : 'Não pode ser entregue.'}
+                      : 'Este pedido foi cancelado.'}
                   </p>
                 </div>
               </>

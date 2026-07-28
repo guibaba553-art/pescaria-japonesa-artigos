@@ -325,6 +325,7 @@ export async function processAsaasCreditCardPayment(
   // ── Handle success ──────────────────────────────────────────────────────
   const asaasPaymentId: string = paymentResult.id;
   const paymentStatus: string = paymentResult.status;
+  const asaasInstallmentId: string | undefined = paymentResult.installment;
 
   const paymentData = {
     id: asaasPaymentId,
@@ -336,15 +337,18 @@ export async function processAsaasCreditCardPayment(
 
   // ── Non-CONFIRMED (pending analysis, etc.) ─────────────────────────────
   if (paymentStatus !== 'CONFIRMED') {
+    const updateData: Record<string, unknown> = {
+      asaas_payment_id: asaasPaymentId,
+      payment_gateway: 'asaas',
+      payment_method: 'credit_card',
+      payment_attempts: (order.payment_attempts || 0) + 1,
+      last_payment_attempt_at: new Date().toISOString(),
+    };
+    if (asaasInstallmentId) updateData.asaas_installment_id = asaasInstallmentId;
+
     await supabase
       .from('orders')
-      .update({
-        asaas_payment_id: asaasPaymentId,
-        payment_gateway: 'asaas',
-        payment_method: 'credit_card',
-        payment_attempts: (order.payment_attempts || 0) + 1,
-        last_payment_attempt_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', orderId);
 
     return new Response(
@@ -354,16 +358,19 @@ export async function processAsaasCreditCardPayment(
   }
 
   // ── Payment CONFIRMED ───────────────────────────────────────────────────
+  const confirmedUpdate: Record<string, unknown> = {
+    status: 'em_preparo',
+    asaas_payment_id: asaasPaymentId,
+    payment_gateway: 'asaas',
+    payment_method: 'credit_card',
+    payment_attempts: (order.payment_attempts || 0) + 1,
+    last_payment_attempt_at: new Date().toISOString(),
+  };
+  if (asaasInstallmentId) confirmedUpdate.asaas_installment_id = asaasInstallmentId;
+
   await supabase
     .from('orders')
-    .update({
-      status: 'em_preparo',
-      asaas_payment_id: asaasPaymentId,
-      payment_gateway: 'asaas',
-      payment_method: 'credit_card',
-      payment_attempts: (order.payment_attempts || 0) + 1,
-      last_payment_attempt_at: new Date().toISOString(),
-    })
+    .update(confirmedUpdate)
     .eq('id', orderId);
 
   // Decrementar estoque via shared handler

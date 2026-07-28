@@ -410,6 +410,24 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       cost_groups: {
         Row: {
           cost: number
@@ -1153,6 +1171,7 @@ export type Database = {
           ambiente: string
           auto_emit_nfce_pdv: boolean
           auto_emit_nfe_pedido_pago: boolean
+          auto_emit_nfe_triagem: boolean
           cfop_interestadual: string
           cfop_padrao: string
           created_at: string
@@ -1174,6 +1193,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
@@ -1195,6 +1215,7 @@ export type Database = {
           ambiente?: string
           auto_emit_nfce_pdv?: boolean
           auto_emit_nfe_pedido_pago?: boolean
+          auto_emit_nfe_triagem?: boolean
           cfop_interestadual?: string
           cfop_padrao?: string
           created_at?: string
@@ -1414,6 +1435,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          asaas_installment_id: string | null
           asaas_payment_id: string | null
           authorization_code: string | null
           cancellation_reason: string | null
@@ -1442,6 +1464,7 @@ export type Database = {
           qr_code: string | null
           qr_code_base64: string | null
           receipt_url: string | null
+          refunded_amount: number | null
           return_is_defect: boolean
           shipping_address: string
           shipping_cep: string
@@ -1468,6 +1491,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
@@ -1496,6 +1520,7 @@ export type Database = {
           qr_code?: string | null
           qr_code_base64?: string | null
           receipt_url?: string | null
+          refunded_amount?: number | null
           return_is_defect?: boolean
           shipping_address: string
           shipping_cep: string
@@ -1522,6 +1547,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asaas_installment_id?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
@@ -1550,6 +1576,7 @@ export type Database = {
           qr_code?: string | null
           qr_code_base64?: string | null
           receipt_url?: string | null
+          refunded_amount?: number | null
           return_is_defect?: boolean
           shipping_address?: string
           shipping_cep?: string
@@ -1728,10 +1755,12 @@ export type Database = {
           price: number
           price_pdv: number | null
           product_id: string
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
           sale_sold_qty: number
+          sale_starts_at: string | null
           sku: string | null
           stock: number
           tax_pct: number
@@ -1757,10 +1786,12 @@ export type Database = {
           price?: number
           price_pdv?: number | null
           product_id: string
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
           sale_sold_qty?: number
+          sale_starts_at?: string | null
           sku?: string | null
           stock?: number
           tax_pct?: number
@@ -1786,10 +1817,12 @@ export type Database = {
           price?: number
           price_pdv?: number | null
           product_id?: string
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
           sale_sold_qty?: number
+          sale_starts_at?: string | null
           sku?: string | null
           stock?: number
           tax_pct?: number
@@ -1856,10 +1889,12 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
           sale_sold_qty: number
+          sale_starts_at: string | null
           short_description: string | null
           size: string | null
           sku: string | null
@@ -1914,10 +1949,12 @@ export type Database = {
           price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
           sale_sold_qty?: number
+          sale_starts_at?: string | null
           short_description?: string | null
           size?: string | null
           sku?: string | null
@@ -1972,10 +2009,12 @@ export type Database = {
           price_pdv_pix?: number | null
           price_pix_percent?: number
           rating?: number | null
+          sale_channel?: string
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
           sale_sold_qty?: number
+          sale_starts_at?: string | null
           short_description?: string | null
           size?: string | null
           sku?: string | null
@@ -2902,6 +2941,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      expire_finished_promotions: { Args: never; Returns: Json }
       extract_uf_from_address: { Args: { p_address: string }; Returns: string }
       get_available_stock: {
         Args: { p_product_id: string; p_variation_id?: string }
@@ -2961,10 +3001,12 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
           sale_sold_qty: number
+          sale_starts_at: string | null
           short_description: string | null
           size: string | null
           sku: string | null
@@ -3005,10 +3047,12 @@ export type Database = {
           price: number
           price_pdv: number | null
           product_id: string
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
           sale_sold_qty: number
+          sale_starts_at: string | null
           sku: string | null
           stock: number
           tax_pct: number
@@ -3066,10 +3110,12 @@ export type Database = {
           price_pdv_pix: number | null
           price_pix_percent: number
           rating: number | null
+          sale_channel: string
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
           sale_sold_qty: number
+          sale_starts_at: string | null
           short_description: string | null
           size: string | null
           sku: string | null
@@ -3188,6 +3234,7 @@ export type Database = {
         | "devolucao_solicitada"
         | "aguardando_envio"
         | "pronto_retirada"
+        | "reembolsado"
       reward_effect:
         | "discount_percent"
         | "free_gift"
@@ -3337,6 +3384,7 @@ export const Constants = {
         "devolucao_solicitada",
         "aguardando_envio",
         "pronto_retirada",
+        "reembolsado",
       ],
       reward_effect: [
         "discount_percent",

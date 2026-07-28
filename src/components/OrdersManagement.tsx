@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, ChevronDown, ChevronRight, Clock, PackageCheck, RefreshCw, Receipt, Loader2, Search, Calendar as CalendarIcon, X, XCircle, Undo2, Store, ExternalLink } from 'lucide-react';
+import { Package, Truck, CheckCircle, ChevronDown, ChevronRight, Clock, PackageCheck, RefreshCw, Printer, Receipt, Loader2, Search, Calendar as CalendarIcon, X, XCircle, Undo2, Store, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -163,7 +163,7 @@ interface Order {
   id: string;
   total_amount: number;
   shipping_cost: number;
-  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'devolucao_solicitada' | 'devolvido';
+  status: 'aguardando_pagamento' | 'em_preparo' | 'aguardando_envio' | 'enviado' | 'entregado' | 'retirado' | 'pronto_retirada' | 'cancelado' | 'devolucao_solicitada' | 'devolvido' | 'reembolsado';
   created_at: string;
   user_id: string;
   shipping_cep: string;
@@ -554,6 +554,27 @@ const OrdersTable = ({
                           <Truck className="w-4 h-4" /> Entrega
                         </Badge>
                       )}
+                      {order.nfe_emissions && order.nfe_emissions.length > 0 && (() => {
+                        const latestNfe = order.nfe_emissions[order.nfe_emissions.length - 1];
+                        const nfeStatusColor: Record<string, string> = {
+                          autorizada: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+                          authorized: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+                          pendente: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+                          pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+                          rejeitada: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          rejected: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          error: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          cancelada: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+                          cancelled: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+                        };
+                        const colorClass = nfeStatusColor[latestNfe.status] || 'bg-muted text-muted-foreground border-border';
+                        return (
+                          <Badge variant="outline" className={`text-[10px] font-semibold uppercase tracking-wide ${colorClass}`}>
+                            <Receipt className="w-3 h-3 mr-1" />
+                            NF-e {latestNfe.nfe_number ? `Nº ${latestNfe.nfe_number}` : latestNfe.status}
+                          </Badge>
+                        );
+                      })()}
                       {order.status === 'cancelado' && order.cancellation_reason && order.cancellation_reason !== 'prazo_expirado' && order.cancellation_reason !== 'cancelado_admin' && (
                         <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-semibold px-2 py-0.5 max-w-[200px] truncate">
                           {order.cancellation_reason}
@@ -953,41 +974,55 @@ const OrdersTable = ({
 
                   {/* NF-e */}
                   {order.nfe_emissions && order.nfe_emissions.length > 0 && (
-                    <div className="bg-background rounded-lg border p-3">
-                      <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
-                        📄 Nota Fiscal Eletrônica
+                    <div className="px-4 pb-3 space-y-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Receipt className="w-3.5 h-3.5" /> Notas Fiscais
                       </h4>
-                      {order.nfe_emissions.map((nfe) => (
-                        <div key={nfe.id} className="space-y-2">
-                          <div className="grid grid-cols-3 gap-3 text-sm">
-                            <div>
-                              <p className="text-[10px] text-muted-foreground uppercase">Número</p>
-                              <p className="font-mono font-semibold">{nfe.nfe_number || 'N/A'}</p>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] text-muted-foreground uppercase">Chave</p>
-                              <p className="font-mono text-xs truncate">{nfe.nfe_key || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-muted-foreground uppercase">Status</p>
-                              <Badge
-                                variant={nfe.status === 'success' ? 'default' : nfe.status === 'pending' ? 'secondary' : 'destructive'}
-                                className="mt-0.5"
-                              >
-                                {nfe.status === 'success' ? '✅ Emitida' : nfe.status === 'pending' ? '⏳ Pendente' : '❌ Erro'}
+                      {order.nfe_emissions.map((nfe: any) => {
+                        const nfeStatusColor: Record<string, string> = {
+                          autorizada: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+                          authorized: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+                          pendente: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+                          pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+                          rejeitada: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          rejected: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          error: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+                          cancelada: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+                          cancelled: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30',
+                        };
+                        const colorClass = nfeStatusColor[nfe.status] || 'bg-muted text-muted-foreground border-border';
+                        return (
+                          <div key={nfe.id} className="flex items-center justify-between gap-2 text-sm bg-muted/40 rounded-md px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Badge variant="outline" className={`text-[10px] ${colorClass}`}>
+                                {nfe.status}
                               </Badge>
+                              {nfe.nfe_number && (
+                                <span className="font-mono text-xs">Nº {nfe.nfe_number}</span>
+                              )}
+                              {nfe.emitted_at && (
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(nfe.emitted_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {nfe.nfe_xml_url && (
+                                <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
+                                  <a href={nfe.nfe_xml_url} target="_blank" rel="noopener noreferrer">XML</a>
+                                </Button>
+                              )}
+                              {nfe.danfe_url && (
+                                <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                                  <a href={nfe.danfe_url} target="_blank" rel="noopener noreferrer">
+                                    <Printer className="w-3 h-3 mr-1" /> DANFE
+                                  </a>
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          {nfe.status === 'success' && nfe.nfe_xml_url && (
-                            <Button size="sm" variant="outline" onClick={() => window.open(nfe.nfe_xml_url!, '_blank')} className="w-full">
-                              📥 Download XML
-                            </Button>
-                          )}
-                          {nfe.status === 'error' && nfe.error_message && (
-                            <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">Erro: {nfe.error_message}</div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
@@ -1572,7 +1607,7 @@ export function OrdersManagement() {
       if (orderIdsForNfe.length > 0) {
         const { data: nfeData } = await supabase
           .from('nfe_emissions')
-          .select('id, order_id, nfe_number, nfe_key, nfe_xml_url, status, emitted_at, error_message')
+          .select('id, order_id, nfe_number, nfe_key, nfe_xml_url, danfe_url, status, emitted_at, error_message')
           .in('order_id', orderIdsForNfe);
         (nfeData ?? []).forEach((n: any) => {
           (nfeMap[n.order_id] = nfeMap[n.order_id] || []).push(n);
@@ -1623,7 +1658,10 @@ export function OrdersManagement() {
         };
       });
 
-      // Buscar estornos aprovados para mostrar valor já reembolsado
+      // refunded_amount vem exclusivamente do payment_refunds (fonte primária).
+      // orders.refunded_amount é um cache mantido pelas edge functions — pode
+      // desincronizar (ex: estorno manual via dashboard Asaas sem webhook).
+      // Contamos approved + pending, ignorando apenas rejected.
       const orderIds = (ordersData ?? []).map(o => o.id);
       const refundedMap: Record<string, number> = {};
       if (orderIds.length > 0) {
@@ -1631,7 +1669,7 @@ export function OrdersManagement() {
           .from('payment_refunds')
           .select('order_id, amount, status')
           .in('order_id', orderIds)
-          .eq('status', 'approved');
+          .neq('status', 'rejected');
         (refundsData ?? []).forEach((r: any) => {
           refundedMap[r.order_id] = (refundedMap[r.order_id] ?? 0) + Number(r.amount);
         });
@@ -1727,10 +1765,52 @@ export function OrdersManagement() {
           console.error('Erro ao verificar emissão de NF-e:', err);
         }
       }
+
+      // Emitir NF-e automaticamente ao marcar como retirado (triagem)
+      if (newStatus === 'retirado') {
+        try {
+          const { data: settings } = await supabase
+            .from('focus_nfe_settings')
+            .select('enabled, auto_emit_nfe_triagem')
+            .limit(1)
+            .maybeSingle();
+
+          if (settings?.enabled && settings?.auto_emit_nfe_triagem) {
+            const { data: nfe } = await supabase
+              .from('nfe_emissions')
+              .select('status')
+              .eq('order_id', orderId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!nfe || (nfe.status !== 'autorizada' && nfe.status !== 'authorized')) {
+              const { error: nfeError } = await supabase.functions.invoke('emit-nfe', {
+                body: { orderId }
+              });
+              if (nfeError) {
+                console.error('[OrdersMgmt] auto-emit NF-e error:', nfeError);
+                toast({
+                  title: 'Aviso',
+                  description: 'Pedido atualizado, mas houve erro ao emitir NF-e automaticamente.',
+                  variant: 'destructive'
+                });
+              } else {
+                toast({
+                  title: 'NF-e emitida',
+                  description: 'NF-e foi emitida automaticamente.'
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[OrdersMgmt] auto-emit NF-e error:', err);
+        }
+      }
       
       loadOrders();
     }
-  };
+  }; 
 
   const updateTrackingCode = async (orderId: string) => {
     const code = trackingCodes[orderId];
@@ -1882,11 +1962,24 @@ export function OrdersManagement() {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
       }
     } catch (err: any) {
-      toast({
-        title: 'Erro ao estornar',
-        description: err?.message || 'Não foi possível processar o estorno.',
-        variant: 'destructive',
+      const { data: checkData } = await supabase.functions.invoke('check-order-refund', {
+        body: { orderId },
       });
+
+      if (checkData?.found && checkData.totalApproved > 0) {
+        toast({
+          title: 'Estorno já registrado',
+          description: `R$ ${checkData.totalApproved.toFixed(2)} já foi estornado via ${checkData.refunds?.[0]?.gatewayRefundId?.slice(0, 8) ?? 'gateway'}.`,
+        });
+        loadOrders();
+        return true;
+      } else {
+        toast({
+          title: 'Erro ao estornar',
+          description: err?.message || 'Não foi possível processar o estorno.',
+          variant: 'destructive',
+        });
+      }
       return false;
     } finally {
       setRefundingOrders(prev => {
@@ -2066,8 +2159,9 @@ export function OrdersManagement() {
     refundingOrders,
     cancellingOrders,
     cancelOrder,
-    openLabelDialog: (o: Order) => setLabelOrder(o),
   };
+
+  const openLabelDialog = (o: Order) => setLabelOrder(o);
 
   const hasPendingRetirada = site.prontoRetirar.length > 0;
   const hasPendingEntrega = site.aguardandoEnvio.length > 0;
@@ -2354,7 +2448,7 @@ export function OrdersManagement() {
           hasPendingRetirada={hasPendingRetirada}
           hasPendingEntrega={hasPendingEntrega}
           tableProps={tableProps}
-          setLabelOrder={(o: Order) => setLabelOrder(o)}
+          setLabelOrder={openLabelDialog}
         />
       </CardContent>
 

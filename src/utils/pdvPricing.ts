@@ -30,9 +30,12 @@ export interface PdvPricingFields {
   // Promoções do catálogo — refletidas no PDV
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  // 'site' | 'pdv' | 'both'. No PDV, ignora promo restrita a 'site'.
+  sale_channel?: string | null;
 }
 
 // Acréscimos fixos por método (sobre o preço base = PIX)
@@ -73,10 +76,15 @@ export function isExemptFromMarkup(p: PdvPricingFields): boolean {
 /** Verifica se a promoção do catálogo está ativa para uso no PDV. */
 export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): boolean {
   if (!p.on_sale) return false;
+  if (p.sale_channel && p.sale_channel === 'site') return false;
   if (p.sale_price == null) return false;
   const base = Number(p.price ?? 0);
   if (base <= 0) return false;
   if (Number(p.sale_price) >= base) return false;
+  if (p.sale_starts_at) {
+    const starts = new Date(p.sale_starts_at);
+    if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
+  }
   if (p.sale_ends_at) {
     const ends = new Date(p.sale_ends_at);
     if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
