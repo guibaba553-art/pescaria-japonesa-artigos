@@ -264,9 +264,10 @@ describe('getCancellationReasonConfig', () => {
 });
 
 describe('getGatewayUrl', () => {
-  it('returns Asaas sandbox URL', () => {
+  it('returns Asaas URL from import.meta.env, ignores window.__ASAAS_ENV__', () => {
+    (window as any).__ASAAS_ENV__ = 'sandbox';
     const url = getGatewayUrl('asaas', 'pay_123');
-    expect(url).toBe('https://sandbox.asaas.com/payments/pay_123');
+    expect(url).toBe('https://www.asaas.com/payments/pay_123');
   });
 
   it('returns Mercado Pago URL', () => {

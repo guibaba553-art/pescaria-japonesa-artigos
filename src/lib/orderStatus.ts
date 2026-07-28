@@ -198,9 +198,7 @@ export function getGatewayUrl(gateway?: string | null, paymentId?: string | null
   if (!gateway || !paymentId) return null;
   switch (gateway) {
     case 'asaas': {
-      const env = (typeof window !== 'undefined'
-        ? (window as any).__ASAAS_ENV__
-        : 'sandbox') || 'sandbox';
+      const env = import.meta.env.VITE_ASAAS_ENVIRONMENT || 'sandbox';
       const base = env === 'production'
         ? 'https://www.asaas.com/payments'
         : 'https://sandbox.asaas.com/payments';
