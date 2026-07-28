@@ -12,6 +12,7 @@ import { Product } from "@/types/product";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
+import { searchProductsFallback } from "@/lib/productSearchFallback";
 
 export function SearchSection() {
   const navigate = useNavigate();
@@ -41,34 +42,51 @@ export function SearchSection() {
     setIsSearching(true);
     setShowResults(true);
 
-    let query = supabase
-      .from('products')
-      .select(`
-        id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
-        category, subcategory, brand_id, brands(name),
-        image_url, stock, rating, featured, minimum_quantity,
-        sold_by_weight, created_at,
-        variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
-      `)
-      .eq('pdv_only', false)
-      .gt('stock', 0);
+    try {
+      const { data: ranked, error: rpcErr } = await supabase.rpc('search_products', {
+        search_query: searchQuery.trim(),
+        category_filter: selectedCategory !== 'all' ? selectedCategory : null,
+      });
 
-    if (searchQuery.trim()) {
-      query = query.ilike('name', `%${searchQuery}%`);
-    }
+      if (rpcErr || !ranked || ranked.length === 0) {
+        if (rpcErr) {
+          const products = await searchProductsFallback(supabase, searchQuery, selectedCategory);
+          setSearchResults(products);
+        } else {
+          setSearchResults([]);
+        }
+        setIsSearching(false);
+        return;
+      }
 
-    if (selectedCategory !== "all") {
-      query = query.eq('category', selectedCategory);
-    }
+      const ids = (ranked as { id: string; score: number }[]).map((r) => r.id);
+      const { data: details, error: detailsErr } = await supabase
+        .from('products')
+        .select(`
+          id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
+          category, subcategory, brand_id, brands(name),
+          image_url, stock, rating, featured, minimum_quantity,
+          sold_by_weight, created_at,
+          variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
+        `)
+        .in('id', ids)
+        .limit(12);
 
-    const { data, error } = await query.order('name', { ascending: true }).limit(6);
-
-    if (!error && data) {
-      const mapped = data.map((row: any) => ({
-        ...row,
-        brand: row.brands?.name ?? null,
-      }));
-      setSearchResults(mapped as unknown as Product[]);
+      if (detailsErr || !details) {
+        setSearchResults([]);
+      } else {
+        const idOrder = new Map(ids.map((id, i) => [id, i]));
+        const sorted = details
+          .map((row: any) => ({
+            ...row,
+            brand: row.brands?.name ?? null,
+          }))
+          .sort((a: any, b: any) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99));
+        setSearchResults(sorted as unknown as Product[]);
+      }
+    } catch {
+      const products = await searchProductsFallback(supabase, searchQuery, selectedCategory);
+      setSearchResults(products);
     }
 
     setIsSearching(false);
@@ -121,7 +139,7 @@ export function SearchSection() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Digite o nome do produto..."
+                placeholder="Buscar por nome, marca, descrição..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-10 h-12 text-base"
