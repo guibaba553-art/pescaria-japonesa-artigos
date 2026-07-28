@@ -199,7 +199,17 @@ export function ProductListing({
   const filteredProducts = useMemo(() => {
     const q = searchQuery.toLowerCase();
     const filtered = products.filter(p => {
-      if (q && !p.name.toLowerCase().includes(q)) return false;
+      if (q) {
+        const hay = [
+          p.name,
+          p.description,
+          p.short_description ?? '',
+          p.sku ?? '',
+          p.brand ?? '',
+          p.subcategory ?? '',
+        ].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
