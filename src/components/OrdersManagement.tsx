@@ -1193,7 +1193,10 @@ export function OrdersManagement() {
         };
       });
 
-      // Buscar estornos aprovados para mostrar valor já reembolsado
+      // refunded_amount vem exclusivamente do payment_refunds (fonte primária).
+      // orders.refunded_amount é um cache mantido pelas edge functions — pode
+      // desincronizar (ex: estorno manual via dashboard Asaas sem webhook).
+      // Contamos approved + pending, ignorando apenas rejected.
       const orderIds = (ordersData ?? []).map(o => o.id);
       const refundedMap: Record<string, number> = {};
       if (orderIds.length > 0) {
@@ -1201,7 +1204,7 @@ export function OrdersManagement() {
           .from('payment_refunds')
           .select('order_id, amount, status')
           .in('order_id', orderIds)
-          .eq('status', 'approved');
+          .neq('status', 'rejected');
         (refundsData ?? []).forEach((r: any) => {
           refundedMap[r.order_id] = (refundedMap[r.order_id] ?? 0) + Number(r.amount);
         });
@@ -1446,7 +1449,7 @@ export function OrdersManagement() {
             ? `R$ ${Number(data.amount).toFixed(2)} foi devolvido ao cliente.`
             : 'O gateway confirmará em breve. O cliente receberá o valor automaticamente.',
         });
-        loadOrders();
+        await loadOrders();
       } else {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
       }
