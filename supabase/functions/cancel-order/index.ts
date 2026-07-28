@@ -115,11 +115,27 @@ export async function handleRequest(req: Request): Promise<Response> {
       .select("role")
       .eq("user_id", user.id);
     const isAdmin = roles?.some((r) => r.role === "admin");
+    const isEmployee = roles?.some((r) => r.role === "employee");
+
     if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "Apenas administradores podem cancelar pedidos" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      if (isEmployee) {
+        const { data: perms } = await supabase
+          .from("employee_permissions")
+          .select("can_access_orders")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!perms?.can_access_orders) {
+          return new Response(
+            JSON.stringify({ error: "Você não tem permissão para cancelar pedidos" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } else {
+        return new Response(
+          JSON.stringify({ error: "Apenas administradores podem cancelar pedidos" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const body = await req.json();
