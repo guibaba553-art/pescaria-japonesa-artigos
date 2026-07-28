@@ -1090,7 +1090,6 @@ function CancelledOrderCard({
   const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
   const refunded = order.refunded_amount ?? 0;
   const total = Number(order.total_amount);
-  const fullyRefunded = refunded >= total - 0.01;
 
   const gwName = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
   const methodName = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.payment_method || 'Online';
@@ -1144,6 +1143,7 @@ function CancelledOrderCard({
                   hour: '2-digit', minute: '2-digit',
                 })}
               </p>
+              <p className="text-xs text-muted-foreground">{customerCpf}</p>
             </div>
             <div className="text-right shrink-0">
               <p className="text-2xl font-bold text-primary leading-tight">
@@ -1172,9 +1172,9 @@ function CancelledOrderCard({
                     </a>
                   )}
                 </div>
-                {order.payment_id && (
+                {(order.payment_id || order.asaas_payment_id) && (
                   <p className="text-xs text-muted-foreground font-mono truncate">
-                    ID: {order.payment_id.slice(0, 12)}{order.payment_id.length > 12 ? '...' : ''}
+                    ID: {(order.payment_id || order.asaas_payment_id)!.slice(0, 12)}{(order.payment_id || order.asaas_payment_id)!.length > 12 ? '...' : ''}
                   </p>
                 )}
                 <div className="flex items-center gap-2 text-sm pt-1 border-t">
@@ -1252,6 +1252,15 @@ function CancelledOrderCard({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+
+            {category === 'refunded' && gatewayUrl && (
+              <Button size="sm" variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" asChild>
+                <a href={gatewayUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Comprovante no {gwName}
+                </a>
+              </Button>
             )}
           </div>
         </div>
@@ -1867,7 +1876,7 @@ export function OrdersManagement() {
             ? `R$ ${Number(data.amount).toFixed(2)} foi devolvido ao cliente.`
             : 'O gateway confirmará em breve. O cliente receberá o valor automaticamente.',
         });
-        loadOrders();
+        await loadOrders();
         return true;
       } else {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
