@@ -112,9 +112,6 @@ export function OrderTrackingTimeline({ status, deliveryType, cancellationReason
     if (isExpiredCase) {
       title = 'Prazo de pagamento expirado';
       description = 'O prazo para pagamento deste pedido expirou.';
-    } else if (cancellationReason && cancellationReason !== 'cancelado_admin') {
-      title = 'Pedido cancelado';
-      description = cancellationReason;
     } else {
       title = 'Pedido cancelado';
       description = 'Este pedido foi cancelado.';
