@@ -3194,6 +3194,13 @@ export type Database = {
         Returns: Json
       }
       revert_order_stock: { Args: { p_order_id: string }; Returns: Json }
+      search_products: {
+        Args: { category_filter?: string; search_query: string }
+        Returns: {
+          id: string
+          score: number
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       sku_needs_label: { Args: { _sku: string }; Returns: boolean }
@@ -3205,6 +3212,7 @@ export type Database = {
         }
         Returns: number
       }
+      unaccent: { Args: { "": string }; Returns: string }
       validate_coupon: {
         Args: { p_code: string; p_source?: string; p_subtotal: number }
         Returns: Json
