@@ -9,6 +9,7 @@ Deno.env.set("DENO_TEST", "1");
 
 import {
   assertEquals,
+  assertStringIncludes,
 } from "jsr:@std/assert@^1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { handleRequest } from "../cancel-order/index.ts";
@@ -49,7 +50,7 @@ async function getExistingPendingOrder(): Promise<string | null> {
   return data.length > 0 ? data[0].id : null;
 }
 
-async function createEmployeeWithOrdersPermission(): Promise<{ email: string; password: string; jwt: string; userId: string }> {
+async function createEmployeeWithOrdersPermission(canAccessOrders: boolean): Promise<{ email: string; password: string; jwt: string; userId: string }> {
   const email = `test-employee-orders-${Date.now()}@test.com`;
   const password = "test123456";
 
@@ -68,7 +69,7 @@ async function createEmployeeWithOrdersPermission(): Promise<{ email: string; pa
   await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "employee" });
   await supabaseAdmin.from("employee_permissions").upsert({
     user_id: userId,
-    can_access_orders: true,
+    can_access_orders: canAccessOrders,
     can_access_pdv: false,
     can_access_catalog: false,
     can_access_cash_register: false,
@@ -126,7 +127,7 @@ Deno.test("cancel-order: funcionario com can_access_orders pode cancelar pedido"
     return;
   }
 
-  const { jwt: employeeJwt, userId } = await createEmployeeWithOrdersPermission();
+  const { jwt: employeeJwt, userId } = await createEmployeeWithOrdersPermission(true);
 
   try {
     mockAsaas(() => null);
@@ -137,6 +138,33 @@ Deno.test("cancel-order: funcionario com can_access_orders pode cancelar pedido"
 
     assertEquals(r.status, 200, `Esperado 200, recebido ${r.status}: ${JSON.stringify(data)}`);
     assertEquals(data.success, true);
+  } finally {
+    await deleteTestUser(userId);
+  }
+
+  mockAsaas(null);
+  mockMercadopago(null);
+});
+
+// ── Employee (sem permissao de pedidos) access ────────────────────────────
+
+Deno.test("cancel-order: funcionario sem can_access_orders nao pode cancelar", async () => {
+  const oid = await getExistingPendingOrder();
+  if (!oid) {
+    console.log("SKIP: no existing pending orders to test with");
+    return;
+  }
+
+  const { jwt: employeeJwt, userId } = await createEmployeeWithOrdersPermission(false);
+
+  try {
+    mockAsaas(() => null);
+    mockMercadopago(() => null);
+
+    const r = await call({ orderId: oid, cancellation_reason: "Teste funcionario" }, employeeJwt);
+    assertEquals(r.status, 403, "deve retornar 403");
+    const data = await r.json();
+    assertStringIncludes(data.error, "permissão");
   } finally {
     await deleteTestUser(userId);
   }
