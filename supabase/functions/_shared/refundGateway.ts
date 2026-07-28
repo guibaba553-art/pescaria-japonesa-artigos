@@ -23,6 +23,8 @@ export interface RefundParams {
   reason?: string;
   /** Idempotency key to prevent duplicate refunds */
   idempotencyKey: string;
+  /** Asaas installment ID (for credit card refunds via /v3/installments/{id}/refund) */
+  installmentId?: string;
 }
 
 export interface RefundResult {
@@ -53,7 +55,7 @@ export interface PaymentGateway {
   /** Execute a refund via the gateway API */
   createRefund(params: RefundParams): Promise<RefundResult>;
   /** List refunds for a payment via the gateway API */
-  listRefunds(paymentId: string): Promise<GatewayRefundInfo[]>;
+  listRefunds(paymentId: string, installmentId?: string): Promise<GatewayRefundInfo[]>;
 }
 
 // ── Registry ───────────────────────────────────────────────────────────────
@@ -121,12 +123,16 @@ const asaasGateway: PaymentGateway = {
     const requestBody: Record<string, unknown> = { value: params.amount };
     if (params.reason) requestBody.description = params.reason;
 
-    // Detecta se é crédito: busca o pagamento para obter billingType e installment
-    const payment = await asaasFetchPayment(params.paymentId);
-    const billingType = (payment as any)?.billingType as string | undefined;
-    const installmentId = (payment as any)?.installment as string | undefined;
+    // Usa installmentId armazenado se disponível, senão busca na API
+    let installmentId = params.installmentId;
+    if (!installmentId) {
+      const payment = await asaasFetchPayment(params.paymentId);
+      if ((payment as any)?.billingType === "CREDIT_CARD") {
+        installmentId = (payment as any)?.installment as string | undefined;
+      }
+    }
 
-    const isCreditCard = billingType === "CREDIT_CARD" && !!installmentId;
+    const isCreditCard = !!installmentId;
 
     let endpoint: string;
     if (isCreditCard) {
@@ -188,7 +194,7 @@ const asaasGateway: PaymentGateway = {
     };
   },
 
-  async listRefunds(paymentId: string): Promise<GatewayRefundInfo[]> {
+  async listRefunds(paymentId: string, installmentId?: string): Promise<GatewayRefundInfo[]> {
     const apiKey = asaasApiKey();
     if (!apiKey) return [];
 
@@ -223,12 +229,12 @@ const asaasGateway: PaymentGateway = {
       }
 
       // Se for crédito, buscar também refunds do installment
-      const payment = await asaasFetchPayment(paymentId);
-      const installmentId = (payment as any)?.installment as string | undefined;
+      // Usa installmentId armazenado ou busca da API
+      const insId = installmentId ?? ((await asaasFetchPayment(paymentId)) as any)?.installment as string | undefined;
 
-      if (installmentId) {
+      if (insId) {
         const insResponse = await fetch(
-          `https://${env}/v3/installments/${installmentId}/refunds`,
+          `https://${env}/v3/installments/${insId}/refunds`,
           {
             method: "GET",
             headers: { "access_token": apiKey, "Content-Type": "application/json" },
@@ -237,7 +243,7 @@ const asaasGateway: PaymentGateway = {
 
         const insBody = await insResponse.json().catch(() => null);
         console.log(
-          `[refundGateway:asaas] GET /v3/installments/${installmentId}/refunds status=${insResponse.status}`,
+          `[refundGateway:asaas] GET /v3/installments/${insId}/refunds status=${insResponse.status}`,
         );
 
         if (insResponse.ok) {
@@ -329,7 +335,7 @@ const mercadopagoGateway: PaymentGateway = {
     };
   },
 
-  async listRefunds(paymentId: string): Promise<GatewayRefundInfo[]> {
+  async listRefunds(paymentId: string, _installmentId?: string): Promise<GatewayRefundInfo[]> {
     const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
     if (!accessToken) return [];
 

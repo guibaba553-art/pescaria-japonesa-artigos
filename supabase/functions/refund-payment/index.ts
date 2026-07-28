@@ -80,7 +80,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .select(
-        "id, payment_id, asaas_payment_id, payment_gateway, payment_method, total_amount, status, user_id",
+        "id, payment_id, asaas_payment_id, asaas_installment_id, payment_gateway, payment_method, total_amount, status, user_id",
       )
       .eq("id", orderId)
       .single();
@@ -207,6 +207,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       isFullRefund,
       reason,
       idempotencyKey,
+      installmentId: (order as any).asaas_installment_id ?? undefined,
     };
 
     const result = await gateway.createRefund(refundParams);
