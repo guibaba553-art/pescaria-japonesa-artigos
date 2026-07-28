@@ -80,9 +80,31 @@ const { mockSupabaseFrom } = vi.hoisted(() => {
       nfe_emissions: [],
       refunded_amount: 0,
     },
+    {
+      id: 'order-5',
+      total_amount: 18.00,
+      shipping_cost: 0,
+      status: 'cancelado',
+      created_at: new Date(Date.now() - 345600000).toISOString(),
+      user_id: 'user-3',
+      shipping_cep: '12345678',
+      delivery_type: 'pickup',
+      source: 'site',
+      payment_gateway: 'asaas',
+      payment_id: 'pay-refunded',
+      asaas_payment_id: 'pay-refunded',
+      payment_method: 'credit_card',
+      order_items: [
+        { id: 'item-5', quantity: 1, price_at_purchase: 18.00, product_id: 'prod-5', products: { name: 'Anzol Simples' } },
+      ],
+      nfe_emissions: [],
+      refunded_amount: 18.00,
+    },
   ];
 
-  const mockRefunds: any[] = [];
+  const mockRefunds: any[] = [
+    { order_id: 'order-5', amount: 18.00, status: 'approved' },
+  ];
 
   function buildChain(result: any) {
     const chain: any = {
@@ -90,6 +112,7 @@ const { mockSupabaseFrom } = vi.hoisted(() => {
       order: vi.fn(() => chain),
       limit: vi.fn(() => chain),
       eq: vi.fn(() => chain),
+      neq: vi.fn(() => chain),
       in: vi.fn(() => chain),
       single: vi.fn(() => chain),
     };
@@ -106,6 +129,7 @@ const { mockSupabaseFrom } = vi.hoisted(() => {
     if (table === 'profiles') return buildChain([
       { id: 'user-1', full_name: 'João Silva', cpf: '12345678901' },
       { id: 'user-2', full_name: 'Maria Souza', cpf: '98765432101' },
+      { id: 'user-3', full_name: 'Ana Refund', cpf: '11122233344' },
     ]);
     return buildChain([]);
   });
@@ -322,6 +346,32 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       expect(screen.getByText('Estornar pagamento automaticamente')).toBeDefined();
       expect(screen.getAllByText(/Asaas/i).length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it('botão de estorno mostra "Estornado" (desabilitado) quando refunded_amount > 0 no DB', async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <OrdersManagement />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/gestão de pedidos/i)).toBeDefined();
+    });
+
+    // Navega para a aba Cancelados
+    const canceladosTab = screen.getByRole('tab', { name: /cancelados/i });
+    await user.click(canceladosTab);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/ana refund/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // O pedido refunded com refunded_amount=18 deve mostrar botão "Estornado" (desabilitado)
+    const estornadoBtn = screen.getByText('Estornado');
+    expect(estornadoBtn).toBeDefined();
+    expect(estornadoBtn.closest('button')).toBeDisabled();
   });
 
   it('diálogo de devolução para retirada sem pagamento NÃO inclui opção de estorno', async () => {
