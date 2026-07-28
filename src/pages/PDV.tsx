@@ -607,28 +607,10 @@ export default function PDV() {
       console.log(`[PDV] Produtos carregados: ${prods.length}`);
 
       const ids = (prods || []).map((p: any) => p.id);
-      const vars: any[] = [];
-      const CHUNK = 100;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const slice = ids.slice(i, i + CHUNK);
-        let from = 0;
-        const PAGE = 1000;
-        // paginar dentro de cada chunk
-        // (raramente passa de 1 página, mas garante robustez)
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data: page, error: vErr } = await supabase
-            .from('product_variations')
-            .select('*')
-            .in('product_id', slice)
-            .range(from, from + PAGE - 1);
-          if (vErr) { console.error('Erro variações:', vErr); break; }
-          if (!page || page.length === 0) break;
-          vars.push(...page);
-          if (page.length < PAGE) break;
-          from += PAGE;
-        }
-      }
+      const { data: allVars, error: vErr } = await supabase
+        .rpc('get_product_variations_admin');
+      if (vErr) { console.error('Erro variações:', vErr); }
+      const vars = (allVars || []).filter((v: any) => ids.includes(v.product_id));
       const byProduct = new Map<string, any[]>();
       (vars || []).forEach((v: any) => {
         if (!byProduct.has(v.product_id)) byProduct.set(v.product_id, []);
@@ -910,10 +892,10 @@ export default function PDV() {
     // banco antes de tratar como produto simples — caso contrário o item
     // seria adicionado com o preço-base e ignoraria o estoque da variação.
     try {
-      const { data: vars } = await supabase
-        .from('product_variations')
-        .select('*')
-        .eq('product_id', product.id);
+      const { data: vars } = await (supabase.rpc as any)(
+        'get_product_variations_by_product',
+        { p_product_id: product.id }
+      );
       if (vars && vars.length > 0) {
         const enriched = { ...product, variations: vars as any } as Product;
         // Atualiza o cache local para próximos cliques
@@ -1121,10 +1103,10 @@ export default function PDV() {
         // o cache local está desatualizado.
         let effective: Product = matched;
         if (!matched.variations || matched.variations.length === 0) {
-          const { data: vars } = await supabase
-            .from('product_variations')
-            .select('*')
-            .eq('product_id', matched.id);
+          const { data: vars } = await (supabase.rpc as any)(
+            'get_product_variations_by_product',
+            { p_product_id: matched.id }
+          );
           if (vars && vars.length > 0) {
             effective = { ...matched, variations: vars as any } as Product;
             setProducts((prev) => prev.map((p) => (p.id === matched.id ? effective : p)));
@@ -1156,7 +1138,7 @@ export default function PDV() {
             .select('id, name, price, stock, image_url, category, sku, minimum_quantity, sold_by_weight')
             .eq('id', productId)
             .maybeSingle(),
-          supabase.from('product_variations').select('*').eq('product_id', productId),
+          (supabase.rpc as any)('get_product_variations_by_product', { p_product_id: productId }),
         ]);
         if (!prod) return null;
         return { ...prod, variations: vars || [] } as any;
