@@ -166,6 +166,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 }));
 
 // ─── Component under test ─────────────────────────────
+import { classifyCancelledOrder, getCancellationReasonConfig, getGatewayUrl } from '@/lib/orderStatus';
 import { OrdersManagement } from '../OrdersManagement';
 
 describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
@@ -348,7 +349,7 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
     });
   });
 
-  it('botão de estorno mostra "Estornado" (desabilitado) quando refunded_amount > 0 no DB', async () => {
+  it('pedido totalmente reembolsado mostra link para comprovante em vez de botão de estorno', async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -364,14 +365,16 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
     const canceladosTab = screen.getByRole('tab', { name: /cancelados/i });
     await user.click(canceladosTab);
 
+    // Com o novo UX, pedidos reembolsados ficam na sub-tab "Reembolsado"
+    const reembolsadoTab = screen.getByRole('tab', { name: /reembolsado/i });
+    await user.click(reembolsadoTab);
+
     await waitFor(() => {
       expect(screen.getAllByText(/ana refund/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // O pedido refunded com refunded_amount=18 deve mostrar botão "Estornado" (desabilitado)
-    const estornadoBtn = screen.getByText('Estornado');
-    expect(estornadoBtn).toBeDefined();
-    expect(estornadoBtn.closest('button')).toBeDisabled();
+    // O pedido com refunded_amount=18 deve mostrar "Comprovante no Asaas" em vez de "Estornar dinheiro"
+    expect(screen.getByText(/comprovante no asaas/i)).toBeDefined();
   });
 
   it('diálogo de devolução para retirada sem pagamento NÃO inclui opção de estorno', async () => {
@@ -402,5 +405,132 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
     await waitFor(() => {
       expect(screen.queryByText('Estornar pagamento automaticamente')).toBeNull();
     });
+  });
+});
+
+describe('CancelledOrdersView — sub-tabs', () => {
+  const needsRefundOrder = {
+    id: '11111111-1111-1111-1111-111111111111',
+    total_amount: 100,
+    shipping_cost: 0,
+    status: 'cancelado' as const,
+    created_at: '2026-07-28T14:30:00Z',
+    user_id: 'user-1',
+    shipping_cep: '01001-000',
+    delivery_type: 'delivery' as const,
+    payment_gateway: 'asaas',
+    payment_id: 'pay_123',
+    payment_method: 'credit_card',
+    card_brand: 'Visa',
+    card_last_digits: '1234',
+    refunded_amount: 0,
+    cancellation_reason: 'cancelado_admin',
+    order_items: [{ id: 'item-1', quantity: 1, price_at_purchase: 100, product_id: 'prod-1', products: { name: 'Vara de Pesca' } }],
+  };
+
+  const noPaymentOrder = {
+    id: '22222222-2222-2222-2222-222222222222',
+    total_amount: 50,
+    shipping_cost: 0,
+    status: 'cancelado' as const,
+    created_at: '2026-07-27T09:15:00Z',
+    user_id: 'user-1',
+    shipping_cep: '01001-000',
+    delivery_type: 'delivery' as const,
+    payment_gateway: null,
+    payment_id: null,
+    payment_method: null,
+    refunded_amount: 0,
+    cancellation_reason: 'prazo_expirado',
+    order_items: [{ id: 'item-2', quantity: 2, price_at_purchase: 25, product_id: 'prod-2', products: { name: 'Anzol' } }],
+  };
+
+  it('classifyCancelledOrder classifies orders correctly', () => {
+    expect(classifyCancelledOrder(needsRefundOrder)).toBe('needs_refund');
+    expect(classifyCancelledOrder(noPaymentOrder)).toBe('no_payment');
+  });
+});
+
+describe('CancelledOrderCard', () => {
+  it('getCancellationReasonConfig returns correct label and color', () => {
+    const reasonCfg = getCancellationReasonConfig('cancelado_admin');
+    expect(reasonCfg.label).toBe('Cancelado pela loja');
+    expect(reasonCfg.color).toBe('blue');
+  });
+
+  it('getGatewayUrl generates Asaas sandbox URL for payment', () => {
+    const url = getGatewayUrl('asaas', 'pay_123');
+    expect(url).toContain('pay_123');
+    expect(url).toContain('asaas.com');
+  });
+
+  it('getGatewayUrl returns null for missing gateway', () => {
+    expect(getGatewayUrl(null, 'pay_123')).toBeNull();
+    expect(getGatewayUrl('asaas', null)).toBeNull();
+  });
+});
+
+describe('CancelledOrdersView — integration', () => {
+  const mockOrders = [
+    {
+      id: '11111111-1111-1111-1111-111111111111',
+      total_amount: 100,
+      shipping_cost: 0,
+      status: 'cancelado' as const,
+      created_at: '2026-07-28T14:30:00Z',
+      user_id: 'user-1',
+      shipping_cep: '01001-000',
+      delivery_type: 'delivery' as const,
+      payment_gateway: 'asaas',
+      payment_id: 'pay_123',
+      payment_method: 'credit_card',
+      card_brand: 'Visa',
+      card_last_digits: '1234',
+      refunded_amount: 0,
+      cancellation_reason: 'cancelado_admin',
+      order_items: [{ id: 'item-1', quantity: 1, price_at_purchase: 100, product_id: 'prod-1', products: { name: 'Vara de Pesca' } }],
+    },
+    {
+      id: '22222222-2222-2222-2222-222222222222',
+      total_amount: 50,
+      shipping_cost: 0,
+      status: 'cancelado' as const,
+      created_at: '2026-07-27T09:15:00Z',
+      user_id: 'user-1',
+      shipping_cep: '01001-000',
+      delivery_type: 'delivery' as const,
+      payment_gateway: null,
+      payment_id: null,
+      payment_method: 'pix',
+      card_brand: null,
+      card_last_digits: null,
+      refunded_amount: 0,
+      cancellation_reason: 'prazo_expirado',
+      order_items: [{ id: 'item-2', quantity: 2, price_at_purchase: 25, product_id: 'prod-2', products: { name: 'Anzol' } }],
+    },
+  ];
+
+  const mockProfiles = {
+    'user-1': { name: 'João Silva', cpf: '123.456.789-00' },
+  };
+
+  it('classifies orders into correct categories', () => {
+    const needsRefund = mockOrders.filter(o => classifyCancelledOrder(o) === 'needs_refund');
+    const noPayment = mockOrders.filter(o => classifyCancelledOrder(o) === 'no_payment');
+
+    expect(needsRefund).toHaveLength(1);
+    expect(needsRefund[0].id).toBe('11111111-1111-1111-1111-111111111111');
+    expect(noPayment).toHaveLength(1);
+    expect(noPayment[0].id).toBe('22222222-2222-2222-2222-222222222222');
+  });
+
+  it('generates correct gateway link for Asaas', () => {
+    const url = getGatewayUrl('asaas', 'pay_123');
+    expect(url).toContain('pay_123');
+  });
+
+  it('returns null gateway link when no payment_id', () => {
+    const url = getGatewayUrl('mercadopago', null);
+    expect(url).toBeNull();
   });
 });

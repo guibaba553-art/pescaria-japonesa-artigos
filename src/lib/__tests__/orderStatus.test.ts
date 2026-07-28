@@ -4,7 +4,11 @@ import {
   getNextStatus,
   getNextStatusLabel,
   statusConfig,
+  classifyCancelledOrder,
+  getCancellationReasonConfig,
+  getGatewayUrl,
 } from '@/lib/orderStatus';
+import type { CancelledCategory } from '@/lib/orderStatus';
 
 describe('getStatusLabel', () => {
   it('returns "Em Preparo" for em_preparo + delivery', () => {
@@ -132,5 +136,157 @@ describe('statusConfig', () => {
     for (const s of required) {
       expect(statusConfig[s as keyof typeof statusConfig]).toBeDefined();
     }
+  });
+});
+
+const baseOrder = {
+  status: 'cancelado',
+  total_amount: 100,
+  refunded_amount: 0,
+  payment_gateway: null as string | null,
+  payment_id: null as string | null,
+  asaas_payment_id: null as string | null,
+};
+
+describe('classifyCancelledOrder', () => {
+  it('returns no_payment when no gateway or payment_id', () => {
+    const result = classifyCancelledOrder(baseOrder);
+    expect(result).toBe('no_payment');
+  });
+
+  it('returns no_payment when payment_gateway exists but no payment_id', () => {
+    const result = classifyCancelledOrder({ ...baseOrder, payment_gateway: 'mercadopago' });
+    expect(result).toBe('no_payment');
+  });
+
+  it('returns needs_refund when has payment and refunded_amount < total', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      payment_gateway: 'asaas',
+      payment_id: 'pay_123',
+      refunded_amount: 0,
+    });
+    expect(result).toBe('needs_refund');
+  });
+
+  it('returns needs_refund when has asaas_payment_id without payment_id', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      payment_gateway: 'asaas',
+      asaas_payment_id: 'pay_123',
+      refunded_amount: 0,
+    });
+    expect(result).toBe('needs_refund');
+  });
+
+  it('returns needs_refund when partially refunded', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      payment_gateway: 'asaas',
+      payment_id: 'pay_123',
+      refunded_amount: 30,
+    });
+    expect(result).toBe('needs_refund');
+  });
+
+  it('returns refunded when refunded_amount >= total within epsilon', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      payment_gateway: 'asaas',
+      payment_id: 'pay_123',
+      refunded_amount: 99.999,
+    });
+    expect(result).toBe('refunded');
+  });
+
+  it('returns refunded when status is reembolsado regardless of payment', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      status: 'reembolsado',
+      total_amount: 0,
+    });
+    expect(result).toBe('refunded');
+  });
+
+  it('returns refunded when status is cancelado but refunded_amount >= total', () => {
+    const result = classifyCancelledOrder({
+      ...baseOrder,
+      payment_gateway: 'mercadopago',
+      payment_id: 'pay_456',
+      refunded_amount: 100,
+    });
+    expect(result).toBe('refunded');
+  });
+});
+
+describe('getCancellationReasonConfig', () => {
+  it('returns prazo_expirado config', () => {
+    const cfg = getCancellationReasonConfig('prazo_expirado');
+    expect(cfg.label).toBe('PIX não pago no prazo');
+    expect(cfg.icon).toBe('Clock');
+    expect(cfg.color).toBe('gray');
+  });
+
+  it('returns cancelado_pelo_cliente config', () => {
+    const cfg = getCancellationReasonConfig('cancelado_pelo_cliente');
+    expect(cfg.label).toBe('Cliente desistiu');
+    expect(cfg.icon).toBe('UserX');
+    expect(cfg.color).toBe('gray');
+  });
+
+  it('returns cancelado_admin config', () => {
+    const cfg = getCancellationReasonConfig('cancelado_admin');
+    expect(cfg.label).toBe('Cancelado pela loja');
+    expect(cfg.icon).toBe('Store');
+    expect(cfg.color).toBe('blue');
+  });
+
+  it('returns estorno_total config', () => {
+    const cfg = getCancellationReasonConfig('estorno_total');
+    expect(cfg.label).toBe('Estornado integralmente');
+    expect(cfg.icon).toBe('CheckCircle');
+    expect(cfg.color).toBe('green');
+  });
+
+  it('returns default config for unknown reason', () => {
+    const cfg = getCancellationReasonConfig('motivo_qualquer');
+    expect(cfg.label).toBe('Cancelado');
+    expect(cfg.icon).toBe('Clock');
+    expect(cfg.color).toBe('gray');
+  });
+
+  it('returns default config for null', () => {
+    const cfg = getCancellationReasonConfig(null);
+    expect(cfg.label).toBe('Cancelado');
+    expect(cfg.icon).toBe('Clock');
+    expect(cfg.color).toBe('gray');
+  });
+});
+
+describe('getGatewayUrl', () => {
+  it('returns Asaas URL from import.meta.env, ignores window.__ASAAS_ENV__', () => {
+    (window as any).__ASAAS_ENV__ = 'sandbox';
+    const url = getGatewayUrl('asaas', 'pay_123');
+    expect(url).toBe('https://www.asaas.com/payments/pay_123');
+  });
+
+  it('returns Mercado Pago URL', () => {
+    const url = getGatewayUrl('mercadopago', 'mp_456');
+    expect(url).toBe('https://www.mercadopago.com.br/payments/mp_456');
+  });
+
+  it('returns null when gateway is null', () => {
+    const url = getGatewayUrl(null, 'pay_123');
+    expect(url).toBeNull();
+  });
+
+  it('returns null when paymentId is null', () => {
+    const url = getGatewayUrl('asaas', null);
+    expect(url).toBeNull();
+  });
+
+  it('returns null for unknown gateway', () => {
+    const url = getGatewayUrl('pagseguro', 'ps_789');
+    expect(url).toBeNull();
   });
 });

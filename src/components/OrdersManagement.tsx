@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Package, Truck, CheckCircle, ChevronDown, ChevronRight, Clock, PackageCheck, RefreshCw, Printer, Receipt, Loader2, Search, Calendar as CalendarIcon, X, XCircle, Undo2, Store } from 'lucide-react';
+import { Package, Truck, CheckCircle, ChevronDown, ChevronRight, Clock, PackageCheck, RefreshCw, Printer, Receipt, Loader2, Search, Calendar as CalendarIcon, X, XCircle, Undo2, Store, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -24,7 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MelhorEnvioLabelDialog } from '@/components/MelhorEnvioLabelDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { statusConfig, getStatusLabel, getNextStatus, getNextStatusLabel } from '@/lib/orderStatus';
+import { classifyCancelledOrder, getCancellationReasonConfig, getGatewayUrl, statusConfig, getStatusLabel, getNextStatus, getNextStatusLabel } from '@/lib/orderStatus';
+import type { CancelledCategory } from '@/lib/orderStatus';
 import { TriagemSection } from '@/components/admin/TriagemSection';
 function ConfirmReturnDialogContent({
   order, customerName, customerCpf, onConfirm,
@@ -1097,216 +1098,432 @@ const OrdersTable = ({
   );
 };
 
-function SiteTabs({
-  site,
-  profiles,
-  loadOrders,
-  cancelOrder,
-  cancellingOrders,
-  flow,
-  setFlow,
-  hasPendingRetirada,
-  hasPendingEntrega,
-  tableProps,
-  openLabelDialog,
+function CancelledOrderCard({
+  order,
+  customerName,
+  customerCpf,
+  isExpanded,
+  onToggleExpand,
+  onRefund,
+  isRefunding,
+  refundHistoryRecords,
+  isLoadingHistory,
 }: {
-  site: Record<string, Order[]>;
-  profiles: Record<string, { name: string; cpf: string }>;
-  loadOrders: () => void;
-  cancelOrder: (orderId: string, reason: string) => Promise<void>;
-  cancellingOrders: Set<string>;
-  flow: 'retirada' | 'entrega';
-  setFlow: (f: 'retirada' | 'entrega') => void;
-  hasPendingRetirada: boolean;
-  hasPendingEntrega: boolean;
-  tableProps: any;
-  openLabelDialog: (o: Order) => void;
+  order: Order;
+  customerName: string;
+  customerCpf: string;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onRefund: (orderId: string) => void;
+  isRefunding: boolean;
+  refundHistoryRecords?: any[];
+  isLoadingHistory: boolean;
 }) {
-  const sharedTabs = {
-    semPagamento: (
-      <TabsTrigger key="sem-pagamento" value="sem-pagamento" className="shrink-0">
-        <Clock className="w-4 h-4 mr-2" />
-        Sem Pagamento
-        {site.semPagamento.length > 0 && (
-          <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
-        )}
-      </TabsTrigger>
-    ),
-    devolucoes: (
-      <TabsTrigger
-        key="devolucoes"
-        value="devolucoes"
-        className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
-      >
-        <Undo2 className="w-4 h-4 mr-2" />
-        Devoluções
-        {site.devolucoes.length > 0 && (
-          <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
-            {site.devolucoes.length}
-          </Badge>
-        )}
-      </TabsTrigger>
-    ),
-    cancelados: (
-      <TabsTrigger
-        key="cancelados"
-        value="cancelados"
-        className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
-      >
-        <XCircle className="w-4 h-4 mr-2" />
-        Cancelados
-        {site.cancelados.length > 0 && (
-          <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
-            {site.cancelados.length}
-          </Badge>
-        )}
-      </TabsTrigger>
-    ),
-  };
+  const category = classifyCancelledOrder(order);
+  const reasonCfg = getCancellationReasonConfig(order.cancellation_reason);
+  const gatewayUrl = getGatewayUrl(order.payment_gateway, order.payment_id || order.asaas_payment_id);
+  const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
+  const refunded = order.refunded_amount ?? 0;
+  const total = Number(order.total_amount);
 
-  const mergedTableProps = { ...tableProps, openLabelDialog };
+  const gwName = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
+  const methodName = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.payment_method || 'Online';
+  const cardDetail = order.card_brand ? ` ${order.card_brand}` : '';
+  const cardLastDigits = order.card_last_digits ? ` final ${order.card_last_digits}` : '';
+
+  const accentClass = category === 'needs_refund' ? 'border-l-amber-500' : category === 'no_payment' ? 'border-l-gray-400' : 'border-l-emerald-500';
+
+  const statusBadge = category === 'needs_refund'
+    ? { label: 'Cancelado · Estorno pendente', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' }
+    : category === 'no_payment'
+    ? { label: 'Cancelado · Sem cobrança', className: 'bg-gray-500/15 text-gray-600 dark:text-gray-400 border-gray-500/30' }
+    : { label: 'Reembolsado', className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' };
+
+  const statusIcon = category === 'needs_refund' ? '⚠️' : category === 'no_payment' ? '⏹' : '✅';
+  const statusText = category === 'needs_refund'
+    ? `Pendente · R$ ${(total - refunded).toFixed(2)} a estornar`
+    : category === 'no_payment'
+    ? (hasPayment ? 'Cobrança não confirmada · estorno não se aplica' : 'Nenhuma cobrança registrada')
+    : `Concluído · R$ ${refunded.toFixed(2)} estornado`;
 
   return (
-    <div className="space-y-4 w-full">
-      <div className="inline-flex rounded-lg bg-muted p-1">
-        <button
-          onClick={() => setFlow('retirada')}
-          className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-            flow === 'retirada'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Store className="w-4 h-4" />
-          Retirada
-          {hasPendingRetirada && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
-          )}
-        </button>
-        <button
-          onClick={() => setFlow('entrega')}
-          className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-            flow === 'entrega'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Truck className="w-4 h-4" />
-          Entrega
-          {hasPendingEntrega && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
-          )}
-        </button>
+    <Collapsible key={order.id} open={isExpanded} onOpenChange={onToggleExpand} asChild>
+      <Card className={`border-l-4 ${accentClass} transition-all hover:shadow-md overflow-hidden`}>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-xs text-muted-foreground">#{order.id.slice(0, 8)}</span>
+                <Badge variant="outline" className={`${statusBadge.className} border text-[10px] font-semibold uppercase tracking-wide`}>
+                  {statusBadge.label}
+                </Badge>
+                {order.cancellation_reason && (
+                  <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 max-w-[200px] truncate"
+                    style={{
+                      color: reasonCfg.color === 'blue' ? '#2563eb' : reasonCfg.color === 'green' ? '#059669' : '#6b7280',
+                      borderColor: reasonCfg.color === 'blue' ? 'rgba(37,99,235,0.3)' : reasonCfg.color === 'green' ? 'rgba(5,150,105,0.3)' : 'rgba(107,114,128,0.3)',
+                      backgroundColor: reasonCfg.color === 'blue' ? 'rgba(37,99,235,0.1)' : reasonCfg.color === 'green' ? 'rgba(5,150,105,0.1)' : 'rgba(107,114,128,0.1)',
+                    }}>
+                    {reasonCfg.label}
+                    {order.cancellation_reason !== 'prazo_expirado' && order.cancellation_reason !== 'cancelado_pelo_cliente' && order.cancellation_reason !== 'cancelado_admin' && order.cancellation_reason !== 'estorno_total' && (
+                      <> — "{order.cancellation_reason}"</>
+                    )}
+                  </Badge>
+                )}
+              </div>
+              <p className="font-semibold text-base mt-1 truncate">{customerName}</p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(order.created_at).toLocaleString('pt-BR', {
+                  day: '2-digit', month: '2-digit', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })}
+              </p>
+              <p className="text-xs text-muted-foreground">{customerCpf}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-2xl font-bold text-primary leading-tight">
+                R$ {order.total_amount.toFixed(2)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
+            {hasPayment ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold">{methodName}{cardDetail}{cardLastDigits} · {gwName}</span>
+                  {gatewayUrl && (
+                    <a
+                      href={gatewayUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Abrir no {gwName} <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+                {(order.payment_id || order.asaas_payment_id) && (
+                  <p className="text-xs text-muted-foreground font-mono truncate">
+                    ID: {(order.payment_id || order.asaas_payment_id)!.slice(0, 12)}{(order.payment_id || order.asaas_payment_id)!.length > 12 ? '...' : ''}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 text-sm pt-1 border-t">
+                  <span>{statusIcon}</span>
+                  <span className={category === 'needs_refund' ? 'text-amber-600 dark:text-amber-400 font-medium' : category === 'refunded' ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground'}>
+                    {statusText}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold text-muted-foreground">{statusIcon}</span>
+                  <span className="text-muted-foreground">{statusText}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Pedido cancelado antes da geração do pagamento. Estorno não se aplica.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+              </Button>
+            </CollapsibleTrigger>
+
+            {category === 'needs_refund' && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    disabled={isRefunding}
+                    className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
+                  >
+                    {isRefunding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                    {isRefunding ? 'Estornando...' : 'Estornar dinheiro'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Estornar pagamento ao cliente</AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                      <div>
+                        O valor será devolvido ao cliente diretamente pelo <strong>{gwName}</strong>. Para PIX o estorno é imediato. Para cartão, aparece na próxima fatura (1–2 ciclos).
+                        <div className="mt-3 p-3 bg-muted rounded-md text-sm space-y-1">
+                          <div><strong>Pedido:</strong> #{order.id.slice(0, 8)}</div>
+                          <div><strong>Cliente:</strong> {customerName}</div>
+                          <div><strong>Método:</strong> {methodName}{cardDetail}{cardLastDigits}</div>
+                          <div><strong>Total do pedido:</strong> R$ {total.toFixed(2)}</div>
+                          {refunded > 0 && (
+                            <div><strong>Já estornado:</strong> R$ {refunded.toFixed(2)}</div>
+                          )}
+                          <div className="text-emerald-700 dark:text-emerald-400">
+                            <strong>A estornar agora:</strong> R$ {(total - refunded).toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="mt-3 text-xs text-muted-foreground">
+                          Esta ação não pode ser desfeita.
+                        </div>
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onRefund(order.id)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      Confirmar estorno
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
+            {category === 'refunded' && gatewayUrl && (
+              <Button size="sm" variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" asChild>
+                <a href={gatewayUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Comprovante no {gwName}
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <CollapsibleContent>
+          <div className="px-4 pb-4 pt-0 space-y-4 bg-muted/30 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              <div>
+                <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Itens do Pedido</h4>
+                <div className="space-y-1.5">
+                  {order.order_items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-2.5 bg-background rounded-lg border text-sm">
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p className="font-medium truncate">{item.products.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.quantity} × R$ {item.price_at_purchase.toFixed(2)}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-sm shrink-0">
+                        R$ {(item.quantity * item.price_at_purchase).toFixed(2)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Resumo</h4>
+                <div className="bg-background rounded-lg border p-3 space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>R$ {(order.total_amount - order.shipping_cost).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Frete</span>
+                    <span>R$ {order.shipping_cost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold pt-2 border-t mt-1">
+                    <span>Total</span>
+                    <span className="text-primary">R$ {order.total_amount.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {refunded > 0 && (
+              <div className="bg-background rounded-lg border p-3">
+                <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-2">
+                  Histórico de estornos
+                </h4>
+                {isLoadingHistory ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Carregando...
+                  </div>
+                ) : refundHistoryRecords && refundHistoryRecords.length > 0 ? (
+                  <div className="space-y-2">
+                    {refundHistoryRecords.map((r: any) => (
+                      <div key={r.id} className="flex items-start justify-between p-2.5 bg-muted/50 rounded-lg text-sm">
+                        <div>
+                          <p className="font-medium">
+                            R$ {Number(r.amount).toFixed(2)}
+                            <Badge variant="outline" className={`ml-2 text-[10px] ${
+                              r.status === 'approved' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' :
+                              r.status === 'pending' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30' :
+                              'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30'
+                            }`}>
+                              {r.status === 'approved' ? 'Aprovado' : r.status === 'pending' ? 'Pendente' : r.status}
+                            </Badge>
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {' · '}{r.gateway === 'asaas' ? 'Asaas' : r.gateway === 'mercadopago' ? 'Mercado Pago' : r.gateway || 'Gateway'}
+                            {r.gateway_refund_id && (
+                              <> · <span className="font-mono">{r.gateway_refund_id.slice(0, 12)}...</span></>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {order.nfe_emissions && order.nfe_emissions.length > 0 && (
+              <div className="bg-background rounded-lg border p-3">
+                <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Nota Fiscal Eletrônica</h4>
+                {order.nfe_emissions.map((nfe) => (
+                  <div key={nfe.id} className="space-y-2">
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase">Número</p>
+                        <p className="font-mono font-semibold">{nfe.nfe_number || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase">Status</p>
+                        <Badge variant={nfe.status === 'success' ? 'default' : nfe.status === 'pending' ? 'secondary' : 'destructive'} className="mt-0.5">
+                          {nfe.status === 'success' ? 'Emitida' : nfe.status === 'pending' ? 'Pendente' : 'Erro'}
+                        </Badge>
+                      </div>
+                    </div>
+                    {nfe.status === 'success' && nfe.nfe_xml_url && (
+                      <Button size="sm" variant="outline" onClick={() => window.open(nfe.nfe_xml_url!, '_blank')} className="w-full">
+                        Download XML
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
+function CancelledOrdersView({
+  orders,
+  profiles,
+  expandedOrders,
+  toggleOrderExpansion,
+  refundPayment,
+  refundingOrders,
+  loadOrders,
+}: {
+  orders: Order[];
+  profiles: Record<string, { name: string; cpf: string }>;
+  expandedOrders: Set<string>;
+  toggleOrderExpansion: (orderId: string) => void;
+  refundPayment: (orderId: string) => Promise<boolean>;
+  refundingOrders: Set<string>;
+  loadOrders: () => void;
+}) {
+  const [activeSubTab, setActiveSubTab] = useState<string>('needs_refund');
+  const [refundHistory, setRefundHistory] = useState<Record<string, any[]>>({});
+  const [loadingHistory, setLoadingHistory] = useState<Set<string>>(new Set());
+
+  const needsRefund = orders.filter(o => classifyCancelledOrder(o) === 'needs_refund');
+  const noPayment = orders.filter(o => classifyCancelledOrder(o) === 'no_payment');
+  const refunded = orders.filter(o => classifyCancelledOrder(o) === 'refunded');
+
+  const handleRefund = async (orderId: string) => {
+    const success = await refundPayment(orderId);
+    if (success) {
+      setActiveSubTab('refunded');
+    }
+  };
+
+  const handleToggleExpand = async (orderId: string) => {
+    toggleOrderExpansion(orderId);
+    if (!expandedOrders.has(orderId) && !refundHistory[orderId]) {
+      const order = orders.find(o => o.id === orderId);
+      if (order && (order.refunded_amount ?? 0) > 0) {
+        setLoadingHistory(prev => new Set(prev).add(orderId));
+        const { data } = await supabase
+          .from('payment_refunds')
+          .select('id, amount, status, gateway, gateway_refund_id, created_at')
+          .eq('order_id', orderId)
+          .neq('status', 'rejected')
+          .order('created_at', { ascending: false });
+        if (data) {
+          setRefundHistory(prev => ({ ...prev, [orderId]: data }));
+        }
+        setLoadingHistory(prev => {
+          const next = new Set(prev);
+          next.delete(orderId);
+          return next;
+        });
+      }
+    }
+  };
+
+  const subTabs = [
+    { value: 'needs_refund', label: 'Precisa de estorno', count: needsRefund.length, className: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400', badgeClass: 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30' },
+    { value: 'no_payment', label: 'Sem pagamento', count: noPayment.length, className: 'data-[state=active]:bg-gray-500/15 data-[state=active]:text-gray-600 dark:data-[state=active]:text-gray-400', badgeClass: 'bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30' },
+    { value: 'refunded', label: 'Reembolsado', count: refunded.length, className: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400', badgeClass: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
+  ];
+
+  const ordersByCategory: Record<string, Order[]> = {
+    needs_refund: needsRefund,
+    no_payment: noPayment,
+    refunded: refunded,
+  };
+
+  return (
+    <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
+      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto mb-4">
+        <TabsList className="inline-flex flex-nowrap w-full gap-1">
+          {subTabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} className={`shrink-0 ${tab.className}`}>
+              {tab.label}
+              {tab.count > 0 && (
+                <Badge className={`ml-2 h-5 min-w-5 px-1 ${tab.badgeClass}`}>{tab.count}</Badge>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
       </div>
 
-      {/* Fluxo Retirada */}
-      {flow === 'retirada' && (
-        <Tabs defaultValue="sem-pagamento">
-          <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-            <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
-              {sharedTabs.semPagamento}
-              <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
-                <Package className="w-4 h-4 mr-2" />
-                Em Preparação
-                {site.emPreparacaoPickup.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoPickup.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="pronto-retirar" className="shrink-0">
-                <Store className="w-4 h-4 mr-2" />
-                Retirada
-                {site.prontoRetirar.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="retirados" className="shrink-0">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Retirados
-                {site.retirados.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.retirados.length}</Badge>
-                )}
-              </TabsTrigger>
-              {sharedTabs.devolucoes}
-              {sharedTabs.cancelados}
-            </TabsList>
-          </div>
-
-          <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="em-preparacao">
-            <TriagemSection
-              orders={site.emPreparacaoPickup}
-              profiles={profiles}
-              onStatusChanged={loadOrders}
-              openLabelDialog={openLabelDialog}
-              cancelOrder={cancelOrder}
-              cancellingOrders={cancellingOrders}
-            />
-          </TabsContent>
-          <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="retirados"><OrdersTable orders={site.retirados} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...mergedTableProps} /></TabsContent>
-        </Tabs>
-      )}
-
-      {/* Fluxo Entrega */}
-      {flow === 'entrega' && (
-        <Tabs defaultValue="sem-pagamento">
-          <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
-            <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
-              {sharedTabs.semPagamento}
-              <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
-                <Package className="w-4 h-4 mr-2" />
-                Em Preparação
-                {site.emPreparacaoDelivery.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoDelivery.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="aguardando-envio" className="shrink-0">
-                <PackageCheck className="w-4 h-4 mr-2" />
-                Envio
-                {site.aguardandoEnvio.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="em-caminho" className="shrink-0">
-                <Truck className="w-4 h-4 mr-2" />
-                Em Transporte
-                {site.emCaminho.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="entregues" className="shrink-0">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Entregues
-                {site.entregues.length > 0 && (
-                  <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
-                )}
-              </TabsTrigger>
-              {sharedTabs.devolucoes}
-              {sharedTabs.cancelados}
-            </TabsList>
-          </div>
-
-          <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="em-preparacao">
-            <TriagemSection
-              orders={site.emPreparacaoDelivery}
-              profiles={profiles}
-              onStatusChanged={loadOrders}
-              openLabelDialog={openLabelDialog}
-              cancelOrder={cancelOrder}
-              cancellingOrders={cancellingOrders}
-            />
-          </TabsContent>
-          <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...mergedTableProps} /></TabsContent>
-          <TabsContent value="cancelados"><OrdersTable orders={site.cancelados} {...mergedTableProps} /></TabsContent>
-        </Tabs>
-      )}
-    </div>
+      {subTabs.map(tab => (
+        <TabsContent key={tab.value} value={tab.value}>
+          {ordersByCategory[tab.value].length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+              <Package className="w-12 h-12 mb-3 opacity-40" />
+              <p className="text-sm font-medium">Nenhum pedido nesta categoria</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {ordersByCategory[tab.value].map(order => (
+                <CancelledOrderCard
+                  key={order.id}
+                  order={order}
+                  customerName={profiles[order.user_id]?.name || 'Carregando...'}
+                  customerCpf={profiles[order.user_id]?.cpf || 'N/A'}
+                  isExpanded={expandedOrders.has(order.id)}
+                  onToggleExpand={() => handleToggleExpand(order.id)}
+                  onRefund={handleRefund}
+                  isRefunding={refundingOrders.has(order.id)}
+                  refundHistoryRecords={refundHistory[order.id]}
+                  isLoadingHistory={loadingHistory.has(order.id)}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }
 
@@ -1708,7 +1925,7 @@ export function OrdersManagement() {
   };
 
 
-  const refundPayment = async (orderId: string) => {
+  const refundPayment = async (orderId: string): Promise<boolean> => {
     setRefundingOrders(prev => new Set(prev).add(orderId));
     toast({
       title: 'Estornando pagamento...',
@@ -1740,6 +1957,7 @@ export function OrdersManagement() {
             : 'O gateway confirmará em breve. O cliente receberá o valor automaticamente.',
         });
         await loadOrders();
+        return true;
       } else {
         throw new Error(data?.error || 'Falha desconhecida ao estornar');
       }
@@ -1754,6 +1972,7 @@ export function OrdersManagement() {
           description: `R$ ${checkData.totalApproved.toFixed(2)} já foi estornado via ${checkData.refunds?.[0]?.gatewayRefundId?.slice(0, 8) ?? 'gateway'}.`,
         });
         loadOrders();
+        return true;
       } else {
         toast({
           title: 'Erro ao estornar',
@@ -1761,6 +1980,7 @@ export function OrdersManagement() {
           variant: 'destructive',
         });
       }
+      return false;
     } finally {
       setRefundingOrders(prev => {
         const next = new Set(prev);
@@ -1946,6 +2166,238 @@ export function OrdersManagement() {
   const hasPendingRetirada = site.prontoRetirar.length > 0;
   const hasPendingEntrega = site.aguardandoEnvio.length > 0;
 
+  const SiteTabs = function SiteTabs({
+    site,
+    profiles,
+    loadOrders,
+    cancelOrder,
+    cancellingOrders,
+    flow,
+    setFlow,
+    hasPendingRetirada,
+    hasPendingEntrega,
+    tableProps,
+    setLabelOrder,
+  }: {
+    site: Record<string, Order[]>;
+    profiles: Record<string, { name: string; cpf: string }>;
+    loadOrders: () => void;
+    cancelOrder: (orderId: string, reason: string) => Promise<void>;
+    cancellingOrders: Set<string>;
+    flow: 'retirada' | 'entrega';
+    setFlow: (f: 'retirada' | 'entrega') => void;
+    hasPendingRetirada: boolean;
+    hasPendingEntrega: boolean;
+    tableProps: any;
+    setLabelOrder: (o: Order) => void;
+  }) {
+    const sharedTabs = {
+      semPagamento: (
+        <TabsTrigger key="sem-pagamento" value="sem-pagamento" className="shrink-0">
+          <Clock className="w-4 h-4 mr-2" />
+          Sem Pagamento
+          {site.semPagamento.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.semPagamento.length}</Badge>
+          )}
+        </TabsTrigger>
+      ),
+      devolucoes: (
+        <TabsTrigger
+          key="devolucoes"
+          value="devolucoes"
+          className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+        >
+          <Undo2 className="w-4 h-4 mr-2" />
+          Devoluções
+          {site.devolucoes.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+              {site.devolucoes.length}
+            </Badge>
+          )}
+        </TabsTrigger>
+      ),
+      cancelados: (
+        <TabsTrigger
+          key="cancelados"
+          value="cancelados"
+          className="shrink-0 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-600 dark:data-[state=active]:text-red-400"
+        >
+          <XCircle className="w-4 h-4 mr-2" />
+          Cancelados
+          {site.cancelados.length > 0 && (
+            <Badge className="ml-2 h-5 min-w-5 px-1 bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/30">
+              {site.cancelados.length}
+            </Badge>
+          )}
+        </TabsTrigger>
+      ),
+    };
+
+    return (
+      <div className="space-y-4 w-full">
+        {/* Segmented control */}
+        <div className="inline-flex rounded-lg bg-muted p-1">
+          <button
+            onClick={() => setFlow('retirada')}
+            className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+              flow === 'retirada'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Store className="w-4 h-4" />
+            Retirada
+            {hasPendingRetirada && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
+            )}
+          </button>
+          <button
+            onClick={() => setFlow('entrega')}
+            className={`relative inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+              flow === 'entrega'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            Entrega
+            {hasPendingEntrega && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-background" />
+            )}
+          </button>
+        </div>
+
+        {/* Fluxo Retirada */}
+        {flow === 'retirada' && (
+          <Tabs defaultValue="sem-pagamento">
+            <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
+                {sharedTabs.semPagamento}
+                <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
+                  <Package className="w-4 h-4 mr-2" />
+                  Em Preparação
+                  {site.emPreparacaoPickup.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoPickup.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="pronto-retirar" className="shrink-0">
+                  <Store className="w-4 h-4 mr-2" />
+                  Retirada
+                  {site.prontoRetirar.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.prontoRetirar.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="retirados" className="shrink-0">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Retirados
+                  {site.retirados.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.retirados.length}</Badge>
+                  )}
+                </TabsTrigger>
+                {sharedTabs.devolucoes}
+                {sharedTabs.cancelados}
+              </TabsList>
+            </div>
+
+            <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
+            <TabsContent value="em-preparacao">
+              <TriagemSection
+                orders={site.emPreparacaoPickup}
+                profiles={profiles}
+                onStatusChanged={loadOrders}
+                openLabelDialog={(o: Order) => setLabelOrder(o)}
+                cancelOrder={cancelOrder}
+                cancellingOrders={cancellingOrders}
+              />
+            </TabsContent>
+            <TabsContent value="pronto-retirar"><OrdersTable orders={site.prontoRetirar} {...tableProps} /></TabsContent>
+            <TabsContent value="retirados"><OrdersTable orders={site.retirados} {...tableProps} /></TabsContent>
+            <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
+            <TabsContent value="cancelados">
+              <CancelledOrdersView
+                orders={site.cancelados}
+                profiles={profiles}
+                expandedOrders={expandedOrders}
+                toggleOrderExpansion={toggleOrderExpansion}
+                refundPayment={refundPayment}
+                refundingOrders={refundingOrders}
+                loadOrders={loadOrders}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* Fluxo Entrega */}
+        {flow === 'entrega' && (
+          <Tabs defaultValue="sem-pagamento">
+            <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto">
+              <TabsList className="inline-flex flex-nowrap w-full gap-1 [&>*]:flex-1">
+                {sharedTabs.semPagamento}
+                <TabsTrigger key="em-preparacao" value="em-preparacao" className="shrink-0">
+                  <Package className="w-4 h-4 mr-2" />
+                  Em Preparação
+                  {site.emPreparacaoDelivery.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emPreparacaoDelivery.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="aguardando-envio" className="shrink-0">
+                  <PackageCheck className="w-4 h-4 mr-2" />
+                  Envio
+                  {site.aguardandoEnvio.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.aguardandoEnvio.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="em-caminho" className="shrink-0">
+                  <Truck className="w-4 h-4 mr-2" />
+                  Em Transporte
+                  {site.emCaminho.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.emCaminho.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="entregues" className="shrink-0">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Entregues
+                  {site.entregues.length > 0 && (
+                    <Badge className="ml-2 h-5 min-w-5 px-1" variant="secondary">{site.entregues.length}</Badge>
+                  )}
+                </TabsTrigger>
+                {sharedTabs.devolucoes}
+                {sharedTabs.cancelados}
+              </TabsList>
+            </div>
+
+            <TabsContent value="sem-pagamento"><OrdersTable orders={site.semPagamento} {...tableProps} /></TabsContent>
+            <TabsContent value="em-preparacao">
+              <TriagemSection
+                orders={site.emPreparacaoDelivery}
+                profiles={profiles}
+                onStatusChanged={loadOrders}
+                openLabelDialog={(o: Order) => setLabelOrder(o)}
+                cancelOrder={cancelOrder}
+                cancellingOrders={cancellingOrders}
+              />
+            </TabsContent>
+            <TabsContent value="aguardando-envio"><OrdersTable orders={site.aguardandoEnvio} {...tableProps} /></TabsContent>
+            <TabsContent value="em-caminho"><OrdersTable orders={site.emCaminho} {...tableProps} /></TabsContent>
+            <TabsContent value="entregues"><OrdersTable orders={site.entregues} {...tableProps} /></TabsContent>
+            <TabsContent value="devolucoes"><OrdersTable orders={site.devolucoes} {...tableProps} /></TabsContent>
+            <TabsContent value="cancelados">
+              <CancelledOrdersView
+                orders={site.cancelados}
+                profiles={profiles}
+                expandedOrders={expandedOrders}
+                toggleOrderExpansion={toggleOrderExpansion}
+                refundPayment={refundPayment}
+                refundingOrders={refundingOrders}
+                loadOrders={loadOrders}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    );
+  };
+
   const totalRevenue = orders
     .filter(o => o.status !== 'aguardando_pagamento')
     .reduce((sum, o) => sum + Number(o.total_amount), 0);
@@ -1996,7 +2448,7 @@ export function OrdersManagement() {
           hasPendingRetirada={hasPendingRetirada}
           hasPendingEntrega={hasPendingEntrega}
           tableProps={tableProps}
-          openLabelDialog={openLabelDialog}
+          setLabelOrder={openLabelDialog}
         />
       </CardContent>
 
