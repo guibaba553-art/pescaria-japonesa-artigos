@@ -267,12 +267,12 @@ describe('getGatewayUrl', () => {
   it('returns Asaas URL from import.meta.env, ignores window.__ASAAS_ENV__', () => {
     (window as any).__ASAAS_ENV__ = 'sandbox';
     const url = getGatewayUrl('asaas', 'pay_123');
-    expect(url).toBe('https://www.asaas.com/payments/pay_123');
+    expect(url).toBe('https://www.asaas.com/cobrancas/pay_123');
   });
 
   it('returns Mercado Pago URL', () => {
     const url = getGatewayUrl('mercadopago', 'mp_456');
-    expect(url).toBe('https://www.mercadopago.com.br/payments/mp_456');
+    expect(url).toBe('https://www.mercadopago.com.br/activities/mp_456');
   });
 
   it('returns null when gateway is null', () => {

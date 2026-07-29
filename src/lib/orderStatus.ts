@@ -200,12 +200,12 @@ export function getGatewayUrl(gateway?: string | null, paymentId?: string | null
     case 'asaas': {
       const env = import.meta.env.VITE_ASAAS_ENVIRONMENT || 'sandbox';
       const base = env === 'production'
-        ? 'https://www.asaas.com/payments'
-        : 'https://sandbox.asaas.com/payments';
-      return `${base}/${paymentId}`;
+        ? 'https://www.asaas.com'
+        : 'https://sandbox.asaas.com';
+      return `${base}/cobrancas/${paymentId}`;
     }
     case 'mercadopago':
-      return `https://www.mercadopago.com.br/payments/${paymentId}`;
+      return `https://www.mercadopago.com.br/activities/${paymentId}`;
     default:
       return null;
   }
