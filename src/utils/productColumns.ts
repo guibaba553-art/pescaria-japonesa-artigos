@@ -43,6 +43,8 @@ export const PUBLIC_PRODUCT_COLUMNS = [
   'origem',
   'unidade_comercial',
   'include_in_nfe',
+  'pdv_only',
+  'sale_channel',
 ].join(', ');
 
 /**
@@ -74,6 +76,7 @@ export const PUBLIC_VARIATION_COLUMNS = [
   'sale_limit_qty',
   'sale_sold_qty',
   'min_sale_price',
+  'sale_channel',
 ].join(', ');
 
 /** Versão com variações embutidas usando apenas colunas seguras. */

@@ -13,6 +13,11 @@ describe('PUBLIC_PRODUCT_COLUMNS', () => {
     expect(cols).toContain('min_sale_price');
   });
 
+  it('deve incluir colunas pdv_only e sale_channel', () => {
+    expect(cols).toContain('pdv_only');
+    expect(cols).toContain('sale_channel');
+  });
+
   it('NÃO deve incluir colunas sensíveis de custo', () => {
     expect(cols).not.toContain('cost');
     expect(cols).not.toContain('price_pdv');
@@ -40,6 +45,10 @@ describe('PUBLIC_VARIATION_COLUMNS', () => {
     expect(cols).toContain('stock');
     expect(cols).toContain('sku');
     expect(cols).toContain('image_url');
+  });
+
+  it('deve incluir a coluna sale_channel', () => {
+    expect(cols).toContain('sale_channel');
   });
 
   it('NÃO deve incluir colunas sensíveis de custo', () => {
