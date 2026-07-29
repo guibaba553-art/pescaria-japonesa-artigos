@@ -361,13 +361,9 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
       expect(screen.getByText(/gestão de pedidos/i)).toBeDefined();
     });
 
-    // Navega para a aba Cancelados
+    // Navega para a aba Cancelados — mostra todos por padrão
     const canceladosTab = screen.getByRole('tab', { name: /cancelados/i });
     await user.click(canceladosTab);
-
-    // Com o novo UX, pedidos reembolsados ficam na sub-tab "Reembolsado"
-    const reembolsadoTab = screen.getByRole('tab', { name: /reembolsado/i });
-    await user.click(reembolsadoTab);
 
     await waitFor(() => {
       expect(screen.getAllByText(/ana refund/i).length).toBeGreaterThanOrEqual(1);

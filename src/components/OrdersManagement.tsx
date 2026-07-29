@@ -1430,7 +1430,7 @@ function CancelledOrdersView({
   refundingOrders: Set<string>;
   loadOrders: () => void;
 }) {
-  const [activeSubTab, setActiveSubTab] = useState<string>('needs_refund');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [refundHistory, setRefundHistory] = useState<Record<string, any[]>>({});
   const [loadingHistory, setLoadingHistory] = useState<Set<string>>(new Set());
 
@@ -1438,11 +1438,16 @@ function CancelledOrdersView({
   const noPayment = orders.filter(o => classifyCancelledOrder(o) === 'no_payment');
   const refunded = orders.filter(o => classifyCancelledOrder(o) === 'refunded');
 
+  const displayedOrders = useMemo(() => {
+    if (categoryFilter === 'all') return orders;
+    if (categoryFilter === 'needs_refund') return needsRefund;
+    if (categoryFilter === 'no_payment') return noPayment;
+    if (categoryFilter === 'refunded') return refunded;
+    return orders;
+  }, [categoryFilter, orders, needsRefund, noPayment, refunded]);
+
   const handleRefund = async (orderId: string) => {
-    const success = await refundPayment(orderId);
-    if (success) {
-      setActiveSubTab('refunded');
-    }
+    await refundPayment(orderId);
   };
 
   const handleToggleExpand = async (orderId: string) => {
@@ -1469,61 +1474,55 @@ function CancelledOrdersView({
     }
   };
 
-  const subTabs = [
-    { value: 'needs_refund', label: 'Precisa de estorno', count: needsRefund.length, className: 'data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400', badgeClass: 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30' },
-    { value: 'no_payment', label: 'Sem pagamento', count: noPayment.length, className: 'data-[state=active]:bg-gray-500/15 data-[state=active]:text-gray-600 dark:data-[state=active]:text-gray-400', badgeClass: 'bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30' },
-    { value: 'refunded', label: 'Reembolsado', count: refunded.length, className: 'data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400', badgeClass: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
+  const filterOptions = [
+    { value: 'all', label: 'Todos', count: orders.length },
+    { value: 'needs_refund', label: 'Precisa de estorno', count: needsRefund.length },
+    { value: 'no_payment', label: 'Sem pagamento', count: noPayment.length },
+    { value: 'refunded', label: 'Reembolsado', count: refunded.length },
   ];
 
-  const ordersByCategory: Record<string, Order[]> = {
-    needs_refund: needsRefund,
-    no_payment: noPayment,
-    refunded: refunded,
-  };
-
   return (
-    <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-      <div className="-mx-3 md:mx-0 px-3 md:px-0 overflow-x-auto mb-4">
-        <TabsList className="inline-flex flex-nowrap w-full gap-1">
-          {subTabs.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value} className={`shrink-0 ${tab.className}`}>
-              {tab.label}
-              {tab.count > 0 && (
-                <Badge className={`ml-2 h-5 min-w-5 px-1 ${tab.badgeClass}`}>{tab.count}</Badge>
-              )}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm text-muted-foreground">Filtrar:</span>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {filterOptions.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label} ({opt.count})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {subTabs.map(tab => (
-        <TabsContent key={tab.value} value={tab.value}>
-          {ordersByCategory[tab.value].length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
-              <Package className="w-12 h-12 mb-3 opacity-40" />
-              <p className="text-sm font-medium">Nenhum pedido nesta categoria</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {ordersByCategory[tab.value].map(order => (
-                <CancelledOrderCard
-                  key={order.id}
-                  order={order}
-                  customerName={profiles[order.user_id]?.name || 'Carregando...'}
-                  customerCpf={profiles[order.user_id]?.cpf || 'N/A'}
-                  isExpanded={expandedOrders.has(order.id)}
-                  onToggleExpand={() => handleToggleExpand(order.id)}
-                  onRefund={handleRefund}
-                  isRefunding={refundingOrders.has(order.id)}
-                  refundHistoryRecords={refundHistory[order.id]}
-                  isLoadingHistory={loadingHistory.has(order.id)}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      ))}
-    </Tabs>
+      {displayedOrders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground rounded-xl border border-dashed bg-muted/30">
+          <Package className="w-12 h-12 mb-3 opacity-40" />
+          <p className="text-sm font-medium">Nenhum pedido nesta categoria</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {displayedOrders.map(order => (
+            <CancelledOrderCard
+              key={order.id}
+              order={order}
+              customerName={profiles[order.user_id]?.name || 'Carregando...'}
+              customerCpf={profiles[order.user_id]?.cpf || 'N/A'}
+              isExpanded={expandedOrders.has(order.id)}
+              onToggleExpand={() => handleToggleExpand(order.id)}
+              onRefund={handleRefund}
+              isRefunding={refundingOrders.has(order.id)}
+              refundHistoryRecords={refundHistory[order.id]}
+              isLoadingHistory={loadingHistory.has(order.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
