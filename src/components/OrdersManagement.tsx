@@ -1119,8 +1119,6 @@ function CancelledOrderCard({
   refundHistoryRecords?: any[];
   isLoadingHistory: boolean;
 }) {
-  const [verifyingGateway, setVerifyingGateway] = useState(false);
-  const { toast } = useToast();
   const category = classifyCancelledOrder(order);
   const reasonCfg = getCancellationReasonConfig(order.cancellation_reason);
   const gatewayUrl = getGatewayUrl(order.payment_gateway, order.payment_id || order.asaas_payment_id);
@@ -1198,57 +1196,15 @@ function CancelledOrderCard({
                 <div className="flex items-center gap-2 text-sm">
                   <span className="font-semibold">{methodName}{cardDetail}{cardLastDigits} · {gwName}</span>
                   {gatewayUrl && (
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={gatewayUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Abrir no {gwName} <ExternalLink className="w-3 h-3" />
-                      </a>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground"
-                        disabled={verifyingGateway}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          setVerifyingGateway(true);
-                          try {
-                            const { data, error } = await supabase.functions.invoke('verify-payment', {
-                              body: { orderId: order.id },
-                            });
-                            if (error || !data) {
-                              toast({ title: 'Erro ao verificar', description: error?.message || 'Falha na consulta', variant: 'destructive' });
-                            } else {
-                              const statusMap: Record<string, string> = {
-                                pending: 'Pendente',
-                                approved: 'Aprovado',
-                                expired: 'Expirado',
-                                cancelled: 'Cancelado',
-                                rejected: 'Recusado',
-                                refunded: 'Estornado',
-                              };
-                              const gwStatus = statusMap[data.status] || data.status || 'Desconhecido';
-                              toast({
-                                title: `${gwName}: ${gwStatus}`,
-                                description: data.message || `Status retornado pelo gateway: ${data.status}`,
-                                variant: data.status === 'approved' ? 'default' : 'destructive',
-                              });
-                            }
-                          } catch {
-                            toast({ title: 'Erro', description: 'Falha ao consultar gateway', variant: 'destructive' });
-                          } finally {
-                            setVerifyingGateway(false);
-                          }
-                        }}
-                      >
-                        {verifyingGateway ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Verificar status
-                      </Button>
-                    </div>
+                    <a
+                      href={gatewayUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Abrir no {gwName} <ExternalLink className="w-3 h-3" />
+                    </a>
                   )}
                 </div>
                 {(order.payment_id || order.asaas_payment_id) && (
