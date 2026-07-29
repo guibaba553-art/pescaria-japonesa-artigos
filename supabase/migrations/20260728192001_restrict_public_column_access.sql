@@ -8,7 +8,7 @@ GRANT SELECT (
   sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
   minimum_quantity, sku, sold_by_weight, weight_grams, length_cm, width_cm, height_cm,
   created_at, updated_at, ncm, cest, csosn, cfop, origem, unidade_comercial,
-  include_in_nfe
+  include_in_nfe, min_stock, pdv_only, sale_channel
 ) ON public.products TO anon, authenticated;
 
 -- 2) Restrict SELECT on product_variations — only safe columns for anon/authenticated
@@ -17,7 +17,7 @@ REVOKE SELECT ON public.product_variations FROM anon, authenticated;
 GRANT SELECT (
   id, product_id, name, price, stock, sku, created_at, updated_at, description,
   image_url, weight_grams, length_cm, width_cm, height_cm, min_stock,
-  on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price
+  on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price, sale_channel
 ) ON public.product_variations TO anon, authenticated;
 
 -- 3) RPC for admin/employee to read ALL columns of variations for a specific product
