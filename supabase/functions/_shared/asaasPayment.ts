@@ -326,6 +326,7 @@ export async function processAsaasCreditCardPayment(
   const asaasPaymentId: string = paymentResult.id;
   const paymentStatus: string = paymentResult.status;
   const asaasInstallmentId: string | undefined = paymentResult.installment;
+  const invoiceNumber: string | undefined = paymentResult.invoiceNumber;
 
   const paymentData = {
     id: asaasPaymentId,
@@ -345,6 +346,7 @@ export async function processAsaasCreditCardPayment(
       last_payment_attempt_at: new Date().toISOString(),
     };
     if (asaasInstallmentId) updateData.asaas_installment_id = asaasInstallmentId;
+    if (invoiceNumber) updateData.asaas_invoice_number = invoiceNumber;
 
     await supabase
       .from('orders')
@@ -367,6 +369,7 @@ export async function processAsaasCreditCardPayment(
     last_payment_attempt_at: new Date().toISOString(),
   };
   if (asaasInstallmentId) confirmedUpdate.asaas_installment_id = asaasInstallmentId;
+  if (invoiceNumber) confirmedUpdate.asaas_invoice_number = invoiceNumber;
 
   await supabase
     .from('orders')

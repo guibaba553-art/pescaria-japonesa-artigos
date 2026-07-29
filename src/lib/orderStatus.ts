@@ -194,7 +194,7 @@ export function getCancellationReasonConfig(reason?: string | null): ReasonConfi
   }
 }
 
-export function getGatewayUrl(gateway?: string | null, paymentId?: string | null): string | null {
+export function getGatewayUrl(gateway?: string | null, paymentId?: string | null, invoiceNumber?: string | null): string | null {
   if (!gateway || !paymentId) return null;
   switch (gateway) {
     case 'asaas': {
@@ -202,6 +202,9 @@ export function getGatewayUrl(gateway?: string | null, paymentId?: string | null
       const base = env === 'production'
         ? 'https://www.asaas.com'
         : 'https://sandbox.asaas.com';
+      if (invoiceNumber) {
+        return `${base}/payment/show/${invoiceNumber}`;
+      }
       return `${base}/cobrancas/${paymentId}`;
     }
     case 'mercadopago':

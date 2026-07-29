@@ -270,6 +270,11 @@ describe('getGatewayUrl', () => {
     expect(url).toBe('https://www.asaas.com/cobrancas/pay_123');
   });
 
+  it('returns Asaas payment/show URL when invoiceNumber is provided', () => {
+    const url = getGatewayUrl('asaas', 'pay_123', '865862562');
+    expect(url).toBe('https://www.asaas.com/payment/show/865862562');
+  });
+
   it('returns Mercado Pago URL', () => {
     const url = getGatewayUrl('mercadopago', 'mp_456');
     expect(url).toBe('https://www.mercadopago.com.br/activities/mp_456');

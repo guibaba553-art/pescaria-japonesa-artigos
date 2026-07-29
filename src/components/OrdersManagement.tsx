@@ -183,6 +183,7 @@ interface Order {
   nfe_emissions?: NFEEmission[];
   refunded_amount?: number;
   cancellation_reason?: string;
+  asaas_invoice_number?: string | null;
 }
 
 interface Profile {
@@ -1119,12 +1120,32 @@ function CancelledOrderCard({
   refundHistoryRecords?: any[];
   isLoadingHistory: boolean;
 }) {
+  const [fetchedInvoiceNumber, setFetchedInvoiceNumber] = useState<string | null>(null);
   const category = classifyCancelledOrder(order);
   const reasonCfg = getCancellationReasonConfig(order.cancellation_reason);
-  const gatewayUrl = getGatewayUrl(order.payment_gateway, order.payment_id || order.asaas_payment_id);
+  const invoiceNum = order.asaas_invoice_number || fetchedInvoiceNumber;
+  const gatewayUrl = getGatewayUrl(order.payment_gateway, order.payment_id || order.asaas_payment_id, invoiceNum);
   const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
   const refunded = order.refunded_amount ?? 0;
   const total = Number(order.total_amount);
+
+  useEffect(() => {
+    if (
+      order.payment_gateway === 'asaas' &&
+      (order.payment_id || order.asaas_payment_id) &&
+      !order.asaas_invoice_number &&
+      !fetchedInvoiceNumber
+    ) {
+      const paymentId = order.payment_id || order.asaas_payment_id;
+      supabase.functions.invoke('get-asaas-invoice', { body: { paymentId } })
+        .then(({ data }) => {
+          if (data?.invoiceNumber) {
+            setFetchedInvoiceNumber(String(data.invoiceNumber));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [order.payment_gateway, order.payment_id, order.asaas_payment_id, order.asaas_invoice_number, fetchedInvoiceNumber]);
 
   const gwName = order.payment_gateway === 'asaas' ? 'Asaas' : order.payment_gateway === 'mercadopago' ? 'Mercado Pago' : order.payment_gateway || '';
   const methodName = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.payment_method || 'Online';

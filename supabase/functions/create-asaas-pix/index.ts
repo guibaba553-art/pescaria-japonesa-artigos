@@ -184,6 +184,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     const asaasPaymentId: string = paymentResult.id;
+    const invoiceNumber: string | undefined = paymentResult.invoiceNumber;
 
     // ── Step 2: Fetch QR Code (GET /v3/payments/{id}/pixQrCode) ────────────
     const qrCodeResponse = await fetch(
@@ -217,6 +218,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       .from('orders')
       .update({
         asaas_payment_id: asaasPaymentId,
+        asaas_invoice_number: invoiceNumber || null,
         payment_gateway: 'asaas',
         payment_method: 'pix',
         qr_code: brCode,
