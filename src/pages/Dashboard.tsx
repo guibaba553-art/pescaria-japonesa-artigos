@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
+import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
@@ -230,6 +231,10 @@ export default function Dashboard() {
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
   const [customersList, setCustomersList] = useState<CustomerSales[]>([]);
+  const [siteProfit, setSiteProfit] = useState<number | null>(null);
+  const handleSiteTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setSiteProfit(t.profit);
+  }, []);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -1556,7 +1561,11 @@ export default function Dashboard() {
               dataKey="site"
               orderKey="siteOrders"
               top={topSite}
+              profit={siteProfit}
             />
+            <div className="mt-6">
+              <SiteProfitReport rangeStart={range.from} rangeEnd={range.to} onTotals={handleSiteTotals} />
+            </div>
           </TabsContent>
 
           {/* ============ TRÁFEGO ============ */}
