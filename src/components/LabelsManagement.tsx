@@ -10,6 +10,7 @@ import { Loader2, Printer, Search, Tag, RefreshCw, CheckCheck, ScanLine, Sparkle
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { LabelItem } from '@/utils/labelPdfGenerator';
 import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
+import { fetchLabelPrices, labelPriceKey } from '@/utils/labelPrices';
 import { LabelAssignBarcodeDialog } from './LabelAssignBarcodeDialog';
 import { AllProductsLabels } from './AllProductsLabels';
 
@@ -147,12 +148,22 @@ export function LabelsManagement() {
     // Garante que só itens COM código vão para o PDF e marcação
     const validRows = rowsToPrint.filter((r) => !!codeFor(r));
 
+    let priceMap: Record<string, number> = {};
+    try {
+      priceMap = await fetchLabelPrices(
+        validRows.map((r) => ({ product_id: r.product_id, variation_id: r.variation_id }))
+      );
+    } catch {
+      priceMap = {};
+    }
+
     const items: LabelItem[] = validRows.map((r) => ({
       code: codeFor(r),
       description: r.variation_name
         ? `${r.product_name} - ${r.variation_name}`
         : r.product_name,
       quantity: r.pending_qty,
+      price: priceMap[labelPriceKey(r.product_id, r.variation_id)] ?? null,
     }));
 
     if (items.length === 0) {

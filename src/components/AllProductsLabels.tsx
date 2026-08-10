@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Printer, Search, RefreshCw, Wand2 } from 'lucide-react';
 import type { LabelItem } from '@/utils/labelPdfGenerator';
 import { generateUniqueBarcode } from '@/utils/barcodeGenerator';
+import { fetchLabelPrices, labelPriceKey } from '@/utils/labelPrices';
 
 interface Row {
   id: string; // unique id (product or product:variation)
@@ -299,10 +300,20 @@ export function AllProductsLabels({ storeName }: Props) {
       toast({ title: 'Selecione produtos', description: 'Marque ao menos um item com código.', variant: 'destructive' });
       return;
     }
+    let priceMap: Record<string, number> = {};
+    try {
+      priceMap = await fetchLabelPrices(
+        selectedRows.map((r) => ({ product_id: r.product_id, variation_id: r.variation_id }))
+      );
+    } catch {
+      priceMap = {};
+    }
+
     const items: LabelItem[] = selectedRows.map((r) => ({
       code: r.sku!,
       description: r.name,
       quantity: Math.max(1, qty[r.id] || 1),
+      price: priceMap[labelPriceKey(r.product_id, r.variation_id)] ?? null,
     }));
     try {
       setGenerating(true);
