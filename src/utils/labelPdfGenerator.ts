@@ -168,22 +168,30 @@ export async function generateLabelsPdf(
         doc.setFontSize(5.5);
         const descLines = wrapLines(item.description, 32, 2);
         descLines.forEach((line, i) => {
-          doc.text(line, x + 1.5 + offX, y + 13.5 + offY + i * 2.4);
+          doc.text(line, x + 1.5 + offX, y + 12 + offY + i * 2.2);
         });
 
-        // Preço (crédito) — em destaque, à direita
+        // Rodapé: loja à esquerda, preço à direita (dentro do quadrado)
+        const footerY = y + cellH - 3 + offY;
+
+        let priceW = 0;
         if (item.price != null && !isNaN(Number(item.price))) {
+          const priceText = fmtPrice(Number(item.price));
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.text(fmtPrice(Number(item.price)), x + cellW - 1.5 + offX, y + cellH - 1 + offY, {
-            align: 'right',
-          });
+          doc.setFontSize(7);
+          priceW = doc.getTextWidth(priceText);
+          doc.text(priceText, x + cellW - 1.5 + offX, footerY, { align: 'right' });
           doc.setFont('helvetica', 'normal');
         }
 
-        // Nome da loja (rodapé)
+        // Nome da loja (rodapé) — truncado para não invadir o preço
         doc.setFontSize(4.5);
-        doc.text(storeName, x + 1.5 + offX, y + cellH - 1 + offY);
+        const maxStoreW = cellW - 3 - (priceW ? priceW + 1.5 : 0);
+        let store = storeName;
+        while (store.length > 3 && doc.getTextWidth(store) > maxStoreW) {
+          store = store.slice(0, -1);
+        }
+        doc.text(store, x + 1.5 + offX, footerY);
     }
   }
 
