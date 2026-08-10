@@ -174,19 +174,22 @@ export async function generateLabelsPdf(
         // Rodapé: loja à esquerda, preço à direita (dentro do quadrado)
         const footerY = y + cellH - 3 + offY;
 
+        const rightInset = 5; // recuo maior para não sair da etiqueta
+
         let priceW = 0;
         if (item.price != null && !isNaN(Number(item.price))) {
           const priceText = fmtPrice(Number(item.price));
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(7);
+          doc.setFontSize(6.5);
           priceW = doc.getTextWidth(priceText);
-          doc.text(priceText, x + cellW - 1.5 + offX, footerY, { align: 'right' });
+          doc.text(priceText, x + cellW - rightInset + offX, footerY, { align: 'right' });
           doc.setFont('helvetica', 'normal');
         }
 
         // Nome da loja (rodapé) — truncado para não invadir o preço
         doc.setFontSize(4.5);
-        const maxStoreW = cellW - 3 - (priceW ? priceW + 1.5 : 0);
+        const maxStoreW = cellW - 1.5 - rightInset - (priceW ? priceW + 1.5 : 0);
+
         let store = storeName;
         while (store.length > 3 && doc.getTextWidth(store) > maxStoreW) {
           store = store.slice(0, -1);
