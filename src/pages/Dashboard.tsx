@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
+import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
@@ -230,6 +231,10 @@ export default function Dashboard() {
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
   const [customersList, setCustomersList] = useState<CustomerSales[]>([]);
+  const [siteProfit, setSiteProfit] = useState<number | null>(null);
+  const handleSiteTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setSiteProfit(t.profit);
+  }, []);
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -911,10 +916,11 @@ export default function Dashboard() {
   };
 
   const ChannelSection = ({
-    title, icon, stats, color, dataKey, orderKey, top,
+    title, icon, stats, color, dataKey, orderKey, top, profit,
   }: {
     title: string; icon: React.ReactNode; stats: ChannelStats; color: string;
     dataKey: 'pdv' | 'site'; orderKey: 'pdvOrders' | 'siteOrders'; top: ProductSales[];
+    profit?: number | null;
   }) => {
     return (
       <div className="space-y-4">
@@ -923,13 +929,21 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold">{title}</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${profit != null ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           <StatCard
             title="Receita"
             value={formatBRL(stats.totalRevenue)}
             growth={stats.revenueGrowth}
             icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
           />
+          {profit != null && (
+            <StatCard
+              title="Lucro"
+              value={formatBRL(profit)}
+              hint={stats.totalRevenue > 0 ? `Margem ${(profit / stats.totalRevenue * 100).toFixed(1)}%` : undefined}
+              icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+            />
+          )}
           <StatCard
             title="Pedidos"
             value={String(stats.totalOrders)}
@@ -942,6 +956,7 @@ export default function Dashboard() {
             icon={<Target className="h-4 w-4 text-muted-foreground" />}
           />
         </div>
+
 
         <Tabs defaultValue="revenue" className="space-y-4">
           <TabsList>
@@ -1546,7 +1561,11 @@ export default function Dashboard() {
               dataKey="site"
               orderKey="siteOrders"
               top={topSite}
+              profit={siteProfit}
             />
+            <div className="mt-6">
+              <SiteProfitReport rangeStart={range.from} rangeEnd={range.to} onTotals={handleSiteTotals} />
+            </div>
           </TabsContent>
 
           {/* ============ TRÁFEGO ============ */}
