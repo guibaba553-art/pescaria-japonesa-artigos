@@ -39,11 +39,16 @@ export async function validateSiteCart(
 
   for (const item of items) {
     if (item.variationId) {
-      const { data: variation } = await supabase
+      const { data: variation, error: variationError } = await supabase
         .from('product_variations')
         .select('id, price, stock, name, product_id, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price')
         .eq('id', item.variationId)
         .maybeSingle();
+
+      if (variationError) {
+        // Falha de rede/permissão — não mexe no carrinho.
+        continue;
+      }
 
       if (!variation) {
         issues.push({
@@ -56,11 +61,15 @@ export async function validateSiteCart(
         continue;
       }
 
-      const { data: product } = await supabase
+      const { data: product, error: productError } = await supabase
         .from('products')
         .select('id, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, price, min_sale_price')
         .eq('id', (variation as any).product_id)
         .maybeSingle();
+
+      if (productError) {
+        continue;
+      }
 
       if (!product) {
         issues.push({
@@ -94,11 +103,15 @@ export async function validateSiteCart(
         });
       }
     } else {
-      const { data: product } = await supabase
+      const { data: product, error: productError } = await supabase
         .from('products')
         .select('id, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, stock')
         .eq('id', item.id)
         .maybeSingle();
+
+      if (productError) {
+        continue;
+      }
 
       if (!product) {
         issues.push({
