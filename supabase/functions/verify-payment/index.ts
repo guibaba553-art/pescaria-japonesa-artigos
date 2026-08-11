@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { handlePaymentConfirmed } from '../_shared/stockHandler.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -220,6 +221,20 @@ serve(async (req) => {
       }
 
       console.log('Pedido atualizado com sucesso');
+
+      // Baixa de estoque (libera reserva + subtrai estoque real). Idempotente.
+      try {
+        await supabase
+          .from('orders')
+          .update({ payment_received_at: new Date().toISOString() })
+          .eq('id', order.id)
+          .is('payment_received_at', null);
+        await handlePaymentConfirmed(supabase, supabaseUrl, supabaseServiceKey, order.id);
+      } catch (stockErr) {
+        console.error('[verify-payment] Erro na baixa de estoque:', stockErr);
+      }
+
+
 
 
       return new Response(
