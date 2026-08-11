@@ -222,6 +222,20 @@ serve(async (req) => {
 
       console.log('Pedido atualizado com sucesso');
 
+      // Baixa de estoque (libera reserva + subtrai estoque real). Idempotente.
+      try {
+        await supabase
+          .from('orders')
+          .update({ payment_received_at: new Date().toISOString() })
+          .eq('id', order.id)
+          .is('payment_received_at', null);
+        await handlePaymentConfirmed(supabase, supabaseUrl, supabaseServiceKey, order.id);
+      } catch (stockErr) {
+        console.error('[verify-payment] Erro na baixa de estoque:', stockErr);
+      }
+
+
+
 
       return new Response(
         JSON.stringify({ 
