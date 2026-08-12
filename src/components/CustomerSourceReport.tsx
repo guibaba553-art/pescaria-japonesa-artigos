@@ -8,7 +8,6 @@ const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444
 
 interface SourceRow {
   source: string;
-  sessions: number;
   customers: number;
   orders: number;
   revenue: number;
@@ -55,68 +54,33 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
       const sinceIso = start.toISOString();
       const untilIso = end.toISOString();
 
-      // Visitas paginadas (limite padrão de 1.000 linhas do PostgREST)
-      const PAGE_SIZE = 1000;
-      let visits: any[] = [];
-      let page = 0;
-      let hasMore = true;
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('site_visits')
-          .select('referrer, session_id, user_id, created_at')
-          .gte('created_at', sinceIso)
-          .lte('created_at', untilIso)
-          .order('created_at', { ascending: true })
-          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-        if (error) break;
-        const list = data || [];
-        visits = visits.concat(list);
-        hasMore = list.length === PAGE_SIZE;
-        page++;
-      }
-
-      // Primeira fonte de cada sessão
-      const sessionSource = new Map<string, string>();
-      for (const v of visits) {
-        const sid = v.session_id || `anon-${v.created_at}`;
-        if (!sessionSource.has(sid)) sessionSource.set(sid, classifySource(v.referrer));
-      }
-
-      // Todas as fontes vistas por cada usuário identificado + última fonte (last touch)
-      const userSources = new Map<string, Set<string>>();
-      const userLastSource = new Map<string, string>();
-      for (const v of visits) {
-        if (!v.user_id) continue;
-        const sid = v.session_id || '';
-        const src = sessionSource.get(sid) ?? classifySource(v.referrer);
-        if (!userSources.has(v.user_id)) userSources.set(v.user_id, new Set());
-        userSources.get(v.user_id)!.add(src);
-        userLastSource.set(v.user_id, src); // visitas vêm ordenadas por data asc
-      }
-
-      // Pedidos do site no período
+      // Apenas pedidos concluídos do site no período
       const { data: orders } = await supabase
         .from('orders')
-        .select('user_id, total_amount, status, source')
+        .select('user_id, total_amount, created_at')
         .eq('source', 'site')
         .gte('created_at', sinceIso)
         .lte('created_at', untilIso)
         .not('status', 'in', '(cancelado,aguardando_pagamento)');
 
-      // Para compradores sem visita no período, buscar a fonte histórica
-      const missingBuyers = Array.from(
-        new Set((orders || []).map((o: any) => o.user_id).filter((id: string | null) => id && !userLastSource.has(id))),
+      const buyerIds = Array.from(
+        new Set((orders || []).map((o: any) => o.user_id).filter(Boolean)),
       ) as string[];
-      if (missingBuyers.length > 0) {
-        const { data: histVisits } = await supabase
+
+      // Histórico de visitas somente dos compradores (atribuição last-touch)
+      const buyerSource = new Map<string, string>();
+      const CHUNK = 50;
+      for (let i = 0; i < buyerIds.length; i += CHUNK) {
+        const chunk = buyerIds.slice(i, i + CHUNK);
+        const { data: visits } = await supabase
           .from('site_visits')
           .select('referrer, user_id, created_at')
-          .in('user_id', missingBuyers)
+          .in('user_id', chunk)
           .order('created_at', { ascending: true })
           .limit(5000);
-        for (const v of histVisits || []) {
+        for (const v of visits || []) {
           if (!v.user_id) continue;
-          userLastSource.set(v.user_id, classifySource(v.referrer));
+          buyerSource.set(v.user_id, classifySource(v.referrer));
         }
       }
 
@@ -124,32 +88,32 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
       const get = (source: string) => {
         let r = map.get(source);
         if (!r) {
-          r = { source, sessions: 0, customers: 0, orders: 0, revenue: 0 };
+          r = { source, customers: 0, orders: 0, revenue: 0 };
           map.set(source, r);
         }
         return r;
       };
 
-      for (const source of sessionSource.values()) get(source).sessions += 1;
-      for (const sources of userSources.values()) {
-        for (const source of sources) get(source).customers += 1;
-      }
+      const countedBuyers = new Set<string>();
       for (const o of orders || []) {
-        const source = (o.user_id && userLastSource.get(o.user_id)) || 'Não identificado';
+        const source = (o.user_id && buyerSource.get(o.user_id)) || 'Não identificado';
         const r = get(source);
         r.orders += 1;
         r.revenue += Number(o.total_amount || 0);
+        if (o.user_id && !countedBuyers.has(o.user_id)) {
+          countedBuyers.add(o.user_id);
+          r.customers += 1;
+        }
       }
 
-
-      setRows(Array.from(map.values()).sort((a, b) => b.sessions - a.sessions || b.customers - a.customers));
+      setRows(Array.from(map.values()).sort((a, b) => b.revenue - a.revenue || b.orders - a.orders));
       setLoading(false);
     };
     load();
   }, [startTime, endTime]);
 
-  const totalSessions = rows.reduce((s, r) => s + r.sessions, 0);
-  const pieData = rows.filter((r) => r.sessions > 0).slice(0, 8).map((r) => ({ name: r.source, value: r.sessions }));
+  const totalOrders = rows.reduce((s, r) => s + r.orders, 0);
+  const pieData = rows.filter((r) => r.orders > 0).slice(0, 8).map((r) => ({ name: r.source, value: r.orders }));
 
   if (loading) {
     return (
@@ -163,7 +127,7 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          Nenhuma visita registrada no período.
+          Nenhuma venda registrada no período.
         </CardContent>
       </Card>
     );
@@ -174,7 +138,7 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
       <Card>
         <CardHeader>
           <CardTitle>Distribuição por fonte</CardTitle>
-          <CardDescription>De onde vêm as sessões do site</CardDescription>
+          <CardDescription>De onde vieram os clientes que compraram</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -194,11 +158,11 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
       <Card>
         <CardHeader>
           <CardTitle>Detalhes por fonte</CardTitle>
-          <CardDescription>Sessões, clientes identificados e vendas atribuídas</CardDescription>
+          <CardDescription>Clientes compradores, pedidos e receita atribuída</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {rows.map((r, i) => {
-            const share = totalSessions > 0 ? (r.sessions / totalSessions) * 100 : 0;
+            const share = totalOrders > 0 ? (r.orders / totalOrders) * 100 : 0;
             return (
               <div key={r.source} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3 text-sm">
@@ -207,14 +171,14 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
                     <span className="font-medium truncate">{r.source}</span>
                   </div>
                   <span className="shrink-0 tabular-nums text-muted-foreground">
-                    {r.sessions} sessões · {share.toFixed(1)}%
+                    {r.orders} pedidos · {share.toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(share, 100)}%` }} />
                 </div>
                 <div className="text-xs text-muted-foreground tabular-nums">
-                  {r.customers} clientes · {r.orders} pedidos · {formatBRL(r.revenue)}
+                  {r.customers} clientes · {formatBRL(r.revenue)}
                 </div>
               </div>
             );
