@@ -82,14 +82,16 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
         if (!sessionSource.has(sid)) sessionSource.set(sid, classifySource(v.referrer));
       }
 
-      // Fonte de cada cliente identificado (primeira visita logada)
-      const userSource = new Map<string, string>();
+      // Todas as fontes vistas por cada usuário identificado + última fonte (last touch)
+      const userSources = new Map<string, Set<string>>();
+      const userLastSource = new Map<string, string>();
       for (const v of visits) {
         if (!v.user_id) continue;
-        if (!userSource.has(v.user_id)) {
-          const sid = v.session_id || '';
-          userSource.set(v.user_id, sessionSource.get(sid) ?? classifySource(v.referrer));
-        }
+        const sid = v.session_id || '';
+        const src = sessionSource.get(sid) ?? classifySource(v.referrer);
+        if (!userSources.has(v.user_id)) userSources.set(v.user_id, new Set());
+        userSources.get(v.user_id)!.add(src);
+        userLastSource.set(v.user_id, src); // visitas vêm ordenadas por data asc
       }
 
       // Pedidos do site no período
@@ -100,6 +102,23 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
         .gte('created_at', sinceIso)
         .lte('created_at', untilIso)
         .not('status', 'in', '(cancelado,aguardando_pagamento)');
+
+      // Para compradores sem visita no período, buscar a fonte histórica
+      const missingBuyers = Array.from(
+        new Set((orders || []).map((o: any) => o.user_id).filter((id: string | null) => id && !userLastSource.has(id))),
+      ) as string[];
+      if (missingBuyers.length > 0) {
+        const { data: histVisits } = await supabase
+          .from('site_visits')
+          .select('referrer, user_id, created_at')
+          .in('user_id', missingBuyers)
+          .order('created_at', { ascending: true })
+          .limit(5000);
+        for (const v of histVisits || []) {
+          if (!v.user_id) continue;
+          userLastSource.set(v.user_id, classifySource(v.referrer));
+        }
+      }
 
       const map = new Map<string, SourceRow>();
       const get = (source: string) => {
@@ -112,13 +131,16 @@ export function CustomerSourceReport({ rangeStart, rangeEnd }: { rangeStart?: Da
       };
 
       for (const source of sessionSource.values()) get(source).sessions += 1;
-      for (const source of userSource.values()) get(source).customers += 1;
+      for (const sources of userSources.values()) {
+        for (const source of sources) get(source).customers += 1;
+      }
       for (const o of orders || []) {
-        const source = (o.user_id && userSource.get(o.user_id)) || 'Não identificado';
+        const source = (o.user_id && userLastSource.get(o.user_id)) || 'Não identificado';
         const r = get(source);
         r.orders += 1;
         r.revenue += Number(o.total_amount || 0);
       }
+
 
       setRows(Array.from(map.values()).sort((a, b) => b.sessions - a.sessions || b.customers - a.customers));
       setLoading(false);
