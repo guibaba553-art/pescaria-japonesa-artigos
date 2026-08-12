@@ -162,12 +162,19 @@ export function NFEList({ settings, onRefresh }: NFEListProps) {
 
   const loadNFEs = async (attempt = 0) => {
     try {
-      const { data, error } = await supabase
-        .from('nfe_emissions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      // Paginação: o backend limita a 1000 linhas por requisição
+      const PAGE = 1000;
+      const data: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error } = await supabase
+          .from('nfe_emissions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        data.push(...(page || []));
+        if (!page || page.length < PAGE) break;
+      }
 
       // Enriquece com dados do cliente através do pedido (busca em lotes)
       const raw = (data || []) as any[];
