@@ -1017,6 +1017,12 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {dataKey === 'site' && (
+            <TabsContent value="source">
+              <CustomerSourceReport rangeStart={range.from} rangeEnd={range.to} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     );
