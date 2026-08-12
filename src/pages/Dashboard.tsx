@@ -21,6 +21,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CustomerSourceReport } from '@/components/CustomerSourceReport';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { format, startOfDay, endOfDay } from 'date-fns';
