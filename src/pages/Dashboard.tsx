@@ -21,6 +21,7 @@ import {
   CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CustomerSourceReport } from '@/components/CustomerSourceReport';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { format, startOfDay, endOfDay } from 'date-fns';
@@ -963,6 +964,7 @@ export default function Dashboard() {
             <TabsTrigger value="revenue">Receita</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="products">Produtos</TabsTrigger>
+            {dataKey === 'site' && <TabsTrigger value="source">Fonte</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="revenue">
@@ -1016,6 +1018,12 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {dataKey === 'site' && (
+            <TabsContent value="source">
+              <CustomerSourceReport rangeStart={range.from} rangeEnd={range.to} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     );
