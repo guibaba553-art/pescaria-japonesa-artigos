@@ -963,6 +963,7 @@ export default function Dashboard() {
             <TabsTrigger value="revenue">Receita</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
             <TabsTrigger value="products">Produtos</TabsTrigger>
+            {dataKey === 'site' && <TabsTrigger value="source">Fonte</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="revenue">
