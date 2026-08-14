@@ -16,8 +16,9 @@ const corsHeaders = {
  * persistido — o webhook não casava o pagamento e o pedido ficava sem ID.
  *
  * Esta função:
- *   1. lista pedidos sem payment_id e sem asaas_payment_id, em QUALQUER status
- *      (aguardando_pagamento, cancelado, etc.), a partir de uma data de corte;
+ *   1. lista pedidos do SITE (source='site') sem payment_id e sem asaas_payment_id,
+ *      em QUALQUER status (aguardando_pagamento, cancelado, etc.), a partir de uma
+ *      data de corte — pedidos PDV são excluídos (não passam pelo Asaas);
  *   2. agrupa por customer Asaas + valor (pedidos repetidos ficam no mesmo grupo);
  *   3. consulta GET /v3/payments?customer=... no Asaas filtrando por data (com paginação);
  *   4. casa por valor (total_amount) e faz pareamento 1:1 em ordem cronológica —
@@ -150,12 +151,15 @@ export async function handleRequest(req: Request): Promise<Response> {
       "User-Agent": "JapasPesca/1.0.0",
     };
 
-    // ── 1. Pedidos sem ID de pagamento (qualquer status) ─────────────────
+    // ── 1. Pedidos do site sem ID de pagamento (qualquer status) ─────────
+    // Apenas pedidos do SITE passam pelo Asaas. Pedidos PDV (source='pdv') são
+    // vendas na loja e legitimamente não têm ID de pagamento — são excluídos.
     // Só concilia o ID — NÃO muda status nem baixa estoque. O status fica como
     // está (aguardando_pagamento, cancelado, etc.); a decisão de restaurar é manual.
     const { data: orphanOrders, error: fetchError } = await supabase
       .from("orders")
       .select("id, user_id, total_amount, created_at, delivery_type, shipping_service_id")
+      .eq("source", "site")
       .is("payment_id", null)
       .is("asaas_payment_id", null)
       .gte("created_at", `${cutoff}T00:00:00Z`);
