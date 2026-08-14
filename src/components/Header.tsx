@@ -88,7 +88,8 @@ export function Header() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const results = await searchProductsSmart(supabase, query, 6);
+        const results = await searchProductsSmart(supabase, query, 8, { expandVariations: true });
+
         if (!cancelled) setSuggestions(results as Suggestion[]);
       } catch {
         if (!cancelled) setSuggestions([]);
