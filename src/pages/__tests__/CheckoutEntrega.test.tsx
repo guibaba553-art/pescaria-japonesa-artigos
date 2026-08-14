@@ -24,12 +24,14 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+let mockCartTotal = 100;
+
 vi.mock('@/hooks/useCart', () => ({
   useCart: () => ({
     items: [
-      { cartItemKey: 'item-1', id: 'prod-1', name: 'Produto Teste', price: 100, quantity: 1, image_url: null },
+      { cartItemKey: 'item-1', id: 'prod-1', name: 'Produto Teste', price: mockCartTotal, quantity: 1, image_url: null },
     ],
-    total: 100,
+    total: mockCartTotal,
     itemCount: 1,
     clearCart: vi.fn(),
     addItem: vi.fn(),
@@ -43,6 +45,8 @@ vi.mock('@/hooks/useCart', () => ({
 // Mock do supabase
 const mockFrom = vi.fn();
 const mockRpc = vi.fn();
+let currentFromTable = '';
+let capturedOrdersInsert: any = null;
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -88,24 +92,32 @@ vi.mock('@/config/constants', () => ({
 }));
 
 // Mock do CreditCardForm para simplificar o teste
-vi.mock('@/components/CreditCardForm', () => ({
-  CreditCardForm: vi.fn().mockImplementation(({ onInstallmentChange, loading, error }: any) => (
-    <div data-testid="credit-card-form">
-      <span>Cartão de Crédito (mock)</span>
-      <button
-        data-testid="mock-submit"
-        onClick={() => {
-          onInstallmentChange?.(1);
-        }}
-        disabled={loading}
-      >
-        Pagar
-      </button>
-      {error && <span data-testid="card-error">{error}</span>}
-    </div>
-  )),
-  CreditCardFormHandle: {},
-}));
+vi.mock('@/components/CreditCardForm', async () => {
+  const React = await vi.importActual<typeof import('react')>('react');
+  const mockCardData = {
+    installmentCount: 1,
+    saveCard: false,
+    creditCard: { number: '4111111111111111', holderName: 'Teste', expiry: '12/30', cvv: '123' },
+    creditCardHolderInfo: { name: 'Teste', cpfCnpj: '12345678901', email: 'teste@test.com', phone: '11999999999' },
+  };
+  const CreditCardForm = React.forwardRef((props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({ getData: () => mockCardData, validate: () => [] }));
+    return (
+      <div data-testid="credit-card-form">
+        <span>Cartão de Crédito (mock)</span>
+        <button
+          data-testid="mock-submit"
+          onClick={() => props.onInstallmentChange?.(1)}
+          disabled={props.loading}
+        >
+          Pagar
+        </button>
+        {props.error && <span data-testid="card-error">{props.error}</span>}
+      </div>
+    );
+  });
+  return { CreditCardForm, CreditCardFormHandle: {} };
+});
 
 vi.mock('@/components/PixPaymentDialog', () => ({
   PixPaymentDialog: vi.fn().mockImplementation(({ open, onOpenChange, gateway, orderId }: any) =>
@@ -125,6 +137,7 @@ vi.mock('@/utils/siteCartValidation', () => ({
 }));
 
 import CheckoutEntrega from '@/pages/CheckoutEntrega';
+import { supabase } from '@/integrations/supabase/client';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -144,6 +157,7 @@ beforeEach(() => {
     maybeSingle: vi.fn().mockResolvedValue(mockResolveValue),
     gte: vi.fn().mockReturnThis(),
     lte: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
@@ -153,10 +167,26 @@ beforeEach(() => {
   const thenable = Promise.resolve(mockResolveValue);
   mockChain.then = thenable.then.bind(thenable);
   mockChain.catch = thenable.catch.bind(thenable);
-  mockFrom.mockReturnValue(mockChain);
+  mockFrom.mockImplementation((table: string) => {
+    currentFromTable = table;
+    return mockChain;
+  });
+  mockChain.insert = vi.fn().mockImplementation((payload: any) => {
+    if (currentFromTable === 'orders') capturedOrdersInsert = payload;
+    return mockChain;
+  });
+  mockChain.single = vi.fn().mockResolvedValue({ data: { id: 'order-1' }, error: null });
+  capturedOrdersInsert = null;
+  mockCartTotal = 100;
 
   // Default rpc mock — stock disponível, sem erros
   mockRpc.mockResolvedValue({ data: 999, error: null });
+
+  // Default edge function mock — PIX criado com sucesso
+  (supabase.functions.invoke as any).mockResolvedValue({
+    data: { success: true, data: { brCode: '000201...', brCodeBase64: 'iVBOR...', expiresAt: new Date().toISOString() } },
+    error: null,
+  });
 
   // Validação do carrinho sempre válida para os testes de fluxo
   mockValidateSiteCart.mockResolvedValue({ valid: true, issues: [], removeKeys: [] });
@@ -256,5 +286,77 @@ describe('CheckoutEntrega — gateway routing PIX', () => {
     // Para validar fallback completo: rodar E2E com Playwright simulando falha
     // de gateway via intercepção de rede.
     expect(true).toBe(true); // placeholder até termos E2E
+  });
+});
+
+describe('CheckoutEntrega — grava forma de pagamento na criação do pedido', () => {
+  it('PIX < R$ 201: grava payment_method=pix e payment_gateway=mercadopago', async () => {
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-dialog')).toBeInTheDocument();
+    });
+
+    expect(capturedOrdersInsert).toMatchObject({
+      payment_method: 'pix',
+      payment_gateway: 'mercadopago',
+    });
+  });
+
+  it('PIX >= R$ 201: grava payment_method=pix e payment_gateway=asaas', async () => {
+    mockCartTotal = 300;
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-dialog')).toBeInTheDocument();
+    });
+
+    expect(capturedOrdersInsert).toMatchObject({
+      payment_method: 'pix',
+      payment_gateway: 'asaas',
+    });
+  });
+
+  it('Cartão: grava payment_method=credit_card e payment_gateway=asaas', async () => {
+    (supabase.functions.invoke as any).mockResolvedValue({
+      data: { success: true, paymentStatus: 'PENDING' },
+      error: null,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ip: '127.0.0.1' }) }));
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(capturedOrdersInsert).not.toBeNull();
+    });
+
+    expect(capturedOrdersInsert).toMatchObject({
+      payment_method: 'credit_card',
+      payment_gateway: 'asaas',
+    });
   });
 });
