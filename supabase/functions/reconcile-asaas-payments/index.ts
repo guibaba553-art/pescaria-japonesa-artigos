@@ -218,9 +218,47 @@ export async function handleRequest(req: Request): Promise<Response> {
         continue;
       }
 
-      // Cobranças candidatas: mesmo valor, ordenadas por data de criação.
-      const valuePayments = payments
-        .filter((p) => Math.abs(Number(p.value) - totalAmount) < 0.01)
+      // ── Cobranças candidatas (valor efetivo) ────────────────────────────
+      // Cobranças parceladas têm o `value` da PARCELA (não o total do pedido).
+      // O total real fica em GET /v3/installments/{id} -> `value`. Para essas,
+      // busca o total e usa como valor efetivo de match. Várias parcelas do
+      // mesmo parcelamento contam como UMA cobrança (dedupe por installment).
+      const installmentIds = new Set<string>();
+      for (const p of payments) {
+        if (typeof p.installment === "string" && p.installment) {
+          installmentIds.add(p.installment as string);
+        }
+      }
+      const installmentTotals = new Map<string, number>();
+      for (const iid of installmentIds) {
+        try {
+          const instResp = await fetch(`${asaasBaseUrl}/v3/installments/${iid}`, { headers: asaasHeaders });
+          if (instResp.ok) {
+            const instData = await instResp.json();
+            installmentTotals.set(iid, Number(instData?.value) || 0);
+          }
+        } catch {
+          /* parcelamento indisponível — mantém 0 e não casa */
+        }
+      }
+
+      const seenInstallments = new Set<string>();
+      const effectivePayments: Array<Record<string, unknown>> = [];
+      for (const p of payments) {
+        const iid = p.installment as string | undefined;
+        if (iid) {
+          if (seenInstallments.has(iid)) continue; // mesma cobrança parcelada
+          seenInstallments.add(iid);
+          const total = installmentTotals.get(iid) ?? 0;
+          effectivePayments.push({ ...p, _effectiveValue: total });
+        } else {
+          effectivePayments.push({ ...p, _effectiveValue: Number(p.value) });
+        }
+      }
+
+      // Mesmo valor efetivo, ordenadas por data de criação.
+      const valuePayments = effectivePayments
+        .filter((p) => Math.abs(Number(p._effectiveValue) - totalAmount) < 0.01)
         .sort((a, b) => String(a.dateCreated).localeCompare(String(b.dateCreated)));
 
       // Pedidos ordenados por data de criação (mais antigo primeiro).
@@ -242,9 +280,10 @@ export async function handleRequest(req: Request): Promise<Response> {
               orderId,
               status: "no_match",
               detail: "nenhuma cobrança com este valor na janela",
-              paymentsFound: payments.map((p) => ({
+              paymentsFound: effectivePayments.map((p) => ({
                 id: p.id,
                 value: p.value,
+                effectiveValue: p._effectiveValue,
                 status: p.status,
                 billingType: p.billingType,
                 dateCreated: p.dateCreated,
@@ -291,23 +330,39 @@ export async function handleRequest(req: Request): Promise<Response> {
         // ── 4. backfill — apenas o ID de pagamento ────────────────────────
         // NÃO altera status nem baixa estoque: pedidos cancelados/pagos ficam
         // como estão; a decisão de restaurar é manual.
-        const backfill: Record<string, unknown> = {
-          asaas_payment_id: paymentId,
-          payment_gateway: "asaas",
-          payment_method: paymentMethod,
-        };
-        if (invoiceNumber) backfill.asaas_invoice_number = invoiceNumber;
-        if (installmentId) backfill.asaas_installment_id = installmentId;
-
+        // asaas_payment_id em UPDATE próprio, isolado de colunas opcionais
+        // (asaas_invoice_number / asaas_installment_id) que podem não existir
+        // no banco — o ID precisa ser gravado mesmo se uma coluna opcional falhar.
         const { error: updateErr } = await supabase
           .from("orders")
-          .update(backfill)
+          .update({
+            asaas_payment_id: paymentId,
+            payment_gateway: "asaas",
+            payment_method: paymentMethod,
+          })
           .eq("id", orderId)
           .is("asaas_payment_id", null);
 
         if (updateErr) {
           report.push({ orderId, status: "update_error", detail: updateErr.message, paymentId });
           continue;
+        }
+
+        // Colunas opcionais — falha aqui não impede a gravação do payment_id.
+        const optionalData: Record<string, unknown> = {};
+        if (invoiceNumber) optionalData.asaas_invoice_number = invoiceNumber;
+        if (installmentId) optionalData.asaas_installment_id = installmentId;
+        if (Object.keys(optionalData).length > 0) {
+          const { error: optionalErr } = await supabase
+            .from("orders")
+            .update(optionalData)
+            .eq("id", orderId);
+          if (optionalErr) {
+            console.error(
+              `[reconcile-asaas-payments] colunas opcionais para ${orderId} (não-bloqueante):`,
+              optionalErr.message,
+            );
+          }
         }
 
         applied += 1;
