@@ -3,7 +3,7 @@ Deno.env.set("DENO_TEST", "1");
 import { assertEquals, assert } from "jsr:@std/assert@^1";
 import { handleRequest } from "../reconcile-asaas-payments/index.ts";
 import { interceptFetch, setupEnv, mockAsaas } from "./mock_gateways.ts";
-import { SUPABASE_URL, ANON_KEY, SERVICE_KEY, ensureEmployeeUser } from "./helpers.ts";
+import { SUPABASE_URL, ANON_KEY, SERVICE_KEY, ensureEmployeeUser, getJwt, TEST_USER_ID } from "./helpers.ts";
 
 setupEnv();
 interceptFetch();
@@ -61,6 +61,38 @@ async function createFixture(customerId: string | null, total = 49.90) {
     throw new Error("createFixture: pedido criado sem id na resposta");
   }
   return { userId, orderId };
+}
+
+// Cria um pedido PDV (source='pdv', status='entregado') — não deve ser
+// reconciliado porque vendas na loja não passam pelo Asaas.
+// Usa o JWT do admin (role admin) porque o trigger exige auth.uid() com role.
+async function createPdvFixture(total = 53.58) {
+  const jwt = await getJwt();
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}`, "Content-Type": "application/json", "Prefer": "return=representation" };
+  const orderResp = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+    method: "POST",
+    headers: svc,
+    body: JSON.stringify({
+      user_id: TEST_USER_ID,
+      total_amount: total,
+      shipping_cost: 0,
+      shipping_address: "Loja",
+      shipping_cep: "78556100",
+      status: "entregado",
+      delivery_type: "pickup",
+      created_at: "2026-08-12T12:00:00Z",
+      source: "pdv",
+    }),
+  });
+  if (!orderResp.ok) {
+    throw new Error(`createPdvFixture: falha ao criar pedido PDV (HTTP ${orderResp.status}): ${await orderResp.text()}`);
+  }
+  const orderData = await orderResp.json();
+  const orderId = (orderData as any)[0]?.id ?? (orderData as any).id;
+  if (!orderId) {
+    throw new Error("createPdvFixture: pedido PDV criado sem id na resposta");
+  }
+  return orderId;
 }
 
 async function cleanup(userId: string, orderId: string) {
@@ -131,6 +163,20 @@ Deno.test("sem customer Asaas → no_customer", async () => {
 
   assert(entry, "deve ter registro para o pedido");
   assertEquals(entry.status, "no_customer");
+});
+
+Deno.test("pedido PDV (source=pdv) NÃO é reconciliado", async () => {
+  const orderId = await createPdvFixture();
+
+  const r = await call({ dryRun: true, cutoff: "2026-08-11" });
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
+  const d = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, { method: "DELETE", headers: svc });
+  await d.text();
+
+  assertEquals(entry, undefined, "pedido PDV não deve aparecer na conciliação");
 });
 
 Deno.test("aplica backfill do asaas_payment_id (dryRun=false)", async () => {
