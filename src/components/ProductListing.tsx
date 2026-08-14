@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SlidersHorizontal, Filter } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
+import { fuzzySearch } from '@/lib/fuzzySearch';
+
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
