@@ -192,3 +192,94 @@ Deno.test("cobrança RECEIVED transiciona pedido para em_preparo", async () => {
   assertEquals(rows[0]?.asaas_payment_id, "pay_received_1");
   assertEquals(rows[0]?.status, "em_preparo");
 });
+
+Deno.test("pedidos repetidos (mesmo valor) são pareados 1:1 com cobranças distintas", async () => {
+  // Cria dois pedidos do mesmo usuário, mesmo valor, horários próximos
+  const email = `reconciler_repeat_${crypto.randomUUID().slice(0, 8)}@test.com`;
+  const { id: userId } = await ensureEmployeeUser(email, "testpass123", {});
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" };
+
+  const p = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+    method: "PATCH",
+    headers: svc,
+    body: JSON.stringify({ asaas_customer_id: "cus_repeat_1" }),
+  });
+  await p.text();
+
+  const baseOrder = {
+    user_id: userId,
+    total_amount: 49.90,
+    shipping_cost: 0,
+    shipping_address: "Rua Teste, 123",
+    shipping_cep: "12345678",
+    status: "aguardando_pagamento",
+    delivery_type: "pickup",
+    source: "site",
+  };
+  const orderIds: string[] = [];
+  for (const createdAt of ["2026-08-12T10:00:00Z", "2026-08-12T11:00:00Z"]) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+      method: "POST",
+      headers: svc,
+      body: JSON.stringify({ ...baseOrder, created_at: createdAt }),
+    });
+    if (!r.ok) {
+      throw new Error(`falha ao criar pedido repetido: ${await r.text()}`);
+    }
+    const data = await r.json();
+    orderIds.push((data as any)[0].id);
+  }
+
+  // Duas cobranças PENDING com o mesmo valor, criadas em ordem cronológica
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return {
+        status: 200,
+        body: {
+          object: "list", hasMore: false, totalCount: 2, data: [
+            { id: "pay_repeat_1", status: "PENDING", value: 49.90, billingType: "PIX", dateCreated: "2026-08-12 10:05:00" },
+            { id: "pay_repeat_2", status: "PENDING", value: 49.90, billingType: "PIX", dateCreated: "2026-08-12 11:05:00" },
+          ],
+        },
+      };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: false, cutoff: "2026-08-11" });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  const data = await r.json();
+
+  // Cada pedido deve receber uma cobrança DISTINTA
+  const entries = orderIds.map((oid) => data.report.find((x: any) => x.orderId === oid));
+  assert(entries.every((e) => e && e.status === "applied"), "ambos os pedidos devem ser aplicados");
+  const paymentIds = entries.map((e: any) => e.paymentId);
+  assertEquals(new Set(paymentIds).size, 2, "cada pedido deve ter um payment_id distinto");
+
+  // Ordem cronológica: pedido mais antigo ↔ cobrança mais antiga
+  assertEquals(entries[0].paymentId, "pay_repeat_1");
+  assertEquals(entries[1].paymentId, "pay_repeat_2");
+
+  const svcQ = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
+  const q = await fetch(
+    `${SUPABASE_URL}/rest/v1/orders?id=in.(${orderIds.join(",")})&select=id,asaas_payment_id`,
+    { headers: svcQ },
+  );
+  const rows = await q.json();
+  const byId = new Map((rows as any[]).map((row) => [row.id, row.asaas_payment_id]));
+  assertEquals(byId.get(orderIds[0]), "pay_repeat_1");
+  assertEquals(byId.get(orderIds[1]), "pay_repeat_2");
+
+  for (const oid of orderIds) {
+    const d = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${oid}`, { method: "DELETE", headers: svcQ });
+    await d.text();
+  }
+  try {
+    const u = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: svcQ });
+    await u.text();
+  } catch {
+    /* não-bloqueante */
+  }
+});

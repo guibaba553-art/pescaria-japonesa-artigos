@@ -20,10 +20,11 @@ const corsHeaders = {
  * Esta função:
  *   1. lista pedidos 'aguardando_pagamento' sem payment_id e sem asaas_payment_id
  *      (a partir de uma data de corte);
- *   2. para cada um, busca profiles.asaas_customer_id;
- *   3. consulta GET /v3/payments?customer=... no Asaas filtrando por data;
- *   4. casa por valor (total_amount); se houver mais de uma com o mesmo valor,
- *      marca como 'ambiguous' para revisão manual;
+ *   2. agrupa por customer Asaas + valor (pedidos repetidos ficam no mesmo grupo);
+ *   3. consulta GET /v3/payments?customer=... no Asaas filtrando por data (com paginação);
+ *   4. casa por valor (total_amount) e faz pareamento 1:1 em ordem cronológica —
+ *      cada pedido recebe uma cobrança distinta; excedentes ficam como
+ *      'unmatched_payment' para revisão manual;
  *   5. faz o backfill de asaas_payment_id / payment_gateway / payment_method /
  *      asaas_invoice_number / asaas_installment_id;
  *   6. se a cobrança estiver RECEIVED/CONFIRMED, transiciona o pedido para
@@ -47,8 +48,47 @@ const requestSchema = z.object({
 
 const ASAAS_FINAL_STATUSES = ["RECEIVED", "CONFIRMED"];
 
+const LIST_LIMIT = 100;
+
 function toIsoDateOnly(iso: string): string {
   return iso.slice(0, 10);
+}
+
+/**
+ * Lista todas as cobranças de um customer na janela de datas, seguindo a
+ * paginação (hasMore/offset) para não perder cobranças quando houver >100
+ * resultados. Retorna null em caso de erro HTTP.
+ */
+async function listAsaasPayments(
+  baseUrl: string,
+  headers: Record<string, string>,
+  customerId: string,
+  from: Date,
+  to: Date,
+): Promise<Array<Record<string, unknown>> | null> {
+  const all: Array<Record<string, unknown>> = [];
+  let offset = 0;
+
+  for (;;) {
+    const url = new URL(`${baseUrl}/v3/payments`);
+    url.searchParams.set("customer", customerId);
+    url.searchParams.set("limit", String(LIST_LIMIT));
+    url.searchParams.set("offset", String(offset));
+    url.searchParams.set("dateCreated[ge]", toIsoDateOnly(from.toISOString()));
+    url.searchParams.set("dateCreated[le]", toIsoDateOnly(to.toISOString()));
+
+    const resp = await fetch(url.toString(), { headers });
+    if (!resp.ok) return null;
+
+    const data = await resp.json();
+    const items: Array<Record<string, unknown>> = data?.data ?? [];
+    all.push(...items);
+
+    if (!data?.hasMore || items.length === 0) break;
+    offset += items.length;
+  }
+
+  return all;
 }
 
 export async function handleRequest(req: Request): Promise<Response> {
@@ -128,63 +168,73 @@ export async function handleRequest(req: Request): Promise<Response> {
     let matched = 0;
     let applied = 0;
 
+    // ── 2. Resolve customer Asaas e agrupa pedidos por customer + valor ───
+    // Pedidos repetidos (mesmo cliente, mesmo valor, horário próximo) ficam
+    // no mesmo grupo e são pareados 1:1 em ordem cronológica com as cobranças.
+    const groups = new Map<string, Array<Record<string, unknown>>>();
+
     for (const order of orders) {
-      const orderId = order.id as string;
-      const totalAmount = Number(order.total_amount);
-      const createdAt = order.created_at as string;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("asaas_customer_id")
+        .eq("id", order.user_id as string)
+        .maybeSingle();
 
-      try {
-        // ── 2. customer Asaas via profiles ───────────────────────────────
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("asaas_customer_id")
-          .eq("id", order.user_id as string)
-          .maybeSingle();
+      const customerId = profile?.asaas_customer_id as string | undefined;
+      if (!customerId) {
+        report.push({ orderId: order.id as string, status: "no_customer", detail: "profiles.asaas_customer_id ausente" });
+        continue;
+      }
 
-        const customerId = profile?.asaas_customer_id as string | undefined;
-        if (!customerId) {
-          report.push({ orderId, status: "no_customer", detail: "profiles.asaas_customer_id ausente" });
-          continue;
+      const key = `${customerId}|${Number(order.total_amount).toFixed(2)}`;
+      const list = groups.get(key) ?? [];
+      list.push({ ...order, customerId });
+      groups.set(key, list);
+    }
+
+    // ── 3. Para cada grupo, busca cobranças e faz pareamento 1:1 ──────────
+    for (const [, groupOrders] of groups) {
+      const customerId = groupOrders[0].customerId as string;
+      const totalAmount = Number(groupOrders[0].total_amount);
+
+      // Janela compartilhada do grupo: min(created_at)-3d .. max(created_at)+3d
+      const times = groupOrders.map((o) => Date.parse(o.created_at as string));
+      const from = new Date(Math.min(...times) - 3 * 24 * 60 * 60 * 1000);
+      const to = new Date(Math.max(...times) + 3 * 24 * 60 * 60 * 1000);
+
+      const payments = await listAsaasPayments(asaasBaseUrl, asaasHeaders, customerId, from, to);
+      if (payments === null) {
+        for (const o of groupOrders) {
+          report.push({ orderId: o.id as string, status: "asaas_error", detail: "list payments HTTP error" });
         }
+        continue;
+      }
 
-        // ── 3. lista cobranças do customer no Asaas (janela ±3 dias) ─────
-        const from = new Date(Date.parse(createdAt) - 3 * 24 * 60 * 60 * 1000);
-        const to = new Date(Date.parse(createdAt) + 3 * 24 * 60 * 60 * 1000);
+      // Cobranças candidatas: mesmo valor, ordenadas por data de criação.
+      const valuePayments = payments
+        .filter((p) => Math.abs(Number(p.value) - totalAmount) < 0.01)
+        .sort((a, b) => String(a.dateCreated).localeCompare(String(b.dateCreated)));
 
-        const listUrl = new URL(`${asaasBaseUrl}/v3/payments`);
-        listUrl.searchParams.set("customer", customerId);
-        listUrl.searchParams.set("limit", "100");
-        listUrl.searchParams.set("dateCreated[ge]", toIsoDateOnly(from.toISOString()));
-        listUrl.searchParams.set("dateCreated[le]", toIsoDateOnly(to.toISOString()));
+      // Pedidos ordenados por data de criação (mais antigo primeiro).
+      const sortedOrders = [...groupOrders].sort((a, b) =>
+        String(a.created_at).localeCompare(String(b.created_at))
+      );
 
-        const listResp = await fetch(listUrl.toString(), { headers: asaasHeaders });
-        if (!listResp.ok) {
-          report.push({ orderId, status: "asaas_error", detail: `list payments HTTP ${listResp.status}` });
-          continue;
-        }
-        const listData = await listResp.json();
-        const payments: Array<Record<string, unknown>> = listData?.data ?? [];
+      for (let i = 0; i < sortedOrders.length; i++) {
+        const order = sortedOrders[i];
+        const orderId = order.id as string;
+        const payment = valuePayments[i];
 
-        // ── 4. casa por valor ────────────────────────────────────────────
-        const valueMatches = payments.filter((p) =>
-          Math.abs(Number(p.value) - totalAmount) < 0.01
-        );
-
-        if (valueMatches.length === 0) {
-          report.push({ orderId, status: "no_match", detail: "nenhuma cobrança com mesmo valor" });
-          continue;
-        }
-        if (valueMatches.length > 1) {
+        // Sem cobrança suficiente na janela para este pedido repetido.
+        if (!payment) {
           report.push({
             orderId,
-            status: "ambiguous",
-            detail: `${valueMatches.length} cobranças com mesmo valor — revisão manual`,
-            candidates: valueMatches.map((p) => ({ id: p.id, status: p.status, dateCreated: p.dateCreated })),
+            status: "no_match",
+            detail: "pedidos repetidos excedem as cobranças disponíveis na janela",
           });
           continue;
         }
 
-        const payment = valueMatches[0];
         const paymentId = payment.id as string;
         const billingType = payment.billingType as string;
         const paymentStatus = payment.status as string;
@@ -213,7 +263,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           continue;
         }
 
-        // ── 5. backfill ──────────────────────────────────────────────────
+        // ── 4. backfill ──────────────────────────────────────────────────
         const backfill: Record<string, unknown> = {
           asaas_payment_id: paymentId,
           payment_gateway: "asaas",
@@ -237,7 +287,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           continue;
         }
 
-        // ── 6. baixa de estoque quando pago ──────────────────────────────
+        // ── 5. baixa de estoque quando pago ──────────────────────────────
         if (isFinal) {
           try {
             await handlePaymentConfirmed(supabase, supabaseUrl, serviceKey, orderId);
@@ -254,10 +304,17 @@ export async function handleRequest(req: Request): Promise<Response> {
           paymentStatus,
           setEmPreparo: isFinal,
         });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[reconcile-asaas-payments] erro no pedido ${orderId}:`, msg);
-        report.push({ orderId, status: "error", detail: msg });
+      }
+
+      // Cobranças excedentes na janela (sem pedido correspondente) — para revisão.
+      for (let i = sortedOrders.length; i < valuePayments.length; i++) {
+        report.push({
+          orderId: null,
+          status: "unmatched_payment",
+          paymentId: valuePayments[i].id,
+          dateCreated: valuePayments[i].dateCreated,
+          value: valuePayments[i].value,
+        });
       }
     }
 
