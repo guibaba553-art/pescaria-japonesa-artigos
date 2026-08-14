@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { SlidersHorizontal, Filter } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
+import { fuzzySearch } from '@/lib/fuzzySearch';
+
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/hooks/useCart';
 import { useProductQuantity } from '@/hooks/useProductQuantity';
@@ -196,20 +198,28 @@ export function ProductListing({
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
   };
 
+  const searchMatchIds = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const matches = fuzzySearch(
+      products,
+      searchQuery,
+      (p: any) => [
+        p.name,
+        p.brand,
+        p.sku,
+        p.subcategory,
+        p.category,
+        p.short_description,
+        p.description,
+      ]
+    );
+    return new Set(matches.map((p: any) => p.id));
+  }, [products, searchQuery]);
+
   const filteredProducts = useMemo(() => {
-    const q = searchQuery.toLowerCase();
     const filtered = products.filter(p => {
-      if (q) {
-        const hay = [
-          p.name,
-          p.description,
-          p.short_description ?? '',
-          p.sku ?? '',
-          p.brand ?? '',
-          p.subcategory ?? '',
-        ].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
+      if (searchMatchIds && !searchMatchIds.has(p.id)) return false;
+
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
       if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
@@ -247,7 +257,7 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchQuery, selectedBrands, selectedPounds, selectedSubcategories, priceRange, sortBy, onSaleParam]);
+  }, [products, searchMatchIds, selectedBrands, selectedPounds, selectedSubcategories, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =

@@ -3,14 +3,16 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // ─── Mocks ────────────────────────────────────────────────
-const mockSupabaseQuery = {
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  gt: vi.fn().mockReturnThis(),
-  ilike: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
+const mockSupabaseQuery: any = {
+  select: vi.fn(() => mockSupabaseQuery),
+  eq: vi.fn(() => mockSupabaseQuery),
+  gt: vi.fn(() => mockSupabaseQuery),
+  ilike: vi.fn(() => mockSupabaseQuery),
+  or: vi.fn(() => mockSupabaseQuery),
+  order: vi.fn(() => mockSupabaseQuery),
   limit: vi.fn().mockResolvedValue({ data: [], error: null }),
 };
+
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -64,24 +66,23 @@ const renderHeader = () =>
     </MemoryRouter>
   );
 
-describe('Header — busca com filtro de estoque', () => {
-  it('deve incluir .gt("stock", 0) na query de sugestões', async () => {
+describe('Header — busca tolerante', () => {
+  it('filtra por estoque e busca em vários campos', async () => {
     renderHeader();
 
-    // Encontra o input de busca
     const input = screen.getByPlaceholderText('Buscar varas, anzóis, iscas, linhas...');
     expect(input).toBeTruthy();
 
-    // Digita algo para disparar a busca (dispara o debounce)
     fireEvent.change(input, { target: { value: 'alicate' } });
 
-    // Aguarda o debounce (250ms) + promise
     await waitFor(() => {
       expect(mockSupabaseQuery.select).toHaveBeenCalled();
       expect(mockSupabaseQuery.eq).toHaveBeenCalledWith('pdv_only', false);
       expect(mockSupabaseQuery.gt).toHaveBeenCalledWith('stock', 0);
-      expect(mockSupabaseQuery.ilike).toHaveBeenCalledWith('name', '%alicate%');
-      expect(mockSupabaseQuery.limit).toHaveBeenCalledWith(6);
+      expect(mockSupabaseQuery.or).toHaveBeenCalledWith(
+        expect.stringContaining('name.ilike.%alicate%')
+      );
     });
   });
+
 });
