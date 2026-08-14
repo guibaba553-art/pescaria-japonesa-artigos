@@ -9,6 +9,7 @@ import { ProductCard } from "./ProductCard";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Clock } from "lucide-react";
 import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
+import { PUBLIC_VARIATION_COLUMNS } from "@/utils/productColumns";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -64,7 +65,7 @@ const FlashDealsCountdown = () => {
       // 1) Produtos com promoção no próprio produto
       const { data: directData } = await supabase
         .from("products")
-        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
+        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
         .eq("on_sale", true)
         .neq("sale_channel", "pdv")
         .gt("stock", 0)
@@ -90,18 +91,18 @@ const FlashDealsCountdown = () => {
       if (varProductIds.length > 0) {
         const { data: vpData } = await supabase
           .from("products")
-          .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(*)`)
+          .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
           .in("id", varProductIds)
           .eq("pdv_only", false)
           .gt("stock", 0)
           .limit(12);
-        varProducts = (vpData as Product[]) || [];
+        varProducts = (vpData as unknown as Product[]) || [];
       }
 
       // Merge sem duplicar
       const merged: Product[] = [];
       const seen = new Set<string>();
-      for (const p of [...((directData as Product[]) || []), ...varProducts]) {
+      for (const p of [...((directData as unknown as Product[]) || []), ...varProducts]) {
         if (!seen.has(p.id)) {
           seen.add(p.id);
           merged.push(p);

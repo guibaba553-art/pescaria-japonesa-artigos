@@ -73,24 +73,43 @@ export function SiteProfitReport({
           if (chunk.length === 0) break;
           const { data } = await supabase
             .from('order_items')
-            .select('order_id, quantity, price_at_purchase, product_id, variation_id, products(name, cost), product_variations(name, cost)')
+            .select('order_id, quantity, price_at_purchase, product_id, variation_id')
             .in('order_id', chunk);
           if (data) items.push(...data);
+        }
+
+        const productCostMap = new Map<string, number>();
+        const variationCostMap = new Map<string, number>();
+        const productNames = new Map<string, string>();
+        const variationNames = new Map<string, string>();
+        if (items.length > 0) {
+          const [prodRes, varRes] = await Promise.all([
+            supabase.rpc('get_products_admin'),
+            supabase.rpc('get_product_variations_admin'),
+          ]);
+          (prodRes.data || []).forEach((p: any) => {
+            productCostMap.set(p.id, Number(p.cost ?? 0));
+            productNames.set(p.id, p.name ?? '');
+          });
+          (varRes.data || []).forEach((v: any) => {
+            variationCostMap.set(v.id, Number(v.cost ?? 0));
+            variationNames.set(v.id, v.name ?? '');
+          });
         }
 
         const byOrder = new Map<string, SiteProfitItem[]>();
         items.forEach((it: any) => {
           const qty = Number(it.quantity || 0);
           const unitPrice = Number(it.price_at_purchase || 0);
-          const variationCost = it.product_variations?.cost;
+          const variationCost = it.variation_id ? variationCostMap.get(it.variation_id) : undefined;
           const unitCost = Number(
-            variationCost != null && Number(variationCost) > 0
+            variationCost != null && variationCost > 0
               ? variationCost
-              : it.products?.cost || 0,
+              : productCostMap.get(it.product_id) || 0,
           );
-          const name = it.product_variations?.name
-            ? `${it.products?.name || 'Produto'} — ${it.product_variations.name}`
-            : it.products?.name || 'Produto';
+          const name = it.variation_id && variationNames.has(it.variation_id)
+            ? `${productNames.get(it.product_id) || 'Produto'} — ${variationNames.get(it.variation_id) || ''}`
+            : productNames.get(it.product_id) || 'Produto';
           const revenue = unitPrice * qty;
           const cost = unitCost * qty;
           const list = byOrder.get(it.order_id) || [];
