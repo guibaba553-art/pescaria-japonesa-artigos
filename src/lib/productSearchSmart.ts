@@ -41,6 +41,8 @@ export function expandVariationSuggestions(products: any[], query: string, limit
         ...p,
         variations: [],
         variation_id: v.id,
+        productName: p.name,
+        variationName: v.name,
         name: `${p.name} - ${v.name}`,
         image_url: v.image_url ?? p.image_url,
         price: v.price,
