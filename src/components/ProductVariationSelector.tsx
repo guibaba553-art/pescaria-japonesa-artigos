@@ -34,8 +34,22 @@ export function ProductVariationSelector({
   variations, 
   onVariationSelect,
   productMinSalePrice,
+  initialVariationId,
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
+
+  // Pré-seleção via prop (ex.: link da busca apontando para uma variação)
+  useEffect(() => {
+    if (!initialVariationId) return;
+    if (selectedVariation?.id === initialVariationId) return;
+    const found = variations.find((v) => v.id === initialVariationId);
+    if (found && found.stock > 0) {
+      setSelectedVariation(found);
+      onVariationSelect(found);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialVariationId, variations]);
+
 
   // Ordenar variações: primeiro as em estoque (alfabético), depois as esgotadas (alfabético)
   const sortedVariations = [...variations].sort((a, b) => {
