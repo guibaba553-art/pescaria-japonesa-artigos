@@ -3,7 +3,7 @@ Deno.env.set("DENO_TEST", "1");
 import { assertEquals, assertStringIncludes, assertExists } from "jsr:@std/assert@^1";
 import { handleRequest } from "../create-asaas-pix/index.ts";
 import { interceptFetch, setupEnv, mockAsaas, asaas } from "./mock_gateways.ts";
-import { getJwt, createOrder, deleteOrder } from "./helpers.ts";
+import { getJwt, createOrder, deleteOrder, SUPABASE_URL, ANON_KEY } from "./helpers.ts";
 
 setupEnv();
 interceptFetch();
@@ -60,4 +60,31 @@ Deno.test("lê pix_attempts com sucesso (correção 2026-06-11)", async () => {
   const data = await r.json();
   assertEquals(data.success, true);
   assertExists(data.data.brCode);
+});
+
+Deno.test("grava asaas_payment_id no pedido após PIX criado", async () => {
+  const oid = await createOrder();
+  mockAsaas((url) => {
+    if (url.includes("/customers") && !url.includes("/customers/cus_")) return asaas.customerCreate("cus_pix");
+    if (url.includes("/customers/cus_")) return asaas.customerGet("cus_pix");
+    if (url.includes("pixQrCode")) return asaas.pixQrCode();
+    if (url.includes("/payments")) return asaas.pixPaymentOk();
+    return null;
+  });
+
+  const r = await call({ orderId: oid });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+
+  // Verifica que o ID do pagamento foi persistido no pedido
+  const jwt = await getJwt();
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${oid}&select=asaas_payment_id,payment_gateway`, {
+    headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` },
+  });
+  const rows = await q.json();
+  await deleteOrder(oid);
+
+  assertEquals(rows[0]?.asaas_payment_id, "pay_pix_001");
+  assertEquals(rows[0]?.payment_gateway, "asaas");
 });

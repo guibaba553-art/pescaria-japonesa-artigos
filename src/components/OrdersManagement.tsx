@@ -388,7 +388,7 @@ const OrdersTable = ({
   expandedOrders: Set<string>;
   toggleOrderExpansion: (orderId: string) => void;
   updateOrderStatus: (orderId: string, newStatus: Order['status'], extra?: Record<string, any>) => void;
-  verifyPayment: (orderId: string) => void;
+  verifyPayment: (orderId: string, gateway?: string | null) => void;
   trackingCodes: Record<string, string>;
   setTrackingCodes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   updateTrackingCode: (orderId: string) => void;
@@ -627,7 +627,7 @@ const OrdersTable = ({
                 </CollapsibleTrigger>
 
                 {order.status === 'aguardando_pagamento' && (
-                  <Button size="sm" variant="outline" onClick={() => verifyPayment(order.id)} className="gap-1">
+                  <Button size="sm" variant="outline" onClick={() => verifyPayment(order.id, order.payment_gateway)} className="gap-1">
                     <RefreshCw className="h-3.5 w-3.5" />
                     Verificar Pagamento
                   </Button>
@@ -2113,7 +2113,7 @@ export function OrdersManagement() {
     }
   };
 
-  const verifyPayment = async (orderId: string) => {
+  const verifyPayment = async (orderId: string, gateway?: string | null) => {
     toast({
       title: 'Verificando pagamento...',
       description: 'Consultando gateway de pagamento'
@@ -2121,7 +2121,7 @@ export function OrdersManagement() {
 
     try {
       const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: { orderId }
+        body: { orderId, gateway: gateway ?? undefined }
       });
 
       if (error) {
