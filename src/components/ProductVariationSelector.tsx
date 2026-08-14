@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductVariation } from "@/types/product";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
@@ -9,7 +9,10 @@ interface ProductVariationSelectorProps {
   variations: ProductVariation[];
   onVariationSelect: (variation: ProductVariation | null) => void;
   productMinSalePrice?: number | null;
+  /** Pré-seleciona uma variação (ex.: vindo da busca com ?variacao=) */
+  initialVariationId?: string | null;
 }
+
 
 // Preço exibido no site: prioriza promoção ativa da variação, depois min_sale_price
 // da variação, depois min_sale_price do produto pai, e por fim cai no price (PDV).
