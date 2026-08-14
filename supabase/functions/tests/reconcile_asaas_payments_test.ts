@@ -315,6 +315,46 @@ Deno.test("parcelamento: casa pelo total do parcelamento, não pela parcela", as
   }
 });
 
+Deno.test("drift de 1 centavo no total do parcelamento não gera no_match", async () => {
+  // Pedido de R$ 200.12, mas o Asaas reporta total do parcelamento 200.11
+  // (arredondamento). Tolerância de 1 centavo deve casar mesmo assim.
+  const customerId = `cus_reconcile_drift_${crypto.randomUUID().slice(0, 8)}`;
+  const installmentId = `inst_drift_${crypto.randomUUID().slice(0, 8)}`;
+  const { userId, orderId } = await createFixture(customerId, 200.12);
+
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/installments/")) {
+      return { status: 200, body: { id: installmentId, value: 200.11, paymentValue: 66.71, installmentCount: 3, billingType: "CREDIT_CARD" } };
+    }
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 3, data: [
+        { id: "pay_drift_1", status: "RECEIVED", value: 66.71, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 1, dateCreated: "2026-08-12 10:00:00" },
+        { id: "pay_drift_2", status: "PENDING", value: 66.70, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 2, dateCreated: "2026-08-12 10:00:00" },
+        { id: "pay_drift_3", status: "PENDING", value: 66.70, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 3, dateCreated: "2026-08-12 10:00:00" },
+      ] } };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: false, cutoff: "2026-08-11" });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  if (!entry) console.error("REPORT:", JSON.stringify(data.report, null, 2));
+  assert(entry, "deve ter registro para o pedido");
+  assertEquals(entry.status, "applied", "drift de 1 centavo deve casar — entry: " + JSON.stringify(entry));
+
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=*`, { headers: svc });
+  const rows = await q.json();
+  await cleanup(userId, orderId);
+
+  const row = (rows as any[])[0];
+  assertEquals(row?.asaas_payment_id, "pay_drift_1");
+});
+
 Deno.test("pedido cancelado também é reconciliado (qualquer status)", async () => {
   // O trigger exige criação como aguardando_pagamento; muda para cancelado depois
   const { userId, orderId } = await createFixture("cus_reconcile_4", 49.90);
