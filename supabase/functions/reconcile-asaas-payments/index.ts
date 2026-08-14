@@ -231,19 +231,29 @@ export async function handleRequest(req: Request): Promise<Response> {
       // O total real fica em GET /v3/installments/{id} -> `value`. Para essas,
       // busca o total e usa como valor efetivo de match. Várias parcelas do
       // mesmo parcelamento contam como UMA cobrança (dedupe por installment).
+      //
+      // Drift de arredondamento: o cálculo da parcela usa
+      // Math.floor(total*100/n)/100 (arredonda CADA parcela para baixo), então
+      // a soma das parcelas pode ser até (n-1) centavos menor que o total do
+      // pedido. A tolerância do match é proporcional ao número de parcelas.
       const installmentIds = new Set<string>();
       for (const p of payments) {
         if (typeof p.installment === "string" && p.installment) {
           installmentIds.add(p.installment as string);
         }
       }
-      const installmentTotals = new Map<string, number>();
+      const installmentInfo = new Map<string, { total: number; count: number; paymentValue: number }>();
       for (const iid of installmentIds) {
         try {
           const instResp = await fetch(`${asaasBaseUrl}/v3/installments/${iid}`, { headers: asaasHeaders });
           if (instResp.ok) {
             const instData = await instResp.json();
-            installmentTotals.set(iid, Number(instData?.value) || 0);
+            const count = Number(instData?.installmentCount) || 0;
+            installmentInfo.set(iid, {
+              total: Number(instData?.value) || 0,
+              count,
+              paymentValue: Number(instData?.paymentValue) || 0,
+            });
           }
         } catch {
           /* parcelamento indisponível — mantém 0 e não casa */
@@ -257,17 +267,28 @@ export async function handleRequest(req: Request): Promise<Response> {
         if (iid) {
           if (seenInstallments.has(iid)) continue; // mesma cobrança parcelada
           seenInstallments.add(iid);
-          const total = installmentTotals.get(iid) ?? 0;
-          effectivePayments.push({ ...p, _effectiveValue: total });
+          const info = installmentInfo.get(iid);
+          const total = info?.total ?? 0;
+          const count = info?.count ?? 0;
+          // Tolerância: parcela arredondada para baixo → soma até (n-1)c menor.
+          // + 0.005 por segurança de ponto flutuante.
+          const tolerance = count > 0 ? (count - 1) * 0.01 + 0.005 : VALUE_TOLERANCE;
+          effectivePayments.push({
+            ...p,
+            _effectiveValue: total,
+            _tolerance: tolerance,
+            _installmentCount: count,
+            _paymentValue: info?.paymentValue ?? null,
+          });
         } else {
-          effectivePayments.push({ ...p, _effectiveValue: Number(p.value) });
+          effectivePayments.push({ ...p, _effectiveValue: Number(p.value), _tolerance: VALUE_TOLERANCE });
         }
       }
 
-      // Mesmo valor efetivo (tolerância de 1 centavo p/ drift de arredondamento),
-      // ordenadas por data de criação.
+      // Match por valor efetivo, respeitando a tolerância de cada cobrança
+      // (drift de arredondamento de parcelamento), ordenadas por data de criação.
       const valuePayments = effectivePayments
-        .filter((p) => Math.abs(Number(p._effectiveValue) - totalAmount) <= VALUE_TOLERANCE)
+        .filter((p) => Math.abs(Number(p._effectiveValue) - totalAmount) <= Number(p._tolerance))
         .sort((a, b) => String(a.dateCreated).localeCompare(String(b.dateCreated)));
 
       // Pedidos ordenados por data de criação (mais antigo primeiro).
@@ -293,6 +314,8 @@ export async function handleRequest(req: Request): Promise<Response> {
                 id: p.id,
                 value: p.value,
                 effectiveValue: p._effectiveValue,
+                installmentCount: p._installmentCount ?? null,
+                paymentValue: p._paymentValue ?? null,
                 status: p.status,
                 billingType: p.billingType,
                 dateCreated: p.dateCreated,
@@ -332,6 +355,8 @@ export async function handleRequest(req: Request): Promise<Response> {
             paymentId,
             paymentStatus,
             wouldSetEmPreparo: isFinal,
+            installmentCount: payment._installmentCount ?? null,
+            installmentId: payment.installment ?? null,
           });
           continue;
         }

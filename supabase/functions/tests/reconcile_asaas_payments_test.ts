@@ -315,23 +315,22 @@ Deno.test("parcelamento: casa pelo total do parcelamento, não pela parcela", as
   }
 });
 
-Deno.test("drift de 1 centavo no total do parcelamento não gera no_match", async () => {
-  // Pedido de R$ 200.12, mas o Asaas reporta total do parcelamento 200.11
-  // (arredondamento). Tolerância de 1 centavo deve casar mesmo assim.
+Deno.test("drift de centavos no total do parcelamento não gera no_match", async () => {
+  // Pedido de R$ 191.87 em 8x: Math.floor(19187/8)=2398 → parcela 23.98,
+  // soma das parcelas = 191.84 → drift de 3 centavos (n-1 = 7c no máximo).
+  // A tolerância proporcional ao nº de parcelas deve casar.
   const customerId = `cus_reconcile_drift_${crypto.randomUUID().slice(0, 8)}`;
   const installmentId = `inst_drift_${crypto.randomUUID().slice(0, 8)}`;
-  const { userId, orderId } = await createFixture(customerId, 200.12);
+  const { userId, orderId } = await createFixture(customerId, 191.87);
 
   mockAsaas((url, method) => {
     if (method === "GET" && url.includes("/v3/installments/")) {
-      return { status: 200, body: { id: installmentId, value: 200.11, paymentValue: 66.71, installmentCount: 3, billingType: "CREDIT_CARD" } };
+      return { status: 200, body: { id: installmentId, value: 191.84, paymentValue: 23.98, installmentCount: 8, billingType: "CREDIT_CARD" } };
     }
     if (method === "GET" && url.includes("/v3/payments")) {
-      return { status: 200, body: { object: "list", hasMore: false, totalCount: 3, data: [
-        { id: "pay_drift_1", status: "RECEIVED", value: 66.71, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 1, dateCreated: "2026-08-12 10:00:00" },
-        { id: "pay_drift_2", status: "PENDING", value: 66.70, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 2, dateCreated: "2026-08-12 10:00:00" },
-        { id: "pay_drift_3", status: "PENDING", value: 66.70, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 3, dateCreated: "2026-08-12 10:00:00" },
-      ] } };
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 8, data: Array.from({ length: 8 }, (_, i) => ({
+        id: `pay_drift_${i + 1}`, status: i === 0 ? "RECEIVED" : "PENDING", value: 23.98, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: i + 1, dateCreated: "2026-08-12 10:00:00",
+      })) } };
     }
     return null;
   });
@@ -344,7 +343,7 @@ Deno.test("drift de 1 centavo no total do parcelamento não gera no_match", asyn
   const entry = data.report.find((x: any) => x.orderId === orderId);
   if (!entry) console.error("REPORT:", JSON.stringify(data.report, null, 2));
   assert(entry, "deve ter registro para o pedido");
-  assertEquals(entry.status, "applied", "drift de 1 centavo deve casar — entry: " + JSON.stringify(entry));
+  assertEquals(entry.status, "applied", "drift de centavos deve casar — entry: " + JSON.stringify(entry));
 
   const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
   const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=*`, { headers: svc });
