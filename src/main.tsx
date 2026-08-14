@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import "./index.css";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { installGlobalErrorLogger } from "./lib/errorLogger";
 
 installGlobalErrorLogger();
@@ -19,8 +20,10 @@ const root = createRoot(document.getElementById("root")!);
 
 root.render(
   <StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    </ErrorBoundary>
   </StrictMode>
 );

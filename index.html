@@ -98,7 +98,15 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="app-fallback" style="min-height:60vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#555;padding:24px;text-align:center;">
+        Carregando JAPAS Pesca…
+      </div>
+    </div>
+    <script nomodule>
+      document.getElementById('app-fallback').innerHTML =
+        '<div><strong>Navegador nao suportado</strong><br/>Atualize o Chrome, Safari ou Firefox do seu aparelho para acessar a loja, ou fale conosco pelo WhatsApp (66) 99657-9671.</div>';
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
