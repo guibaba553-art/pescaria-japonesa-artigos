@@ -1436,6 +1436,7 @@ export type Database = {
       orders: {
         Row: {
           asaas_installment_id: string | null
+          asaas_invoice_number: string | null
           asaas_payment_id: string | null
           authorization_code: string | null
           cancellation_reason: string | null
@@ -1492,6 +1493,7 @@ export type Database = {
         }
         Insert: {
           asaas_installment_id?: string | null
+          asaas_invoice_number?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
@@ -1548,6 +1550,7 @@ export type Database = {
         }
         Update: {
           asaas_installment_id?: string | null
+          asaas_invoice_number?: string | null
           asaas_payment_id?: string | null
           authorization_code?: string | null
           cancellation_reason?: string | null
