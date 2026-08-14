@@ -357,7 +357,9 @@ export default function ProductDetails() {
               <div className="space-y-4 border-t pt-6">
                 <ProductVariationSelector
                   variations={variations}
+                  initialVariationId={searchParams.get('variacao')}
                   productMinSalePrice={(product as any).min_sale_price ?? null}
+
                   onVariationSelect={(variation) => {
                     console.log('📦 Variação selecionada:', variation?.name);
                     setSelectedVariation(variation);
