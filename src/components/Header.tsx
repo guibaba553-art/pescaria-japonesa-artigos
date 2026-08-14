@@ -124,8 +124,10 @@ export function Header() {
   const handleSelectSuggestion = (s: Suggestion) => {
     setShowSuggestions(false);
     setSearchQuery('');
-    navigate(`/produto/${s.id}`);
+    const variationId = (s as any).variation_id;
+    navigate(variationId ? `/produto/${s.id}?variacao=${variationId}` : `/produto/${s.id}`);
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions || suggestions.length === 0) return;
