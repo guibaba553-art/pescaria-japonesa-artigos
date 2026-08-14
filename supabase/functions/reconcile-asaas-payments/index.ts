@@ -22,7 +22,8 @@ const corsHeaders = {
  *      (a partir de uma data de corte);
  *   2. para cada um, busca profiles.asaas_customer_id;
  *   3. consulta GET /v3/payments?customer=... no Asaas filtrando por data;
- *   4. casa por valor (total_amount) e proximidade de data de criação;
+ *   4. casa por valor (total_amount); se houver mais de uma com o mesmo valor,
+ *      marca como 'ambiguous' para revisão manual;
  *   5. faz o backfill de asaas_payment_id / payment_gateway / payment_method /
  *      asaas_invoice_number / asaas_installment_id;
  *   6. se a cobrança estiver RECEIVED/CONFIRMED, transiciona o pedido para
@@ -41,7 +42,7 @@ const corsHeaders = {
 
 const requestSchema = z.object({
   dryRun: z.boolean().optional().default(true),
-  cutoff: z.string().optional().default("2026-08-11"),
+  cutoff: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "cutoff deve estar no formato YYYY-MM-DD").optional().default("2026-08-11"),
 });
 
 const ASAAS_FINAL_STATUSES = ["RECEIVED", "CONFIRMED"];
@@ -190,7 +191,13 @@ export async function handleRequest(req: Request): Promise<Response> {
         const invoiceNumber = (payment.invoiceNumber as string | undefined) || null;
         const installmentId = (payment.installment as string | undefined) || null;
 
-        const paymentMethod = billingType === "PIX" ? "pix" : billingType === "CREDIT_CARD" ? "credit_card" : "debit_card";
+        // Apenas mapeia billingTypes conhecidos; BOLETO/UNDEFINED etc. ficam como
+        // estão no Asaas para não gravar payment_method inválido (ex.: 'debit_card').
+        const paymentMethod = billingType === "PIX"
+          ? "pix"
+          : billingType === "CREDIT_CARD"
+          ? "credit_card"
+          : billingType;
         matched += 1;
 
         const isFinal = ASAAS_FINAL_STATUSES.includes(paymentStatus);

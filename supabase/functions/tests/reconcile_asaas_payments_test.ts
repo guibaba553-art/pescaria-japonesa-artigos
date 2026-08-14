@@ -52,8 +52,14 @@ async function createFixture(customerId: string | null, total = 49.90) {
       source: "site",
     }),
   });
+  if (!orderResp.ok) {
+    throw new Error(`createFixture: falha ao criar pedido (HTTP ${orderResp.status}): ${await orderResp.text()}`);
+  }
   const orderData = await orderResp.json();
   const orderId = (orderData as any)[0]?.id ?? (orderData as any).id;
+  if (!orderId) {
+    throw new Error("createFixture: pedido criado sem id na resposta");
+  }
   return { userId, orderId };
 }
 
@@ -62,6 +68,16 @@ async function cleanup(userId: string, orderId: string) {
   if (orderId) {
     const d = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, { method: "DELETE", headers: svc });
     await d.text();
+  }
+  // Remove o usuário criado pelo fixture para não acumular no banco local
+  try {
+    const u = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: svc,
+    });
+    await u.text();
+  } catch {
+    /* não-bloqueante */
   }
 }
 
