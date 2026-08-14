@@ -83,18 +83,20 @@ export function Header() {
     }
 
     setLoadingSuggestions(true);
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, price, image_url, category, min_sale_price, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)')
-        .eq('pdv_only', false)
-        .gt('stock', 0)
-        .ilike('name', `%${query}%`)
-        .limit(6);
-
-      if (!error && data) setSuggestions(data);
-      setLoadingSuggestions(false);
+      try {
+        const results = await searchProductsSmart(supabase, query, 6);
+        if (!cancelled) setSuggestions(results as Suggestion[]);
+      } catch {
+        if (!cancelled) setSuggestions([]);
+      } finally {
+        if (!cancelled) setLoadingSuggestions(false);
+      }
     }, 250);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
