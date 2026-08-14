@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
-import { handlePaymentConfirmed } from "../_shared/stockHandler.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,21 +13,22 @@ const corsHeaders = {
  * Causa raiz do incidente (11-13/08/2026): o UPDATE que gravava asaas_payment_id
  * falhava silenciosamente porque a coluna asaas_invoice_number não existia e o
  * erro não era checado. A cobrança era criada no Asaas, mas o ID nunca era
- * persistido — o webhook não casava o pagamento e o pedido ficava preso em
- * 'aguardando_pagamento'.
+ * persistido — o webhook não casava o pagamento e o pedido ficava sem ID.
  *
  * Esta função:
- *   1. lista pedidos 'aguardando_pagamento' sem payment_id e sem asaas_payment_id
- *      (a partir de uma data de corte);
+ *   1. lista pedidos sem payment_id e sem asaas_payment_id, em QUALQUER status
+ *      (aguardando_pagamento, cancelado, etc.), a partir de uma data de corte;
  *   2. agrupa por customer Asaas + valor (pedidos repetidos ficam no mesmo grupo);
  *   3. consulta GET /v3/payments?customer=... no Asaas filtrando por data (com paginação);
  *   4. casa por valor (total_amount) e faz pareamento 1:1 em ordem cronológica —
  *      cada pedido recebe uma cobrança distinta; excedentes ficam como
  *      'unmatched_payment' para revisão manual;
  *   5. faz o backfill de asaas_payment_id / payment_gateway / payment_method /
- *      asaas_invoice_number / asaas_installment_id;
- *   6. se a cobrança estiver RECEIVED/CONFIRMED, transiciona o pedido para
- *      'em_preparo' e baixa o estoque (via handlePaymentConfirmed, idempotente).
+ *      asaas_invoice_number / asaas_installment_id.
+ *
+ * IMPORTANTE: a função NÃO altera status nem baixa estoque — apenas reconcilia
+ * o ID de pagamento. Pedidos cancelados ou pagos permanecem como estão; a
+ * decisão de restaurar é manual (via admin).
  *
  * Auth: exige CRON_SECRET (Bearer ou header x-cron-secret), como as demais funções
  * administrativas. É executada manualmente, não via cron.
@@ -150,11 +150,12 @@ export async function handleRequest(req: Request): Promise<Response> {
       "User-Agent": "JapasPesca/1.0.0",
     };
 
-    // ── 1. Pedidos órfãos ────────────────────────────────────────────────
+    // ── 1. Pedidos sem ID de pagamento (qualquer status) ─────────────────
+    // Só concilia o ID — NÃO muda status nem baixa estoque. O status fica como
+    // está (aguardando_pagamento, cancelado, etc.); a decisão de restaurar é manual.
     const { data: orphanOrders, error: fetchError } = await supabase
       .from("orders")
       .select("id, user_id, total_amount, created_at, delivery_type, shipping_service_id")
-      .eq("status", "aguardando_pagamento")
       .is("payment_id", null)
       .is("asaas_payment_id", null)
       .gte("created_at", `${cutoff}T00:00:00Z`);
@@ -266,7 +267,9 @@ export async function handleRequest(req: Request): Promise<Response> {
           continue;
         }
 
-        // ── 4. backfill ──────────────────────────────────────────────────
+        // ── 4. backfill — apenas o ID de pagamento ────────────────────────
+        // NÃO altera status nem baixa estoque: pedidos cancelados/pagos ficam
+        // como estão; a decisão de restaurar é manual.
         const backfill: Record<string, unknown> = {
           asaas_payment_id: paymentId,
           payment_gateway: "asaas",
@@ -274,29 +277,16 @@ export async function handleRequest(req: Request): Promise<Response> {
         };
         if (invoiceNumber) backfill.asaas_invoice_number = invoiceNumber;
         if (installmentId) backfill.asaas_installment_id = installmentId;
-        if (isFinal) {
-          backfill.status = "em_preparo";
-          backfill.payment_received_at = new Date().toISOString();
-        }
 
         const { error: updateErr } = await supabase
           .from("orders")
           .update(backfill)
           .eq("id", orderId)
-          .eq("status", "aguardando_pagamento");
+          .is("asaas_payment_id", null);
 
         if (updateErr) {
           report.push({ orderId, status: "update_error", detail: updateErr.message, paymentId });
           continue;
-        }
-
-        // ── 5. baixa de estoque quando pago ──────────────────────────────
-        if (isFinal) {
-          try {
-            await handlePaymentConfirmed(supabase, supabaseUrl, serviceKey, orderId);
-          } catch (stockErr) {
-            console.error(`[reconcile-asaas-payments] estoque para ${orderId}:`, stockErr);
-          }
         }
 
         applied += 1;
@@ -305,7 +295,7 @@ export async function handleRequest(req: Request): Promise<Response> {
           status: "applied",
           paymentId,
           paymentStatus,
-          setEmPreparo: isFinal,
+          setEmPreparo: false,
         });
       }
 
