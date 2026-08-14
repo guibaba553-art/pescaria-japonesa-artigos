@@ -3,14 +3,16 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // ─── Mocks ────────────────────────────────────────────────
-const mockSupabaseQuery = {
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  gt: vi.fn().mockReturnThis(),
-  ilike: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
+const mockSupabaseQuery: any = {
+  select: vi.fn(() => mockSupabaseQuery),
+  eq: vi.fn(() => mockSupabaseQuery),
+  gt: vi.fn(() => mockSupabaseQuery),
+  ilike: vi.fn(() => mockSupabaseQuery),
+  or: vi.fn(() => mockSupabaseQuery),
+  order: vi.fn(() => mockSupabaseQuery),
   limit: vi.fn().mockResolvedValue({ data: [], error: null }),
 };
+
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
