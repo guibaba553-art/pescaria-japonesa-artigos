@@ -100,6 +100,26 @@ const { mockSupabaseFrom } = vi.hoisted(() => {
       nfe_emissions: [],
       refunded_amount: 18.00,
     },
+    {
+      id: 'order-6',
+      total_amount: 120.00,
+      shipping_cost: 0,
+      status: 'aguardando_pagamento',
+      created_at: new Date().toISOString(),
+      user_id: 'user-1',
+      shipping_cep: '12345678',
+      delivery_type: 'pickup',
+      source: 'site',
+      payment_gateway: 'asaas',
+      payment_id: null,
+      asaas_payment_id: 'pay-asaas-pending',
+      payment_method: 'pix',
+      order_items: [
+        { id: 'item-6', quantity: 1, price_at_purchase: 120.00, product_id: 'prod-6', products: { name: 'Isca Artificial' } },
+      ],
+      nfe_emissions: [],
+      refunded_amount: 0,
+    },
   ];
 
   const mockRefunds: any[] = [
@@ -171,6 +191,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 // ─── Component under test ─────────────────────────────
 import { classifyCancelledOrder, getCancellationReasonConfig, getGatewayUrl } from '@/lib/orderStatus';
 import { OrdersManagement } from '../OrdersManagement';
+import { supabase } from '@/integrations/supabase/client';
 
 describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
   beforeEach(() => {
@@ -258,6 +279,39 @@ describe('OrdersManagement — fluxo de cancelamento e estorno', () => {
 
     // O pedido order-1 deve mostrar o tipo "Retirada" (delivery_type pickup)
     expect(screen.getAllByText('Retirada').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('verifica pagamento passando o gateway do pedido para verify-payment', async () => {
+    const user = userEvent.setup();
+    (supabase.functions.invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ data: { status: 'pending', updated: false }, error: null });
+
+    render(
+      <MemoryRouter>
+        <OrdersManagement />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(screen.getAllByText(/joão silva/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    const verifyButtons = screen.getAllByText('Verificar Pagamento');
+    expect(verifyButtons.length).toBeGreaterThanOrEqual(1);
+    for (const btn of verifyButtons) {
+      await user.click(btn);
+    }
+
+    await waitFor(() => {
+      expect(supabase.functions.invoke).toHaveBeenCalledWith(
+        'verify-payment',
+        expect.objectContaining({ body: expect.objectContaining({ orderId: expect.any(String) }) }),
+      );
+    });
+
+    // order-6 (asaas) é um pedido aguardando_pagamento com gateway 'asaas'.
+    // Garante que o gateway foi repassado quando o pedido tem payment_gateway definido.
+    const calls = (supabase.functions.invoke as ReturnType<typeof vi.fn>).mock.calls;
+    const verifyCalls = calls.filter((c) => c[0] === 'verify-payment');
+    expect(verifyCalls.some((c) => c[1]?.body?.gateway === 'asaas')).toBe(true);
   });
 
   // ── Testes do fluxo de devolução diferenciado ──

@@ -214,11 +214,13 @@ export async function handleRequest(req: Request): Promise<Response> {
     const pixExpiration = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
     // ── Save payment info on order ──────────────────────────────────────────
-    await supabase
+    // asaas_payment_id é gravado em UPDATE próprio, isolado de colunas opcionais
+    // (asaas_invoice_number). Se uma coluna opcional não existir, o ID de
+    // pagamento — necessário para verificação posterior — continua sendo salvo.
+    const { error: paymentSaveError } = await supabase
       .from('orders')
       .update({
         asaas_payment_id: asaasPaymentId,
-        asaas_invoice_number: invoiceNumber || null,
         payment_gateway: 'asaas',
         payment_method: 'pix',
         qr_code: brCode,
@@ -227,6 +229,21 @@ export async function handleRequest(req: Request): Promise<Response> {
         pix_attempts: (order.pix_attempts || 0) + 1,
       })
       .eq('id', orderId);
+
+    if (paymentSaveError) {
+      throw paymentSaveError;
+    }
+
+    // Coluna opcional — falha aqui não pode impedir a gravação do payment_id acima.
+    if (invoiceNumber) {
+      const { error: invoiceError } = await supabase
+        .from('orders')
+        .update({ asaas_invoice_number: invoiceNumber })
+        .eq('id', orderId);
+      if (invoiceError) {
+        console.error('Falha ao gravar asaas_invoice_number (não-bloqueante):', invoiceError.message);
+      }
+    }
 
     // ── Return success response ─────────────────────────────────────────────
     return new Response(

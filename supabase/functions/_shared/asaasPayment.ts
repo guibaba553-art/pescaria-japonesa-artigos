@@ -338,20 +338,37 @@ export async function processAsaasCreditCardPayment(
 
   // ── Non-CONFIRMED (pending analysis, etc.) ─────────────────────────────
   if (paymentStatus !== 'CONFIRMED') {
-    const updateData: Record<string, unknown> = {
-      asaas_payment_id: asaasPaymentId,
-      payment_gateway: 'asaas',
-      payment_method: 'credit_card',
-      payment_attempts: (order.payment_attempts || 0) + 1,
-      last_payment_attempt_at: new Date().toISOString(),
-    };
-    if (asaasInstallmentId) updateData.asaas_installment_id = asaasInstallmentId;
-    if (invoiceNumber) updateData.asaas_invoice_number = invoiceNumber;
-
-    await supabase
+    // asaas_payment_id em UPDATE próprio, isolado de colunas opcionais
+    // (asaas_installment_id / asaas_invoice_number) que podem não existir no banco.
+    const { error: pendingSaveError } = await supabase
       .from('orders')
-      .update(updateData)
+      .update({
+        asaas_payment_id: asaasPaymentId,
+        payment_gateway: 'asaas',
+        payment_method: 'credit_card',
+        payment_attempts: (order.payment_attempts || 0) + 1,
+        last_payment_attempt_at: new Date().toISOString(),
+      })
       .eq('id', orderId);
+
+    if (pendingSaveError) {
+      throw pendingSaveError;
+    }
+
+    // Colunas opcionais — falhas aqui não podem impedir a gravação do payment_id.
+    if (asaasInstallmentId || invoiceNumber) {
+      const optionalData: Record<string, unknown> = {};
+      if (asaasInstallmentId) optionalData.asaas_installment_id = asaasInstallmentId;
+      if (invoiceNumber) optionalData.asaas_invoice_number = invoiceNumber;
+
+      const { error: optionalError } = await supabase
+        .from('orders')
+        .update(optionalData)
+        .eq('id', orderId);
+      if (optionalError) {
+        console.error('Falha ao gravar colunas opcionais Asaas (não-bloqueante):', optionalError.message);
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true, payment: paymentData, paymentStatus: paymentStatus }),
@@ -360,21 +377,37 @@ export async function processAsaasCreditCardPayment(
   }
 
   // ── Payment CONFIRMED ───────────────────────────────────────────────────
-  const confirmedUpdate: Record<string, unknown> = {
-    status: 'em_preparo',
-    asaas_payment_id: asaasPaymentId,
-    payment_gateway: 'asaas',
-    payment_method: 'credit_card',
-    payment_attempts: (order.payment_attempts || 0) + 1,
-    last_payment_attempt_at: new Date().toISOString(),
-  };
-  if (asaasInstallmentId) confirmedUpdate.asaas_installment_id = asaasInstallmentId;
-  if (invoiceNumber) confirmedUpdate.asaas_invoice_number = invoiceNumber;
-
-  await supabase
+  // asaas_payment_id em UPDATE próprio, isolado de colunas opcionais.
+  const { error: confirmedSaveError } = await supabase
     .from('orders')
-    .update(confirmedUpdate)
+    .update({
+      status: 'em_preparo',
+      asaas_payment_id: asaasPaymentId,
+      payment_gateway: 'asaas',
+      payment_method: 'credit_card',
+      payment_attempts: (order.payment_attempts || 0) + 1,
+      last_payment_attempt_at: new Date().toISOString(),
+    })
     .eq('id', orderId);
+
+  if (confirmedSaveError) {
+    throw confirmedSaveError;
+  }
+
+  // Colunas opcionais — falhas aqui não podem impedir a gravação do payment_id.
+  if (asaasInstallmentId || invoiceNumber) {
+    const confirmedOptional: Record<string, unknown> = {};
+    if (asaasInstallmentId) confirmedOptional.asaas_installment_id = asaasInstallmentId;
+    if (invoiceNumber) confirmedOptional.asaas_invoice_number = invoiceNumber;
+
+    const { error: confirmedOptionalError } = await supabase
+      .from('orders')
+      .update(confirmedOptional)
+      .eq('id', orderId);
+    if (confirmedOptionalError) {
+      console.error('Falha ao gravar colunas opcionais Asaas (não-bloqueante):', confirmedOptionalError.message);
+    }
+  }
 
   // Decrementar estoque via shared handler
   await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, orderId);
