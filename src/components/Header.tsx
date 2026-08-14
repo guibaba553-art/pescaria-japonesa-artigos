@@ -258,7 +258,10 @@ export function Header() {
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{s.name}</p>
+                              <p className="text-sm font-medium truncate">{(s as any).productName || s.name}</p>
+                              {(s as any).variationName ? (
+                                <p className="text-xs text-primary font-medium truncate">{(s as any).variationName}</p>
+                              ) : null}
                               <p className="text-xs text-muted-foreground truncate">{s.category}</p>
                             </div>
                             <span className="text-sm font-semibold flex-shrink-0">
