@@ -1,6 +1,6 @@
 Deno.env.set("DENO_TEST", "1");
 
-import { assertEquals, assert } from "jsr:@std/assert@^1";
+import { assertEquals, assert, assertStringIncludes } from "jsr:@std/assert@^1";
 import { handleRequest } from "../reconcile-asaas-payments/index.ts";
 import { interceptFetch, setupEnv, mockAsaas } from "./mock_gateways.ts";
 import { SUPABASE_URL, ANON_KEY, SERVICE_KEY, ensureEmployeeUser, getJwt, TEST_USER_ID } from "./helpers.ts";
@@ -163,6 +163,36 @@ Deno.test("sem customer Asaas → no_customer", async () => {
 
   assert(entry, "deve ter registro para o pedido");
   assertEquals(entry.status, "no_customer");
+});
+
+Deno.test("sem cobrança com o valor → no_match com paymentsFound", async () => {
+  const { userId, orderId } = await createFixture("cus_reconcile_nm");
+
+  // O Asaas retorna cobranças do customer, mas com VALORES diferentes
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 2, data: [
+        { id: "pay_other_1", status: "PENDING", value: 999.90, billingType: "PIX", dateCreated: "2026-08-12 10:00:00" },
+        { id: "pay_other_2", status: "RECEIVED", value: 10.00, billingType: "PIX", dateCreated: "2026-08-12 11:00:00" },
+      ] } };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: true, cutoff: "2026-08-11" });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  await cleanup(userId, orderId);
+
+  assert(entry, "deve ter registro para o pedido");
+  assertEquals(entry.status, "no_match");
+  assertStringIncludes(entry.detail, "nenhuma cobrança com este valor");
+  // Deve listar as cobranças existentes para revisão manual
+  assertEquals(Array.isArray(entry.paymentsFound), true);
+  assertEquals(entry.paymentsFound.length, 2);
 });
 
 Deno.test("pedido PDV (source=pdv) NÃO é reconciliado", async () => {
