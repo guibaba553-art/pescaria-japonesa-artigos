@@ -19,8 +19,8 @@ async function call(body: Record<string, unknown>): Promise<Response> {
   }));
 }
 
-// Cria um pedido aguardando_pagamento com um usuário único (evita o limite de
-// 3 pedidos pendentes por usuário imposto pelo trigger) e um profile com
+// Cria um pedido aguardando_pagamento com usuário único (evita o limite de
+// 3 pedidos pendentes por usuário imposto pelo trigger) e profile com
 // asaas_customer_id.
 async function createFixture(customerId: string | null, total = 49.90) {
   const email = `reconciler_${crypto.randomUUID().slice(0, 8)}@test.com`;
@@ -164,7 +164,7 @@ Deno.test("aplica backfill do asaas_payment_id (dryRun=false)", async () => {
   assertEquals(rows[0]?.status, "aguardando_pagamento");
 });
 
-Deno.test("cobrança RECEIVED transiciona pedido para em_preparo", async () => {
+Deno.test("cobrança RECEIVED grava o ID sem alterar status do pedido", async () => {
   const { userId, orderId } = await createFixture("cus_reconcile_3");
 
   mockAsaas((url, method) => {
@@ -182,7 +182,8 @@ Deno.test("cobrança RECEIVED transiciona pedido para em_preparo", async () => {
   const entry = data.report.find((x: any) => x.orderId === orderId);
   assert(entry, "deve ter registro para o pedido");
   assertEquals(entry.status, "applied");
-  assertEquals(entry.setEmPreparo, true);
+  // Mesmo RECEIVED, a conciliação NÃO transiciona status (decisão é manual)
+  assertEquals(entry.setEmPreparo, false);
 
   const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
   const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=asaas_payment_id,status`, { headers: svc });
@@ -190,7 +191,42 @@ Deno.test("cobrança RECEIVED transiciona pedido para em_preparo", async () => {
   await cleanup(userId, orderId);
 
   assertEquals(rows[0]?.asaas_payment_id, "pay_received_1");
-  assertEquals(rows[0]?.status, "em_preparo");
+  assertEquals(rows[0]?.status, "aguardando_pagamento", "status não deve mudar — só o ID");
+});
+
+Deno.test("pedido cancelado também é reconciliado (qualquer status)", async () => {
+  // O trigger exige criação como aguardando_pagamento; muda para cancelado depois
+  const { userId, orderId } = await createFixture("cus_reconcile_4", 49.90);
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+  const up = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, {
+    method: "PATCH",
+    headers: svc,
+    body: JSON.stringify({ status: "cancelado", cancellation_reason: "prazo_expirado" }),
+  });
+  assert(up.ok, `falha ao marcar pedido como cancelado: ${await up.text()}`);
+
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 1, data: [{ id: "pay_cancelled_1", status: "RECEIVED", value: 49.90, billingType: "PIX" }] } };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: false, cutoff: "2026-08-11" });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  assert(entry, "deve ter registro para o pedido");
+  assertEquals(entry.status, "applied");
+
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=asaas_payment_id,status`, { headers: svc });
+  const rows = await q.json();
+  await cleanup(userId, orderId);
+
+  assertEquals(rows[0]?.asaas_payment_id, "pay_cancelled_1");
+  assertEquals(rows[0]?.status, "cancelado", "pedido cancelado continua cancelado — só o ID é gravado");
 });
 
 Deno.test("pedidos repetidos (mesmo valor) são pareados 1:1 com cobranças distintas", async () => {
