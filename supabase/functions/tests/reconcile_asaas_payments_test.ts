@@ -270,6 +270,51 @@ Deno.test("cobrança RECEIVED grava o ID sem alterar status do pedido", async ()
   assertEquals(rows[0]?.status, "aguardando_pagamento", "status não deve mudar — só o ID");
 });
 
+Deno.test("parcelamento: casa pelo total do parcelamento, não pela parcela", async () => {
+  // Pedido de R$ 200,12 em 3x — a parcela no Asaas vale 66.71, mas o total do
+  // parcelamento é 200.12. O match deve usar o total (GET /v3/installments/{id}).
+  // Customer único por execução para não colidir com pedidos de runs anteriores.
+  const customerId = `cus_reconcile_inst_${crypto.randomUUID().slice(0, 8)}`;
+  const installmentId = `inst_${crypto.randomUUID().slice(0, 8)}`;
+  const { userId, orderId } = await createFixture(customerId, 200.12);
+
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/installments/")) {
+      return { status: 200, body: { id: installmentId, value: 200.12, paymentValue: 66.71, installmentCount: 3, billingType: "CREDIT_CARD" } };
+    }
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 3, data: [
+        { id: "pay_inst_1", status: "RECEIVED", value: 66.71, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 1, dateCreated: "2026-08-12 10:00:00" },
+        { id: "pay_inst_2", status: "PENDING", value: 66.71, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 2, dateCreated: "2026-08-12 10:00:00" },
+        { id: "pay_inst_3", status: "PENDING", value: 66.71, billingType: "CREDIT_CARD", installment: installmentId, installmentNumber: 3, dateCreated: "2026-08-12 10:00:00" },
+      ] } };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: false, cutoff: "2026-08-11" });
+  mockAsaas(null);
+
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  if (!entry) console.error("REPORT:", JSON.stringify(data.report, null, 2));
+  assert(entry, "deve ter registro para o pedido");
+  assertEquals(entry.status, "applied", `parcelamento deve casar pelo total — entry: ${JSON.stringify(entry)}`);
+
+  const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` };
+  const q = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}&select=*`, { headers: svc });
+  const rows = await q.json();
+  await cleanup(userId, orderId);
+
+  const row = (rows as any[])[0];
+  assertEquals(row?.asaas_payment_id, "pay_inst_1", "asaas_payment_id deve ser gravado mesmo se coluna opcional faltar");
+  // asaas_installment_id é coluna opcional — se existir no schema, deve estar preenchida
+  if (row && "asaas_installment_id" in row) {
+    assertEquals(row.asaas_installment_id, installmentId);
+  }
+});
+
 Deno.test("pedido cancelado também é reconciliado (qualquer status)", async () => {
   // O trigger exige criação como aguardando_pagamento; muda para cancelado depois
   const { userId, orderId } = await createFixture("cus_reconcile_4", 49.90);
