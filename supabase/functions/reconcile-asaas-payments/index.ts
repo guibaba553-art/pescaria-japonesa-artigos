@@ -192,13 +192,42 @@ export async function handleRequest(req: Request): Promise<Response> {
     for (const order of orders) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("asaas_customer_id")
+        .select("asaas_customer_id, cpf")
         .eq("id", order.user_id as string)
         .maybeSingle();
 
-      const customerId = profile?.asaas_customer_id as string | undefined;
+      let customerId = profile?.asaas_customer_id as string | undefined;
+
+      // Fallback: sem asaas_customer_id salvo, tenta localizar o customer no
+      // Asaas pelo CPF do usuário (ex.: checkout que criou a cobrança mas o
+      // UPDATE do profile falhou). Se achar, persiste o ID no profile.
       if (!customerId) {
-        report.push({ orderId: order.id as string, status: "no_customer", detail: "profiles.asaas_customer_id ausente" });
+        const cpf = String(profile?.cpf ?? "").replace(/\D/g, "");
+        if (cpf.length === 11) {
+          try {
+            const custResp = await fetch(
+              `${asaasBaseUrl}/v3/customers?cpfCnpj=${encodeURIComponent(cpf)}&limit=1`,
+              { headers: asaasHeaders },
+            );
+            if (custResp.ok) {
+              const custData = await custResp.json();
+              const found = (custData?.data ?? [])[0] as Record<string, unknown> | undefined;
+              if (found?.id) {
+                customerId = found.id as string;
+                await supabase
+                  .from("profiles")
+                  .update({ asaas_customer_id: customerId })
+                  .eq("id", order.user_id as string);
+              }
+            }
+          } catch (cpfErr) {
+            console.error(`[reconcile-asaas-payments] busca customer por CPF (${order.id}):`, cpfErr);
+          }
+        }
+      }
+
+      if (!customerId) {
+        report.push({ orderId: order.id as string, status: "no_customer", detail: "profiles.asaas_customer_id ausente e CPF sem customer no Asaas" });
         continue;
       }
 

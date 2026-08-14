@@ -22,17 +22,20 @@ async function call(body: Record<string, unknown>): Promise<Response> {
 // Cria um pedido aguardando_pagamento com usuário único (evita o limite de
 // 3 pedidos pendentes por usuário imposto pelo trigger) e profile com
 // asaas_customer_id.
-async function createFixture(customerId: string | null, total = 49.90) {
+async function createFixture(customerId: string | null, total = 49.90, cpf: string | null = null) {
   const email = `reconciler_${crypto.randomUUID().slice(0, 8)}@test.com`;
   const { id: userId } = await ensureEmployeeUser(email, "testpass123", {});
 
   const svc = { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" };
 
-  if (customerId) {
+  const profilePatch: Record<string, unknown> = {};
+  if (customerId) profilePatch.asaas_customer_id = customerId;
+  if (cpf) profilePatch.cpf = cpf;
+  if (Object.keys(profilePatch).length > 0) {
     const p = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
       method: "PATCH",
       headers: svc,
-      body: JSON.stringify({ asaas_customer_id: customerId }),
+      body: JSON.stringify(profilePatch),
     });
     await p.text();
   }
@@ -152,10 +155,19 @@ Deno.test("dry-run casa pedido por valor e não altera o pedido", async () => {
   assertEquals(rows[0]?.status, "aguardando_pagamento");
 });
 
-Deno.test("sem customer Asaas → no_customer", async () => {
-  const { userId, orderId } = await createFixture(null);
+Deno.test("sem customer Asaas e CPF sem customer no Asaas → no_customer", async () => {
+  // CPF informado, mas a busca no Asaas por cpfCnpj não retorna customer
+  const { userId, orderId } = await createFixture(null, 49.90, "06849830128");
+
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/customers?cpfCnpj=")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 0, data: [] } };
+    }
+    return null;
+  });
 
   const r = await call({ dryRun: true, cutoff: "2026-08-11" });
+  mockAsaas(null);
   assertEquals(r.status, 200);
   const data = await r.json();
   const entry = data.report.find((x: any) => x.orderId === orderId);
@@ -163,6 +175,32 @@ Deno.test("sem customer Asaas → no_customer", async () => {
 
   assert(entry, "deve ter registro para o pedido");
   assertEquals(entry.status, "no_customer");
+});
+
+Deno.test("fallback por CPF: encontra customer e reconcilia pedido", async () => {
+  // Sem asaas_customer_id no profile, mas o Asaas encontra o customer pelo CPF
+  const { userId, orderId } = await createFixture(null, 153.46, "06849830128");
+
+  mockAsaas((url, method) => {
+    if (method === "GET" && url.includes("/v3/customers?cpfCnpj=")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 1, data: [{ id: "cus_claudiomiro", name: "Claudiomiro Santos" }] } };
+    }
+    if (method === "GET" && url.includes("/v3/payments")) {
+      return { status: 200, body: { object: "list", hasMore: false, totalCount: 1, data: [{ id: "pay_claudiomiro", status: "PENDING", value: 153.46, billingType: "PIX", dateCreated: "2026-08-13 20:49:00" }] } };
+    }
+    return null;
+  });
+
+  const r = await call({ dryRun: true, cutoff: "2026-08-11" });
+  mockAsaas(null);
+  assertEquals(r.status, 200);
+  const data = await r.json();
+  const entry = data.report.find((x: any) => x.orderId === orderId);
+  await cleanup(userId, orderId);
+
+  assert(entry, "deve ter registro para o pedido");
+  assertEquals(entry.status, "dry_run", "fallback por CPF deve achar a cobrança");
+  assertEquals(entry.paymentId, "pay_claudiomiro");
 });
 
 Deno.test("sem cobrança com o valor → no_match com paymentsFound", async () => {
