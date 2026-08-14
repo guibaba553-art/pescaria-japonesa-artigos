@@ -88,7 +88,8 @@ export function Header() {
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const results = await searchProductsSmart(supabase, query, 6);
+        const results = await searchProductsSmart(supabase, query, 8, { expandVariations: true });
+
         if (!cancelled) setSuggestions(results as Suggestion[]);
       } catch {
         if (!cancelled) setSuggestions([]);
@@ -123,8 +124,10 @@ export function Header() {
   const handleSelectSuggestion = (s: Suggestion) => {
     setShowSuggestions(false);
     setSearchQuery('');
-    navigate(`/produto/${s.id}`);
+    const variationId = (s as any).variation_id;
+    navigate(variationId ? `/produto/${s.id}?variacao=${variationId}` : `/produto/${s.id}`);
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions || suggestions.length === 0) return;
@@ -235,7 +238,7 @@ export function Header() {
                   <>
                     <ul className="py-2">
                       {suggestions.map((s, idx) => (
-                        <li key={s.id}>
+                        <li key={`${s.id}-${(s as any).variation_id ?? 'base'}`}>
                           <button
                             type="button"
                             onMouseDown={(e) => {

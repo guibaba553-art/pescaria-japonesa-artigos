@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,9 @@ import { getStockMessage } from '@/utils/stockDisplay';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>('');
@@ -99,8 +101,16 @@ export default function ProductDetails() {
         // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
         // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
         // via sitePriceForVariation em cada componente.
-        setVariations(variationsData as ProductVariation[]);
+        const vars = variationsData as ProductVariation[];
+        setVariations(vars);
+        const wanted = searchParams.get('variacao');
+        const preselected = wanted ? vars.find((v) => v.id === wanted) : null;
+        if (preselected) {
+          setSelectedVariation(preselected);
+          if (preselected.image_url) setSelectedImage(preselected.image_url);
+        }
       }
+
 
     }
     setLoading(false);
