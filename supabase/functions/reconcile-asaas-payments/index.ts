@@ -54,6 +54,14 @@ const ASAAS_FINAL_STATUSES = ["RECEIVED", "CONFIRMED"];
 
 const LIST_LIMIT = 100;
 
+/**
+ * Tolerância (em reais) para o match de valor.
+ * Em parcelamentos, o total pode divergir em 1 centavo por arredondamento
+ * (ex.: Math.floor(total*100/n)/100 no cálculo da parcela + ajuste na última).
+ * Um drift exato de 1 centavo não pode virar no_match falso.
+ */
+const VALUE_TOLERANCE = 0.01;
+
 function toIsoDateOnly(iso: string): string {
   return iso.slice(0, 10);
 }
@@ -256,9 +264,10 @@ export async function handleRequest(req: Request): Promise<Response> {
         }
       }
 
-      // Mesmo valor efetivo, ordenadas por data de criação.
+      // Mesmo valor efetivo (tolerância de 1 centavo p/ drift de arredondamento),
+      // ordenadas por data de criação.
       const valuePayments = effectivePayments
-        .filter((p) => Math.abs(Number(p._effectiveValue) - totalAmount) < 0.01)
+        .filter((p) => Math.abs(Number(p._effectiveValue) - totalAmount) <= VALUE_TOLERANCE)
         .sort((a, b) => String(a.dateCreated).localeCompare(String(b.dateCreated)));
 
       // Pedidos ordenados por data de criação (mais antigo primeiro).
