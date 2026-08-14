@@ -101,8 +101,16 @@ export default function ProductDetails() {
         // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
         // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
         // via sitePriceForVariation em cada componente.
-        setVariations(variationsData as ProductVariation[]);
+        const vars = variationsData as ProductVariation[];
+        setVariations(vars);
+        const wanted = searchParams.get('variacao');
+        const preselected = wanted ? vars.find((v) => v.id === wanted) : null;
+        if (preselected) {
+          setSelectedVariation(preselected);
+          if (preselected.image_url) setSelectedImage(preselected.image_url);
+        }
       }
+
 
     }
     setLoading(false);
