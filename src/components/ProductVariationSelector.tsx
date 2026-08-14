@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductVariation } from "@/types/product";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
@@ -9,7 +9,10 @@ interface ProductVariationSelectorProps {
   variations: ProductVariation[];
   onVariationSelect: (variation: ProductVariation | null) => void;
   productMinSalePrice?: number | null;
+  /** Pré-seleciona uma variação (ex.: vindo da busca com ?variacao=) */
+  initialVariationId?: string | null;
 }
+
 
 // Preço exibido no site: prioriza promoção ativa da variação, depois min_sale_price
 // da variação, depois min_sale_price do produto pai, e por fim cai no price (PDV).
@@ -31,8 +34,22 @@ export function ProductVariationSelector({
   variations, 
   onVariationSelect,
   productMinSalePrice,
+  initialVariationId,
 }: ProductVariationSelectorProps) {
   const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
+
+  // Pré-seleção via prop (ex.: link da busca apontando para uma variação)
+  useEffect(() => {
+    if (!initialVariationId) return;
+    if (selectedVariation?.id === initialVariationId) return;
+    const found = variations.find((v) => v.id === initialVariationId);
+    if (found && found.stock > 0) {
+      setSelectedVariation(found);
+      onVariationSelect(found);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialVariationId, variations]);
+
 
   // Ordenar variações: primeiro as em estoque (alfabético), depois as esgotadas (alfabético)
   const sortedVariations = [...variations].sort((a, b) => {
