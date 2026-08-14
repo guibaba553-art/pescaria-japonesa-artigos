@@ -570,6 +570,10 @@ export default function CheckoutEntrega() {
           status: 'aguardando_pagamento',
           delivery_type: isPickup ? 'pickup' : 'delivery',
           shipping_service_id: meServiceId,
+          payment_method: selectedPayment === 'pix' ? 'pix' : 'credit_card',
+          payment_gateway: selectedPayment === 'pix'
+            ? selectPixGateway(total + displayFreteValor)
+            : 'asaas',
         })
         .select()
         .single();
