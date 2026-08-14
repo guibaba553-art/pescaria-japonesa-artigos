@@ -238,7 +238,7 @@ export function Header() {
                   <>
                     <ul className="py-2">
                       {suggestions.map((s, idx) => (
-                        <li key={s.id}>
+                        <li key={`${s.id}-${(s as any).variation_id ?? 'base'}`}>
                           <button
                             type="button"
                             onMouseDown={(e) => {
