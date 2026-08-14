@@ -36,14 +36,17 @@ const corsHeaders = {
  * Uso (dry-run primeiro):
  *   curl -X POST https://<ref>/functions/v1/reconcile-asaas-payments \
  *     -H "Authorization: Bearer $CRON_SECRET" -H "Content-Type: application/json" \
- *     -d '{"dryRun": true, "cutoff": "2026-08-11"}'
+ *     -d '{"dryRun": true, "cutoff": "2026-08-12"}'
  *
- * Para aplicar de verdade: {"dryRun": false, "cutoff": "2026-08-11"}
+ * Para aplicar de verdade: {"dryRun": false, "cutoff": "2026-08-12"}
+ *
+ * cutoff default: 2026-08-12 — a conciliação atua apenas em pedidos criados
+ * a partir de 12/08 (pedidos de 11/08 foram tratados manualmente).
  */
 
 const requestSchema = z.object({
   dryRun: z.boolean().optional().default(true),
-  cutoff: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "cutoff deve estar no formato YYYY-MM-DD").optional().default("2026-08-11"),
+  cutoff: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "cutoff deve estar no formato YYYY-MM-DD").optional().default("2026-08-12"),
 });
 
 const ASAAS_FINAL_STATUSES = ["RECEIVED", "CONFIRMED"];
