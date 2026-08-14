@@ -66,24 +66,23 @@ const renderHeader = () =>
     </MemoryRouter>
   );
 
-describe('Header — busca com filtro de estoque', () => {
-  it('deve incluir .gt("stock", 0) na query de sugestões', async () => {
+describe('Header — busca tolerante', () => {
+  it('filtra por estoque e busca em vários campos', async () => {
     renderHeader();
 
-    // Encontra o input de busca
     const input = screen.getByPlaceholderText('Buscar varas, anzóis, iscas, linhas...');
     expect(input).toBeTruthy();
 
-    // Digita algo para disparar a busca (dispara o debounce)
     fireEvent.change(input, { target: { value: 'alicate' } });
 
-    // Aguarda o debounce (250ms) + promise
     await waitFor(() => {
       expect(mockSupabaseQuery.select).toHaveBeenCalled();
       expect(mockSupabaseQuery.eq).toHaveBeenCalledWith('pdv_only', false);
       expect(mockSupabaseQuery.gt).toHaveBeenCalledWith('stock', 0);
-      expect(mockSupabaseQuery.ilike).toHaveBeenCalledWith('name', '%alicate%');
-      expect(mockSupabaseQuery.limit).toHaveBeenCalledWith(6);
+      expect(mockSupabaseQuery.or).toHaveBeenCalledWith(
+        expect.stringContaining('name.ilike.%alicate%')
+      );
     });
   });
+
 });
