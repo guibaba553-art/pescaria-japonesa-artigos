@@ -233,13 +233,30 @@ export async function handleRequest(req: Request): Promise<Response> {
         const orderId = order.id as string;
         const payment = valuePayments[i];
 
-        // Sem cobrança suficiente na janela para este pedido repetido.
+        // Sem cobrança suficiente na janela para este pedido.
         if (!payment) {
-          report.push({
-            orderId,
-            status: "no_match",
-            detail: "pedidos repetidos excedem as cobranças disponíveis na janela",
-          });
+          // Nenhuma cobrança com o valor do pedido na janela — lista o que
+          // EXISTE no Asaas para o customer (outros valores/datas) para revisão.
+          if (valuePayments.length === 0) {
+            report.push({
+              orderId,
+              status: "no_match",
+              detail: "nenhuma cobrança com este valor na janela",
+              paymentsFound: payments.map((p) => ({
+                id: p.id,
+                value: p.value,
+                status: p.status,
+                billingType: p.billingType,
+                dateCreated: p.dateCreated,
+              })),
+            });
+          } else {
+            report.push({
+              orderId,
+              status: "no_match",
+              detail: "pedidos repetidos excedem as cobranças disponíveis na janela",
+            });
+          }
           continue;
         }
 
