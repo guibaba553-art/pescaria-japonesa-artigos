@@ -8,7 +8,7 @@ GRANT SELECT (
   sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
   minimum_quantity, sku, sold_by_weight, weight_grams, length_cm, width_cm, height_cm,
   created_at, updated_at, ncm, cest, csosn, cfop, origem, unidade_comercial,
-  include_in_nfe, min_stock, pdv_only, sale_channel
+  include_in_nfe, pdv_only, sale_channel
 ) ON public.products TO anon, authenticated;
 
 -- 2) Restrict SELECT on product_variations — only safe columns for anon/authenticated
