@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -46,7 +46,7 @@ vi.mock('@/hooks/useCart', () => ({
 const mockFrom = vi.fn();
 const mockRpc = vi.fn();
 let currentFromTable = '';
-let capturedOrdersInsert: any = null;
+let capturedOrdersInsert: { payment_method?: string; payment_gateway?: string; [key: string]: unknown } | null = null;
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -192,6 +192,10 @@ beforeEach(() => {
   mockValidateSiteCart.mockResolvedValue({ valid: true, issues: [], removeKeys: [] });
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('CheckoutEntrega — fluxo de pagamento PIX', () => {
   it('deve renderizar com opções PIX e Cartão', async () => {
     render(
@@ -309,7 +313,7 @@ describe('CheckoutEntrega — grava forma de pagamento na criação do pedido', 
     });
   });
 
-  it('PIX >= R$ 201: grava payment_method=pix e payment_gateway=asaas', async () => {
+  it('PIX acima do break-even (~R$ 201): grava payment_method=pix e payment_gateway=asaas', async () => {
     mockCartTotal = 300;
 
     render(
