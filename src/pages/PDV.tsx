@@ -1153,7 +1153,7 @@ export default function PDV() {
         const [{ data: prod }, { data: vars }] = await Promise.all([
           supabase
             .from('products')
-            .select('id, name, price, stock, image_url, category, sku, minimum_quantity, sold_by_weight')
+            .select('*')
             .eq('id', productId)
             .maybeSingle(),
           supabase.from('product_variations').select('*').eq('product_id', productId),
