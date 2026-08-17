@@ -577,8 +577,39 @@ serve(async (req) => {
       ],
     });
 
+    // ---------- GUARDA DE IDEMPOTÊNCIA ----------
+    // Impede que duas chamadas (auto-emissão + clique manual) gerem duas NF-e
+    // para o mesmo pedido.
+    {
+      const { data: dup } = await supabase
+        .from('nfe_emissions')
+        .select('id, status, nfe_number, ref_focus, created_at')
+        .eq('order_id', orderId)
+        .eq('modelo', '55')
+        .in('status', ['pending', 'processing', 'success'])
+        .is('cancelled_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (dup) {
+        console.log('[emit-nfe] Emissão duplicada bloqueada', { orderId, existing: dup.id });
+        return new Response(
+          JSON.stringify({
+            success: true,
+            duplicate: true,
+            ref: dup.ref_focus,
+            status: dup.status,
+            message: 'Já existe NF-e emitida (ou em processamento) para este pedido.',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     const userPrefix = (userIdForRateLimit || 'service0').substring(0, 8);
     const ref = `nfe-${userPrefix}-${orderId.substring(0, 8)}-${Date.now()}`;
+
     const dataEmissao = buildDataEmissao(0);
     const payload = buildPayload(dataEmissao);
 
