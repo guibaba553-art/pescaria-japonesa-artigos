@@ -167,7 +167,7 @@ export function getPdvPriceForVariation(
   }
   // Promoção do produto pai aplicada proporcionalmente
   if (isPdvPromoActive(parent)) {
-    const baseP = Number(parent.price ?? 0);
+    const baseP = pdvBaseListPrice(parent);
     if (baseP > 0) {
       const discount = 1 - Number(parent.sale_price) / baseP;
       const proportionalPrice = Number(variationPrice) * (1 - discount);
