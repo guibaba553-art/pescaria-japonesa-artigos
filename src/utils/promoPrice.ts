@@ -20,6 +20,18 @@ export interface PromoFields {
   sale_sold_qty?: number | null;
   sale_channel?: string | null;
   price?: number | null;
+  min_sale_price?: number | null;
+}
+
+/**
+ * Preço base "de" exibido no site: min_sale_price quando definido,
+ * senão o price cadastrado. A promoção é comparada contra esse valor
+ * porque é o preço que o cliente vê riscado.
+ */
+export function promoBasePrice(item: PromoFields): number {
+  const min = Number(item?.min_sale_price ?? 0);
+  if (min > 0) return min;
+  return Number(item?.price ?? 0);
 }
 
 /** Retorna true se a promo está válida (ativa, no prazo e com estoque promocional). */
@@ -29,7 +41,7 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   if (item.sale_price == null) return false;
   // Canal da promoção: 'site' | 'pdv' | 'both'. No site, ignora 'pdv'.
   if (item.sale_channel && item.sale_channel === 'pdv') return false;
-  const base = Number(item.price ?? 0);
+  const base = promoBasePrice(item);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
   if (item.sale_starts_at) {
@@ -46,6 +58,7 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   }
   return true;
 }
+
 
 /** Retorna true se a promo está agendada para o futuro (ainda não começou). */
 export function isPromoScheduled(item: PromoFields, now: Date = new Date()): boolean {
