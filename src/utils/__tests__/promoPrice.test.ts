@@ -5,6 +5,7 @@ import {
   getProductDisplayImage,
   isPromoActive,
   PromoFields,
+  validatePromotionPeriod,
 } from '../promoPrice';
 
 // ─── effectiveProductOrVariationPrice ──────────────────────
@@ -167,6 +168,21 @@ describe('isPromoActive', () => {
       makeItem({ sale_ends_at: '2025-05-01T00:00:00.000Z' }),
       futureNow,
     )).toBe(false);
+  });
+});
+
+describe('validatePromotionPeriod', () => {
+  it('rejeita promoção sem prazo final', () => {
+    expect(validatePromotionPeriod('', '')).toBe('Informe a data final da promoção.');
+  });
+
+  it('rejeita prazo final anterior ao início', () => {
+    expect(validatePromotionPeriod('2026-08-20T10:00', '2026-08-20T09:59'))
+      .toBe('A data final deve ser posterior à data inicial.');
+  });
+
+  it('aceita prazo final futuro e início opcional', () => {
+    expect(validatePromotionPeriod('', '2026-08-20T10:00', new Date('2026-08-20T09:00:00'))).toBeNull();
   });
 });
 
