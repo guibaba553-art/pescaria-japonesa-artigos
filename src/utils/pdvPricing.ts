@@ -73,12 +73,19 @@ export function isExemptFromMarkup(p: PdvPricingFields): boolean {
   return EXEMPT_KEYWORDS.some((kw) => name.includes(normalize(kw)));
 }
 
+/** Preço "de" no PDV (price_pdv quando definido, senão price do site). */
+function pdvBaseListPrice(p: PdvPricingFields): number {
+  return p.price_pdv != null && !isNaN(Number(p.price_pdv))
+    ? Number(p.price_pdv)
+    : Number(p.price ?? 0);
+}
+
 /** Verifica se a promoção do catálogo está ativa para uso no PDV. */
 export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): boolean {
   if (!p.on_sale) return false;
   if (p.sale_channel && p.sale_channel === 'site') return false;
   if (p.sale_price == null) return false;
-  const base = Number(p.price ?? 0);
+  const base = pdvBaseListPrice(p);
   if (base <= 0) return false;
   if (Number(p.sale_price) >= base) return false;
   if (p.sale_starts_at) {
@@ -95,6 +102,7 @@ export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): b
   }
   return true;
 }
+
 
 /** Retorna o preço base do PDV, considerando promoção ativa primeiro. */
 export function getPdvBasePrice(p: PdvPricingFields): number {
