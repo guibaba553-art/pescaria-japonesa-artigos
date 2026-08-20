@@ -1,0 +1,1 @@
+UPDATE public.products SET ncm = '93040000', cfop = COALESCE(cfop, '5102'), origem = COALESCE(origem, '0'), unidade_comercial = COALESCE(unidade_comercial, 'UN') WHERE id = 'ecc85f23-0ec2-481c-a4d4-14ce8c98350a';
