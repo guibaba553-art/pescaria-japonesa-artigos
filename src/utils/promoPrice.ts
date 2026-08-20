@@ -23,6 +23,24 @@ export interface PromoFields {
   min_sale_price?: number | null;
 }
 
+/** Valida o prazo antes de gravar uma promoção. Promoções sempre devem expirar. */
+export function validatePromotionPeriod(
+  startsAt: string,
+  endsAt: string,
+  now: Date = new Date(),
+): string | null {
+  if (!endsAt) return 'Informe a data final da promoção.';
+
+  const end = new Date(endsAt);
+  if (isNaN(end.getTime())) return 'A data final da promoção é inválida.';
+
+  const start = startsAt ? new Date(startsAt) : now;
+  if (isNaN(start.getTime())) return 'A data inicial da promoção é inválida.';
+  if (end.getTime() <= start.getTime()) return 'A data final deve ser posterior à data inicial.';
+
+  return null;
+}
+
 /**
  * Preço base "de" exibido no site: min_sale_price quando definido,
  * senão o price cadastrado. A promoção é comparada contra esse valor

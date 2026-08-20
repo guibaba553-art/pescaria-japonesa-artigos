@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
-import { isPromoActive, isPromoScheduled } from '@/utils/promoPrice';
+import { isPromoActive, isPromoScheduled, validatePromotionPeriod } from '@/utils/promoPrice';
 
 /** Converte texto colado (dd/mm/yyyy [hh:mm], ISO, datetime-local) para o formato do input datetime-local. */
 function parsePastedDate(raw: string): string | null {
@@ -200,13 +200,18 @@ export function PromotionsManagement() {
     draft: Draft
   ) => {
     const key = `${table}:${id}`;
-    setSaving((s) => ({ ...s, [key]: true }));
+    const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
     const final = computeFinalPrice(basePrice, draft);
     if (final >= basePrice) {
       toast({ title: 'Preço promocional inválido', description: 'O preço final deve ser menor que o preço atual.', variant: 'destructive' });
       setSaving((s) => ({ ...s, [key]: false }));
       return;
     }
+    setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const payload: any = {
       on_sale: true,
@@ -248,6 +253,11 @@ export function PromotionsManagement() {
     const key = `bulk:${product.id}`;
     const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
+    const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
     setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const endsAtIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
@@ -642,6 +652,11 @@ export function PromotionsManagement() {
   const applyBatch = async () => {
     if (selected.size === 0) {
       toast({ title: 'Selecione ao menos um item' });
+      return;
+    }
+    const periodError = validatePromotionPeriod(batchDraft.startsAt, batchDraft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
       return;
     }
     setBatchSaving(true);
