@@ -92,11 +92,11 @@ export function ProductListing({
       let query = supabase
         .from('products')
         .select(`
-          id, name, price, sale_price, on_sale, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
+          id, name, price, sale_price, on_sale, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel, min_sale_price,
           category, subcategory, brand_id, brands(name), pound_test, size,
           image_url, stock, rating, featured, minimum_quantity,
           sold_by_weight, created_at,
-          variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
+          variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel, min_sale_price)
         `)
         .eq('pdv_only', false)
         .gt('stock', 0)

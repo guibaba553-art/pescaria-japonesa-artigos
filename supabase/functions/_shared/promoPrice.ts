@@ -64,7 +64,7 @@ export function effectiveVariationPrice(
 
   const vBase = Number(variation.price ?? 0);
   if (product && isPromoActive(product)) {
-    const baseP = Number(product.price ?? 0);
+    const baseP = promoBasePrice(product);
     if (baseP > 0) {
       const discount = 1 - Number(product.sale_price) / baseP;
       return vBase * (1 - discount);
