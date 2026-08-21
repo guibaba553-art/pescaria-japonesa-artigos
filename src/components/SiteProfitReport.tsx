@@ -205,7 +205,11 @@ export function SiteProfitReport({
                         <td className="py-2 font-mono text-xs">
                           #{o.id.slice(0, 8)}
                           <Badge variant="outline" className="ml-2 text-[10px]">{o.status}</Badge>
+                          {isPdv && o.paymentMethod && (
+                            <Badge variant="secondary" className="ml-1 text-[10px]">{o.paymentMethod}</Badge>
+                          )}
                         </td>
+
                         <td className="py-2 whitespace-nowrap">
                           {new Date(o.createdAt).toLocaleDateString('pt-BR')}
                         </td>
