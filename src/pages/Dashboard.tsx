@@ -237,6 +237,12 @@ export default function Dashboard() {
     setSiteProfit(t.profit);
   }, []);
 
+  const [pdvProfit, setPdvProfit] = useState<number | null>(null);
+  const handlePdvTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setPdvProfit(t.profit);
+  }, []);
+
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [canView, loading, navigate]);
@@ -1556,8 +1562,18 @@ export default function Dashboard() {
               dataKey="pdv"
               orderKey="pdvOrders"
               top={topPdv}
+              profit={pdvProfit}
             />
+            <div className="mt-6">
+              <SiteProfitReport
+                channel="pdv"
+                rangeStart={range.from}
+                rangeEnd={range.to}
+                onTotals={handlePdvTotals}
+              />
+            </div>
           </TabsContent>
+
 
           {/* ============ SITE ============ */}
           <TabsContent value="site">

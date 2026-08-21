@@ -20,6 +20,7 @@ export interface SiteProfitOrder {
   id: string;
   createdAt: string;
   status: string;
+  paymentMethod?: string | null;
   revenue: number;
   cost: number;
   profit: number;
@@ -27,7 +28,9 @@ export interface SiteProfitOrder {
   items: SiteProfitItem[];
 }
 
+
 const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
+const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -35,11 +38,14 @@ export function SiteProfitReport({
   rangeStart,
   rangeEnd,
   onTotals,
+  channel = 'site',
 }: {
   rangeStart?: Date;
   rangeEnd?: Date;
   onTotals?: (totals: { revenue: number; cost: number; profit: number }) => void;
+  channel?: 'site' | 'pdv';
 }) {
+  const isPdv = channel === 'pdv';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SiteProfitOrder[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -58,15 +64,19 @@ export function SiteProfitReport({
           rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59,
         ).toISOString();
 
-        const { data: ordersData, error } = await supabase
+        let query = supabase
           .from('orders')
-          .select('id, created_at, status, total_amount, shipping_cost, source')
-          .neq('source', 'pdv')
-          .in('status', SITE_FINALIZED)
+          .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
+        query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
+
+        const { data: ordersData, error } = await query
+          .in('status', (isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });
         if (error) throw error;
+
+
 
         const ids = (ordersData || []).map((o) => o.id);
         const items: any[] = [];
@@ -113,7 +123,9 @@ export function SiteProfitReport({
             id: o.id,
             createdAt: o.created_at,
             status: o.status,
+            paymentMethod: o.payment_method ?? null,
             revenue,
+
             cost,
             profit,
             margin: revenue > 0 ? (profit / revenue) * 100 : 0,
@@ -136,7 +148,7 @@ export function SiteProfitReport({
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
+  }, [rangeStart?.getTime(), rangeEnd?.getTime(), isPdv]);
 
   const totals = useMemo(() => ({
     revenue: orders.reduce((s, o) => s + o.revenue, 0),
@@ -147,7 +159,7 @@ export function SiteProfitReport({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lucro por Venda — Site</CardTitle>
+        <CardTitle>Lucro por Venda — {isPdv ? 'PDV' : 'Site'}</CardTitle>
         <CardDescription>
           {loading
             ? 'Carregando vendas...'
@@ -159,8 +171,11 @@ export function SiteProfitReport({
         {loading ? (
           <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma venda do site no período.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma venda {isPdv ? 'do PDV' : 'do site'} no período.
+          </p>
         ) : (
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -190,7 +205,11 @@ export function SiteProfitReport({
                         <td className="py-2 font-mono text-xs">
                           #{o.id.slice(0, 8)}
                           <Badge variant="outline" className="ml-2 text-[10px]">{o.status}</Badge>
+                          {isPdv && o.paymentMethod && (
+                            <Badge variant="secondary" className="ml-1 text-[10px]">{o.paymentMethod}</Badge>
+                          )}
                         </td>
+
                         <td className="py-2 whitespace-nowrap">
                           {new Date(o.createdAt).toLocaleDateString('pt-BR')}
                         </td>
