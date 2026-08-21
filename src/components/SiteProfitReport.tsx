@@ -70,7 +70,7 @@ export function SiteProfitReport({
         query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
 
         const { data: ordersData, error } = await query
-          .in('status', (isPdv ? PDV_FINALIZED : SITE_FINALIZED) as unknown as string[])
+          .in('status', (isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });
