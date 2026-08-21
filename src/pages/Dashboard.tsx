@@ -1596,7 +1596,27 @@ export default function Dashboard() {
           </TabsContent>
 
           {/* ============ VENDAS GERAIS ============ */}
-          <TabsContent value="vendas-gerais">
+          <TabsContent value="vendas-gerais" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita Diária — Vendas Gerais ({rangeLabel})</CardTitle>
+                <CardDescription>Comparativo PDV vs Site ao longo do período</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    <Legend />
+                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} />
+                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
             <SiteProfitReport channel="all" rangeStart={range.from} rangeEnd={range.to} />
           </TabsContent>
 
