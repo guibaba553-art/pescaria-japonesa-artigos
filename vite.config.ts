@@ -16,8 +16,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
-    // Compatibilidade com celulares antigos (Android 8+/Chrome 64+, iOS 12+).
-    target: ["es2019", "chrome64", "safari12", "firefox67", "edge79"],
+    // Compatibilidade ampla, mas exige BigInt (usado pelo onnxruntime/transformers):
+    // Chrome 67+, Safari 14+, Firefox 68+, Edge 79+.
+    target: ["es2020", "chrome67", "safari14", "firefox68", "edge79"],
     // Mantém o aviso mais alto porque isolamos apenas o que é realmente pesado.
     chunkSizeWarningLimit: 800,
     rollupOptions: {
