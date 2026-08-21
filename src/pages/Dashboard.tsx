@@ -237,6 +237,12 @@ export default function Dashboard() {
     setSiteProfit(t.profit);
   }, []);
 
+  const [pdvProfit, setPdvProfit] = useState<number | null>(null);
+  const handlePdvTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setPdvProfit(t.profit);
+  }, []);
+
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [canView, loading, navigate]);
