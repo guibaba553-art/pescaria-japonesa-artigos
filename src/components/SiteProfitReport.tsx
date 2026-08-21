@@ -156,6 +156,15 @@ export function SiteProfitReport({
     profit: orders.reduce((s, o) => s + o.profit, 0),
   }), [orders]);
 
+  const averages = useMemo(() => {
+    const n = orders.length || 1;
+    const revenue = totals.revenue / n;
+    const cost = totals.cost / n;
+    const profit = totals.profit / n;
+    const margin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
+    return { revenue, cost, profit, margin };
+  }, [orders.length, totals]);
+
   return (
     <Card>
       <CardHeader>
@@ -175,6 +184,26 @@ export function SiteProfitReport({
             Nenhuma venda {isPdv ? 'do PDV' : 'do site'} no período.
           </p>
         ) : (
+          <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Ticket médio</p>
+              <p className="text-lg font-semibold">{fmt(averages.revenue)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Custo médio</p>
+              <p className="text-lg font-semibold">{fmt(averages.cost)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Lucro médio</p>
+              <p className="text-lg font-semibold text-primary">{fmt(averages.profit)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Margem média</p>
+              <p className="text-lg font-semibold">{averages.margin.toFixed(1)}%</p>
+            </div>
+          </div>
+
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -265,6 +294,8 @@ export function SiteProfitReport({
               </tbody>
             </table>
           </div>
+          </>
+
         )}
       </CardContent>
     </Card>
