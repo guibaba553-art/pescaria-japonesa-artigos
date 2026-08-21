@@ -1169,6 +1169,9 @@ export default function Dashboard() {
             <TabsTrigger value="site" className="gap-2">
               <Globe className="h-4 w-4" /> Site
             </TabsTrigger>
+            <TabsTrigger value="vendas-gerais" className="gap-2">
+              <DollarSign className="h-4 w-4" /> Vendas Gerais
+            </TabsTrigger>
             <TabsTrigger value="traffic">Tráfego do Site</TabsTrigger>
           </TabsList>
 
@@ -1590,6 +1593,11 @@ export default function Dashboard() {
             <div className="mt-6">
               <SiteProfitReport rangeStart={range.from} rangeEnd={range.to} onTotals={handleSiteTotals} />
             </div>
+          </TabsContent>
+
+          {/* ============ VENDAS GERAIS ============ */}
+          <TabsContent value="vendas-gerais">
+            <SiteProfitReport channel="all" rangeStart={range.from} rangeEnd={range.to} />
           </TabsContent>
 
           {/* ============ TRÁFEGO ============ */}
