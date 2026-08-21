@@ -159,7 +159,7 @@ export function SiteProfitReport({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lucro por Venda — Site</CardTitle>
+        <CardTitle>Lucro por Venda — {isPdv ? 'PDV' : 'Site'}</CardTitle>
         <CardDescription>
           {loading
             ? 'Carregando vendas...'
@@ -171,8 +171,11 @@ export function SiteProfitReport({
         {loading ? (
           <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma venda do site no período.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma venda {isPdv ? 'do PDV' : 'do site'} no período.
+          </p>
         ) : (
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
