@@ -294,6 +294,8 @@ export function SiteProfitReport({
               </tbody>
             </table>
           </div>
+          </>
+
         )}
       </CardContent>
     </Card>
