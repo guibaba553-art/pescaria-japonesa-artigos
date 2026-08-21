@@ -28,6 +28,7 @@ export interface SiteProfitOrder {
 }
 
 const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
+const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -35,11 +36,14 @@ export function SiteProfitReport({
   rangeStart,
   rangeEnd,
   onTotals,
+  channel = 'site',
 }: {
   rangeStart?: Date;
   rangeEnd?: Date;
   onTotals?: (totals: { revenue: number; cost: number; profit: number }) => void;
+  channel?: 'site' | 'pdv';
 }) {
+  const isPdv = channel === 'pdv';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SiteProfitOrder[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -58,15 +62,19 @@ export function SiteProfitReport({
           rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59,
         ).toISOString();
 
-        const { data: ordersData, error } = await supabase
+        let query = supabase
           .from('orders')
-          .select('id, created_at, status, total_amount, shipping_cost, source')
-          .neq('source', 'pdv')
-          .in('status', SITE_FINALIZED)
+          .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
+        query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
+
+        const { data: ordersData, error } = await query
+          .in('status', (isPdv ? PDV_FINALIZED : SITE_FINALIZED) as unknown as string[])
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });
         if (error) throw error;
+
+
 
         const ids = (ordersData || []).map((o) => o.id);
         const items: any[] = [];
