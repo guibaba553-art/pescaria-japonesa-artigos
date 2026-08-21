@@ -20,6 +20,7 @@ export interface SiteProfitOrder {
   id: string;
   createdAt: string;
   status: string;
+  source?: string | null;
   paymentMethod?: string | null;
   revenue: number;
   cost: number;
@@ -29,6 +30,7 @@ export interface SiteProfitOrder {
 }
 
 
+const ALL_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
 const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
 const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
 
@@ -43,9 +45,10 @@ export function SiteProfitReport({
   rangeStart?: Date;
   rangeEnd?: Date;
   onTotals?: (totals: { revenue: number; cost: number; profit: number }) => void;
-  channel?: 'site' | 'pdv';
+  channel?: 'site' | 'pdv' | 'all';
 }) {
   const isPdv = channel === 'pdv';
+  const isAll = channel === 'all';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SiteProfitOrder[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -67,10 +70,10 @@ export function SiteProfitReport({
         let query = supabase
           .from('orders')
           .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
-        query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
+        if (!isAll) query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
 
         const { data: ordersData, error } = await query
-          .in('status', (isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
+          .in('status', (isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
           .gte('created_at', startISO)
           .lte('created_at', endISO)
           .order('created_at', { ascending: false });
@@ -123,6 +126,7 @@ export function SiteProfitReport({
             id: o.id,
             createdAt: o.created_at,
             status: o.status,
+            source: o.source ?? null,
             paymentMethod: o.payment_method ?? null,
             revenue,
 
@@ -148,7 +152,7 @@ export function SiteProfitReport({
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeStart?.getTime(), rangeEnd?.getTime(), isPdv]);
+  }, [rangeStart?.getTime(), rangeEnd?.getTime(), isPdv, isAll]);
 
   const totals = useMemo(() => ({
     revenue: orders.reduce((s, o) => s + o.revenue, 0),
@@ -168,7 +172,7 @@ export function SiteProfitReport({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lucro por Venda — {isPdv ? 'PDV' : 'Site'}</CardTitle>
+        <CardTitle>Lucro por Venda — {isAll ? 'Vendas Gerais' : isPdv ? 'PDV' : 'Site'}</CardTitle>
         <CardDescription>
           {loading
             ? 'Carregando vendas...'
@@ -181,7 +185,7 @@ export function SiteProfitReport({
           <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : orders.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            Nenhuma venda {isPdv ? 'do PDV' : 'do site'} no período.
+            Nenhuma venda {isAll ? '' : isPdv ? 'do PDV' : 'do site'} no período.
           </p>
         ) : (
           <>
@@ -234,7 +238,12 @@ export function SiteProfitReport({
                         <td className="py-2 font-mono text-xs">
                           #{o.id.slice(0, 8)}
                           <Badge variant="outline" className="ml-2 text-[10px]">{o.status}</Badge>
-                          {isPdv && o.paymentMethod && (
+                          {isAll && (
+                            <Badge variant="outline" className="ml-1 text-[10px]">
+                              {o.source === 'pdv' ? 'PDV' : 'Site'}
+                            </Badge>
+                          )}
+                          {(isPdv || isAll) && o.paymentMethod && (
                             <Badge variant="secondary" className="ml-1 text-[10px]">{o.paymentMethod}</Badge>
                           )}
                         </td>
