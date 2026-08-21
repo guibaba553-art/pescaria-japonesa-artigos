@@ -4,6 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { calcBaseCost } from '@/lib/pricing';
+import {
+  ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
+} from 'recharts';
 
 
 export interface SiteProfitItem {
@@ -169,6 +172,25 @@ export function SiteProfitReport({
     return { revenue, cost, profit, margin };
   }, [orders.length, totals]);
 
+  const chartData = useMemo(() => {
+    const byDay = new Map<string, { revenue: number; cost: number; profit: number }>();
+    orders.forEach((o) => {
+      const d = new Date(o.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const cur = byDay.get(key) || { revenue: 0, cost: 0, profit: 0 };
+      cur.revenue += o.revenue;
+      cur.cost += o.cost;
+      cur.profit += o.profit;
+      byDay.set(key, cur);
+    });
+    return Array.from(byDay.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, v]) => {
+        const [y, m, d] = key.split('-');
+        return { date: `${d}/${m}/${y}`, ...v };
+      });
+  }, [orders]);
+
   return (
     <Card>
       <CardHeader>
@@ -208,6 +230,25 @@ export function SiteProfitReport({
             </div>
           </div>
 
+
+          {chartData.length > 1 && (
+            <div className="rounded-lg border p-3 mb-4">
+              <p className="text-sm font-medium mb-2">
+                Receita e Lucro Diário — {isAll ? 'Vendas Gerais' : isPdv ? 'PDV' : 'Site'}
+              </p>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(v: number) => fmt(Number(v))} />
+                  <Legend />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" name="Receita" strokeWidth={2} />
+                  <Line type="monotone" dataKey="profit" stroke="#10b981" name="Lucro" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
