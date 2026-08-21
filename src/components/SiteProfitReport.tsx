@@ -20,12 +20,14 @@ export interface SiteProfitOrder {
   id: string;
   createdAt: string;
   status: string;
+  paymentMethod?: string | null;
   revenue: number;
   cost: number;
   profit: number;
   margin: number;
   items: SiteProfitItem[];
 }
+
 
 const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
 const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
