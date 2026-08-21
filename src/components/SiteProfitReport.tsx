@@ -148,7 +148,7 @@ export function SiteProfitReport({
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
+  }, [rangeStart?.getTime(), rangeEnd?.getTime(), isPdv]);
 
   const totals = useMemo(() => ({
     revenue: orders.reduce((s, o) => s + o.revenue, 0),
