@@ -213,6 +213,25 @@ export function SiteProfitReport({
           <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Receita total</p>
+              <p className="text-lg font-semibold">{fmt(totals.revenue)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Custo total</p>
+              <p className="text-lg font-semibold">{fmt(totals.cost)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Lucro total</p>
+              <p className="text-lg font-semibold text-primary">{fmt(totals.profit)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Margem</p>
+              <p className="text-lg font-semibold">{totals.revenue > 0 ? ((totals.profit / totals.revenue) * 100).toFixed(1) : '0.0'}%</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border p-3">
               <p className="text-xs uppercase text-muted-foreground">Ticket médio</p>
               <p className="text-lg font-semibold">{fmt(averages.revenue)}</p>
             </div>
