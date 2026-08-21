@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { calcBaseCost } from '@/lib/pricing';
+
 
 export interface SiteProfitItem {
   name: string;
