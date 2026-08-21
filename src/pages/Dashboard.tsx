@@ -1562,8 +1562,18 @@ export default function Dashboard() {
               dataKey="pdv"
               orderKey="pdvOrders"
               top={topPdv}
+              profit={pdvProfit}
             />
+            <div className="mt-6">
+              <SiteProfitReport
+                channel="pdv"
+                rangeStart={range.from}
+                rangeEnd={range.to}
+                onTotals={handlePdvTotals}
+              />
+            </div>
           </TabsContent>
+
 
           {/* ============ SITE ============ */}
           <TabsContent value="site">
