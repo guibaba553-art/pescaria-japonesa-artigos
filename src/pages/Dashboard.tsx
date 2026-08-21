@@ -242,6 +242,11 @@ export default function Dashboard() {
     setPdvProfit(t.profit);
   }, []);
 
+  const [allProfit, setAllProfit] = useState<number | null>(null);
+  const handleAllTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setAllProfit(t.profit);
+  }, []);
+
 
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
@@ -1597,6 +1602,35 @@ export default function Dashboard() {
 
           {/* ============ VENDAS GERAIS ============ */}
           <TabsContent value="vendas-gerais" className="space-y-6">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold">Vendas Gerais</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Receita Total"
+                value={formatBRL(totalRevenue)}
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Pedidos"
+                value={String(totalOrders)}
+                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(overallAvgTicket)}
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Lucro Total"
+                value={formatBRL(allProfit ?? 0)}
+                hint={totalRevenue > 0 ? `Margem ${((allProfit ?? 0) / totalRevenue * 100).toFixed(1)}%` : undefined}
+                icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+              />
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle>Receita Diária — Vendas Gerais ({rangeLabel})</CardTitle>
@@ -1617,7 +1651,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <SiteProfitReport channel="all" rangeStart={range.from} rangeEnd={range.to} />
+            <SiteProfitReport channel="all" rangeStart={range.from} rangeEnd={range.to} onTotals={handleAllTotals} />
           </TabsContent>
 
           {/* ============ TRÁFEGO ============ */}
