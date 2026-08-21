@@ -123,7 +123,9 @@ export function SiteProfitReport({
             id: o.id,
             createdAt: o.created_at,
             status: o.status,
+            paymentMethod: o.payment_method ?? null,
             revenue,
+
             cost,
             profit,
             margin: revenue > 0 ? (profit / revenue) * 100 : 0,
