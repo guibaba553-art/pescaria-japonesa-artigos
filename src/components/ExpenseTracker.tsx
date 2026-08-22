@@ -1054,11 +1054,57 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
 
         <div>
           <Label>Categoria *</Label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => {
+                  const custom = customCats.find(cc => cc.name === c && cc.type === type);
+                  return (
+                    <SelectItem key={c} value={c}>
+                      <span className="flex items-center gap-2">
+                        {c}
+                        {custom && <Badge variant="outline" className="text-[9px]">nova</Badge>}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="icon" title="Nova categoria" onClick={() => setNewCatOpen(v => !v)}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {newCatOpen && (
+            <div className="mt-2 flex gap-2">
+              <Input
+                autoFocus
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleCreateCategory(); } }}
+                placeholder={`Nova categoria ${type === "fixed" ? "fixa" : "variável"}`}
+              />
+              <Button type="button" onClick={handleCreateCategory} disabled={savingCat || !newCatName.trim()}>
+                Criar
+              </Button>
+            </div>
+          )}
+
+          {customCats.filter(c => c.type === type).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {customCats.filter(c => c.type === type).map(c => (
+                <Badge key={c.id} variant="secondary" className="text-[10px] gap-1">
+                  {c.name}
+                  <button type="button" onClick={() => handleDeleteCategory(c.id, c.name)} className="hover:text-destructive">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
+
 
         <div>
           <Label>Descrição *</Label>
