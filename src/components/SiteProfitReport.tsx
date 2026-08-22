@@ -70,31 +70,41 @@ export function SiteProfitReport({
           rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59,
         ).toISOString();
 
-        let query = supabase
-          .from('orders')
-          .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
-        if (!isAll) query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
+        const PAGE = 1000;
+        const ordersData: any[] = [];
+        for (let from = 0; ; from += PAGE) {
+          let query = supabase
+            .from('orders')
+            .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
+          if (!isAll) query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
 
-        const { data: ordersData, error } = await query
-          .in('status', (isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-
-
-
-        const ids = (ordersData || []).map((o) => o.id);
-        const items: any[] = [];
-        for (let i = 0; i < ids.length; i += 200) {
-          const chunk = ids.slice(i, i + 200);
-          if (chunk.length === 0) break;
-          const { data } = await supabase
-            .from('order_items')
-            .select('order_id, quantity, price_at_purchase, product_id, variation_id, products(name, cost, freight_pct, op_cost_pct), product_variations(name, cost, freight_pct, op_cost_pct)')
-            .in('order_id', chunk);
-          if (data) items.push(...data);
+          const { data, error } = await query
+            .in('status', (isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
+            .gte('created_at', startISO)
+            .lte('created_at', endISO)
+            .order('created_at', { ascending: false })
+            .range(from, from + PAGE - 1);
+          if (error) throw error;
+          ordersData.push(...(data || []));
+          if (!data || data.length < PAGE) break;
         }
+
+        const ids = ordersData.map((o) => o.id);
+        const items: any[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const chunk = ids.slice(i, i + 100);
+          if (chunk.length === 0) break;
+          for (let from = 0; ; from += PAGE) {
+            const { data } = await supabase
+              .from('order_items')
+              .select('order_id, quantity, price_at_purchase, product_id, variation_id, products(name, cost, freight_pct, op_cost_pct), product_variations(name, cost, freight_pct, op_cost_pct)')
+              .in('order_id', chunk)
+              .range(from, from + PAGE - 1);
+            if (data) items.push(...data);
+            if (!data || data.length < PAGE) break;
+          }
+        }
+
 
         const byOrder = new Map<string, SiteProfitItem[]>();
         items.forEach((it: any) => {
