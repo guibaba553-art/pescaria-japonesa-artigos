@@ -948,7 +948,49 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
   const [notes, setNotes] = useState(expense?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
-  const categories = type === "fixed" ? CATEGORIES_FIXED : CATEGORIES_VARIABLE;
+  const [customCats, setCustomCats] = useState<{ id: string; name: string; type: string }[]>([]);
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+
+  const loadCats = async () => {
+    const { data } = await supabase.from("expense_categories").select("id, name, type").order("name");
+    setCustomCats((data as any) || []);
+  };
+  useEffect(() => { loadCats(); }, []);
+
+  const categories = useMemo(() => {
+    const base = type === "fixed" ? CATEGORIES_FIXED : CATEGORIES_VARIABLE;
+    const extra = customCats.filter(c => c.type === type).map(c => c.name);
+    return Array.from(new Set([...base, ...extra]));
+  }, [type, customCats]);
+
+  const handleCreateCategory = async () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    if (categories.some(c => c.toLowerCase() === name.toLowerCase())) {
+      setCategory(categories.find(c => c.toLowerCase() === name.toLowerCase())!);
+      setNewCatOpen(false); setNewCatName("");
+      return;
+    }
+    setSavingCat(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("expense_categories").insert({ name, type, created_by: user?.id });
+    setSavingCat(false);
+    if (error) return toast({ title: "Erro ao criar categoria", description: error.message, variant: "destructive" });
+    await loadCats();
+    setCategory(name);
+    setNewCatName("");
+    setNewCatOpen(false);
+    toast({ title: "Categoria criada" });
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    const { error } = await supabase.from("expense_categories").delete().eq("id", id);
+    if (error) return toast({ title: "Erro ao remover", description: error.message, variant: "destructive" });
+    if (category === name) setCategory("");
+    await loadCats();
+  };
 
   const parseBRL = (raw: string): number => {
     if (!raw) return NaN;
