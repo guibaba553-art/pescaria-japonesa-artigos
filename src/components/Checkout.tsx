@@ -809,7 +809,6 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             securityCode: cardData.cvv
           } : null,
           installments: paymentMethod === 'credit' ? installments : '1',
-          userEmail: user?.email,
           userCpf: profile?.cpf,
           userName: profile?.full_name || user?.user_metadata?.full_name,
           orderId: orderData.id

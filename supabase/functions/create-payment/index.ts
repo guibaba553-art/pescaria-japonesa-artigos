@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { handlePaymentConfirmed } from '../_shared/stockHandler.ts';
 import { effectiveProductPrice, effectiveVariationPrice, PROMO_PRODUCT_COLS, PROMO_VARIATION_COLS } from '../_shared/promoPrice.ts';
+import { resolveCardholderEmail } from '../_shared/payerEmail.ts';
 
 const MERCADO_PAGO_PUBLIC_KEY = Deno.env.get('MERCADO_PAGO_PUBLIC_KEY') ?? 'APP_USR-e5c56f4f-38de-4133-a073-2fac9c458485';
 
@@ -32,7 +33,6 @@ const paymentRequestSchema = z.object({
     securityCode: z.string().min(3).max(4).regex(/^\d+$/, 'CVV must be 3-4 digits'),
   }).nullable().optional(),
   installments: z.union([z.string(), z.number()]).optional(),
-  userEmail: z.string().email('Invalid email').nullable().optional(),
   userCpf: z.string().nullable().optional(),
   userName: z.string().nullable().optional(),
   orderId: z.string().uuid('Invalid order ID').optional(),
@@ -68,7 +68,7 @@ const isValidCpf = (value?: string | null) => {
   return digit === Number(cpf[10]);
 };
 
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -85,7 +85,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     // Extract JWT token and verify user
     const token = authHeader.replace('Bearer ', '');
@@ -100,6 +102,20 @@ serve(async (req) => {
     }
 
     console.log('Authenticated user:', user.id);
+
+    const { data: payProfile } = await supabase
+      .from('profiles')
+      .select('card_contact_email')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const emailInput = {
+      authEmail: user.email,
+      authEmailConfirmed: !!user.email_confirmed_at,
+      contactEmail: payProfile?.card_contact_email ?? null,
+      userId: user.id,
+    };
+    const payerEmail = resolveCardholderEmail(emailInput);
 
     let rawData;
     
@@ -338,19 +354,11 @@ serve(async (req) => {
 
     // Para PIX
     if (data.paymentMethod === 'pix') {
-      console.log('PIX branch reached. hasEmail:', !!data.userEmail, 'hasName:', !!data.userName, 'hasCpf:', !!data.userCpf);
+      console.log('PIX branch reached. payerEmail:', !!payerEmail, 'hasName:', !!data.userName, 'hasCpf:', !!data.userCpf);
       const payerName = data.userName?.trim() || '';
       const [firstName, ...lastNameParts] = payerName.split(/\s+/).filter(Boolean);
       const lastName = lastNameParts.join(' ');
       const cpf = normalizeCpf(data.userCpf);
-
-      if (!data.userEmail) {
-        console.warn('PIX rejected: missing email');
-        return new Response(
-          JSON.stringify({ error: 'E-mail obrigatório para gerar PIX.', success: false }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
 
       if (!firstName || !lastName) {
         console.warn('PIX rejected: missing first/last name. payerName=', JSON.stringify(payerName));
@@ -403,7 +411,7 @@ serve(async (req) => {
         description: data.items.map((item: any) => `${item.name} x${item.quantity}`).join(', ').substring(0, 100),
         payment_method_id: 'pix',
         payer: {
-          email: data.userEmail,
+          email: payerEmail,
           first_name: firstName,
           last_name: lastName,
           identification: {
@@ -780,7 +788,7 @@ serve(async (req) => {
         payment_method_id: paymentMethodId,
         ...(issuerId ? { issuer_id: issuerId } : {}),
         payer: {
-          email: data.userEmail || 'cliente@japapesca.com',
+          email: payerEmail,
         },
       };
 
@@ -948,14 +956,18 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in create-payment:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
-        success: false 
+        success: false
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
-});
+}
+
+if (!Deno.env.get("DENO_TEST")) {
+  serve(handleRequest);
+}
