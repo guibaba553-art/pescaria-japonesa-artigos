@@ -24,6 +24,10 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
+}));
+
 let mockCartTotal = 100;
 
 vi.mock('@/hooks/useCart', () => ({
@@ -47,6 +51,7 @@ const mockFrom = vi.fn();
 const mockRpc = vi.fn();
 let currentFromTable = '';
 let capturedOrdersInsert: { payment_method?: string; payment_gateway?: string; [key: string]: unknown } | null = null;
+let capturedOrdersUpdates: { table: string; payload: Record<string, unknown> }[] = [];
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -119,6 +124,19 @@ vi.mock('@/components/CreditCardForm', async () => {
   return { CreditCardForm, CreditCardFormHandle: {} };
 });
 
+vi.mock('@/utils/invokeWithTimeout', async () => {
+  const actual = await vi.importActual<typeof import('@/utils/invokeWithTimeout')>(
+    '@/utils/invokeWithTimeout',
+  );
+  return {
+    ...actual,
+    invokeWithTimeout: (
+      fnName: string,
+      options?: { body?: Record<string, unknown>; timeoutMs?: number },
+    ) => actual.invokeWithTimeout(fnName, { ...options, timeoutMs: 30 }),
+  };
+});
+
 vi.mock('@/components/PixPaymentDialog', () => ({
   PixPaymentDialog: vi.fn().mockImplementation(({ open, onOpenChange, gateway, orderId }: any) =>
     open ? (
@@ -136,6 +154,7 @@ vi.mock('@/utils/siteCartValidation', () => ({
   validateSiteCart: (...args: any[]) => mockValidateSiteCart(...args),
 }));
 
+import { toast } from 'sonner';
 import CheckoutEntrega from '@/pages/CheckoutEntrega';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -172,9 +191,17 @@ beforeEach(() => {
     return mockChain;
   });
   mockChain.insert = vi.fn().mockImplementation((payload: any) => {
-    if (currentFromTable === 'orders') capturedOrdersInsert = payload;
+    if (currentFromTable === 'orders') {
+      capturedOrdersInsert = payload;
+      capturedOrdersUpdates = [];
+    }
     return mockChain;
   });
+  mockChain.update = vi.fn().mockImplementation((payload: any) => {
+    capturedOrdersUpdates.push({ table: currentFromTable, payload });
+    return mockChain;
+  });
+  capturedOrdersUpdates = [];
   mockChain.single = vi.fn().mockResolvedValue({ data: { id: 'order-1' }, error: null });
   capturedOrdersInsert = null;
   mockCartTotal = 100;
@@ -361,6 +388,98 @@ describe('CheckoutEntrega — grava forma de pagamento na criação do pedido', 
     expect(capturedOrdersInsert).toMatchObject({
       payment_method: 'credit_card',
       payment_gateway: 'asaas',
+    });
+  });
+});
+
+describe('CheckoutEntrega — timeout e rollback PIX via edge function', () => {
+  const invokeCalls = () =>
+    (supabase.functions.invoke as any).mock.calls.map((c: any[]) => c[0]);
+
+  it('timeout no gateway primário → chama o gateway alternativo (fallback)', async () => {
+    (supabase.functions.invoke as any).mockImplementation(async (fnName: string) => {
+      if (fnName === 'create-mercadopago-pix') {
+        return new Promise(() => {});
+      }
+      return {
+        data: { success: true, data: { brCode: '000201...', brCodeBase64: 'iVBOR...', expiresAt: new Date().toISOString() } },
+        error: null,
+      };
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-dialog')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    expect(invokeCalls()).toContain('create-mercadopago-pix');
+    expect(invokeCalls()).toContain('create-asaas-pix');
+  });
+
+  it('ambos os gateways falham → rollback via cancel-checkout-order, sem UPDATE client-side, toast amigável', async () => {
+    (supabase.functions.invoke as any).mockImplementation(async (fnName: string) => {
+      if (fnName === 'create-mercadopago-pix' || fnName === 'create-asaas-pix') {
+        return { data: { success: false, error: 'rejected_internal_9981' }, error: null };
+      }
+      if (fnName === 'cancel-checkout-order') {
+        return { data: { success: true, cancelled: true }, error: null };
+      }
+      return { data: null, error: null };
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(invokeCalls()).toContain('cancel-checkout-order');
+    });
+
+    const cancelCall = (supabase.functions.invoke as any).mock.calls.find(
+      (c: any[]) => c[0] === 'cancel-checkout-order',
+    );
+    expect(cancelCall[1].body).toMatchObject({ orderId: 'order-1' });
+
+    const updates = capturedOrdersUpdates;
+    expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Não foi possível gerar o PIX. Tente novamente.');
+    });
+  });
+
+  it('rollback best-effort: falha do cancel-checkout-order não impede o toast amigável', async () => {
+    (supabase.functions.invoke as any).mockImplementation(async (fnName: string) => {
+      if (fnName === 'create-mercadopago-pix' || fnName === 'create-asaas-pix') {
+        return { data: null, error: { message: 'unavailable' } };
+      }
+      if (fnName === 'cancel-checkout-order') {
+        throw new Error('ef down');
+      }
+      return { data: null, error: null };
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Não foi possível gerar o PIX. Tente novamente.');
     });
   });
 });
