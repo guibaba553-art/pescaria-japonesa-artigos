@@ -1,0 +1,86 @@
+import { assertEquals } from "jsr:@std/assert@^1";
+import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
+import { handleRequest } from "../send-whatsapp-otp/index.ts";
+import { setupEnv, interceptFetch, mockInternalFn } from "./mock_gateways.ts";
+
+setupEnv();
+interceptFetch();
+
+const SECRET = "v1,whsec_" + btoa("test-secret-32-bytes-aaaaaaaaaaaaaa").replace(/=+$/, "");
+Deno.env.set("SEND_SMS_HOOK_SECRET", SECRET);
+Deno.env.set("OTP_DAILY_CAP_PER_PHONE", "5");
+Deno.env.set("WHATSAPP_TEMPLATE_AUTH", "japas_otp");
+Deno.env.set("WHATSAPP_TOKEN", "test-wa-token");
+Deno.env.set("WHATSAPP_PHONE_NUMBER_ID", "1234567890");
+
+const hook = new Webhook(SECRET.replace("v1,whsec_", ""));
+
+async function call(payload: object, secretOverride?: string) {
+  const body = JSON.stringify(payload);
+  const wh = secretOverride ? new Webhook(secretOverride.replace(/^v1,/, "")) : hook;
+  const id = crypto.randomUUID();
+  const sig = wh.sign(id, new Date(), body);
+  return handleRequest(new Request("http://localhost/fn", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "webhook-id": id,
+      "webhook-timestamp": Math.floor(Date.now() / 1000).toString(),
+      "webhook-signature": sig,
+    },
+    body,
+  }));
+}
+
+function smsPayload(phone: string, otp = "123456") {
+  return {
+    user: { id: crypto.randomUUID(), phone, email: null },
+    sms: { otp },
+  };
+}
+
+Deno.test("entrega OTP via Cloud API e responde 200", async () => {
+  let sentTo = ""; let templateUsed = ""; let otpSent = "";
+  mockInternalFn((url, _m, body) => {
+    if (url.includes("graph.facebook.com")) {
+      const b = body as Record<string, any>;
+      sentTo = b.to; templateUsed = b.template.name;
+      otpSent = b.template.components[0].parameters[0].text;
+      return { status: 200, body: { messages: [{ id: "wamid.X" }] } };
+    }
+    return null;
+  });
+  const r = await call(smsPayload("+5566992110000"));
+  assertEquals(r.status, 200);
+  assertEquals(sentTo, "5566992110000");
+  assertEquals(templateUsed, "japas_otp");
+  assertEquals(otpSent, "123456");
+  const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}` };
+  await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log?phone=eq.%2B5566992110000`, { method: "DELETE", headers: svcHeaders });
+});
+
+Deno.test("assinatura inválida → 401", async () => {
+  const r = await call(smsPayload("+5566992110000"), "v1,whsec_" + btoa("wrong-secret-32-bytes-bbbbbbbbbb"));
+  assertEquals(r.status, 401);
+});
+
+Deno.test("cap diário atingido → 429 e Cloud API não é chamada", async () => {
+  mockInternalFn((url) => {
+    if (url.includes("graph.facebook.com")) throw new Error("Cloud API não deveria ser chamada");
+    return null;
+  });
+  const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" };
+  const url = `${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log`;
+  for (let i = 0; i < 5; i++) await fetch(url, { method: "POST", headers: svcHeaders, body: JSON.stringify({ phone: "+5566992155555" }) }).then(r => r.text());
+  const r = await call(smsPayload("+5566992155555"));
+  assertEquals(r.status, 429);
+  await fetch(`${url}?phone=eq.%2B5566992155555`, { method: "DELETE", headers: svcHeaders }).then(r => r.text());
+});
+
+Deno.test("falha na Cloud API → 502 (Supabase aborta)", async () => {
+  mockInternalFn((url) => url.includes("graph.facebook.com") ? { status: 500, body: { error: { message: "boom" } } } : null);
+  const r = await call(smsPayload("+5566992166666"));
+  assertEquals(r.status, 502);
+});
