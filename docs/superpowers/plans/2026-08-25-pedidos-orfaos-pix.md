@@ -19,7 +19,8 @@
 - Supabase client sempre importado de `@/integrations/supabase/client`.
 - Em EF tests, `createClient` sempre com `{ auth: { autoRefreshToken: false, persistSession: false } }` (já é o padrão dos arquivos existentes).
 - Comandos frontend: `npx vitest run <arquivo>` e `npm run lint`. Comandos EF: `npm run test:functions` (requer `supabase start` rodando; usa `DENO_TEST=1 deno test` internamente).
-- Fora de escopo (NÃO mexer): Bug 1 (checar erro do UPDATE no create-mercadopago-pix); reconciliação por `external_reference`; o UPDATE client-side do catch genérico em `CheckoutEntrega.tsx:~842` (falha de estoque/promo — limitação conhecida, follow-up futuro); cron `cleanup-old-chat-messages`.
+- Fora de escopo (NÃO mexer): Bug 1 (checar erro do UPDATE no create-mercadopago-pix); reconciliação por `external_reference`; cron `cleanup-old-chat-messages`.
+- Decisão do humano durante execução: a remoção do UPDATE client-side do catch genérico em `CheckoutEntrega.tsx` (~L842) foi ACEITA como parte da Task 2 (código morto bloqueado por RLS; a limpeza de órfãos fica a cargo da EF `cleanup-abandoned-orders` e do cron).
 
 ---
 
