@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from '../_shared/asaasCustomer.ts';
+import { resolveCardholderEmail, resolveOptionalCustomerEmail } from '../_shared/payerEmail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,9 +125,16 @@ serve(async (req) => {
         throw new Error('Perfil do usuário não encontrado');
       }
 
+      // E-mail é opcional no customer Asaas: ausente → omitir a chave
+      // (string vazia é rejeitada pela API).
+      const customerEmail = resolveOptionalCustomerEmail({
+        authEmail: currentUser.email,
+        authEmailConfirmed: !!currentUser.email_confirmed_at,
+        userId: currentUser.id,
+      });
       const customerData = {
         name: profile.full_name || currentUser.email || 'Cliente',
-        email: currentUser.email || '',
+        ...(customerEmail ? { email: customerEmail } : {}),
         cpfCnpj: profile.cpf || '',
         phone: profile.phone || '',
       };
@@ -234,7 +242,13 @@ serve(async (req) => {
         description: `Pedido ${orderId}`,
         payment_method_id: 'pix',
         payer: {
-          email: currentUser.email || '',
+          // payer.email é OBRIGATÓRIO no Mercado Pago → escada com placeholder
+          // (nunca string vazia, nunca chave ausente).
+          email: resolveCardholderEmail({
+            authEmail: currentUser.email,
+            authEmailConfirmed: !!currentUser.email_confirmed_at,
+            userId: currentUser.id,
+          }),
           first_name: (profile.full_name || 'Cliente').split(' ')[0],
           last_name: (profile.full_name || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
           identification: {
