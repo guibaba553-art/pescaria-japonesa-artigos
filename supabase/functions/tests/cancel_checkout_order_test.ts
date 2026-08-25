@@ -71,7 +71,7 @@ Deno.test("rejeita pedido sem autenticação", async () => {
 });
 
 Deno.test("não cancela pedido que já não está aguardando pagamento", async () => {
-  const oid = await createOrder({ status: "em_preparo" });
+  const oid = await createOrder({ status: "entregado", source: "pdv" });
   const jwt = await getJwt();
 
   mockInternalFn((url) => {
@@ -88,7 +88,7 @@ Deno.test("não cancela pedido que já não está aguardando pagamento", async (
   assertEquals(r.status, 200, "deve retornar 200");
   const body = await r.json();
   assertEquals(body.success, false, "success deve ser false");
-  assertEquals(body.status, "em_preparo", "deve retornar status atual");
+  assertEquals(body.status, "entregado", "deve retornar status atual");
 
   await deleteOrder(oid);
   mockInternalFn(null);

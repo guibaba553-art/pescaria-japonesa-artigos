@@ -146,9 +146,21 @@ export async function getEmployeeJwt(
   return _employeeJwts.get(email)!.jwt;
 }
 
+async function purgeRecentOrders(): Promise<void> {
+  // O trigger de cooldown (15s) conta linhas de qualquer status com created_at
+  // recente. Linhas residuais de execuções anteriores envenenam o create seguinte.
+  // Purgamos apenas a janela de bloqueio (não vale a pena esperar 15s nos testes).
+  const recent = new Date(Date.now() - 15_000).toISOString();
+  await fetch(`${SUPABASE_URL}/rest/v1/orders?user_id=eq.${TEST_USER_ID}&created_at=gt.${recent}`, {
+    method: "DELETE",
+    headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` },
+  });
+}
+
 export async function createOrder(overrides: Record<string, unknown> = {}): Promise<string> {
   const jwt = await getJwt();
-  const body = { user_id: TEST_USER_ID, total_amount: 49.90, shipping_cost: 0, shipping_address: "Rua Teste, 123", shipping_cep: "12345678", status: "aguardando_pagamento", delivery_type: "pickup", payment_attempts: 0, pix_attempts: 0, ...overrides };
+  await purgeRecentOrders();
+  const body = { user_id: TEST_USER_ID, total_amount: 49.90, shipping_cost: 0, shipping_address: "Rua Teste, 123", shipping_cep: "12345678", status: "aguardando_pagamento", delivery_type: "pickup", payment_attempts: 0, pix_attempts: 0, created_at: new Date(Date.now() - 60_000).toISOString(), ...overrides };
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
     method: "POST",
     headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}`, "Content-Type": "application/json", "Prefer": "return=representation" },
@@ -162,7 +174,8 @@ export async function createOrder(overrides: Record<string, unknown> = {}): Prom
 }
 
 export async function createOrderService(overrides: Record<string, unknown> = {}): Promise<string> {
-  const body = { user_id: TEST_USER_ID, total_amount: 49.90, shipping_cost: 0, shipping_address: "Rua Teste, 123", shipping_cep: "12345678", status: "aguardando_pagamento", delivery_type: "pickup", payment_attempts: 0, pix_attempts: 0, ...overrides };
+  await purgeRecentOrders();
+  const body = { user_id: TEST_USER_ID, total_amount: 49.90, shipping_cost: 0, shipping_address: "Rua Teste, 123", shipping_cep: "12345678", status: "aguardando_pagamento", delivery_type: "pickup", payment_attempts: 0, pix_attempts: 0, created_at: new Date(Date.now() - 60_000).toISOString(), ...overrides };
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
     method: "POST",
     headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", "Prefer": "return=representation" },
@@ -176,6 +189,8 @@ export async function createOrderService(overrides: Record<string, unknown> = {}
 }
 
 export async function deleteOrder(id: string) {
-  const jwt = await getJwt();
-  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, { method: "DELETE", headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` } });
+  // Service key: desde migração 20260701000000 não há mais policy de DELETE para
+  // o próprio usuário (RLS), e o trigger de cooldown (15s) conta pedidos antigos
+  // de qualquer status — o teste precisa deletar de verdade para não envenenar os seguintes.
+  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, { method: "DELETE", headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${SERVICE_KEY}` } });
 }
