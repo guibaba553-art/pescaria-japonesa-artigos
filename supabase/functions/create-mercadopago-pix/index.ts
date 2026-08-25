@@ -8,18 +8,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-export async function handleRequest(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  // 30s timeout for the whole function
-  const timeoutId = setTimeout(() => {
-    console.error("[create-mercadopago-pix] Function timed out after 30s");
-  }, 30_000);
-
-  try {
-    // ── Authentication ──────────────────────────────────────────────────────
+export async function processPixRequest(req: Request): Promise<Response> {
+  // ── Authentication ──────────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -330,7 +320,17 @@ export async function handleRequest(req: Request): Promise<Response> {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
-  } catch (error) {
+}
+
+export async function handleRequest(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const timeoutMs = Number(Deno.env.get("MP_PIX_TIMEOUT_MS") ?? 30_000);
+
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  const processing = processPixRequest(req).catch((error) => {
     console.error("[create-mercadopago-pix] Erro inesperado:", error);
     const msg = error instanceof Error
       ? (error.name === "AbortError"
@@ -344,8 +344,30 @@ export async function handleRequest(req: Request): Promise<Response> {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
+  });
+
+  const timeoutResponse = new Promise<Response>((resolve) => {
+    timerId = setTimeout(() => {
+      console.error(`[create-mercadopago-pix] Function timed out after ${timeoutMs}ms`);
+      resolve(
+        new Response(
+          JSON.stringify({
+            success: false,
+            error: "Tempo esgotado ao gerar o PIX. Tente novamente.",
+          }),
+          {
+            status: 504,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        ),
+      );
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([processing, timeoutResponse]);
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timerId);
   }
 }
 

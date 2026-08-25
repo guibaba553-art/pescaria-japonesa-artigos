@@ -7,7 +7,7 @@
 
 const _originalFetch = globalThis.fetch.bind(globalThis);
 
-type MockFn = (url: string, method: string, body: unknown) => { status: number; body: unknown } | null;
+type MockFn = (url: string, method: string, body: unknown) => { status: number; body: unknown } | Response | null;
 
 let _asaasMock: MockFn | null = null;
 let _mpMock: MockFn | null = null;
@@ -29,12 +29,14 @@ export function interceptFetch() {
 
     if (url.includes("api-sandbox.asaas.com") || url.includes("api.asaas.com")) {
       const r = _asaasMock?.(url, method, body);
+      if (r instanceof Response) return r;
       if (r) return new Response(JSON.stringify(r.body), { status: r.status, headers: { "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ error: "Asaas mock not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
 
     if (url.includes("api.mercadopago.com")) {
       const r = _mpMock?.(url, method, body);
+      if (r instanceof Response) return r;
       if (r) return new Response(JSON.stringify(r.body), { status: r.status, headers: { "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ error: "Mercado Pago mock not configured" }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
