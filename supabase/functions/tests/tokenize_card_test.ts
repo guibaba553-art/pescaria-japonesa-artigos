@@ -124,6 +124,23 @@ async function resetarAsaasCustomerId() {
   });
 }
 
+async function comCardContactEmail(email: string | null, fn: () => Promise<void>) {
+  const svc = { "apikey": SERVICE_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+  const cur = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}&select=card_contact_email`, { headers: svc });
+  const prev = ((await cur.json())[0] as Record<string, unknown> | undefined)?.card_contact_email ?? null;
+  const patch = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}`, {
+    method: "PATCH", headers: svc, body: JSON.stringify({ card_contact_email: email }),
+  });
+  if (!patch.ok) throw new Error(`PATCH card_contact_email falhou: ${patch.status} ${await patch.text()}`);
+  try {
+    await fn();
+  } finally {
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}`, {
+      method: "PATCH", headers: svc, body: JSON.stringify({ card_contact_email: prev }),
+    });
+  }
+}
+
 Deno.test("usuário sem e-mail: customer omite email e holderInfo usa placeholder determinístico", async () => {
   await resetarAsaasCustomerId();
   mockInternalFn((url) => {
@@ -155,4 +172,38 @@ Deno.test("usuário sem e-mail: customer omite email e holderInfo usa placeholde
   assertExists(customerPayload);
   assertEquals("email" in (customerPayload as Record<string, unknown>), false);
   assertEquals(holderInfoSent.email, `nao-informado.${TEST_USER_ID}@japapesca.com`);
+});
+
+Deno.test("usuário sem authEmail mas com card_contact_email salvo: escada usa o contato salvo", async () => {
+  await comCardContactEmail("salvo@contato.com", async () => {
+    await resetarAsaasCustomerId();
+    mockInternalFn((url) => {
+      if (url.includes("/auth/v1/user")) return { status: 200, body: usuarioSemEmail() };
+      return null;
+    });
+
+    let customerPayload: Record<string, unknown> | null = null;
+    let holderInfoSent: Record<string, unknown> = {};
+    mockAsaas((url, _method, body) => {
+      if (typeof body === "object" && body !== null && "cpfCnpj" in body && !url.includes("tokenizeCreditCard")) {
+        customerPayload = body as Record<string, unknown>;
+      }
+      if (url.includes("/customers") && !url.includes("/customers/cus_")) return asaas.customerCreate("cus_esc2");
+      if (url.includes("/customers/cus_")) return asaas.customerGet("cus_esc2");
+      if (url.includes("tokenizeCreditCard")) {
+        holderInfoSent = ((body as any)?.creditCardHolderInfo ?? {}) as Record<string, unknown>;
+        return asaas.tokenizeOk("tok_contato");
+      }
+      return null;
+    });
+
+    const r = await callAs("mock-jwt-sem-email", { cardNumber: "4111111111111111", holderName: "T", expiryMonth: "12", expiryYear: "30", ccv: "123", postalCode: "89223005", addressNumber: "277" });
+
+    mockAsaas(null);
+    mockInternalFn(null);
+
+    assertEquals(r.status, 200);
+    assertEquals(holderInfoSent.email, "salvo@contato.com");
+    assertEquals((customerPayload as Record<string, unknown>).email, "salvo@contato.com");
+  });
 });

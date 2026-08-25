@@ -40,12 +40,13 @@ export async function handleRequest(req: Request): Promise<Response> {
     const baseUrl = asaasEnv === 'production' ? 'https://api.asaas.com' : 'https://api-sandbox.asaas.com';
     
     // Fetch profile for Asaas customer
-    const { data: profile } = await supabase.from('profiles').select('full_name, cpf, phone').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('full_name, cpf, phone, card_contact_email').eq('id', user.id).single();
     
     // Find or create Asaas customer
     const emailInput = {
       authEmail: user.email,
       authEmailConfirmed: !!user.email_confirmed_at,
+      contactEmail: profile?.card_contact_email ?? null,
       userId: user.id,
     };
     const customerEmail = resolveOptionalCustomerEmail(emailInput);
