@@ -2,7 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 interface CustomerData {
   name: string;
-  email: string;
+  /** Opcional: quando ausente/undefined, a chave é OMITIDA do payload (JSON.stringify). */
+  email?: string;
   cpfCnpj: string;
   phone: string;
 }

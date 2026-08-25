@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from '../_shared/asaasCustomer.ts';
+import { resolveOptionalCustomerEmail } from '../_shared/payerEmail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,9 +135,16 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
+    // E-mail é opcional no customer Asaas: ausente → omitir a chave
+    // (string vazia é rejeitada pela API).
+    const customerEmail = resolveOptionalCustomerEmail({
+      authEmail: user.email,
+      authEmailConfirmed: !!user.email_confirmed_at,
+      userId: user.id,
+    });
     const customerData = {
-      name: profile.full_name || user.email || 'Cliente',
-      email: user.email || '',
+      name: profile.full_name || 'Cliente',
+      ...(customerEmail ? { email: customerEmail } : {}),
       cpfCnpj: profile.cpf || '',
       phone: profile.phone || '',
     };
