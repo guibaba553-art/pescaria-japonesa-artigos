@@ -176,6 +176,12 @@ export async function createOrderService(overrides: Record<string, unknown> = {}
 }
 
 export async function deleteOrder(id: string) {
-  const jwt = await getJwt();
-  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, { method: "DELETE", headers: { "apikey": ANON_KEY, "Authorization": `Bearer ${jwt}` } });
+  // RLS não concede DELETE em orders (migração 20260701000000) — deletar com
+  // JWT de usuário retorna 204 mas NÃO remove a linha (no-op silencioso).
+  // Sem limpeza real, pedidos acumulam entre testes e o trigger
+  // "Aguarde 15 segundos entre pedidos" derruba os casos seguintes.
+  await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}`, {
+    method: "DELETE",
+    headers: { "apikey": SERVICE_KEY, "Authorization": `Bearer ${SERVICE_KEY}` },
+  });
 }
