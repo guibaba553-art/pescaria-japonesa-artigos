@@ -37,6 +37,7 @@ import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
+import { invokeWithTimeout } from '@/utils/invokeWithTimeout';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
 
@@ -494,53 +495,11 @@ export default function CheckoutEntrega() {
       }
 
       // 2. Limpar pedidos abandonados anteriores
-      // Usa condição WHERE no DELETE para evitar race condition entre SELECT e DELETE
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-
-      // Query 1: pedidos sem payment_id nem asaas_payment_id (abandonados há > 5 min)
-      const { data: abandonedIds } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('user_id', user!.id)
-        .eq('status', 'aguardando_pagamento')
-        .is('payment_id', null)
-        .is('asaas_payment_id', null)
-        .lt('created_at', fiveMinutesAgo);
-
-      // Query 2: pedidos com asaas_payment_id mas muito antigos (zumbis > 2h)
-      const { data: zombieIds } = await supabase
-        .from('orders')
-        .select('id')
-        .eq('user_id', user!.id)
-        .eq('status', 'aguardando_pagamento')
-        .not('asaas_payment_id', 'is', null)
-        .lt('created_at', twoHoursAgo);
-
-      // Libera reserva de estoque de todos os pedidos abandonados/zumbis
-      for (const ab of [...(abandonedIds || []), ...(zombieIds || [])]) {
-        try { await supabase.rpc('release_stock_reservation', { p_order_id: ab.id }); } catch {}
-        try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', ab.id); } catch {}
+      try {
+        await supabase.functions.invoke('cleanup-abandoned-orders', {});
+      } catch (cleanupErr) {
+        console.error('[checkout] limpeza de abandonados falhou:', cleanupErr);
       }
-
-      // Cancelamento único com WHERE — atômico, elimina race condition
-      await supabase
-        .from('orders')
-        .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-        .eq('user_id', user!.id)
-        .eq('status', 'aguardando_pagamento')
-        .is('payment_id', null)
-        .is('asaas_payment_id', null)
-        .lt('created_at', fiveMinutesAgo);
-
-      // Cancelamento atômico para pedidos zumbis (> 2h com asaas_payment_id)
-      await supabase
-        .from('orders')
-        .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-        .eq('user_id', user!.id)
-        .eq('status', 'aguardando_pagamento')
-        .not('asaas_payment_id', 'is', null)
-        .lt('created_at', twoHoursAgo);
 
       // 3. Montar dados do pedido
       const isPickup = selectedOption === 'pickup';
@@ -646,10 +605,9 @@ export default function CheckoutEntrega() {
 
         // Tenta o gateway primário (escolhido por valor)
         try {
-          const { data: pixData, error: pixError } = await supabase.functions.invoke(
-            fnName,
-            { body: { orderId: createdOrderId } },
-          );
+          const { data: pixData, error: pixError } = await invokeWithTimeout(fnName, {
+            body: { orderId: createdOrderId },
+          });
 
           if (!pixError && pixData?.success && pixData?.data) {
             pixSuccess = true;
@@ -669,33 +627,29 @@ export default function CheckoutEntrega() {
             : 'create-mercadopago-pix';
 
           try {
-            const { data: fallbackData, error: fallbackError } = await supabase.functions.invoke(
-              fallbackFn,
-              { body: { orderId: createdOrderId } },
-            );
+            const { data: fallbackData, error: fallbackError } = await invokeWithTimeout(fallbackFn, {
+              body: { orderId: createdOrderId },
+            });
 
-            if (fallbackError || !fallbackData?.success) {
-              throw new Error(fallbackData?.error || fallbackError?.message || 'PIX temporariamente indisponível');
+            if (fallbackError || !fallbackData?.success || !fallbackData?.data) {
+              throw new Error(fallbackError?.message || 'PIX temporariamente indisponível');
             }
 
             pixSuccess = true;
             pixResult = fallbackData.data;
             usedGateway = fallbackGateway;
           } catch (fallbackErr: any) {
-            // Ambos falharam — rollback
+            console.error('[PIX] ambos os gateways falharam:', fallbackErr);
+
             try {
-              await supabase.rpc('release_promo_limits', {
-                p_items: items.map(item => ({
-                  product_id: item.id,
-                  variation_id: item.variationId || null,
-                  quantity: item.quantity,
-                })),
+              await supabase.functions.invoke('cancel-checkout-order', {
+                body: { orderId: createdOrderId },
               });
-            } catch { /* ignore */ }
-            await supabase.from('orders')
-              .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-              .eq('id', createdOrderId);
-            throw new Error(fallbackErr?.message || 'PIX temporariamente indisponível. Tente novamente mais tarde.');
+            } catch (rollbackErr) {
+              console.error('[PIX] rollback cancel-checkout-order falhou:', rollbackErr);
+            }
+
+            throw new Error('Não foi possível gerar o PIX. Tente novamente.');
           }
         }
 
@@ -713,17 +667,12 @@ export default function CheckoutEntrega() {
         if (resvError) {
           // Race condition rara: estoque esgotou entre a verificação e a geração do QR
           try {
-            await supabase.rpc('release_promo_limits', {
-              p_items: items.map(item => ({
-                product_id: item.id,
-                variation_id: item.variationId || null,
-                quantity: item.quantity,
-              })),
+            await supabase.functions.invoke('cancel-checkout-order', {
+              body: { orderId: createdOrderId },
             });
-          } catch { /* ignore */ }
-          await supabase.from('orders')
-            .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-            .eq('id', createdOrderId);
+          } catch (rollbackErr) {
+            console.error('[PIX] rollback resvError cancel-checkout-order falhou:', rollbackErr);
+          }
           throw new Error('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
         }
 
@@ -837,10 +786,6 @@ export default function CheckoutEntrega() {
       }
 
     } catch (err: any) {
-      if (createdOrderId) {
-        // Limpar pedido órfão (criado mas sem pagamento ou com falha nos itens)
-        try { await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', createdOrderId); } catch {}
-      }
       setPendingOrderId(null);
       toast.error(err?.message || 'Erro ao finalizar pedido');
     } finally {

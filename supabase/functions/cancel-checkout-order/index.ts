@@ -43,7 +43,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Verify ownership and current status
     const { data: order, error: orderErr } = await supabase
       .from('orders')
-      .select('id, user_id, status')
+      .select('id, user_id, status, payment_id, payment_gateway')
       .eq('id', orderId)
       .single();
 
@@ -66,6 +66,31 @@ export async function handleRequest(req: Request): Promise<Response> {
         error: 'Order already paid or processed',
         status: order.status,
       }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (order.payment_id && order.payment_gateway === 'mercadopago') {
+      try {
+        const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
+        if (!accessToken) {
+          console.warn('[cancel-checkout-order] MERCADO_PAGO_ACCESS_TOKEN ausente — PIX não reconciliado');
+        } else {
+          const mpResp = await fetch(
+            `https://api.mercadopago.com/v1/payments/${order.payment_id}/cancellations`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+          console.log(
+            `[cancel-checkout-order] MP cancellation ${order.payment_id}: HTTP ${mpResp.status}`,
+          );
+        }
+      } catch (mpErr) {
+        console.error('[cancel-checkout-order] Falha ao cancelar PIX no MP:', mpErr);
+      }
     }
 
     // Liberar reservas de estoque

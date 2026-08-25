@@ -59,3 +59,21 @@ Deno.test("cria PIX com sucesso", async () => {
   assertEquals(data.success, true);
   assertExists(data.data.brCode);
 });
+
+Deno.test("MP pendurado além do timeout → 504 com sucesso=false", async () => {
+  Deno.env.set("MP_PIX_TIMEOUT_MS", "80");
+  const oid = await createOrder();
+
+  mockMercadopago(() => new Response(new ReadableStream({ start() {} })));
+
+  const r = await call({ orderId: oid });
+
+  mockMercadopago(null);
+  await deleteOrder(oid);
+  Deno.env.delete("MP_PIX_TIMEOUT_MS");
+
+  assertEquals(r.status, 504, "timeout deve responder 504");
+  const body = await r.json();
+  assertEquals(body.success, false);
+  assertStringIncludes(body.error, "PIX");
+});
