@@ -229,10 +229,15 @@ No topo, junto dos demais imports (linha ~140), adicionar:
 import { toast } from 'sonner';
 ```
 
-Dentro do `beforeEach`, capturar UPDATEs em `orders` (para provar que NÃO há rollback client-side). Substituir o bloco `mockChain.insert = ...` até `capturedOrdersInsert = null;` (linhas ~174-179) por:
+1a. Adicionar a variável de captura no escopo do módulo, junto das demais declarações (após `let capturedOrdersInsert ... = null;`, linha ~49):
 
 ```tsx
-  const capturedOrdersUpdates: { table: string; payload: Record<string, unknown> }[] = [];
+let capturedOrdersUpdates: { table: string; payload: Record<string, unknown> }[] = [];
+```
+
+1b. Dentro do `beforeEach`, capturar UPDATEs em `orders` (para provar que NÃO há rollback client-side). Substituir o bloco `mockChain.insert = ...` até `capturedOrdersInsert = null;` (linhas ~174-179) por:
+
+```tsx
   mockChain.insert = vi.fn().mockImplementation((payload: any) => {
     if (currentFromTable === 'orders') capturedOrdersInsert = payload;
     return mockChain;
@@ -241,7 +246,7 @@ Dentro do `beforeEach`, capturar UPDATEs em `orders` (para provar que NÃO há r
     capturedOrdersUpdates.push({ table: currentFromTable, payload });
     return mockChain;
   });
-  (globalThis as any).__capturedOrdersUpdates = capturedOrdersUpdates;
+  capturedOrdersUpdates = [];
   mockChain.single = vi.fn().mockResolvedValue({ data: { id: 'order-1' }, error: null });
   capturedOrdersInsert = null;
   mockCartTotal = 100;
@@ -309,7 +314,7 @@ describe('CheckoutEntrega — timeout e rollback PIX via edge function', () => {
     );
     expect(cancelCall[1].body).toMatchObject({ orderId: 'order-1' });
 
-    const updates = (globalThis as any).__capturedOrdersUpdates as { table: string }[];
+    const updates = capturedOrdersUpdates;
     expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
 
     await waitFor(() => {
@@ -1141,7 +1146,7 @@ describe('CheckoutEntrega — limpeza de abandonados via edge function', () => {
     const calledFns = (supabase.functions.invoke as any).mock.calls.map((c: any[]) => c[0]);
     expect(calledFns).toContain('cleanup-abandoned-orders');
 
-    const updates = (globalThis as any).__capturedOrdersUpdates as { table: string }[];
+    const updates = capturedOrdersUpdates;
     expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
   });
 });
