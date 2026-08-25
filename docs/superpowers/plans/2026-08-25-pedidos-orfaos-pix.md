@@ -495,7 +495,7 @@ Deno.test("MP pendurado além do timeout → 504 com sucesso=false", async () =>
   Deno.env.set("MP_PIX_TIMEOUT_MS", "80");
   const oid = await createOrder();
 
-  mockMercadopago(() => new Promise<Response>(() => {}) as unknown as Response);
+  mockMercadopago(() => new Response(new ReadableStream({ start() {} })) as unknown as Response);
 
   const r = await call({ orderId: oid });
 
