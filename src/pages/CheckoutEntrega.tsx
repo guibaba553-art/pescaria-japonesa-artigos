@@ -667,15 +667,6 @@ export default function CheckoutEntrega() {
         if (resvError) {
           // Race condition rara: estoque esgotou entre a verificação e a geração do QR
           try {
-            await supabase.rpc('release_promo_limits', {
-              p_items: items.map(item => ({
-                product_id: item.id,
-                variation_id: item.variationId || null,
-                quantity: item.quantity,
-              })),
-            });
-          } catch { /* ignore */ }
-          try {
             await supabase.functions.invoke('cancel-checkout-order', {
               body: { orderId: createdOrderId },
             });

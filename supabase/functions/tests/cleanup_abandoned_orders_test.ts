@@ -231,20 +231,37 @@ Deno.test("update falha → failed", async () => {
   await deleteOrder(oid);
 });
 
-Deno.test("NÃO cancela pedido com status entregado (pdv) backdated", async () => {
-  const oid = await createOrder({ status: "entregado", source: "pdv" });
+Deno.test("UPDATE atômico do cancelamento inclui guard status=eq.aguardando_pagamento", async () => {
+  const oid = await createOrder();
   await backdateOrder(oid, 10);
   const jwt = await getJwt();
 
-  mockRpcsOk();
+  const patchedUrls: string[] = [];
+  mockInternalFn((url, method) => {
+    if (url.includes("/rest/v1/rpc/release_stock_reservation")) {
+      return { status: 200, body: true };
+    }
+    if (url.includes("/rest/v1/rpc/release_promo_limits")) {
+      return { status: 200, body: true };
+    }
+    if (url.includes("/rest/v1/orders") && !url.includes("order_items") && method === "PATCH") {
+      patchedUrls.push(url);
+      return { status: 200, body: null };
+    }
+    return null;
+  });
+
   const r = await call(jwt);
   const body = await r.json();
 
+  mockInternalFn(null);
+
   assertEquals(r.status, 200);
-  assertEquals(body.cancelled, []);
+  assertEquals(body.success, true);
+  assertEquals(body.cancelled, [oid]);
   assertEquals(body.failed, []);
-  assertEquals(await getOrderStatus(oid, jwt), "entregado");
+  assertEquals(patchedUrls.length, 1);
+  assertEquals(patchedUrls[0].includes("status=eq.aguardando_pagamento"), true);
 
   await deleteOrder(oid);
-  mockInternalFn(null);
 });

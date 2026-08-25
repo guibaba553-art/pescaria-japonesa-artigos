@@ -483,6 +483,8 @@ describe('CheckoutEntrega — timeout e rollback PIX via edge function', () => {
     );
     expect(cancelCall[1].body).toMatchObject({ orderId: 'order-1' });
 
+    expect(mockRpc.mock.calls.map((c) => c[0])).not.toContain('release_promo_limits');
+
     const updates = capturedOrdersUpdates;
     expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
 
