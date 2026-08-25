@@ -78,7 +78,13 @@ export async function handleRequest(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Falha ao entregar OTP" }), { status: 502, headers: corsHeaders });
   }
 
-  await admin.from("otp_send_log").insert({ phone: to });
+  try {
+    const { error: logError } = await admin.from("otp_send_log").insert({ phone: to });
+    if (logError) throw logError;
+  } catch (error) {
+    // Log é best-effort para o cap diário; o SMS já foi entregue — não abortar o fluxo do GoTrue.
+    console.error("[send-whatsapp-otp] falha ao registrar otp_send_log:", (error as Error).message);
+  }
   return new Response(JSON.stringify({}), { status: 200, headers: corsHeaders });
 }
 

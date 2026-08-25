@@ -84,3 +84,31 @@ Deno.test("falha na Cloud API → 502 (Supabase aborta)", async () => {
   const r = await call(smsPayload("+5566992166666"));
   assertEquals(r.status, 502);
 });
+
+Deno.test("falha ao registrar otp_send_log → ainda responde 200 (log é best-effort)", async () => {
+  const captured: string[] = [];
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    captured.push(args.map(String).join(" "));
+  };
+  try {
+    mockInternalFn((url, method) => {
+      if (url.includes("otp_send_log") && method === "POST") {
+        return { status: 500, body: { message: "db indisponível" } };
+      }
+      if (url.includes("graph.facebook.com")) {
+        return { status: 200, body: { messages: [{ id: "wamid.X" }] } };
+      }
+      return null;
+    });
+    const r = await call(smsPayload("+5566992177777"));
+    assertEquals(r.status, 200);
+    assertEquals(
+      captured.some((line) => line.includes("falha ao registrar otp_send_log")),
+      true,
+      "esperava console.error registrando a falha do log",
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
