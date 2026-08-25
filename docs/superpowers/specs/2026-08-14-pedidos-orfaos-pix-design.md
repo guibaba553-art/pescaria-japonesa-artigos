@@ -38,6 +38,14 @@ Fora de escopo: Bug 1 (checar erro do UPDATE no create-mercadopago-pix) e
 reconciliação por `external_reference` — PIX órfão sem `payment_id` expira
 sozinho no MP em ~30min sem cobrança.
 
+## Requisito transversal
+
+Qualquer erro reportado ao usuário deve ser com **mensagem amigável** — nunca
+expor detalhes técnicos, nomes de edge functions, erros crus dos gateways ou
+stack traces. Mensagens em pt-BR, claras e acionáveis, via toast (ex.: "Não foi
+possível gerar o PIX. Tente novamente." / "Tivemos um problema ao finalizar seu
+pedido. Tente novamente."). Detalhes técnicos ficam apenas em `console.error`.
+
 ## Design
 
 ### 1. Cliente — timeout e rollback via EF (Bug 2)
