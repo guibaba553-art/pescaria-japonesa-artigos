@@ -483,3 +483,25 @@ describe('CheckoutEntrega — timeout e rollback PIX via edge function', () => {
     });
   });
 });
+
+describe('CheckoutEntrega — limpeza de abandonados via edge function', () => {
+  it('invoca cleanup-abandoned-orders e não faz UPDATE client-side em orders', async () => {
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pix-dialog')).toBeInTheDocument();
+    });
+
+    const calledFns = (supabase.functions.invoke as any).mock.calls.map((c: any[]) => c[0]);
+    expect(calledFns).toContain('cleanup-abandoned-orders');
+
+    const updates = capturedOrdersUpdates;
+    expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
+  });
+});
