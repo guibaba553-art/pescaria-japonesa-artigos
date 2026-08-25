@@ -675,9 +675,13 @@ export default function CheckoutEntrega() {
               })),
             });
           } catch { /* ignore */ }
-          await supabase.from('orders')
-            .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-            .eq('id', createdOrderId);
+          try {
+            await supabase.functions.invoke('cancel-checkout-order', {
+              body: { orderId: createdOrderId },
+            });
+          } catch (rollbackErr) {
+            console.error('[PIX] rollback resvError cancel-checkout-order falhou:', rollbackErr);
+          }
           throw new Error('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
         }
 

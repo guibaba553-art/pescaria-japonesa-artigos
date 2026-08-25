@@ -129,14 +129,83 @@ Deno.test("NÃO cancela pedido com payment_id recente (<2h)", async () => {
   mockInternalFn(null);
 });
 
-Deno.test("retorna failed quando o UPDATE falha", async () => {
+Deno.test("rpc de liberação de estoque falha → failed e NÃO cancela", async () => {
   const oid = await createOrder();
   await backdateOrder(oid, 10);
   const jwt = await getJwt();
 
   mockInternalFn((url, method) => {
     if (url.includes("/rest/v1/rpc/release_stock_reservation")) {
-      return { status: 500, body: { error: "rpc down" } };
+      return { status: 500, body: { message: "rpc down" } };
+    }
+    if (url.includes("/rest/v1/rpc/release_promo_limits")) {
+      return { status: 200, body: true };
+    }
+    if (url.includes("/rest/v1/orders") && !url.includes("order_items") && method === "PATCH") {
+      throw new Error("PATCH não deveria ser chamado quando a liberação de estoque falha");
+    }
+    return null;
+  });
+
+  const r = await call(jwt);
+  const body = await r.json();
+
+  mockInternalFn(null);
+
+  assertEquals(r.status, 200);
+  assertEquals(body.cancelled, []);
+  assertEquals(body.failed.length, 1);
+  assertEquals(body.failed[0].orderId, oid);
+  assertEquals(body.failed[0].error, "rpc down");
+  assertEquals(await getOrderStatus(oid, jwt), "aguardando_pagamento");
+
+  await deleteOrder(oid);
+});
+
+Deno.test("rpc de liberação de promo falha → failed e NÃO cancela", async () => {
+  const oid = await createOrder();
+  await backdateOrder(oid, 10);
+  const jwt = await getJwt();
+
+  mockInternalFn((url, method) => {
+    if (url.includes("/rest/v1/rpc/release_stock_reservation")) {
+      return { status: 200, body: true };
+    }
+    if (url.includes("/rest/v1/rpc/release_promo_limits")) {
+      return { status:500, body: { message: "promo rpc down" } };
+    }
+    if (url.includes("/rest/v1/order_items") && method === "GET") {
+      return { status: 200, body: [{ product_id: "prod-cleanup-001", variation_id: null, quantity: 1 }] };
+    }
+    if (url.includes("/rest/v1/orders") && !url.includes("order_items") && method === "PATCH") {
+      throw new Error("PATCH não deveria ser chamado quando a liberação de promo falha");
+    }
+    return null;
+  });
+
+  const r = await call(jwt);
+  const body = await r.json();
+
+  mockInternalFn(null);
+
+  assertEquals(r.status, 200);
+  assertEquals(body.cancelled, []);
+  assertEquals(body.failed.length, 1);
+  assertEquals(body.failed[0].orderId, oid);
+  assertEquals(body.failed[0].error, "promo rpc down");
+  assertEquals(await getOrderStatus(oid, jwt), "aguardando_pagamento");
+
+  await deleteOrder(oid);
+});
+
+Deno.test("update falha → failed", async () => {
+  const oid = await createOrder();
+  await backdateOrder(oid, 10);
+  const jwt = await getJwt();
+
+  mockInternalFn((url, method) => {
+    if (url.includes("/rest/v1/rpc/release_stock_reservation")) {
+      return { status: 200, body: true };
     }
     if (url.includes("/rest/v1/rpc/release_promo_limits")) {
       return { status: 200, body: true };
@@ -154,9 +223,28 @@ Deno.test("retorna failed quando o UPDATE falha", async () => {
 
   assertEquals(r.status, 200);
   assertEquals(body.cancelled, []);
-  assertEquals(body.failed.length >= 1, true);
+  assertEquals(body.failed.length, 1);
   assertEquals(body.failed[0].orderId, oid);
-  assertEquals(typeof body.failed[0].error, "string");
+  assertEquals(body.failed[0].error, "update blocked");
+  assertEquals(await getOrderStatus(oid, jwt), "aguardando_pagamento");
 
   await deleteOrder(oid);
+});
+
+Deno.test("NÃO cancela pedido com status entregado (pdv) backdated", async () => {
+  const oid = await createOrder({ status: "entregado", source: "pdv" });
+  await backdateOrder(oid, 10);
+  const jwt = await getJwt();
+
+  mockRpcsOk();
+  const r = await call(jwt);
+  const body = await r.json();
+
+  assertEquals(r.status, 200);
+  assertEquals(body.cancelled, []);
+  assertEquals(body.failed, []);
+  assertEquals(await getOrderStatus(oid, jwt), "entregado");
+
+  await deleteOrder(oid);
+  mockInternalFn(null);
 });

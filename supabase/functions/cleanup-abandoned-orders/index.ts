@@ -67,26 +67,35 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     for (const target of targets) {
       try {
-        await supabase.rpc('release_stock_reservation', { p_order_id: target.id });
+        const { error: releaseErr } = await supabase.rpc('release_stock_reservation', { p_order_id: target.id });
+        if (releaseErr) {
+          failed.push({ orderId: target.id, error: releaseErr.message });
+          continue;
+        }
 
         const { data: items } = await supabase
           .from('order_items')
           .select('product_id, variation_id, quantity')
           .eq('order_id', target.id);
         if (items && items.length > 0) {
-          await supabase.rpc('release_promo_limits', {
+          const { error: promoErr } = await supabase.rpc('release_promo_limits', {
             p_items: items.map((i: any) => ({
               product_id: i.product_id,
               variation_id: i.variation_id,
               quantity: i.quantity,
             })),
           });
+          if (promoErr) {
+            failed.push({ orderId: target.id, error: promoErr.message });
+            continue;
+          }
         }
 
         const { error: updateErr } = await supabase
           .from('orders')
           .update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' })
-          .eq('id', target.id);
+          .eq('id', target.id)
+          .eq('status', 'aguardando_pagamento');
 
         if (updateErr) {
           failed.push({ orderId: target.id, error: updateErr.message });

@@ -459,6 +459,38 @@ describe('CheckoutEntrega — timeout e rollback PIX via edge function', () => {
     });
   });
 
+  it('reserva de estoque falha após PIX gerado → rollback via cancel-checkout-order, sem UPDATE client-side, toast amigável', async () => {
+    mockRpc.mockImplementation((name: string) =>
+      name === 'reserve_stock_for_order'
+        ? Promise.resolve({ data: null, error: { message: 'stock gone' } })
+        : Promise.resolve({ data: 999, error: null })
+    );
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(invokeCalls()).toContain('cancel-checkout-order');
+    });
+
+    const cancelCall = (supabase.functions.invoke as any).mock.calls.find(
+      (c: any[]) => c[0] === 'cancel-checkout-order',
+    );
+    expect(cancelCall[1].body).toMatchObject({ orderId: 'order-1' });
+
+    const updates = capturedOrdersUpdates;
+    expect(updates.filter((u) => u.table === 'orders')).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Estoque indisponível no momento. Seu PIX foi gerado mas não pôde ser confirmado. Tente novamente.');
+    });
+  });
+
   it('rollback best-effort: falha do cancel-checkout-order não impede o toast amigável', async () => {
     (supabase.functions.invoke as any).mockImplementation(async (fnName: string) => {
       if (fnName === 'create-mercadopago-pix' || fnName === 'create-asaas-pix') {
