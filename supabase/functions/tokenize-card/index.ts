@@ -4,6 +4,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from '../_shared/asaasCustomer.ts';
+import { resolveCardholderEmail, resolveOptionalCustomerEmail } from '../_shared/payerEmail.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 
@@ -42,15 +43,22 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: profile } = await supabase.from('profiles').select('full_name, cpf, phone').eq('id', user.id).single();
     
     // Find or create Asaas customer
+    const emailInput = {
+      authEmail: user.email,
+      authEmailConfirmed: !!user.email_confirmed_at,
+      userId: user.id,
+    };
+    const customerEmail = resolveOptionalCustomerEmail(emailInput);
+    const customerData = {
+      name: profile?.full_name || holderName,
+      ...(customerEmail ? { email: customerEmail } : {}),
+      cpfCnpj: profile?.cpf || '',
+      phone: profile?.phone || '',
+    };
     const customer = await findOrCreateCustomer(
       supabase,
       user.id,
-      {
-        name: profile?.full_name || holderName,
-        email: user.email || '',
-        cpfCnpj: profile?.cpf || '',
-        phone: profile?.phone || '',
-      },
+      customerData,
       asaasApiKey,
       asaasEnv,
     );
@@ -64,7 +72,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         creditCard: { holderName, number: cardNumber, expiryMonth, expiryYear, ccv },
         creditCardHolderInfo: {
           name: profile?.full_name || holderName,
-          email: user.email || '',
+          email: resolveCardholderEmail(emailInput),
           cpfCnpj: profile?.cpf || '',
           postalCode: postalCode || '',
           addressNumber: addressNumber || '',
