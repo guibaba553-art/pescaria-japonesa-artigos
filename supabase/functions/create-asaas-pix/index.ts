@@ -124,7 +124,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Fetch user profile data for Asaas customer ──────────────────────────
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('full_name, cpf, phone')
+      .select('full_name, cpf, phone, card_contact_email')
       .eq('id', user.id)
       .single();
 
@@ -140,6 +140,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const customerEmail = resolveOptionalCustomerEmail({
       authEmail: user.email,
       authEmailConfirmed: !!user.email_confirmed_at,
+      contactEmail: profile.card_contact_email ?? null,
       userId: user.id,
     });
     const customerData = {
