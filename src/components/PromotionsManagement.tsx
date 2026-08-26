@@ -1199,7 +1199,7 @@ export function PromotionsManagement() {
                             {hasVars && ` • ${p.variations.length} variações`}
                           </div>
                         </div>
-                        {anyOnSale && <Badge className="bg-green-600 hover:bg-green-600">Em promoção</Badge>}
+                        <StatusBadge status={aggStatus} />
                       </div>
 
                       {!hasVars && (
