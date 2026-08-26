@@ -742,21 +742,65 @@ export function PromotionsManagement() {
   };
 
   const selectedItems = useMemo(() => {
-    const out: { key: SelKey; name: string; sub: string; image?: string | null; price: number }[] = [];
+    const out: {
+      key: SelKey;
+      name: string;
+      sub: string;
+      image?: string | null;
+      price: number;
+      totalCost: number;
+      profit: number;
+      finalPrice: number;
+    }[] = [];
+    const calc = (price: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
+      const finalPrice = computeFinalPrice(price, batchDraft);
+      const c = Number(cost || 0);
+      const totalCost =
+        c + c * (Number(freightPct || 0) / 100) + c * (Number(opCostPct || 0) / 100) + finalPrice * (Number(taxPct || 0) / 100);
+      return { totalCost, profit: finalPrice - totalCost, finalPrice };
+    };
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
       if (table === 'products') {
         const p = products.find((x) => x.id === id);
-        if (p) out.push({ key, name: p.name, sub: p.category || 'Produto', image: p.image_url, price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) });
+        if (p) {
+          const price = Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price);
+          out.push({
+            key,
+            name: p.name,
+            sub: p.category || 'Produto',
+            image: p.image_url,
+            price,
+            ...calc(price, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0)),
+          });
+        }
       } else {
         for (const p of products) {
           const v = p.variations.find((x) => x.id === id);
-          if (v) { out.push({ key, name: `${p.name}`, sub: v.name, image: v.image_url || p.image_url, price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price) }); break; }
+          if (v) {
+            const price = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+            out.push({
+              key,
+              name: `${p.name}`,
+              sub: v.name,
+              image: v.image_url || p.image_url,
+              price,
+              ...calc(
+                price,
+                Number(v.cost ?? p.cost ?? 0),
+                Number(v.freight_pct ?? p.freight_pct ?? 0),
+                Number(v.op_cost_pct ?? p.op_cost_pct ?? 0),
+                Number(v.tax_pct ?? p.tax_pct ?? 0),
+              ),
+            });
+            break;
+          }
         }
       }
     }
     return out;
-  }, [selected, products]);
+  }, [selected, products, batchDraft]);
+
 
   const renderBatchTab = () => (
     <div className="space-y-4">
