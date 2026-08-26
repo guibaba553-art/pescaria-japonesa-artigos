@@ -515,6 +515,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -526,6 +527,22 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => setBulk({ pdvAmount: e.target.value })}
+                className="w-36"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -939,6 +956,7 @@ export function PromotionsManagement() {
       baseCost: number;
       baseProfit: number;
       finalPrice: number;
+      pdvFinalPrice: number | null;
     }[] = [];
     const calc = (price: number, pdvPrice: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
       const finalPrice = computeFinalPrice(price, batchDraft);
@@ -953,6 +971,7 @@ export function PromotionsManagement() {
         baseCost,
         baseProfit: price - baseCost,
         finalPrice,
+        pdvFinalPrice: computePdvFinalPrice(pdvPrice, batchDraft),
         siteProfit: price - baseCost,
         pdvProfit: pdvPrice > 0 ? pdvPrice - (fixed + pdvPrice * t) : 0,
       };
@@ -964,7 +983,7 @@ export function PromotionsManagement() {
         const p = products.find((x) => x.id === id);
         if (p) {
           const price = Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price);
-          const pdvPrice = Number((p as any).price_pdv) > 0 ? Number((p as any).price_pdv) : Number(p.price || 0);
+          const pdvPrice = pdvBasePriceOf(p);
           out.push({
             key,
             name: p.name,
@@ -980,7 +999,7 @@ export function PromotionsManagement() {
           const v = p.variations.find((x) => x.id === id);
           if (v) {
             const price = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
-            const pdvPrice = Number((v as any).price_pdv) > 0 ? Number((v as any).price_pdv) : Number(v.price || 0);
+            const pdvPrice = pdvBasePriceOf(v);
             out.push({
               key,
               name: `${p.name}`,
@@ -1118,7 +1137,12 @@ export function PromotionsManagement() {
                   <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-muted-foreground">Valor site: R$ {it.price.toFixed(2)}</span>
                     <span className="text-muted-foreground">Valor PDV: R$ {it.pdvPrice.toFixed(2)}</span>
-                    <span className="text-muted-foreground">Promo: R$ {it.finalPrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground">
+                      Promo site: R$ {it.finalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      Promo PDV: R$ {(it.pdvFinalPrice ?? it.finalPrice).toFixed(2)}
+                    </span>
                     <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
                     <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
                       Lucro promo: R$ {it.profit.toFixed(2)}
@@ -1166,11 +1190,22 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {batchDraft.channel === 'both' ? 'Site — ' : ''}
               {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01}
               value={batchDraft.amount} onChange={(e) => setBatchDraft({ ...batchDraft, amount: e.target.value })} className="w-32" />
           </div>
+          {batchDraft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01} placeholder="igual ao site"
+                value={batchDraft.pdvAmount} onChange={(e) => setBatchDraft({ ...batchDraft, pdvAmount: e.target.value })} className="w-36" />
+              <span className="text-[11px] text-muted-foreground">Deixe vazio para usar o mesmo desconto do site.</span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input type="datetime-local" value={batchDraft.startsAt}
@@ -1240,7 +1275,7 @@ export function PromotionsManagement() {
 
   // Edição de uma promoção existente (dialog com todos os dados preenchidos)
   const [editRow, setEditRow] = useState<PromoRow | null>(null);
-  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [editSaving, setEditSaving] = useState(false);
 
   const openEdit = (r: PromoRow) => {
@@ -1248,6 +1283,7 @@ export function PromotionsManagement() {
     setEditDraft({
       mode: 'price',
       amount: r.salePrice.toFixed(2),
+      pdvAmount: r.salePricePdv != null ? r.salePricePdv.toFixed(2) : '',
       startsAt: toLocalDateTime(r.startsAt),
       endsAt: toLocalDateTime(r.endsAt),
       limitQty: r.limitQty != null ? String(r.limitQty) : '',
@@ -1256,6 +1292,7 @@ export function PromotionsManagement() {
   };
 
   const editFinalPrice = editRow ? computeFinalPrice(editRow.basePrice, editDraft) : 0;
+  const editPdvFinalPrice = editRow ? computePdvFinalPrice(editRow.pdvBasePrice, editDraft) : null;
   const editTotalCost = editRow ? editRow.fixedCost + editFinalPrice * editRow.taxPct : 0;
   const editProfit = editFinalPrice - editTotalCost;
 
@@ -1277,6 +1314,7 @@ export function PromotionsManagement() {
       .update({
         on_sale: true,
         sale_price: Number(editFinalPrice.toFixed(2)),
+        sale_price_pdv: editPdvFinalPrice,
         sale_starts_at: editDraft.startsAt ? new Date(editDraft.startsAt).toISOString() : null,
         sale_ends_at: editDraft.endsAt ? new Date(editDraft.endsAt).toISOString() : null,
         sale_limit_qty: limitParsed,
@@ -1327,11 +1365,24 @@ export function PromotionsManagement() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">
+                  {editDraft.channel === 'both' ? 'Site — ' : ''}
                   {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
                 </label>
                 <Input type="number" step="0.01" value={editDraft.amount}
                   onChange={(e) => setEditDraft((d) => ({ ...d, amount: e.target.value }))} />
               </div>
+              {editDraft.channel === 'both' && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">
+                    PDV — {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
+                  </label>
+                  <Input type="number" step="0.01" placeholder="igual ao site" value={editDraft.pdvAmount}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, pdvAmount: e.target.value }))} />
+                  <span className="text-[11px] text-muted-foreground">
+                    Base PDV: R$ {editRow.pdvBasePrice.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
                 <Input type="number" min="1" placeholder="sem limite" value={editDraft.limitQty}
@@ -1366,7 +1417,10 @@ export function PromotionsManagement() {
 
             <div className="rounded-md border p-3 text-xs flex flex-wrap gap-x-4 gap-y-1">
               <span className="line-through text-muted-foreground">R$ {editRow.basePrice.toFixed(2)}</span>
-              <span className="font-semibold">Promo: R$ {editFinalPrice.toFixed(2)}</span>
+              <span className="font-semibold">Promo site: R$ {editFinalPrice.toFixed(2)}</span>
+              {editDraft.channel === 'both' && (
+                <span className="font-semibold">Promo PDV: R$ {(editPdvFinalPrice ?? editFinalPrice).toFixed(2)}</span>
+              )}
               <span className="text-muted-foreground">
                 -{editRow.basePrice > 0 ? Math.round((1 - editFinalPrice / editRow.basePrice) * 100) : 0}%
               </span>
@@ -1645,7 +1699,7 @@ export function PromotionsManagement() {
 
                       {!hasVars && (
                         <div className="p-3 border-t">
-                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
+                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel, pdvBasePriceOf(p), p.sale_price_pdv)}
                         </div>
                       )}
 
@@ -1672,7 +1726,7 @@ export function PromotionsManagement() {
                                 </div>
                                 <StatusBadge status={promoStatus(v)} />
                               </div>
-                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
+                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel, pdvBasePriceOf(v), v.sale_price_pdv)}
                             </div>
                           ))}
                         </div>
