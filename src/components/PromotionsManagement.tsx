@@ -6,8 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X, LayoutDashboard, CalendarClock, CheckCircle2, AlertTriangle, TimerOff, RefreshCw, Play, Square } from 'lucide-react';
+import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X, LayoutDashboard, CalendarClock, CheckCircle2, AlertTriangle, TimerOff, RefreshCw, Play, Square, Pencil } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { isPromoActive, isPromoScheduled, validatePromotionPeriod } from '@/utils/promoPrice';
 import { promoStatus, PromoStatus, PROMO_STATUS_LABEL, PROMO_STATUS_CLASS, channelLabel, countdownLabel } from '@/utils/promoStatus';
@@ -158,6 +159,8 @@ interface PromoRow {
   soldQty: number;
   stock: number;
   margin: number;
+  fixedCost: number;
+  taxPct: number;
 }
 
 export function PromotionsManagement() {
@@ -268,6 +271,8 @@ export function PromotionsManagement() {
         soldQty: Number(item.sale_sold_qty ?? 0),
         stock: Number(item.stock ?? 0),
         margin: salePrice - totalCost,
+        fixedCost: cost + cost * fPct + cost * oPct,
+        taxPct: tPct,
       });
     };
     products.forEach((p) => {
@@ -1137,6 +1142,159 @@ export function PromotionsManagement() {
       .sort((a, b) => rank[a.status] - rank[b.status] || a.name.localeCompare(b.name));
   }, [promoRows, overviewSearch, overviewStatus, overviewChannel]);
 
+  // Edição de uma promoção existente (dialog com todos os dados preenchidos)
+  const [editRow, setEditRow] = useState<PromoRow | null>(null);
+  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (r: PromoRow) => {
+    setEditRow(r);
+    setEditDraft({
+      mode: 'price',
+      amount: r.salePrice.toFixed(2),
+      startsAt: toLocalDateTime(r.startsAt),
+      endsAt: toLocalDateTime(r.endsAt),
+      limitQty: r.limitQty != null ? String(r.limitQty) : '',
+      channel: (r.channel as Channel) || 'both',
+    });
+  };
+
+  const editFinalPrice = editRow ? computeFinalPrice(editRow.basePrice, editDraft) : 0;
+  const editTotalCost = editRow ? editRow.fixedCost + editFinalPrice * editRow.taxPct : 0;
+  const editProfit = editFinalPrice - editTotalCost;
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    const periodError = validatePromotionPeriod(editDraft.startsAt, editDraft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
+    if (editFinalPrice <= 0 || editFinalPrice >= editRow.basePrice) {
+      toast({ title: 'Preço promocional inválido', description: 'O preço final deve ser maior que zero e menor que o preço atual.', variant: 'destructive' });
+      return;
+    }
+    setEditSaving(true);
+    const limitParsed = editDraft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(editDraft.limitQty)));
+    const { error } = await supabase
+      .from(editRow.table)
+      .update({
+        on_sale: true,
+        sale_price: Number(editFinalPrice.toFixed(2)),
+        sale_starts_at: editDraft.startsAt ? new Date(editDraft.startsAt).toISOString() : null,
+        sale_ends_at: editDraft.endsAt ? new Date(editDraft.endsAt).toISOString() : null,
+        sale_limit_qty: limitParsed,
+        sale_channel: editDraft.channel,
+      })
+      .eq('id', editRow.id);
+    setEditSaving(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Promoção atualizada' });
+    setEditRow(null);
+    await load();
+  };
+
+  const renderEditDialog = () => (
+    <Dialog open={!!editRow} onOpenChange={(o) => { if (!o) setEditRow(null); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            Editar promoção
+          </DialogTitle>
+        </DialogHeader>
+        {editRow && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              {editRow.image ? <img src={editRow.image} alt="" className="w-12 h-12 rounded object-cover" /> : <div className="w-12 h-12 rounded bg-muted" />}
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{editRow.name}</div>
+                {editRow.sub && <div className="text-xs text-muted-foreground truncate">Variação: {editRow.sub}</div>}
+                <div className="flex items-center gap-2 mt-1">
+                  <StatusBadge status={editRow.status} className="text-[10px]" />
+                  <span className="text-[11px] text-muted-foreground">Preço atual: R$ {editRow.basePrice.toFixed(2)} • Estoque: {editRow.stock}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(['percent', 'value', 'price'] as Mode[]).map((m) => (
+                <Button key={m} size="sm" variant={editDraft.mode === m ? 'default' : 'outline'}
+                  onClick={() => setEditDraft((d) => ({ ...d, mode: m }))}>
+                  {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
+                </Button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">
+                  {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
+                </label>
+                <Input type="number" step="0.01" value={editDraft.amount}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, amount: e.target.value }))} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
+                <Input type="number" min="1" placeholder="sem limite" value={editDraft.limitQty}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, limitQty: e.target.value }))} />
+                {editRow.limitQty != null && (
+                  <span className="text-[11px] text-muted-foreground">Já vendidas: {editRow.soldQty}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Início (opcional)</label>
+                <Input type="datetime-local" value={editDraft.startsAt}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, startsAt: e.target.value }))} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Término (obrigatório)</label>
+                <Input type="datetime-local" value={editDraft.endsAt}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, endsAt: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Aplicar em</label>
+              <div className="flex gap-2">
+                {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+                  <Button key={c} size="sm" variant={editDraft.channel === c ? 'default' : 'outline'}
+                    onClick={() => setEditDraft((d) => ({ ...d, channel: c }))}>
+                    {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 text-xs flex flex-wrap gap-x-4 gap-y-1">
+              <span className="line-through text-muted-foreground">R$ {editRow.basePrice.toFixed(2)}</span>
+              <span className="font-semibold">Promo: R$ {editFinalPrice.toFixed(2)}</span>
+              <span className="text-muted-foreground">
+                -{editRow.basePrice > 0 ? Math.round((1 - editFinalPrice / editRow.basePrice) * 100) : 0}%
+              </span>
+              <span className="text-muted-foreground">Custo: R$ {editTotalCost.toFixed(2)}</span>
+              <span className={editProfit < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}>
+                Lucro: R$ {editProfit.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" className="text-destructive"
+            onClick={() => { if (editRow) { const r = editRow; setEditRow(null); remove(r.table, r.id); } }}>
+            <Trash2 className="w-4 h-4 mr-1" /> Remover promoção
+          </Button>
+          <Button onClick={saveEdit} disabled={editSaving}>
+            {editSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const patchRow = async (row: PromoRow, payload: Record<string, any>, msg: string) => {
     setSaving((s) => ({ ...s, [row.key]: true }));
     const { error } = await supabase.from(row.table).update(payload).eq('id', row.id);
@@ -1221,7 +1379,14 @@ export function PromotionsManagement() {
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
           {overviewRows.map((r) => (
-            <div key={r.key} className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30">
+            <div
+              key={r.key}
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter') openEdit(r); }}
+              className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer"
+            >
               {r.image ? <img src={r.image} alt="" className="w-11 h-11 rounded object-cover" /> : <div className="w-11 h-11 rounded bg-muted" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1251,7 +1416,10 @@ export function PromotionsManagement() {
                   {r.status === 'sold_out' && <>Limite de peças atingido.</>}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1 md:justify-end">
+              <div className="flex flex-wrap gap-1 md:justify-end" onClick={(e) => e.stopPropagation()}>
+                <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                </Button>
                 {r.status === 'scheduled' && (
                   <Button size="sm" variant="outline" disabled={saving[r.key]}
                     onClick={() => patchRow(r, { sale_starts_at: new Date().toISOString() }, 'Promoção iniciada agora')}>
@@ -1282,6 +1450,7 @@ export function PromotionsManagement() {
           ))}
         </div>
       )}
+      {renderEditDialog()}
     </div>
   );
 
