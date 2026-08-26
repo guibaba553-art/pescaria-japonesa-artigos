@@ -1114,25 +1114,201 @@ export function PromotionsManagement() {
     </div>
   );
 
+  // ═══════════════ PAINEL ═══════════════
+  const [overviewStatus, setOverviewStatus] = useState<'all' | PromoStatus>('all');
+  const [overviewChannel, setOverviewChannel] = useState<'all' | Channel>('all');
+  const [overviewSearch, setOverviewSearch] = useState('');
+
+  const overviewRows = useMemo(() => {
+    const q = overviewSearch.trim().toLowerCase();
+    const rank = { active: 0, scheduled: 1, sold_out: 2, invalid: 3, expired: 4, none: 5 } as Record<PromoStatus, number>;
+    return promoRows
+      .filter((r) => {
+        if (q && !`${r.name} ${r.sub ?? ''}`.toLowerCase().includes(q)) return false;
+        if (overviewStatus !== 'all' && r.status !== overviewStatus) return false;
+        if (overviewChannel !== 'all') {
+          const ch = (r.channel ?? 'both') as Channel;
+          if (overviewChannel === 'site' && ch === 'pdv') return false;
+          if (overviewChannel === 'pdv' && ch === 'site') return false;
+          if (overviewChannel === 'both' && ch !== 'both') return false;
+        }
+        return true;
+      })
+      .sort((a, b) => rank[a.status] - rank[b.status] || a.name.localeCompare(b.name));
+  }, [promoRows, overviewSearch, overviewStatus, overviewChannel]);
+
+  const patchRow = async (row: PromoRow, payload: Record<string, any>, msg: string) => {
+    setSaving((s) => ({ ...s, [row.key]: true }));
+    const { error } = await supabase.from(row.table).update(payload).eq('id', row.id);
+    setSaving((s) => ({ ...s, [row.key]: false }));
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: msg });
+    await load();
+  };
+
+  const kpiCards = [
+    { label: 'Ativas agora', value: counts.active, icon: CheckCircle2, cls: PROMO_STATUS_CLASS.active },
+    { label: 'Agendadas', value: counts.scheduled, icon: CalendarClock, cls: PROMO_STATUS_CLASS.scheduled },
+    { label: 'Encerradas', value: counts.expired, icon: TimerOff, cls: PROMO_STATUS_CLASS.expired },
+    { label: 'Esgotadas', value: counts.sold_out, icon: Square, cls: PROMO_STATUS_CLASS.sold_out },
+    { label: 'Incompletas', value: counts.invalid, icon: AlertTriangle, cls: PROMO_STATUS_CLASS.invalid },
+  ];
+
+  const renderOverviewTab = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {kpiCards.map((k) => (
+          <button
+            key={k.label}
+            onClick={() =>
+              setOverviewStatus((prev) => {
+                const map: Record<string, PromoStatus> = {
+                  'Ativas agora': 'active',
+                  Agendadas: 'scheduled',
+                  Encerradas: 'expired',
+                  Esgotadas: 'sold_out',
+                  Incompletas: 'invalid',
+                };
+                const target = map[k.label];
+                return prev === target ? 'all' : target;
+              })
+            }
+            className={`text-left rounded-lg border p-3 transition hover:shadow-sm ${k.cls}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium opacity-80">
+              <k.icon className="w-3.5 h-3.5" /> {k.label}
+            </div>
+            <div className="text-2xl font-bold mt-1">{k.value}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar promoção..." value={overviewSearch} onChange={(e) => setOverviewSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {(['all', 'active', 'scheduled', 'expired', 'sold_out', 'invalid'] as const).map((s) => (
+            <Button key={s} size="sm" variant={overviewStatus === s ? 'default' : 'outline'} onClick={() => setOverviewStatus(s)}>
+              {s === 'all' ? 'Todas' : PROMO_STATUS_LABEL[s]}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1 sm:ml-auto">
+          {(['all', 'site', 'pdv', 'both'] as const).map((c) => (
+            <Button key={c} size="sm" variant={overviewChannel === c ? 'secondary' : 'ghost'} onClick={() => setOverviewChannel(c)}>
+              {c === 'all' ? 'Todos canais' : channelLabel(c)}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+        </div>
+      ) : overviewRows.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          Nenhuma promoção nesse filtro. Crie uma na aba “Em lote”.
+        </div>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {overviewRows.map((r) => (
+            <div key={r.key} className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30">
+              {r.image ? <img src={r.image} alt="" className="w-11 h-11 rounded object-cover" /> : <div className="w-11 h-11 rounded bg-muted" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium truncate">{r.name}</span>
+                  {r.sub && <span className="text-xs text-muted-foreground truncate">• {r.sub}</span>}
+                  <StatusBadge status={r.status} className="text-[10px]" />
+                  <Badge variant="outline" className="text-[10px]">{channelLabel(r.channel)}</Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  <span className="line-through">R$ {r.basePrice.toFixed(2)}</span>
+                  <span className="text-foreground font-semibold">R$ {r.salePrice.toFixed(2)} (-{r.discountPct}%)</span>
+                  <span className={r.margin < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                    Lucro: R$ {r.margin.toFixed(2)}
+                  </span>
+                  <span>Estoque: {r.stock}</span>
+                  {r.limitQty != null && <span>Limite: {r.soldQty}/{r.limitQty}</span>}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {r.status === 'scheduled' && r.startsAt && (
+                    <>Começa em {new Date(r.startsAt).toLocaleString('pt-BR')} ({countdownLabel(r.startsAt)})</>
+                  )}
+                  {r.status === 'active' && r.endsAt && (
+                    <>Termina em {new Date(r.endsAt).toLocaleString('pt-BR')} ({countdownLabel(r.endsAt)} restantes)</>
+                  )}
+                  {r.status === 'expired' && r.endsAt && <>Terminou em {new Date(r.endsAt).toLocaleString('pt-BR')}</>}
+                  {r.status === 'invalid' && <>Promoção sem prazo final ou com preço inválido — não é aplicada nas vendas.</>}
+                  {r.status === 'sold_out' && <>Limite de peças atingido.</>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1 md:justify-end">
+                {r.status === 'scheduled' && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_starts_at: new Date().toISOString() }, 'Promoção iniciada agora')}>
+                    <Play className="w-3.5 h-3.5 mr-1" /> Iniciar agora
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'sold_out') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_ends_at: new Date().toISOString() }, 'Promoção encerrada')}>
+                    <Square className="w-3.5 h-3.5 mr-1" /> Encerrar
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'expired') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => {
+                      const base = r.status === 'expired' ? Date.now() : new Date(r.endsAt as string).getTime();
+                      patchRow(r, { sale_ends_at: new Date(base + 7 * 86400000).toISOString(), on_sale: true }, 'Prazo estendido em 7 dias');
+                    }}>
+                    <CalendarClock className="w-3.5 h-3.5 mr-1" /> +7 dias
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive" disabled={saving[r.key]}
+                  onClick={() => remove(r.table, r.id)}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden border-0 shadow-sm">
       <PanelHeader
         icon={Tag}
         title="Promoções"
-        description="Defina preços promocionais e o tempo de duração para produtos e variações."
+        description="Painel completo: crie, agende, acompanhe e encerre promoções do site e do PDV."
         kpis={[
           { label: 'Produtos', value: products.length },
-          { label: 'Em promoção', value: onSaleCount, tone: 'success' },
+          { label: 'Ativas', value: counts.active, tone: 'success' },
+          { label: 'Agendadas', value: counts.scheduled },
         ]}
       />
       <CardContent className="p-4 md:p-6 space-y-4">
-        <Tabs defaultValue="batch" className="space-y-4">
+        <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="w-4 h-4" /> Painel</TabsTrigger>
             <TabsTrigger value="batch" className="gap-2"><ListChecks className="w-4 h-4" /> Em lote</TabsTrigger>
             <TabsTrigger value="individual" className="gap-2"><Tag className="w-4 h-4" /> Individual</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="overview">{renderOverviewTab()}</TabsContent>
+
           <TabsContent value="batch">{renderBatchTab()}</TabsContent>
+
 
           <TabsContent value="individual" className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-2">
