@@ -859,19 +859,31 @@ export function PromotionsManagement() {
       sub: string;
       image?: string | null;
       price: number;
+      pdvPrice: number;
+      siteProfit: number;
+      pdvProfit: number;
       totalCost: number;
       profit: number;
       baseCost: number;
       baseProfit: number;
       finalPrice: number;
     }[] = [];
-    const calc = (price: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
+    const calc = (price: number, pdvPrice: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
       const finalPrice = computeFinalPrice(price, batchDraft);
       const c = Number(cost || 0);
       const fixed = c + c * (Number(freightPct || 0) / 100) + c * (Number(opCostPct || 0) / 100);
-      const totalCost = fixed + finalPrice * (Number(taxPct || 0) / 100);
-      const baseCost = fixed + price * (Number(taxPct || 0) / 100);
-      return { totalCost, profit: finalPrice - totalCost, baseCost, baseProfit: price - baseCost, finalPrice };
+      const t = Number(taxPct || 0) / 100;
+      const totalCost = fixed + finalPrice * t;
+      const baseCost = fixed + price * t;
+      return {
+        totalCost,
+        profit: finalPrice - totalCost,
+        baseCost,
+        baseProfit: price - baseCost,
+        finalPrice,
+        siteProfit: price - baseCost,
+        pdvProfit: pdvPrice > 0 ? pdvPrice - (fixed + pdvPrice * t) : 0,
+      };
     };
 
     for (const key of selected) {
@@ -880,13 +892,15 @@ export function PromotionsManagement() {
         const p = products.find((x) => x.id === id);
         if (p) {
           const price = Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price);
+          const pdvPrice = Number((p as any).price_pdv) > 0 ? Number((p as any).price_pdv) : Number(p.price || 0);
           out.push({
             key,
             name: p.name,
             sub: p.category || 'Produto',
             image: p.image_url,
             price,
-            ...calc(price, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0)),
+            pdvPrice,
+            ...calc(price, pdvPrice, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0)),
           });
         }
       } else {
@@ -894,14 +908,17 @@ export function PromotionsManagement() {
           const v = p.variations.find((x) => x.id === id);
           if (v) {
             const price = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+            const pdvPrice = Number((v as any).price_pdv) > 0 ? Number((v as any).price_pdv) : Number(v.price || 0);
             out.push({
               key,
               name: `${p.name}`,
               sub: v.name,
               image: v.image_url || p.image_url,
               price,
+              pdvPrice,
               ...calc(
                 price,
+                pdvPrice,
                 Number(v.cost ?? p.cost ?? 0),
                 Number(v.freight_pct ?? p.freight_pct ?? 0),
                 Number(v.op_cost_pct ?? p.op_cost_pct ?? 0),
@@ -1029,8 +1046,11 @@ export function PromotionsManagement() {
                   <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-muted-foreground">Promo: R$ {it.finalPrice.toFixed(2)}</span>
                     <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
-                    <span className={it.baseProfit < 0 ? 'text-destructive' : 'text-muted-foreground'}>
-                      Lucro padrão: R$ {it.baseProfit.toFixed(2)}
+                    <span className={it.siteProfit < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                      Margem site: R$ {it.siteProfit.toFixed(2)}
+                    </span>
+                    <span className={it.pdvProfit < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                      Margem PDV (R$ {it.pdvPrice.toFixed(2)}): R$ {it.pdvProfit.toFixed(2)}
                     </span>
                     <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
                       Lucro promo: R$ {it.profit.toFixed(2)}
