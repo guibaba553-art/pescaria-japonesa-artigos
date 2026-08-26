@@ -1029,9 +1029,13 @@ export function PromotionsManagement() {
                   <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-muted-foreground">Promo: R$ {it.finalPrice.toFixed(2)}</span>
                     <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
-                    <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
-                      Lucro: R$ {it.profit.toFixed(2)}
+                    <span className={it.baseProfit < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                      Lucro padrão: R$ {it.baseProfit.toFixed(2)}
                     </span>
+                    <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                      Lucro promo: R$ {it.profit.toFixed(2)}
+                    </span>
+
                   </div>
                 </div>
 
