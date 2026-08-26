@@ -66,10 +66,14 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
     const starts = new Date(item.sale_starts_at);
     if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
   }
-  if (item.sale_ends_at) {
+  // Toda promoção precisa de prazo final definido — sem prazo, não é considerada ativa.
+  if (!item.sale_ends_at) return false;
+  {
     const ends = new Date(item.sale_ends_at);
-    if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
+    if (isNaN(ends.getTime())) return false;
+    if (ends.getTime() <= now.getTime()) return false;
   }
+
   if (item.sale_limit_qty != null) {
     const sold = Number(item.sale_sold_qty ?? 0);
     if (sold >= Number(item.sale_limit_qty)) return false;

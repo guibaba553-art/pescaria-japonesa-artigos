@@ -78,7 +78,7 @@ describe('ProductCard — promoção expirada', () => {
     expect(screen.getByText(/% OFF/)).toBeDefined();
   });
 
-  it('deve exibir badge de desconto quando sale_ends_at é nulo', () => {
+  it('NÃO deve exibir badge de desconto quando sale_ends_at é nulo (promo sem prazo)', () => {
     const noEndProduct = {
       ...baseProduct,
       sale_ends_at: null,
@@ -86,7 +86,8 @@ describe('ProductCard — promoção expirada', () => {
 
     render(<ProductCard product={noEndProduct} {...defaultProps} />);
 
-    // Promo sem prazo é considerada ativa → badge deve aparecer
-    expect(screen.getByText(/% OFF/)).toBeDefined();
+    // Promo sem prazo final não é válida → badge não deve aparecer
+    expect(screen.queryByText(/% OFF/)).toBeNull();
   });
+
 });

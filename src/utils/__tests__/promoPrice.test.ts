@@ -8,6 +8,9 @@ import {
   validatePromotionPeriod,
 } from '../promoPrice';
 
+const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
+
+
 // ─── effectiveProductOrVariationPrice ──────────────────────
 describe('effectiveProductOrVariationPrice', () => {
   const baseProduct = {
@@ -26,6 +29,7 @@ describe('effectiveProductOrVariationPrice', () => {
       ...baseProduct,
       on_sale: true,
       sale_price: 30,
+      sale_ends_at: FUTURE,
     })).toBe(30);
   });
 
@@ -56,7 +60,7 @@ describe('effectiveProductOrVariationPrice', () => {
     const product = {
       ...baseProduct,
       variations: [
-        { price: 100, min_sale_price: null, on_sale: true, sale_price: 15 },
+        { price: 100, min_sale_price: null, on_sale: true, sale_price: 15, sale_ends_at: FUTURE },
         { price: 50, min_sale_price: null, on_sale: false, sale_price: null },
       ],
     };
@@ -95,8 +99,15 @@ describe('isPromoActive', () => {
     price: 100,
     on_sale: true,
     sale_price: 50,
+    // Toda promoção precisa de prazo final
+    sale_ends_at: new Date(Date.now() + 86_400_000).toISOString(),
     ...overrides,
   });
+
+  it('promo sem sale_ends_at retorna false (prazo obrigatório)', () => {
+    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(false);
+  });
+
 
   it('promo ativa com todos os campos válidos retorna true', () => {
     expect(isPromoActive(makeItem())).toBe(true);
@@ -116,8 +127,8 @@ describe('isPromoActive', () => {
     expect(isPromoActive(makeItem({ sale_ends_at: now.toISOString() }), now)).toBe(false);
   });
 
-  it('promo sem sale_ends_at (nulo) retorna true se demais campos OK', () => {
-    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(true);
+  it('promo sem sale_ends_at (nulo) retorna false — prazo é obrigatório', () => {
+    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(false);
   });
 
   it('promo com on_sale=false retorna false', () => {
