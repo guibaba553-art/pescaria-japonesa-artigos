@@ -985,7 +985,7 @@ export function PromotionsManagement() {
                         <div className="text-sm truncate">{v.name}</div>
                         <div className="text-[11px] text-muted-foreground">R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)} • Estoque: {v.stock}</div>
                       </div>
-                      {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                      <StatusBadge status={promoStatus(v)} className="text-[10px]" />
                     </label>
                   );
                 })}
