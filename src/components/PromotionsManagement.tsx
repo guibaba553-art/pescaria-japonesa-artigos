@@ -949,7 +949,7 @@ export function PromotionsManagement() {
                     <div className="text-sm font-medium truncate">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">{p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}</div>
                   </div>
-                  {isPromoActive(p) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                  <StatusBadge status={promoStatus(p)} className="text-[10px]" />
                 </label>
               );
             }
