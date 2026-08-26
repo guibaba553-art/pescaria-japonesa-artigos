@@ -269,6 +269,8 @@ export function PromotionsManagement() {
         soldQty: Number(item.sale_sold_qty ?? 0),
         stock: Number(item.stock ?? 0),
         margin: salePrice - totalCost,
+        fixedCost: cost + cost * fPct + cost * oPct,
+        taxPct: tPct,
       });
     };
     products.forEach((p) => {
