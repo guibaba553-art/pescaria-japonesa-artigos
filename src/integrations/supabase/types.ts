@@ -1786,6 +1786,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           sku: string | null
@@ -1817,6 +1818,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           sku?: string | null
@@ -1848,6 +1850,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           sku?: string | null
@@ -1920,6 +1923,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
@@ -1980,6 +1984,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
@@ -2040,6 +2045,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
@@ -3032,6 +3038,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
@@ -3078,6 +3085,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           sku: string | null
@@ -3141,6 +3149,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null

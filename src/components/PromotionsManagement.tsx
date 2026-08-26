@@ -46,10 +46,12 @@ interface Variation {
   name: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   stock: number;
   image_url: string | null;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -67,10 +69,12 @@ interface Product {
   category: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   image_url: string | null;
   stock: number;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -89,6 +93,8 @@ type Channel = 'site' | 'pdv' | 'both';
 interface Draft {
   mode: Mode;
   amount: string;
+  /** Valor da promoção exclusivo do PDV (usado quando o canal é "Ambos"). Vazio = usa o mesmo do site. */
+  pdvAmount: string;
   startsAt: string;
   endsAt: string;
   limitQty: string;
@@ -102,18 +108,20 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft {
+  const pdvAmount = salePricePdv != null && salePricePdv > 0 ? Number(salePricePdv).toFixed(2) : '';
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
+      pdvAmount,
       startsAt: toLocalDateTime(startsAt),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
       channel,
     };
   }
-  return { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
+  return { mode: 'percent', amount: '10', pdvAmount, startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
 
 
@@ -122,6 +130,33 @@ function computeFinalPrice(basePrice: number, draft: Draft): number {
   if (draft.mode === 'percent') return Math.max(0, basePrice * (1 - v / 100));
   if (draft.mode === 'value') return Math.max(0, basePrice - v);
   return Math.max(0, v);
+}
+
+/**
+ * Preço promocional exclusivo do PDV.
+ * Só existe quando o canal é "Ambos" e o admin informou um valor diferente
+ * (no mesmo modo: %, R$ de desconto ou preço final) sobre o preço base do PDV.
+ * Retorna null quando deve usar o mesmo valor do site.
+ */
+function computePdvFinalPrice(pdvBasePrice: number, draft: Draft): number | null {
+  if (draft.channel !== 'both') return null;
+  if (!draft.pdvAmount || draft.pdvAmount.trim() === '') return null;
+  const v = parseFloat(draft.pdvAmount);
+  if (!isFinite(v) || v <= 0) return null;
+  if (!(pdvBasePrice > 0)) return null;
+  const final = draft.mode === 'percent'
+    ? pdvBasePrice * (1 - v / 100)
+    : draft.mode === 'value'
+      ? pdvBasePrice - v
+      : v;
+  if (!(final > 0) || final >= pdvBasePrice) return null;
+  return Number(final.toFixed(2));
+}
+
+/** Preço "de" do PDV (price_pdv quando definido, senão o price do site). */
+function pdvBasePriceOf(item: { price_pdv?: number | null; price: number }): number {
+  const v = Number(item?.price_pdv ?? 0);
+  return v > 0 ? v : Number(item?.price ?? 0);
 }
 
 function StatusBadge({ status, className = '' }: { status: PromoStatus; className?: string }) {
@@ -151,6 +186,8 @@ interface PromoRow {
   status: PromoStatus;
   basePrice: number;
   salePrice: number;
+  pdvBasePrice: number;
+  salePricePdv: number | null;
   discountPct: number;
   channel: string | null;
   startsAt: string | null;
@@ -263,6 +300,8 @@ export function PromotionsManagement() {
         status,
         basePrice,
         salePrice,
+        pdvBasePrice: pdvBasePriceOf(item),
+        salePricePdv: item.sale_price_pdv != null && Number(item.sale_price_pdv) > 0 ? Number(item.sale_price_pdv) : null,
         discountPct: basePrice > 0 ? Math.round((1 - salePrice / basePrice) * 100) : 0,
         channel: item.sale_channel,
         startsAt: item.sale_starts_at,
@@ -293,8 +332,8 @@ export function PromotionsManagement() {
   const onSaleCount = counts.active;
 
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel, salePricePdv);
   };
 
   const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
@@ -307,7 +346,8 @@ export function PromotionsManagement() {
     table: 'products' | 'product_variations',
     id: string,
     basePrice: number,
-    draft: Draft
+    draft: Draft,
+    pdvBasePrice = 0,
   ) => {
     const key = `${table}:${id}`;
     const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
@@ -330,6 +370,7 @@ export function PromotionsManagement() {
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
       sale_channel: draft.channel,
+      sale_price_pdv: computePdvFinalPrice(pdvBasePrice, draft),
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
@@ -346,7 +387,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from(table)
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -361,7 +402,7 @@ export function PromotionsManagement() {
   };
   const applyBulkToVariations = async (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
     const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
     if (periodError) {
@@ -391,6 +432,7 @@ export function PromotionsManagement() {
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
           sale_channel: draft.channel,
+          sale_price_pdv: computePdvFinalPrice(pdvBasePriceOf(v), draft),
         })
         .eq('id', v.id);
       if (error) errors.push(`${v.name}: ${error.message}`);
@@ -417,7 +459,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from('product_variations')
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .in('id', ids);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -430,7 +472,7 @@ export function PromotionsManagement() {
 
   const renderBulkEditor = (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     const setBulk = (patch: Partial<Draft>) => setDrafts({ ...drafts, [key]: { ...draft, ...patch } });
     const onSaleCount = product.variations.filter((v) => v.on_sale).length;
     return (
@@ -473,6 +515,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -484,6 +527,22 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => setBulk({ pdvAmount: e.target.value })}
+                className="w-36"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -563,11 +622,14 @@ export function PromotionsManagement() {
     freightPct: number,
     opCostPct: number,
     taxPct: number,
-    saleChannel: string | null = 'both'
+    saleChannel: string | null = 'both',
+    pdvBasePrice = 0,
+    salePricePdv: number | null = null,
   ) => {
     const key = `${table}:${id}`;
     const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
-    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
+    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel, salePricePdv);
+    const pdvFinal = computePdvFinalPrice(pdvBasePrice, draft);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
@@ -614,6 +676,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -625,6 +688,25 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => updateDraft(key, { pdvAmount: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
+                className="w-36"
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Base PDV: R$ {pdvBasePrice.toFixed(2)} → {pdvFinal != null ? `R$ ${pdvFinal.toFixed(2)}` : `R$ ${final.toFixed(2)} (igual ao site)`}
+              </span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -697,7 +779,7 @@ export function PromotionsManagement() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
+          <Button size="sm" onClick={() => apply(table, id, basePrice, draft, pdvBasePrice)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             {isActuallyActive ? 'Atualizar promoção' : onSale ? 'Promoção expirada — aplicar nova' : 'Aplicar promoção'}
           </Button>
@@ -728,7 +810,7 @@ export function PromotionsManagement() {
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
-  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [batchSaving, setBatchSaving] = useState(false);
 
   const toggleSel = (key: SelKey) => {
@@ -778,40 +860,47 @@ export function PromotionsManagement() {
     const errors: string[] = [];
 
     // Indexar preços base
-    const priceOf = (table: 'products' | 'product_variations', id: string): number => {
+    const itemOf = (table: 'products' | 'product_variations', id: string): { price: number; pdvPrice: number } | null => {
       if (table === 'products') {
         const p = products.find((x) => x.id === id);
-        return p ? Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) : 0;
+        if (!p) return null;
+        return { price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), pdvPrice: pdvBasePriceOf(p) };
       }
       for (const p of products) {
         const v = p.variations.find((x) => x.id === id);
-        if (v) return Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+        if (v) return { price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), pdvPrice: pdvBasePriceOf(v) };
       }
-      return 0;
+      return null;
     };
 
-    // Agrupar por tabela e por preço final (para poder usar .in())
-    const byTable: Record<'products' | 'product_variations', Map<number, string[]>> = {
+    // Agrupar por tabela e por par (preço site | preço PDV) para poder usar .in()
+    const byTable: Record<'products' | 'product_variations', Map<string, string[]>> = {
       products: new Map(),
       product_variations: new Map(),
     };
 
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
-      const basePrice = priceOf(table, id);
+      const info = itemOf(table, id);
+      const basePrice = info?.price ?? 0;
       const final = computeFinalPrice(basePrice, batchDraft);
       if (basePrice <= 0 || final <= 0 || final >= basePrice) { skipped++; continue; }
       const rounded = Number(final.toFixed(2));
-      const arr = byTable[table].get(rounded) || [];
+      const pdvFinal = computePdvFinalPrice(info?.pdvPrice ?? 0, batchDraft);
+      const groupKey = `${rounded}|${pdvFinal ?? ''}`;
+      const arr = byTable[table].get(groupKey) || [];
       arr.push(id);
-      byTable[table].set(rounded, arr);
+      byTable[table].set(groupKey, arr);
     }
 
     for (const table of ['products', 'product_variations'] as const) {
-      for (const [finalPrice, ids] of byTable[table].entries()) {
+      for (const [groupKey, ids] of byTable[table].entries()) {
+        const [finalStr, pdvStr] = groupKey.split('|');
+        const finalPrice = Number(finalStr);
         const { error } = await supabase.from(table).update({
           on_sale: true,
           sale_price: finalPrice,
+          sale_price_pdv: pdvStr === '' ? null : Number(pdvStr),
           sale_starts_at: startsAtIso,
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
@@ -837,7 +926,7 @@ export function PromotionsManagement() {
   const removeBatch = async () => {
     if (selected.size === 0) return;
     setBatchSaving(true);
-    const clear = { on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
+    const clear = { on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
     const prodIds: string[] = [];
     const varIds: string[] = [];
     for (const key of selected) {
@@ -867,6 +956,7 @@ export function PromotionsManagement() {
       baseCost: number;
       baseProfit: number;
       finalPrice: number;
+      pdvFinalPrice: number | null;
     }[] = [];
     const calc = (price: number, pdvPrice: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
       const finalPrice = computeFinalPrice(price, batchDraft);
@@ -881,6 +971,7 @@ export function PromotionsManagement() {
         baseCost,
         baseProfit: price - baseCost,
         finalPrice,
+        pdvFinalPrice: computePdvFinalPrice(pdvPrice, batchDraft),
         siteProfit: price - baseCost,
         pdvProfit: pdvPrice > 0 ? pdvPrice - (fixed + pdvPrice * t) : 0,
       };
@@ -892,7 +983,7 @@ export function PromotionsManagement() {
         const p = products.find((x) => x.id === id);
         if (p) {
           const price = Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price);
-          const pdvPrice = Number((p as any).price_pdv) > 0 ? Number((p as any).price_pdv) : Number(p.price || 0);
+          const pdvPrice = pdvBasePriceOf(p);
           out.push({
             key,
             name: p.name,
@@ -908,7 +999,7 @@ export function PromotionsManagement() {
           const v = p.variations.find((x) => x.id === id);
           if (v) {
             const price = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
-            const pdvPrice = Number((v as any).price_pdv) > 0 ? Number((v as any).price_pdv) : Number(v.price || 0);
+            const pdvPrice = pdvBasePriceOf(v);
             out.push({
               key,
               name: `${p.name}`,
@@ -1046,7 +1137,12 @@ export function PromotionsManagement() {
                   <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
                     <span className="text-muted-foreground">Valor site: R$ {it.price.toFixed(2)}</span>
                     <span className="text-muted-foreground">Valor PDV: R$ {it.pdvPrice.toFixed(2)}</span>
-                    <span className="text-muted-foreground">Promo: R$ {it.finalPrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground">
+                      Promo site: R$ {it.finalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      Promo PDV: R$ {(it.pdvFinalPrice ?? it.finalPrice).toFixed(2)}
+                    </span>
                     <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
                     <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
                       Lucro promo: R$ {it.profit.toFixed(2)}
@@ -1094,11 +1190,22 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {batchDraft.channel === 'both' ? 'Site — ' : ''}
               {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01}
               value={batchDraft.amount} onChange={(e) => setBatchDraft({ ...batchDraft, amount: e.target.value })} className="w-32" />
           </div>
+          {batchDraft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01} placeholder="igual ao site"
+                value={batchDraft.pdvAmount} onChange={(e) => setBatchDraft({ ...batchDraft, pdvAmount: e.target.value })} className="w-36" />
+              <span className="text-[11px] text-muted-foreground">Deixe vazio para usar o mesmo desconto do site.</span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input type="datetime-local" value={batchDraft.startsAt}
@@ -1168,7 +1275,7 @@ export function PromotionsManagement() {
 
   // Edição de uma promoção existente (dialog com todos os dados preenchidos)
   const [editRow, setEditRow] = useState<PromoRow | null>(null);
-  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [editSaving, setEditSaving] = useState(false);
 
   const openEdit = (r: PromoRow) => {
@@ -1176,6 +1283,7 @@ export function PromotionsManagement() {
     setEditDraft({
       mode: 'price',
       amount: r.salePrice.toFixed(2),
+      pdvAmount: r.salePricePdv != null ? r.salePricePdv.toFixed(2) : '',
       startsAt: toLocalDateTime(r.startsAt),
       endsAt: toLocalDateTime(r.endsAt),
       limitQty: r.limitQty != null ? String(r.limitQty) : '',
@@ -1184,6 +1292,7 @@ export function PromotionsManagement() {
   };
 
   const editFinalPrice = editRow ? computeFinalPrice(editRow.basePrice, editDraft) : 0;
+  const editPdvFinalPrice = editRow ? computePdvFinalPrice(editRow.pdvBasePrice, editDraft) : null;
   const editTotalCost = editRow ? editRow.fixedCost + editFinalPrice * editRow.taxPct : 0;
   const editProfit = editFinalPrice - editTotalCost;
 
@@ -1205,6 +1314,7 @@ export function PromotionsManagement() {
       .update({
         on_sale: true,
         sale_price: Number(editFinalPrice.toFixed(2)),
+        sale_price_pdv: editPdvFinalPrice,
         sale_starts_at: editDraft.startsAt ? new Date(editDraft.startsAt).toISOString() : null,
         sale_ends_at: editDraft.endsAt ? new Date(editDraft.endsAt).toISOString() : null,
         sale_limit_qty: limitParsed,
@@ -1255,11 +1365,24 @@ export function PromotionsManagement() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">
+                  {editDraft.channel === 'both' ? 'Site — ' : ''}
                   {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
                 </label>
                 <Input type="number" step="0.01" value={editDraft.amount}
                   onChange={(e) => setEditDraft((d) => ({ ...d, amount: e.target.value }))} />
               </div>
+              {editDraft.channel === 'both' && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">
+                    PDV — {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
+                  </label>
+                  <Input type="number" step="0.01" placeholder="igual ao site" value={editDraft.pdvAmount}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, pdvAmount: e.target.value }))} />
+                  <span className="text-[11px] text-muted-foreground">
+                    Base PDV: R$ {editRow.pdvBasePrice.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
                 <Input type="number" min="1" placeholder="sem limite" value={editDraft.limitQty}
@@ -1294,7 +1417,10 @@ export function PromotionsManagement() {
 
             <div className="rounded-md border p-3 text-xs flex flex-wrap gap-x-4 gap-y-1">
               <span className="line-through text-muted-foreground">R$ {editRow.basePrice.toFixed(2)}</span>
-              <span className="font-semibold">Promo: R$ {editFinalPrice.toFixed(2)}</span>
+              <span className="font-semibold">Promo site: R$ {editFinalPrice.toFixed(2)}</span>
+              {editDraft.channel === 'both' && (
+                <span className="font-semibold">Promo PDV: R$ {(editPdvFinalPrice ?? editFinalPrice).toFixed(2)}</span>
+              )}
               <span className="text-muted-foreground">
                 -{editRow.basePrice > 0 ? Math.round((1 - editFinalPrice / editRow.basePrice) * 100) : 0}%
               </span>
@@ -1573,7 +1699,7 @@ export function PromotionsManagement() {
 
                       {!hasVars && (
                         <div className="p-3 border-t">
-                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
+                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel, pdvBasePriceOf(p), p.sale_price_pdv)}
                         </div>
                       )}
 
@@ -1600,7 +1726,7 @@ export function PromotionsManagement() {
                                 </div>
                                 <StatusBadge status={promoStatus(v)} />
                               </div>
-                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
+                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel, pdvBasePriceOf(v), v.sale_price_pdv)}
                             </div>
                           ))}
                         </div>
