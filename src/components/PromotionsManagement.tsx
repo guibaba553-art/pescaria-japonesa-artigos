@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
+import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X, LayoutDashboard, CalendarClock, CheckCircle2, AlertTriangle, TimerOff, RefreshCw, Play, Square } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
 import { isPromoActive, isPromoScheduled, validatePromotionPeriod } from '@/utils/promoPrice';
+import { promoStatus, PromoStatus, PROMO_STATUS_LABEL, PROMO_STATUS_CLASS, channelLabel, countdownLabel } from '@/utils/promoStatus';
 
 /** Converte texto colado (dd/mm/yyyy [hh:mm], ISO, datetime-local) para o formato do input datetime-local. */
 function parsePastedDate(raw: string): string | null {
@@ -122,15 +123,59 @@ function computeFinalPrice(basePrice: number, draft: Draft): number {
   return Math.max(0, v);
 }
 
+function StatusBadge({ status, className = '' }: { status: PromoStatus; className?: string }) {
+  if (status === 'none') return null;
+  return (
+    <Badge variant="outline" className={`${PROMO_STATUS_CLASS[status]} ${className}`}>
+      {PROMO_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+/** Melhor status entre o produto e suas variações (prioriza ativa > agendada > outros). */
+const STATUS_RANK: Record<PromoStatus, number> = { active: 5, scheduled: 4, sold_out: 3, invalid: 2, expired: 1, none: 0 };
+
+function basePriceOf(item: { min_sale_price: number | null; price: number }): number {
+  return Number(Number(item.min_sale_price) > 0 ? item.min_sale_price : item.price);
+}
+
+interface PromoRow {
+  key: string;
+  table: 'products' | 'product_variations';
+  id: string;
+  name: string;
+  sub: string | null;
+  image: string | null;
+  category: string;
+  status: PromoStatus;
+  basePrice: number;
+  salePrice: number;
+  discountPct: number;
+  channel: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  limitQty: number | null;
+  soldQty: number;
+  stock: number;
+  margin: number;
+}
+
 export function PromotionsManagement() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'on_sale' | 'off'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [, setTick] = useState(0);
+
+  // Atualiza contagens regressivas / status sem recarregar do banco
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -165,23 +210,83 @@ export function PromotionsManagement() {
 
   useEffect(() => { load(); }, []);
 
+  /** Status agregado de um produto (considerando variações). */
+  const productStatus = (p: Product): PromoStatus => {
+    const all: PromoStatus[] = [promoStatus(p), ...p.variations.map((v) => promoStatus(v))];
+    return all.reduce((best, s) => (STATUS_RANK[s] > STATUS_RANK[best] ? s : best), 'none' as PromoStatus);
+  };
+
+  const matchesFilter = (s: PromoStatus, f: typeof filter) => {
+    if (f === 'all') return true;
+    if (f === 'off') return s === 'none';
+    if (f === 'expired') return s === 'expired' || s === 'sold_out' || s === 'invalid';
+    return s === f;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (filter === 'on_sale') {
-        return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-      }
-      if (filter === 'off') {
-        return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
-      }
-      return true;
+      return matchesFilter(productStatus(p), filter);
     });
   }, [products, search, filter]);
 
-  const onSaleCount = products.filter(
-    (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
-  ).length;
+  /** Todas as linhas com alguma promoção cadastrada (ativa, agendada, expirada ou incompleta). */
+  const promoRows = useMemo<PromoRow[]>(() => {
+    const rows: PromoRow[] = [];
+    const push = (
+      table: 'products' | 'product_variations',
+      p: Product,
+      v: Variation | null,
+    ) => {
+      const item: any = v ?? p;
+      const status = promoStatus(item);
+      if (status === 'none') return;
+      const basePrice = basePriceOf(item);
+      const salePrice = Number(item.sale_price ?? 0);
+      const cost = Number(v ? (v.cost ?? p.cost ?? 0) : p.cost ?? 0);
+      const fPct = Number((v ? v.freight_pct ?? p.freight_pct : p.freight_pct) || 0) / 100;
+      const oPct = Number((v ? v.op_cost_pct ?? p.op_cost_pct : p.op_cost_pct) || 0) / 100;
+      const tPct = Number((v ? v.tax_pct ?? p.tax_pct : p.tax_pct) || 0) / 100;
+      const totalCost = cost + cost * fPct + cost * oPct + salePrice * tPct;
+      rows.push({
+        key: `${table}:${item.id}`,
+        table,
+        id: item.id,
+        name: p.name,
+        sub: v ? v.name : null,
+        image: (v?.image_url || p.image_url) ?? null,
+        category: p.category,
+        status,
+        basePrice,
+        salePrice,
+        discountPct: basePrice > 0 ? Math.round((1 - salePrice / basePrice) * 100) : 0,
+        channel: item.sale_channel,
+        startsAt: item.sale_starts_at,
+        endsAt: item.sale_ends_at,
+        limitQty: item.sale_limit_qty,
+        soldQty: Number(item.sale_sold_qty ?? 0),
+        stock: Number(item.stock ?? 0),
+        margin: salePrice - totalCost,
+      });
+    };
+    products.forEach((p) => {
+      push('products', p, null);
+      p.variations.forEach((v) => push('product_variations', p, v));
+    });
+    return rows;
+  }, [products]);
+
+  const counts = useMemo(() => {
+    const c = { active: 0, scheduled: 0, expired: 0, invalid: 0, sold_out: 0 };
+    promoRows.forEach((r) => {
+      if (r.status in c) (c as any)[r.status]++;
+    });
+    return c;
+  }, [promoRows]);
+
+  const onSaleCount = counts.active;
+
 
   const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
     return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
@@ -617,7 +722,7 @@ export function PromotionsManagement() {
   type SelKey = string; // "products:<id>" | "product_variations:<id>"
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
-  const [batchFilter, setBatchFilter] = useState<'all' | 'on_sale' | 'off'>('all');
+  const [batchFilter, setBatchFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
   const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [batchSaving, setBatchSaving] = useState(false);
 
@@ -633,11 +738,12 @@ export function PromotionsManagement() {
     const q = batchSearch.trim().toLowerCase();
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (batchFilter === 'on_sale') return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-      if (batchFilter === 'off') return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
-      return true;
+      return matchesFilter(productStatus(p), batchFilter);
     });
   }, [products, batchSearch, batchFilter]);
+
+
+
 
   const selectAllVisible = () => {
     const n = new Set(selected);
@@ -810,9 +916,9 @@ export function PromotionsManagement() {
           <Input placeholder="Buscar produto..." value={batchSearch} onChange={(e) => setBatchSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-1">
-          {(['all', 'on_sale', 'off'] as const).map((f) => (
+          {(['all', 'active', 'scheduled', 'expired', 'off'] as const).map((f) => (
             <Button key={f} size="sm" variant={batchFilter === f ? 'default' : 'outline'} onClick={() => setBatchFilter(f)}>
-              {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+              {f === 'all' ? 'Todos' : f === 'active' ? 'Ativas' : f === 'scheduled' ? 'Agendadas' : f === 'expired' ? 'Encerradas' : 'Sem promoção'}
             </Button>
           ))}
         </div>
@@ -843,7 +949,7 @@ export function PromotionsManagement() {
                     <div className="text-sm font-medium truncate">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">{p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}</div>
                   </div>
-                  {isPromoActive(p) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                  <StatusBadge status={promoStatus(p)} className="text-[10px]" />
                 </label>
               );
             }
@@ -879,7 +985,7 @@ export function PromotionsManagement() {
                         <div className="text-sm truncate">{v.name}</div>
                         <div className="text-[11px] text-muted-foreground">R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)} • Estoque: {v.stock}</div>
                       </div>
-                      {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                      <StatusBadge status={promoStatus(v)} className="text-[10px]" />
                     </label>
                   );
                 })}
@@ -1008,25 +1114,201 @@ export function PromotionsManagement() {
     </div>
   );
 
+  // ═══════════════ PAINEL ═══════════════
+  const [overviewStatus, setOverviewStatus] = useState<'all' | PromoStatus>('all');
+  const [overviewChannel, setOverviewChannel] = useState<'all' | Channel>('all');
+  const [overviewSearch, setOverviewSearch] = useState('');
+
+  const overviewRows = useMemo(() => {
+    const q = overviewSearch.trim().toLowerCase();
+    const rank = { active: 0, scheduled: 1, sold_out: 2, invalid: 3, expired: 4, none: 5 } as Record<PromoStatus, number>;
+    return promoRows
+      .filter((r) => {
+        if (q && !`${r.name} ${r.sub ?? ''}`.toLowerCase().includes(q)) return false;
+        if (overviewStatus !== 'all' && r.status !== overviewStatus) return false;
+        if (overviewChannel !== 'all') {
+          const ch = (r.channel ?? 'both') as Channel;
+          if (overviewChannel === 'site' && ch === 'pdv') return false;
+          if (overviewChannel === 'pdv' && ch === 'site') return false;
+          if (overviewChannel === 'both' && ch !== 'both') return false;
+        }
+        return true;
+      })
+      .sort((a, b) => rank[a.status] - rank[b.status] || a.name.localeCompare(b.name));
+  }, [promoRows, overviewSearch, overviewStatus, overviewChannel]);
+
+  const patchRow = async (row: PromoRow, payload: Record<string, any>, msg: string) => {
+    setSaving((s) => ({ ...s, [row.key]: true }));
+    const { error } = await supabase.from(row.table).update(payload).eq('id', row.id);
+    setSaving((s) => ({ ...s, [row.key]: false }));
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: msg });
+    await load();
+  };
+
+  const kpiCards = [
+    { label: 'Ativas agora', value: counts.active, icon: CheckCircle2, cls: PROMO_STATUS_CLASS.active },
+    { label: 'Agendadas', value: counts.scheduled, icon: CalendarClock, cls: PROMO_STATUS_CLASS.scheduled },
+    { label: 'Encerradas', value: counts.expired, icon: TimerOff, cls: PROMO_STATUS_CLASS.expired },
+    { label: 'Esgotadas', value: counts.sold_out, icon: Square, cls: PROMO_STATUS_CLASS.sold_out },
+    { label: 'Incompletas', value: counts.invalid, icon: AlertTriangle, cls: PROMO_STATUS_CLASS.invalid },
+  ];
+
+  const renderOverviewTab = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {kpiCards.map((k) => (
+          <button
+            key={k.label}
+            onClick={() =>
+              setOverviewStatus((prev) => {
+                const map: Record<string, PromoStatus> = {
+                  'Ativas agora': 'active',
+                  Agendadas: 'scheduled',
+                  Encerradas: 'expired',
+                  Esgotadas: 'sold_out',
+                  Incompletas: 'invalid',
+                };
+                const target = map[k.label];
+                return prev === target ? 'all' : target;
+              })
+            }
+            className={`text-left rounded-lg border p-3 transition hover:shadow-sm ${k.cls}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium opacity-80">
+              <k.icon className="w-3.5 h-3.5" /> {k.label}
+            </div>
+            <div className="text-2xl font-bold mt-1">{k.value}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar promoção..." value={overviewSearch} onChange={(e) => setOverviewSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {(['all', 'active', 'scheduled', 'expired', 'sold_out', 'invalid'] as const).map((s) => (
+            <Button key={s} size="sm" variant={overviewStatus === s ? 'default' : 'outline'} onClick={() => setOverviewStatus(s)}>
+              {s === 'all' ? 'Todas' : PROMO_STATUS_LABEL[s]}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1 sm:ml-auto">
+          {(['all', 'site', 'pdv', 'both'] as const).map((c) => (
+            <Button key={c} size="sm" variant={overviewChannel === c ? 'secondary' : 'ghost'} onClick={() => setOverviewChannel(c)}>
+              {c === 'all' ? 'Todos canais' : channelLabel(c)}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+        </div>
+      ) : overviewRows.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          Nenhuma promoção nesse filtro. Crie uma na aba “Em lote”.
+        </div>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {overviewRows.map((r) => (
+            <div key={r.key} className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30">
+              {r.image ? <img src={r.image} alt="" className="w-11 h-11 rounded object-cover" /> : <div className="w-11 h-11 rounded bg-muted" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium truncate">{r.name}</span>
+                  {r.sub && <span className="text-xs text-muted-foreground truncate">• {r.sub}</span>}
+                  <StatusBadge status={r.status} className="text-[10px]" />
+                  <Badge variant="outline" className="text-[10px]">{channelLabel(r.channel)}</Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  <span className="line-through">R$ {r.basePrice.toFixed(2)}</span>
+                  <span className="text-foreground font-semibold">R$ {r.salePrice.toFixed(2)} (-{r.discountPct}%)</span>
+                  <span className={r.margin < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                    Lucro: R$ {r.margin.toFixed(2)}
+                  </span>
+                  <span>Estoque: {r.stock}</span>
+                  {r.limitQty != null && <span>Limite: {r.soldQty}/{r.limitQty}</span>}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {r.status === 'scheduled' && r.startsAt && (
+                    <>Começa em {new Date(r.startsAt).toLocaleString('pt-BR')} ({countdownLabel(r.startsAt)})</>
+                  )}
+                  {r.status === 'active' && r.endsAt && (
+                    <>Termina em {new Date(r.endsAt).toLocaleString('pt-BR')} ({countdownLabel(r.endsAt)} restantes)</>
+                  )}
+                  {r.status === 'expired' && r.endsAt && <>Terminou em {new Date(r.endsAt).toLocaleString('pt-BR')}</>}
+                  {r.status === 'invalid' && <>Promoção sem prazo final ou com preço inválido — não é aplicada nas vendas.</>}
+                  {r.status === 'sold_out' && <>Limite de peças atingido.</>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1 md:justify-end">
+                {r.status === 'scheduled' && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_starts_at: new Date().toISOString() }, 'Promoção iniciada agora')}>
+                    <Play className="w-3.5 h-3.5 mr-1" /> Iniciar agora
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'sold_out') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_ends_at: new Date().toISOString() }, 'Promoção encerrada')}>
+                    <Square className="w-3.5 h-3.5 mr-1" /> Encerrar
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'expired') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => {
+                      const base = r.status === 'expired' ? Date.now() : new Date(r.endsAt as string).getTime();
+                      patchRow(r, { sale_ends_at: new Date(base + 7 * 86400000).toISOString(), on_sale: true }, 'Prazo estendido em 7 dias');
+                    }}>
+                    <CalendarClock className="w-3.5 h-3.5 mr-1" /> +7 dias
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive" disabled={saving[r.key]}
+                  onClick={() => remove(r.table, r.id)}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden border-0 shadow-sm">
       <PanelHeader
         icon={Tag}
         title="Promoções"
-        description="Defina preços promocionais e o tempo de duração para produtos e variações."
+        description="Painel completo: crie, agende, acompanhe e encerre promoções do site e do PDV."
         kpis={[
           { label: 'Produtos', value: products.length },
-          { label: 'Em promoção', value: onSaleCount, tone: 'success' },
+          { label: 'Ativas', value: counts.active, tone: 'success' },
+          { label: 'Agendadas', value: counts.scheduled },
         ]}
       />
       <CardContent className="p-4 md:p-6 space-y-4">
-        <Tabs defaultValue="batch" className="space-y-4">
+        <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="w-4 h-4" /> Painel</TabsTrigger>
             <TabsTrigger value="batch" className="gap-2"><ListChecks className="w-4 h-4" /> Em lote</TabsTrigger>
             <TabsTrigger value="individual" className="gap-2"><Tag className="w-4 h-4" /> Individual</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="overview">{renderOverviewTab()}</TabsContent>
+
           <TabsContent value="batch">{renderBatchTab()}</TabsContent>
+
 
           <TabsContent value="individual" className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-2">
@@ -1040,14 +1322,14 @@ export function PromotionsManagement() {
                 />
               </div>
               <div className="flex gap-1">
-                {(['all', 'on_sale', 'off'] as const).map((f) => (
+                {(['all', 'active', 'scheduled', 'expired', 'off'] as const).map((f) => (
                   <Button
                     key={f}
                     size="sm"
                     variant={filter === f ? 'default' : 'outline'}
                     onClick={() => setFilter(f)}
                   >
-                    {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+                    {f === 'all' ? 'Todos' : f === 'active' ? 'Ativas' : f === 'scheduled' ? 'Agendadas' : f === 'expired' ? 'Encerradas' : 'Sem promoção'}
                   </Button>
                 ))}
               </div>
@@ -1064,7 +1346,7 @@ export function PromotionsManagement() {
                 {filtered.map((p) => {
                   const hasVars = p.variations.length > 0;
                   const isOpen = expanded[p.id] ?? false;
-                  const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
+                  const aggStatus = productStatus(p);
                   return (
                     <div key={p.id} className="border rounded-lg overflow-hidden">
                       <div className="flex items-center gap-3 p-3 bg-card">
@@ -1093,7 +1375,7 @@ export function PromotionsManagement() {
                             {hasVars && ` • ${p.variations.length} variações`}
                           </div>
                         </div>
-                        {anyOnSale && <Badge className="bg-green-600 hover:bg-green-600">Em promoção</Badge>}
+                        <StatusBadge status={aggStatus} />
                       </div>
 
                       {!hasVars && (
@@ -1123,7 +1405,7 @@ export function PromotionsManagement() {
                                     {' '}• Estoque: {v.stock}
                                   </div>
                                 </div>
-                                {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
+                                <StatusBadge status={promoStatus(v)} />
                               </div>
                               {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
                             </div>
