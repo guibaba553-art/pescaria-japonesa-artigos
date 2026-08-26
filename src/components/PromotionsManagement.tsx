@@ -916,9 +916,9 @@ export function PromotionsManagement() {
           <Input placeholder="Buscar produto..." value={batchSearch} onChange={(e) => setBatchSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-1">
-          {(['all', 'on_sale', 'off'] as const).map((f) => (
+          {(['all', 'active', 'scheduled', 'expired', 'off'] as const).map((f) => (
             <Button key={f} size="sm" variant={batchFilter === f ? 'default' : 'outline'} onClick={() => setBatchFilter(f)}>
-              {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+              {f === 'all' ? 'Todos' : f === 'active' ? 'Ativas' : f === 'scheduled' ? 'Agendadas' : f === 'expired' ? 'Encerradas' : 'Sem promoção'}
             </Button>
           ))}
         </div>
