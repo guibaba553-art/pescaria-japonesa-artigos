@@ -1263,7 +1263,10 @@ export function PromotionsManagement() {
                   {r.status === 'sold_out' && <>Limite de peças atingido.</>}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1 md:justify-end">
+              <div className="flex flex-wrap gap-1 md:justify-end" onClick={(e) => e.stopPropagation()}>
+                <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                </Button>
                 {r.status === 'scheduled' && (
                   <Button size="sm" variant="outline" disabled={saving[r.key]}
                     onClick={() => patchRow(r, { sale_starts_at: new Date().toISOString() }, 'Promoção iniciada agora')}>
