@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { lovable } from '@/integrations/lovable/index';
 import { sanitizeNumericInput, formatCPF, formatPhone } from '@/utils/validation';
-import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
+import { isEmailIdentifier, isValidBrMobile } from '@/lib/whatsappOtp';
+import { ArrowLeft, Truck, CreditCard, ShieldCheck, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
 
@@ -18,10 +19,9 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
-  const { signIn, signUp, user } = useAuth();
-  const [loginEmail, setLoginEmail] = useState('');
+  const { signIn, signUp, sendPhoneOtp, user } = useAuth();
+  const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -40,7 +40,7 @@ export default function Auth() {
     const remembered = localStorage.getItem(REMEMBER_ME_KEY);
     if (remembered) {
       setRememberMe(true);
-      setLoginEmail(remembered);
+      setIdentifier(remembered);
     }
   }, []);
 
@@ -58,11 +58,11 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(identifier, loginPassword);
     setLoading(false);
     if (!error) {
       if (rememberMe) {
-        localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+        localStorage.setItem(REMEMBER_ME_KEY, identifier);
       } else {
         localStorage.removeItem(REMEMBER_ME_KEY);
       }
@@ -82,16 +82,29 @@ export default function Auth() {
     }
     setPasswordError('');
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupPhone);
+    const { error } = await signUp(signupPhone, signupPassword, signupName, signupCpf);
     setLoading(false);
 
-    if (error && error.message === 'EMAIL_ALREADY_EXISTS') {
-      setLoginEmail(signupEmail);
+    if (error && (error.message === 'PHONE_ALREADY_EXISTS')) {
+      setIdentifier(signupPhone);
       setActiveTab('login');
       return;
     }
 
-    if (!error) navigate(redirectTo);
+    if (!error) {
+      navigate(`/verificar-telefone?ctx=signup&phone=${encodeURIComponent(signupPhone)}&redirect=${encodeURIComponent(redirectTo)}`);
+    }
+  };
+
+  const handleWhatsAppLogin = async () => {
+    const digits = sanitizeNumericInput(identifier);
+    if (!isValidBrMobile(digits)) return toast.error('Digite seu telefone com DDD para entrar via WhatsApp.');
+    setLoading(true);
+    const { error } = await sendPhoneOtp(digits);
+    setLoading(false);
+    if (!error) {
+      navigate(`/verificar-telefone?ctx=login&phone=${encodeURIComponent(digits)}&redirect=${encodeURIComponent(redirectTo)}`);
+    }
   };
 
   const handleGoogle = async () => {
@@ -186,7 +199,7 @@ export default function Auth() {
             <p className="text-sm text-muted-foreground">
               {activeTab === 'login'
                 ? 'Acesse seu perfil, pedidos e ofertas exclusivas.'
-                : 'Cadastre-se em segundos e ganhe ofertas no email.'}
+                : 'Cadastre-se com seu telefone e ganhe ofertas no WhatsApp.'}
             </p>
           </div>
 
@@ -222,13 +235,16 @@ export default function Auth() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
+                  <Label htmlFor="login-identifier" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail ou Telefone</Label>
                   <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
+                    id="login-identifier"
+                    type="text"
+                    placeholder="seu@email.com ou (00) 00000-0000"
+                    value={identifier.includes('@') ? identifier : formatPhone(identifier)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setIdentifier(v.includes('@') ? v : sanitizeNumericInput(v));
+                    }}
                     required
                     className="h-12 rounded-xl"
                   />
@@ -258,16 +274,27 @@ export default function Auth() {
                 <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="link"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-sm text-muted-foreground hover:text-primary"
-                  >
-                    Esqueci minha senha
-                  </Button>
+                <div className="relative flex items-center gap-3 py-1">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">ou</span>
+                  <div className="h-px flex-1 bg-border" />
                 </div>
+                <Button type="button" variant="outline" onClick={handleWhatsAppLogin} disabled={loading}
+                  className="w-full h-12 rounded-full font-semibold text-sm gap-2">
+                  <MessageCircle className="w-5 h-5 text-[#25D366]" /> Entrar com WhatsApp
+                </Button>
+                {isEmailIdentifier(identifier) && (
+                  <div className="text-center">
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-sm text-muted-foreground hover:text-primary"
+                    >
+                      Esqueci minha senha
+                    </Button>
+                  </div>
+                )}
               </form>
             </TabsContent>
 
@@ -284,10 +311,6 @@ export default function Auth() {
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
                   <Input id="signup-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(signupPhone)} onChange={(e) => setSignupPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
-                  <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required className="h-11 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha</Label>
