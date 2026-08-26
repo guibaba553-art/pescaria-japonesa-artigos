@@ -1226,7 +1226,14 @@ export function PromotionsManagement() {
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
           {overviewRows.map((r) => (
-            <div key={r.key} className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30">
+            <div
+              key={r.key}
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter') openEdit(r); }}
+              className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer"
+            >
               {r.image ? <img src={r.image} alt="" className="w-11 h-11 rounded object-cover" /> : <div className="w-11 h-11 rounded bg-muted" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
