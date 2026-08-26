@@ -123,15 +123,59 @@ function computeFinalPrice(basePrice: number, draft: Draft): number {
   return Math.max(0, v);
 }
 
+function StatusBadge({ status, className = '' }: { status: PromoStatus; className?: string }) {
+  if (status === 'none') return null;
+  return (
+    <Badge variant="outline" className={`${PROMO_STATUS_CLASS[status]} ${className}`}>
+      {PROMO_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+/** Melhor status entre o produto e suas variações (prioriza ativa > agendada > outros). */
+const STATUS_RANK: Record<PromoStatus, number> = { active: 5, scheduled: 4, sold_out: 3, invalid: 2, expired: 1, none: 0 };
+
+function basePriceOf(item: { min_sale_price: number | null; price: number }): number {
+  return Number(Number(item.min_sale_price) > 0 ? item.min_sale_price : item.price);
+}
+
+interface PromoRow {
+  key: string;
+  table: 'products' | 'product_variations';
+  id: string;
+  name: string;
+  sub: string | null;
+  image: string | null;
+  category: string;
+  status: PromoStatus;
+  basePrice: number;
+  salePrice: number;
+  discountPct: number;
+  channel: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  limitQty: number | null;
+  soldQty: number;
+  stock: number;
+  margin: number;
+}
+
 export function PromotionsManagement() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'on_sale' | 'off'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [, setTick] = useState(0);
+
+  // Atualiza contagens regressivas / status sem recarregar do banco
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -166,23 +210,83 @@ export function PromotionsManagement() {
 
   useEffect(() => { load(); }, []);
 
+  /** Status agregado de um produto (considerando variações). */
+  const productStatus = (p: Product): PromoStatus => {
+    const all: PromoStatus[] = [promoStatus(p), ...p.variations.map((v) => promoStatus(v))];
+    return all.reduce((best, s) => (STATUS_RANK[s] > STATUS_RANK[best] ? s : best), 'none' as PromoStatus);
+  };
+
+  const matchesFilter = (s: PromoStatus, f: typeof filter) => {
+    if (f === 'all') return true;
+    if (f === 'off') return s === 'none';
+    if (f === 'expired') return s === 'expired' || s === 'sold_out' || s === 'invalid';
+    return s === f;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (filter === 'on_sale') {
-        return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-      }
-      if (filter === 'off') {
-        return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
-      }
-      return true;
+      return matchesFilter(productStatus(p), filter);
     });
   }, [products, search, filter]);
 
-  const onSaleCount = products.filter(
-    (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
-  ).length;
+  /** Todas as linhas com alguma promoção cadastrada (ativa, agendada, expirada ou incompleta). */
+  const promoRows = useMemo<PromoRow[]>(() => {
+    const rows: PromoRow[] = [];
+    const push = (
+      table: 'products' | 'product_variations',
+      p: Product,
+      v: Variation | null,
+    ) => {
+      const item: any = v ?? p;
+      const status = promoStatus(item);
+      if (status === 'none') return;
+      const basePrice = basePriceOf(item);
+      const salePrice = Number(item.sale_price ?? 0);
+      const cost = Number(v ? (v.cost ?? p.cost ?? 0) : p.cost ?? 0);
+      const fPct = Number((v ? v.freight_pct ?? p.freight_pct : p.freight_pct) || 0) / 100;
+      const oPct = Number((v ? v.op_cost_pct ?? p.op_cost_pct : p.op_cost_pct) || 0) / 100;
+      const tPct = Number((v ? v.tax_pct ?? p.tax_pct : p.tax_pct) || 0) / 100;
+      const totalCost = cost + cost * fPct + cost * oPct + salePrice * tPct;
+      rows.push({
+        key: `${table}:${item.id}`,
+        table,
+        id: item.id,
+        name: p.name,
+        sub: v ? v.name : null,
+        image: (v?.image_url || p.image_url) ?? null,
+        category: p.category,
+        status,
+        basePrice,
+        salePrice,
+        discountPct: basePrice > 0 ? Math.round((1 - salePrice / basePrice) * 100) : 0,
+        channel: item.sale_channel,
+        startsAt: item.sale_starts_at,
+        endsAt: item.sale_ends_at,
+        limitQty: item.sale_limit_qty,
+        soldQty: Number(item.sale_sold_qty ?? 0),
+        stock: Number(item.stock ?? 0),
+        margin: salePrice - totalCost,
+      });
+    };
+    products.forEach((p) => {
+      push('products', p, null);
+      p.variations.forEach((v) => push('product_variations', p, v));
+    });
+    return rows;
+  }, [products]);
+
+  const counts = useMemo(() => {
+    const c = { active: 0, scheduled: 0, expired: 0, invalid: 0, sold_out: 0 };
+    promoRows.forEach((r) => {
+      if (r.status in c) (c as any)[r.status]++;
+    });
+    return c;
+  }, [promoRows]);
+
+  const onSaleCount = counts.active;
+
 
   const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
     return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
