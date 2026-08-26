@@ -605,11 +605,14 @@ export function PromotionsManagement() {
     freightPct: number,
     opCostPct: number,
     taxPct: number,
-    saleChannel: string | null = 'both'
+    saleChannel: string | null = 'both',
+    pdvBasePrice = 0,
+    salePricePdv: number | null = null,
   ) => {
     const key = `${table}:${id}`;
     const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
-    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
+    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel, salePricePdv);
+    const pdvFinal = computePdvFinalPrice(pdvBasePrice, draft);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
@@ -656,6 +659,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -667,6 +671,25 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => updateDraft(key, { pdvAmount: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
+                className="w-36"
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Base PDV: R$ {pdvBasePrice.toFixed(2)} → {pdvFinal != null ? `R$ ${pdvFinal.toFixed(2)}` : `R$ ${final.toFixed(2)} (igual ao site)`}
+              </span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -739,7 +762,7 @@ export function PromotionsManagement() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
+          <Button size="sm" onClick={() => apply(table, id, basePrice, draft, pdvBasePrice)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             {isActuallyActive ? 'Atualizar promoção' : onSale ? 'Promoção expirada — aplicar nova' : 'Aplicar promoção'}
           </Button>
@@ -820,40 +843,47 @@ export function PromotionsManagement() {
     const errors: string[] = [];
 
     // Indexar preços base
-    const priceOf = (table: 'products' | 'product_variations', id: string): number => {
+    const itemOf = (table: 'products' | 'product_variations', id: string): { price: number; pdvPrice: number } | null => {
       if (table === 'products') {
         const p = products.find((x) => x.id === id);
-        return p ? Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) : 0;
+        if (!p) return null;
+        return { price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), pdvPrice: pdvBasePriceOf(p) };
       }
       for (const p of products) {
         const v = p.variations.find((x) => x.id === id);
-        if (v) return Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+        if (v) return { price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), pdvPrice: pdvBasePriceOf(v) };
       }
-      return 0;
+      return null;
     };
 
-    // Agrupar por tabela e por preço final (para poder usar .in())
-    const byTable: Record<'products' | 'product_variations', Map<number, string[]>> = {
+    // Agrupar por tabela e por par (preço site | preço PDV) para poder usar .in()
+    const byTable: Record<'products' | 'product_variations', Map<string, string[]>> = {
       products: new Map(),
       product_variations: new Map(),
     };
 
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
-      const basePrice = priceOf(table, id);
+      const info = itemOf(table, id);
+      const basePrice = info?.price ?? 0;
       const final = computeFinalPrice(basePrice, batchDraft);
       if (basePrice <= 0 || final <= 0 || final >= basePrice) { skipped++; continue; }
       const rounded = Number(final.toFixed(2));
-      const arr = byTable[table].get(rounded) || [];
+      const pdvFinal = computePdvFinalPrice(info?.pdvPrice ?? 0, batchDraft);
+      const groupKey = `${rounded}|${pdvFinal ?? ''}`;
+      const arr = byTable[table].get(groupKey) || [];
       arr.push(id);
-      byTable[table].set(rounded, arr);
+      byTable[table].set(groupKey, arr);
     }
 
     for (const table of ['products', 'product_variations'] as const) {
-      for (const [finalPrice, ids] of byTable[table].entries()) {
+      for (const [groupKey, ids] of byTable[table].entries()) {
+        const [finalStr, pdvStr] = groupKey.split('|');
+        const finalPrice = Number(finalStr);
         const { error } = await supabase.from(table).update({
           on_sale: true,
           sale_price: finalPrice,
+          sale_price_pdv: pdvStr === '' ? null : Number(pdvStr),
           sale_starts_at: startsAtIso,
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
