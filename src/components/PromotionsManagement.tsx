@@ -186,6 +186,8 @@ interface PromoRow {
   status: PromoStatus;
   basePrice: number;
   salePrice: number;
+  pdvBasePrice: number;
+  salePricePdv: number | null;
   discountPct: number;
   channel: string | null;
   startsAt: string | null;
@@ -298,6 +300,8 @@ export function PromotionsManagement() {
         status,
         basePrice,
         salePrice,
+        pdvBasePrice: pdvBasePriceOf(item),
+        salePricePdv: item.sale_price_pdv != null && Number(item.sale_price_pdv) > 0 ? Number(item.sale_price_pdv) : null,
         discountPct: basePrice > 0 ? Math.round((1 - salePrice / basePrice) * 100) : 0,
         channel: item.sale_channel,
         startsAt: item.sale_starts_at,
@@ -328,8 +332,8 @@ export function PromotionsManagement() {
   const onSaleCount = counts.active;
 
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel, salePricePdv);
   };
 
   const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
@@ -342,7 +346,8 @@ export function PromotionsManagement() {
     table: 'products' | 'product_variations',
     id: string,
     basePrice: number,
-    draft: Draft
+    draft: Draft,
+    pdvBasePrice = 0,
   ) => {
     const key = `${table}:${id}`;
     const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
@@ -365,6 +370,7 @@ export function PromotionsManagement() {
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
       sale_channel: draft.channel,
+      sale_price_pdv: computePdvFinalPrice(pdvBasePrice, draft),
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
@@ -381,7 +387,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from(table)
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -396,7 +402,7 @@ export function PromotionsManagement() {
   };
   const applyBulkToVariations = async (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
     const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
     if (periodError) {
@@ -426,6 +432,7 @@ export function PromotionsManagement() {
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
           sale_channel: draft.channel,
+          sale_price_pdv: computePdvFinalPrice(pdvBasePriceOf(v), draft),
         })
         .eq('id', v.id);
       if (error) errors.push(`${v.name}: ${error.message}`);
@@ -452,7 +459,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from('product_variations')
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .in('id', ids);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -763,7 +770,7 @@ export function PromotionsManagement() {
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
-  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [batchSaving, setBatchSaving] = useState(false);
 
   const toggleSel = (key: SelKey) => {
@@ -872,7 +879,7 @@ export function PromotionsManagement() {
   const removeBatch = async () => {
     if (selected.size === 0) return;
     setBatchSaving(true);
-    const clear = { on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
+    const clear = { on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
     const prodIds: string[] = [];
     const varIds: string[] = [];
     for (const key of selected) {
