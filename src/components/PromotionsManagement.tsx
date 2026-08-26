@@ -723,6 +723,26 @@ export function PromotionsManagement() {
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
   const [batchFilter, setBatchFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchSaving, setBatchSaving] = useState(false);
+
+  const toggleSel = (key: SelKey) => {
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
+
+  const batchFiltered = useMemo(() => {
+    const q = batchSearch.trim().toLowerCase();
+    return products.filter((p) => {
+      if (q && !p.name.toLowerCase().includes(q)) return false;
+      return matchesFilter(productStatus(p), batchFilter);
+    });
+  }, [products, batchSearch, batchFilter]);
+
+
 
 
   const selectAllVisible = () => {
