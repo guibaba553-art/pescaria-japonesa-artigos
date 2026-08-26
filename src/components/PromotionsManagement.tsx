@@ -46,10 +46,12 @@ interface Variation {
   name: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   stock: number;
   image_url: string | null;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -67,10 +69,12 @@ interface Product {
   category: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   image_url: string | null;
   stock: number;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -89,6 +93,8 @@ type Channel = 'site' | 'pdv' | 'both';
 interface Draft {
   mode: Mode;
   amount: string;
+  /** Valor da promoção exclusivo do PDV (usado quando o canal é "Ambos"). Vazio = usa o mesmo do site. */
+  pdvAmount: string;
   startsAt: string;
   endsAt: string;
   limitQty: string;
@@ -102,18 +108,20 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft {
+  const pdvAmount = salePricePdv != null && salePricePdv > 0 ? Number(salePricePdv).toFixed(2) : '';
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
+      pdvAmount,
       startsAt: toLocalDateTime(startsAt),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
       channel,
     };
   }
-  return { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
+  return { mode: 'percent', amount: '10', pdvAmount, startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
 
 
@@ -122,6 +130,33 @@ function computeFinalPrice(basePrice: number, draft: Draft): number {
   if (draft.mode === 'percent') return Math.max(0, basePrice * (1 - v / 100));
   if (draft.mode === 'value') return Math.max(0, basePrice - v);
   return Math.max(0, v);
+}
+
+/**
+ * Preço promocional exclusivo do PDV.
+ * Só existe quando o canal é "Ambos" e o admin informou um valor diferente
+ * (no mesmo modo: %, R$ de desconto ou preço final) sobre o preço base do PDV.
+ * Retorna null quando deve usar o mesmo valor do site.
+ */
+function computePdvFinalPrice(pdvBasePrice: number, draft: Draft): number | null {
+  if (draft.channel !== 'both') return null;
+  if (!draft.pdvAmount || draft.pdvAmount.trim() === '') return null;
+  const v = parseFloat(draft.pdvAmount);
+  if (!isFinite(v) || v <= 0) return null;
+  if (!(pdvBasePrice > 0)) return null;
+  const final = draft.mode === 'percent'
+    ? pdvBasePrice * (1 - v / 100)
+    : draft.mode === 'value'
+      ? pdvBasePrice - v
+      : v;
+  if (!(final > 0) || final >= pdvBasePrice) return null;
+  return Number(final.toFixed(2));
+}
+
+/** Preço "de" do PDV (price_pdv quando definido, senão o price do site). */
+function pdvBasePriceOf(item: { price_pdv?: number | null; price: number }): number {
+  const v = Number(item?.price_pdv ?? 0);
+  return v > 0 ? v : Number(item?.price ?? 0);
 }
 
 function StatusBadge({ status, className = '' }: { status: PromoStatus; className?: string }) {
