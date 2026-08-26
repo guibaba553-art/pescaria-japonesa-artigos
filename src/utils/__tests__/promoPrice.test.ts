@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-
-const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
   effectiveProductOrVariationPrice,
   effectiveProductPrice,
   getProductDisplayImage,
@@ -9,6 +7,9 @@ const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
   PromoFields,
   validatePromotionPeriod,
 } from '../promoPrice';
+
+const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
+
 
 // ─── effectiveProductOrVariationPrice ──────────────────────
 describe('effectiveProductOrVariationPrice', () => {
