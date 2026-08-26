@@ -66,6 +66,15 @@ describe('Auth — login inteligente', () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/'));
   });
 
+  it('mantém e-mail digitado caractere a caractere', async () => {
+    renderPage();
+    const input = getIdentifierInput();
+    await userEvent.type(input, 'joao');
+    expect(input).toHaveValue('joao');
+    await userEvent.type(input, '@gmail.com');
+    expect(input).toHaveValue('joao@gmail.com');
+  });
+
   it('aceita telefone com máscara e preserva dígitos no estado', async () => {
     renderPage();
     await userEvent.type(getIdentifierInput(), '66992110000');

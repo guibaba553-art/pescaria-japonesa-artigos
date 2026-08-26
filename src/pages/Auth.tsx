@@ -240,10 +240,13 @@ export default function Auth() {
                     id="login-identifier"
                     type="text"
                     placeholder="seu@email.com ou (00) 00000-0000"
-                    value={identifier.includes('@') ? identifier : formatPhone(identifier)}
+                    value={/^\d+$/.test(identifier) ? formatPhone(identifier) : identifier}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setIdentifier(v.includes('@') ? v : sanitizeNumericInput(v));
+                      // Caracteres fora de dígitos e da máscara de telefone
+                      // (parênteses, espaço, hífen) ativam modo texto livre (email);
+                      // senão mantém apenas dígitos (telefone).
+                      setIdentifier(/[^\d()\s-]/.test(v) ? v : sanitizeNumericInput(v));
                     }}
                     required
                     className="h-12 rounded-xl"
