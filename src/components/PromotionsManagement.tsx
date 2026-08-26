@@ -1170,7 +1170,7 @@ export function PromotionsManagement() {
                 {filtered.map((p) => {
                   const hasVars = p.variations.length > 0;
                   const isOpen = expanded[p.id] ?? false;
-                  const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
+                  const aggStatus = productStatus(p);
                   return (
                     <div key={p.id} className="border rounded-lg overflow-hidden">
                       <div className="flex items-center gap-3 p-3 bg-card">
