@@ -861,15 +861,19 @@ export function PromotionsManagement() {
       price: number;
       totalCost: number;
       profit: number;
+      baseCost: number;
+      baseProfit: number;
       finalPrice: number;
     }[] = [];
     const calc = (price: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
       const finalPrice = computeFinalPrice(price, batchDraft);
       const c = Number(cost || 0);
-      const totalCost =
-        c + c * (Number(freightPct || 0) / 100) + c * (Number(opCostPct || 0) / 100) + finalPrice * (Number(taxPct || 0) / 100);
-      return { totalCost, profit: finalPrice - totalCost, finalPrice };
+      const fixed = c + c * (Number(freightPct || 0) / 100) + c * (Number(opCostPct || 0) / 100);
+      const totalCost = fixed + finalPrice * (Number(taxPct || 0) / 100);
+      const baseCost = fixed + price * (Number(taxPct || 0) / 100);
+      return { totalCost, profit: finalPrice - totalCost, baseCost, baseProfit: price - baseCost, finalPrice };
     };
+
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
       if (table === 'products') {
