@@ -159,6 +159,8 @@ interface PromoRow {
   soldQty: number;
   stock: number;
   margin: number;
+  fixedCost: number;
+  taxPct: number;
 }
 
 export function PromotionsManagement() {
