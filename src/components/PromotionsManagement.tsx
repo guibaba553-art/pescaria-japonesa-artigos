@@ -1450,6 +1450,7 @@ export function PromotionsManagement() {
           ))}
         </div>
       )}
+      {renderEditDialog()}
     </div>
   );
 
