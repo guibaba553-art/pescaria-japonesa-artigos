@@ -911,7 +911,15 @@ export function PromotionsManagement() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm truncate">{it.name}</div>
                   <div className="text-[11px] text-muted-foreground truncate">{it.sub} • R$ {it.price.toFixed(2)}</div>
+                  <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-muted-foreground">Promo: R$ {it.finalPrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
+                    <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                      Lucro: R$ {it.profit.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
+
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleSel(it.key)}>
                   <X className="w-4 h-4" />
                 </Button>
