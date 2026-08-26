@@ -95,8 +95,15 @@ describe('isPromoActive', () => {
     price: 100,
     on_sale: true,
     sale_price: 50,
+    // Toda promoção precisa de prazo final
+    sale_ends_at: new Date(Date.now() + 86_400_000).toISOString(),
     ...overrides,
   });
+
+  it('promo sem sale_ends_at retorna false (prazo obrigatório)', () => {
+    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(false);
+  });
+
 
   it('promo ativa com todos os campos válidos retorna true', () => {
     expect(isPromoActive(makeItem())).toBe(true);
