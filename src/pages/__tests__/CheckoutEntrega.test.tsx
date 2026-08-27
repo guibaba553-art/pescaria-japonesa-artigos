@@ -15,7 +15,16 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const mockUser = { id: 'user-123', email: 'test@test.com' };
+const mockUser = {
+  id: 'user-123',
+  email: 'test@test.com',
+  phone_confirmed_at: '2026-01-01',
+  aud: 'authenticated',
+  app_metadata: {},
+  user_metadata: {},
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: mockUser, loading: false, permissions: {} }),
 }));
@@ -50,6 +59,9 @@ let capturedOrdersInsert: { payment_method?: string; payment_gateway?: string; [
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    auth: {
+      getUser: vi.fn(),
+    },
     from: (...args: any[]) => mockFrom(...args),
     functions: {
       invoke: vi.fn(),
@@ -141,6 +153,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 beforeEach(() => {
   vi.clearAllMocks();
+
+  vi.mocked(supabase.auth.getUser).mockResolvedValue({ data: { user: mockUser }, error: null });
 
   // Default supabase mocks — objeto thenable que permite encadeamento e await
   const mockResolveValue = { data: null, error: null };
@@ -290,6 +304,28 @@ describe('CheckoutEntrega — gateway routing PIX', () => {
     // Para validar fallback completo: rodar E2E com Playwright simulando falha
     // de gateway via intercepção de rede.
     expect(true).toBe(true); // placeholder até termos E2E
+  });
+});
+
+describe('CheckoutEntrega — guarda de telefone confirmado', () => {
+  it('redireciona para verificação quando phone_confirmed_at ausente', async () => {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: { ...mockUser, phone_confirmed_at: null } },
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/verificar-telefone?ctx=checkout&redirect=%2F');
+    });
+    expect(capturedOrdersInsert).toBeNull();
   });
 });
 

@@ -30,6 +30,7 @@ import type { UserAddress } from '@/components/MyAddresses';
 import { MyAddresses } from '@/components/MyAddresses';
 import { formatCEP } from '@/utils/validation';
 import { getBrandLabel } from '@/lib/creditCardValidation';
+import { needsPhoneVerification } from '@/lib/whatsappOtp';
 
 interface CheckoutProps {
   open: boolean;
@@ -536,6 +537,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       
       if (!user) {
         throw new Error('Usuário não autenticado');
+      }
+
+      if (needsPhoneVerification(user)) {
+        window.location.href = `/verificar-telefone?ctx=checkout&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
       }
 
       const { data: profile } = await supabase

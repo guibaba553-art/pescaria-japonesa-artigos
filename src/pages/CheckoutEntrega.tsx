@@ -37,6 +37,7 @@ import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
+import { needsPhoneVerification } from '@/lib/whatsappOtp';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
 
@@ -441,6 +442,15 @@ export default function CheckoutEntrega() {
 
   const handleFinalizeOrder = async () => {
     if (finalizingRef.current) return;
+
+    // ── Guarda: telefone confirmado obrigatório antes de pagar ────────────
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error('Usuário não autenticado');
+
+    if (needsPhoneVerification(currentUser)) {
+      navigate(`/verificar-telefone?ctx=checkout&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
 
     // ── Validações de formulário (backend guard) ──────────────
     if (!selectedOption || !paymentDeliveryReady) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toE164, isValidBrMobile, isEmailIdentifier, canResend, RESEND_COOLDOWN_MS } from '@/lib/whatsappOtp';
+import { toE164, isValidBrMobile, isEmailIdentifier, canResend, RESEND_COOLDOWN_MS, needsPhoneVerification } from '@/lib/whatsappOtp';
 
 describe('toE164', () => {
   it('adiciona +55 a celular de 11 dígitos', () => {
@@ -38,5 +38,13 @@ describe('canResend', () => {
   it('libera após cooldown', () => {
     const now = Date.now();
     expect(canResend(now - RESEND_COOLDOWN_MS - 1, now)).toBe(true);
+  });
+});
+
+describe('needsPhoneVerification', () => {
+  it('exige verificação quando phone_confirmed_at ausente', () => {
+    expect(needsPhoneVerification(null)).toBe(true);
+    expect(needsPhoneVerification({ phone_confirmed_at: null })).toBe(true);
+    expect(needsPhoneVerification({ phone_confirmed_at: '2026-01-01' })).toBe(false);
   });
 });

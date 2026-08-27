@@ -20,3 +20,7 @@ export function canResend(lastSentAt: number | null, now: number = Date.now()): 
   if (lastSentAt === null) return true;
   return now - lastSentAt >= RESEND_COOLDOWN_MS;
 }
+
+export function needsPhoneVerification(user: { phone_confirmed_at?: string | null } | null | undefined): boolean {
+  return !user?.phone_confirmed_at;
+}
