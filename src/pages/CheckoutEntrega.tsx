@@ -801,6 +801,13 @@ export default function CheckoutEntrega() {
           const isRetry = !!pendingOrderId;
           const fnName = isRetry ? 'retry-payment-asaas' : 'create-payment-asaas';
 
+          // O e-mail NÃO vai no body — a escada em _shared/asaasPayment.ts
+          // (confirmado > card_contact_email > placeholder) é a fonte única.
+          // Enviar e-mail não confirmado aqui furaria a regra D9 da spec.
+          const holderInfo = cardData.creditCardHolderInfo;
+          const holderInfoForPayload = holderInfo ? { ...holderInfo } : undefined;
+          if (holderInfoForPayload) delete holderInfoForPayload.email;
+
           const { data: paymentResult, error: paymentError } = await supabase.functions.invoke(
             fnName,
             {
@@ -809,12 +816,11 @@ export default function CheckoutEntrega() {
                 installmentCount: cardData.installmentCount,
                 saveCard: cardData.saveCard,
                 creditCard: cardData.creditCard,
-                creditCardHolderInfo: cardData.creditCardHolderInfo,
+                creditCardHolderInfo: holderInfoForPayload,
                 creditCardToken: cardData.creditCardToken,
                 remoteIp,
                 customerData: {
                   name: profile?.full_name || cardData.creditCardHolderInfo?.name || '',
-                  email: user?.email || '',
                   cpfCnpj: profile?.cpf || cardData.creditCardHolderInfo?.cpfCnpj || '',
                   phone: profile?.phone || cardData.creditCardHolderInfo?.phone || '',
                 },

@@ -526,4 +526,40 @@ describe('CheckoutEntrega — e-mail de contato do cartão (antifraude Asaas)', 
     });
     expect(invokeSpy).toHaveBeenCalledWith('create-payment-asaas', expect.anything());
   });
+
+  it('body do create-payment-asaas NÃO contém email — escada server-side é a fonte única', async () => {
+    mockUser.email = null;
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: { success: true, paymentStatus: 'PENDING' },
+      error: null,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ip: '127.0.0.1' }) }));
+    const invokeSpy = vi.mocked(supabase.functions.invoke);
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(invokeSpy).toHaveBeenCalledWith('create-payment-asaas', expect.anything());
+    });
+
+    const call = invokeSpy.mock.calls.find(([name]) => name === 'create-payment-asaas');
+    expect(call).toBeDefined();
+    const body = call![1].body as {
+      customerData: Record<string, unknown>;
+      creditCardHolderInfo?: Record<string, unknown>;
+    };
+    expect(body.customerData).not.toHaveProperty('email');
+    expect(body.creditCardHolderInfo).not.toHaveProperty('email');
+  });
 });
