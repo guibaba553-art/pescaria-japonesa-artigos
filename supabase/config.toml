@@ -1,5 +1,31 @@
 project_id = "qiwcngzbpxddowyqaulm"
 
+[auth.sms]
+# Phone = identidade (feature WhatsApp OTP).
+# test_otp: código fixo por número (opcional, só local). O mecanismo principal
+# de teste local é o DRY RUN do hook — o código real aparece no console.
+enable_signup = true
+enable_confirmations = true
+test_otp = { "5566992110000" = "123456" }
+
+[auth.hook.send_sms]
+enabled = true
+uri = "http://host.docker.internal:54321/functions/v1/send-whatsapp-otp"
+# Segredo DEV local (gerado para testes; em produção usar o gerado no Dashboard
+# e NUNCA versionar). Mesmo valor em supabase/functions/.env → SEND_SMS_HOOK_SECRET.
+secrets = "v1,whsec_2FroMpv6Ngc2rWTJFnHOtQeJ75D104m7IMP3ivUonKc="
+
+# Provider dummy: o CLI 2.98.1 desliga phone login sem provider habilitado.
+# O envio real nunca acontece — o hook send_sms acima intercepta a entrega.
+[auth.sms.twilio]
+enabled = true
+account_sid = "dummy_local"
+message_service_sid = "dummy_local"
+auth_token = "dummy_local"
+
+[functions.send-whatsapp-otp]
+verify_jwt = false
+
 [functions.create-payment]
 verify_jwt = true
 
