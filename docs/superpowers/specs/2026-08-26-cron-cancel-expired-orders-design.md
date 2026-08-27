@@ -95,7 +95,7 @@ A Edge Function `cancel-expired-orders` já aceita `x-cron-secret` igual ao env
   2. Aplicar `vault.update_secret((SELECT id FROM vault.secrets WHERE name = 'functions_base_url'), …)`.
   3. `SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'cancel-expired-orders%'`
      → exatamente 1 linha, `active = true`.
-  4. Em ~5-10 min, conferir `cron.job_run_details` (status `success`) e/ou os
+  4. Em ~5-10 min, conferir `cron.job_run_details` (status `succeeded`) e/ou os
      logs da Edge Function `cancel-expired-orders` (requisições chegando com
      resposta 200 / `processed: N`).
 

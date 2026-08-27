@@ -167,4 +167,4 @@ git commit -m "fix(db): consolida cron cancel-expired-orders em job único (URL+
   - "Sem mudanças de código/EF" → respeitado (nenhuma EF alterada).
   - "Verificação local + PRD" → Steps 2-3 (local, opcional) e 5 (PRD). Coberto.
 - **Placeholder scan:** nenhum TBD/TODO; a migração tem o SQL completo; comandos e saídas esperadas definidos. O nome da migração é fixo (`20260826000000_...`), maior que os existentes — ordena corretamente depois de `20260825190834_otp_send_log.sql`.
-- **Type consistency:** nomes de jobs (`cancel-expired-orders-hourly`, `cancel-expired-orders-every-5-min`), secrets (`functions_base_url`, `cron_secret`) e schedule (`*/5 * * * *`) consistentes entre spec, migração e verificação. `vault.update_secret` usa a assinatura `(name, secret)` do Supabase Vault.
+- **Type consistency:** nomes de jobs (`cancel-expired-orders-hourly`, `cancel-expired-orders-every-5-min`), secrets (`functions_base_url`, `cron_secret`) e schedule (`*/5 * * * *`) consistentes entre spec, migração e verificação. `vault.update_secret` usa a assinatura `(secret_id uuid, secret)` — o comando manual da Task 1, Step 4, resolve o id pelo nome via subselect.
