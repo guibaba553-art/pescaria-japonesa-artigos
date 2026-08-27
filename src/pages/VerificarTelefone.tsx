@@ -50,7 +50,6 @@ export default function VerificarTelefone() {
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => { if (data?.phone) setPhone(data.phone); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, user]);
 
   // O código só foi enviado pela origem em signup/login com phone no param
