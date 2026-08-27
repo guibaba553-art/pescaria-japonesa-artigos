@@ -63,24 +63,33 @@ export async function handleRequest(req: Request): Promise<Response> {
     return new Response(JSON.stringify({ error: "Limite diário de envios atingido" }), { status: 429, headers: corsHeaders });
   }
 
-  const resp = await fetch(`https://graph.facebook.com/v21.0/${PHONE_ID}/messages`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${WH_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/^\+/, ""),
-      type: "template",
-      template: {
-        name: TEMPLATE,
-        language: { code: "pt_BR" },
-        components: [{ type: "body", parameters: [{ type: "text", text: event.sms.otp }] }],
-      },
-    }),
-  });
+  // DRY RUN: em ambiente local loga o OTP no console sem chamar a Cloud API
+  const dryRunFlag = Deno.env.get("WHATSAPP_DRY_RUN");
+  const isLocal = /127\.0\.0\.1|localhost/.test(Deno.env.get("SUPABASE_URL") ?? "");
+  const isDryRun = dryRunFlag === "true" || (dryRunFlag !== "false" && isLocal);
 
-  if (!resp.ok) {
-    console.error("[send-whatsapp-otp] Cloud API falhou:", resp.status, await resp.text());
-    return new Response(JSON.stringify({ error: "Falha ao entregar OTP" }), { status: 502, headers: corsHeaders });
+  if (isDryRun) {
+    console.log(`[send-whatsapp-otp] DRY RUN — código para ${to}: ${event.sms.otp}`);
+  } else {
+    const resp = await fetch(`https://graph.facebook.com/v21.0/${PHONE_ID}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: to.replace(/^\+/, ""),
+        type: "template",
+        template: {
+          name: TEMPLATE,
+          language: { code: "pt_BR" },
+          components: [{ type: "body", parameters: [{ type: "text", text: event.sms.otp }] }],
+        },
+      }),
+    });
+
+    if (!resp.ok) {
+      console.error("[send-whatsapp-otp] Cloud API falhou:", resp.status, await resp.text());
+      return new Response(JSON.stringify({ error: "Falha ao entregar OTP" }), { status: 502, headers: corsHeaders });
+    }
   }
 
   try {
