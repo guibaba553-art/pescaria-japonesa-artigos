@@ -202,8 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: {
         // phone no metadata é essencial: o trigger de profiles o usa para
-        // popular profiles.phone (checkProfileCompleteness exige cpf+phone)
-        data: { full_name: fullName, cpf, phone: toE164(phone) },
+        // popular profiles.phone (checkProfileCompleteness exige cpf+phone).
+        // Digitos apenas — profiles.phone tem CHECK (phone ~ '^\d{10,11}$').
+        data: { full_name: fullName, cpf, phone },
       },
     });
 

@@ -80,7 +80,8 @@ describe('useAuth.signUp — telefone como identidade', () => {
         data: {
           full_name: FULL_NAME,
           cpf: VALID_CPF,
-          phone: '+5511987654321',
+          // metadata em dígitos — profiles.phone exige ^\d{10,11}$ (CHECK)
+          phone: VALID_PHONE,
         },
       },
     });
