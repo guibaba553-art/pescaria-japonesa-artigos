@@ -20,7 +20,6 @@ const RESTRICTED_COLUMNS = [
   'tax_pct',
   'cost_group_id',
   'pdv_no_markup',
-  'sale_starts_at',
 ];
 
 function walk(dir: string): string[] {

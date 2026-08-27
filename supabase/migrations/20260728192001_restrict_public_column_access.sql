@@ -5,7 +5,7 @@ REVOKE SELECT ON public.products FROM anon, authenticated;
 GRANT SELECT (
   id, name, description, short_description, price, category, subcategory, brand_id,
   size, pound_test, image_url, images, rating, stock, featured, on_sale,
-  sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
+  sale_price, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price,
   minimum_quantity, sku, sold_by_weight, weight_grams, length_cm, width_cm, height_cm,
   created_at, updated_at, ncm, cest, csosn, cfop, origem, unidade_comercial,
   include_in_nfe, pdv_only, sale_channel
@@ -17,7 +17,7 @@ REVOKE SELECT ON public.product_variations FROM anon, authenticated;
 GRANT SELECT (
   id, product_id, name, price, stock, sku, created_at, updated_at, description,
   image_url, weight_grams, length_cm, width_cm, height_cm, min_stock,
-  on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price, sale_channel
+  on_sale, sale_price, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price, sale_channel
 ) ON public.product_variations TO anon, authenticated;
 
 -- 3) RPC for admin/employee to read ALL columns of variations for a specific product
