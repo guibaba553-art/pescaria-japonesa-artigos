@@ -11,6 +11,15 @@ describe('toE164', () => {
   it('mantém +55 quando já presente', () => {
     expect(toE164('5566992110000')).toBe('+5566992110000');
   });
+  it('trata DDD 55 (RS) como prefixo de país, não como DDD local', () => {
+    expect(toE164('55999112233')).toBe('+5555999112233');
+  });
+  it('mantém número E.164 com 13 dígitos inalterado', () => {
+    expect(toE164('5566992110000')).toBe('+5566992110000');
+  });
+  it('adiciona +55 a fixo de 10 dígitos', () => {
+    expect(toE164('6633221100')).toBe('+556633221100');
+  });
   it('remove caracteres não numéricos', () => {
     expect(toE164('(66) 99211-0000')).toBe('+5566992110000');
   });

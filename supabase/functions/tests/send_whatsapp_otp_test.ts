@@ -60,6 +60,40 @@ Deno.test("entrega OTP via Cloud API e responde 200", async () => {
   await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log?phone=eq.%2B5566992110000`, { method: "DELETE", headers: svcHeaders });
 });
 
+Deno.test("DDD 55 (RS): número local de 12 dígitos é tratado como país, não como DDD", async () => {
+  let sentTo = "";
+  mockInternalFn((url, _m, body) => {
+    if (url.includes("graph.facebook.com")) {
+      sentTo = (body as Record<string, any>).to;
+      return { status: 200, body: { messages: [{ id: "wamid.X" }] } };
+    }
+    return null;
+  });
+  const r = await call(smsPayload("55999112233"));
+  assertEquals(r.status, 200);
+  assertEquals(sentTo, "5555999112233");
+  const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}` };
+  await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log?phone=eq.%2B5555999112233`, { method: "DELETE", headers: svcHeaders });
+});
+
+Deno.test("E.164 de 13 dígitos mantém-se inalterado", async () => {
+  let sentTo = "";
+  mockInternalFn((url, _m, body) => {
+    if (url.includes("graph.facebook.com")) {
+      sentTo = (body as Record<string, any>).to;
+      return { status: 200, body: { messages: [{ id: "wamid.X" }] } };
+    }
+    return null;
+  });
+  const r = await call(smsPayload("5566992110000"));
+  assertEquals(r.status, 200);
+  assertEquals(sentTo, "5566992110000");
+  const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}` };
+  await fetch(`${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log?phone=eq.%2B5566992110000`, { method: "DELETE", headers: svcHeaders });
+});
+
 Deno.test("assinatura inválida → 401", async () => {
   const r = await call(smsPayload("+5566992110000"), "v1,whsec_" + btoa("wrong-secret-32-bytes-bbbbbbbbbb"));
   assertEquals(r.status, 401);

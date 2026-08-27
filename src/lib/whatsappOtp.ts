@@ -2,7 +2,11 @@ export const RESEND_COOLDOWN_MS = 60_000;
 
 export function toE164(digits: string): string {
   let d = digits.replace(/\D/g, '');
-  if (!d.startsWith('55') && d.length >= 10) d = `55${d}`;
+  // DDD 55 (RS) pode abrir número local (55999112233): 12-13 dígitos já são
+  // E.164 (55 + DDD + número) — não confundir com prefixo de país já presente.
+  const isE164Br = d.length >= 12 && d.length <= 13 && d.startsWith('55');
+  if (isE164Br) return `+${d}`;
+  if (d.length >= 10 && d.length <= 11) d = `55${d}`;
   return `+${d}`;
 }
 

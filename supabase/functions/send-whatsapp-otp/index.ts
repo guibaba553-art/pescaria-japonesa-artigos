@@ -11,7 +11,12 @@ const corsHeaders = {
 
 function normalizeE164(raw: string): string {
   let digits = raw.replace(/\D/g, "");
-  if (!digits.startsWith("55") && digits.length >= 10) digits = `55${digits}`;
+  // DDD 55 (RS) pode abrir número local (55999112233): 12-13 dígitos já são
+  // E.164 (55 + DDD + número) — não confundir com prefixo de país já presente.
+  // Espelha toE164 (src/lib/whatsappOtp.ts).
+  const isE164Br = digits.length >= 12 && digits.length <= 13 && digits.startsWith("55");
+  if (isE164Br) return `+${digits}`;
+  if (digits.length >= 10 && digits.length <= 11) digits = `55${digits}`;
   return `+${digits}`;
 }
 
