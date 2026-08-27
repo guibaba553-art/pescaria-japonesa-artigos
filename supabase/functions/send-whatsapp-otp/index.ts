@@ -29,7 +29,12 @@ export async function handleRequest(req: Request): Promise<Response> {
   const TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_AUTH");
   const DAILY_CAP = parseInt(Deno.env.get("OTP_DAILY_CAP_PER_PHONE") ?? "5", 10);
 
-  if (!hookSecret || !WH_TOKEN || !PHONE_ID || !TEMPLATE) {
+  // DRY RUN: em ambiente local loga o OTP no console sem chamar a Cloud API
+  const dryRunFlag = Deno.env.get("WHATSAPP_DRY_RUN");
+  const isLocal = /127\.0\.0\.1|localhost/.test(Deno.env.get("SUPABASE_URL") ?? "");
+  const isDryRun = dryRunFlag === "true" || (dryRunFlag !== "false" && isLocal);
+
+  if (!hookSecret || (!isDryRun && (!WH_TOKEN || !PHONE_ID || !TEMPLATE))) {
     console.error("[send-whatsapp-otp] env incompleta");
     return new Response(JSON.stringify({ error: "Configuração ausente" }), { status: 500, headers: corsHeaders });
   }
@@ -62,11 +67,6 @@ export async function handleRequest(req: Request): Promise<Response> {
   if ((count ?? 0) >= DAILY_CAP) {
     return new Response(JSON.stringify({ error: "Limite diário de envios atingido" }), { status: 429, headers: corsHeaders });
   }
-
-  // DRY RUN: em ambiente local loga o OTP no console sem chamar a Cloud API
-  const dryRunFlag = Deno.env.get("WHATSAPP_DRY_RUN");
-  const isLocal = /127\.0\.0\.1|localhost/.test(Deno.env.get("SUPABASE_URL") ?? "");
-  const isDryRun = dryRunFlag === "true" || (dryRunFlag !== "false" && isLocal);
 
   if (isDryRun) {
     console.log(`[send-whatsapp-otp] DRY RUN — código para ${to}: ${event.sms.otp}`);
