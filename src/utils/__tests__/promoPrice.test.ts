@@ -5,7 +5,11 @@ import {
   getProductDisplayImage,
   isPromoActive,
   PromoFields,
+  validatePromotionPeriod,
 } from '../promoPrice';
+
+const FUTURE = new Date(Date.now() + 86_400_000).toISOString();
+
 
 // ─── effectiveProductOrVariationPrice ──────────────────────
 describe('effectiveProductOrVariationPrice', () => {
@@ -25,6 +29,7 @@ describe('effectiveProductOrVariationPrice', () => {
       ...baseProduct,
       on_sale: true,
       sale_price: 30,
+      sale_ends_at: FUTURE,
     })).toBe(30);
   });
 
@@ -55,7 +60,7 @@ describe('effectiveProductOrVariationPrice', () => {
     const product = {
       ...baseProduct,
       variations: [
-        { price: 100, min_sale_price: null, on_sale: true, sale_price: 15 },
+        { price: 100, min_sale_price: null, on_sale: true, sale_price: 15, sale_ends_at: FUTURE },
         { price: 50, min_sale_price: null, on_sale: false, sale_price: null },
       ],
     };
@@ -94,8 +99,15 @@ describe('isPromoActive', () => {
     price: 100,
     on_sale: true,
     sale_price: 50,
+    // Toda promoção precisa de prazo final
+    sale_ends_at: new Date(Date.now() + 86_400_000).toISOString(),
     ...overrides,
   });
+
+  it('promo sem sale_ends_at retorna false (prazo obrigatório)', () => {
+    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(false);
+  });
+
 
   it('promo ativa com todos os campos válidos retorna true', () => {
     expect(isPromoActive(makeItem())).toBe(true);
@@ -115,8 +127,8 @@ describe('isPromoActive', () => {
     expect(isPromoActive(makeItem({ sale_ends_at: now.toISOString() }), now)).toBe(false);
   });
 
-  it('promo sem sale_ends_at (nulo) retorna true se demais campos OK', () => {
-    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(true);
+  it('promo sem sale_ends_at (nulo) retorna false — prazo é obrigatório', () => {
+    expect(isPromoActive(makeItem({ sale_ends_at: null }))).toBe(false);
   });
 
   it('promo com on_sale=false retorna false', () => {
@@ -167,6 +179,21 @@ describe('isPromoActive', () => {
       makeItem({ sale_ends_at: '2025-05-01T00:00:00.000Z' }),
       futureNow,
     )).toBe(false);
+  });
+});
+
+describe('validatePromotionPeriod', () => {
+  it('rejeita promoção sem prazo final', () => {
+    expect(validatePromotionPeriod('', '')).toBe('Informe a data final da promoção.');
+  });
+
+  it('rejeita prazo final anterior ao início', () => {
+    expect(validatePromotionPeriod('2026-08-20T10:00', '2026-08-20T09:59'))
+      .toBe('A data final deve ser posterior à data inicial.');
+  });
+
+  it('aceita prazo final futuro e início opcional', () => {
+    expect(validatePromotionPeriod('', '2026-08-20T10:00', new Date('2026-08-20T09:00:00'))).toBeNull();
   });
 });
 

@@ -6,10 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X } from 'lucide-react';
+import { Tag, Search, ChevronDown, ChevronRight, Loader2, Trash2, Save, ListChecks, X, LayoutDashboard, CalendarClock, CheckCircle2, AlertTriangle, TimerOff, RefreshCw, Play, Square, Pencil } from 'lucide-react';
 import { PanelHeader } from '@/components/admin/PanelHeader';
-import { isPromoActive, isPromoScheduled } from '@/utils/promoPrice';
+import { isPromoActive, isPromoScheduled, validatePromotionPeriod } from '@/utils/promoPrice';
+import { promoStatus, PromoStatus, PROMO_STATUS_LABEL, PROMO_STATUS_CLASS, channelLabel, countdownLabel } from '@/utils/promoStatus';
 
 /** Converte texto colado (dd/mm/yyyy [hh:mm], ISO, datetime-local) para o formato do input datetime-local. */
 function parsePastedDate(raw: string): string | null {
@@ -44,10 +46,12 @@ interface Variation {
   name: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   stock: number;
   image_url: string | null;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -65,10 +69,12 @@ interface Product {
   category: string;
   price: number;
   min_sale_price: number | null;
+  price_pdv: number | null;
   image_url: string | null;
   stock: number;
   on_sale: boolean;
   sale_price: number | null;
+  sale_price_pdv: number | null;
   sale_starts_at: string | null;
   sale_ends_at: string | null;
   sale_limit_qty: number | null;
@@ -87,6 +93,8 @@ type Channel = 'site' | 'pdv' | 'both';
 interface Draft {
   mode: Mode;
   amount: string;
+  /** Valor da promoção exclusivo do PDV (usado quando o canal é "Ambos"). Vazio = usa o mesmo do site. */
+  pdvAmount: string;
   startsAt: string;
   endsAt: string;
   limitQty: string;
@@ -100,18 +108,20 @@ function toLocalDateTime(iso: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft {
+function buildDraft(basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft {
+  const pdvAmount = salePricePdv != null && salePricePdv > 0 ? Number(salePricePdv).toFixed(2) : '';
   if (salePrice != null && basePrice > 0) {
     return {
       mode: 'price',
       amount: salePrice.toFixed(2),
+      pdvAmount,
       startsAt: toLocalDateTime(startsAt),
       endsAt: toLocalDateTime(endsAt),
       limitQty: limitQty != null ? String(limitQty) : '',
       channel,
     };
   }
-  return { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
+  return { mode: 'percent', amount: '10', pdvAmount, startsAt: '', endsAt: '', limitQty: limitQty != null ? String(limitQty) : '', channel };
 }
 
 
@@ -122,15 +132,90 @@ function computeFinalPrice(basePrice: number, draft: Draft): number {
   return Math.max(0, v);
 }
 
+/**
+ * Preço promocional exclusivo do PDV.
+ * Só existe quando o canal é "Ambos" e o admin informou um valor diferente
+ * (no mesmo modo: %, R$ de desconto ou preço final) sobre o preço base do PDV.
+ * Retorna null quando deve usar o mesmo valor do site.
+ */
+function computePdvFinalPrice(pdvBasePrice: number, draft: Draft): number | null {
+  if (draft.channel !== 'both') return null;
+  if (!draft.pdvAmount || draft.pdvAmount.trim() === '') return null;
+  const v = parseFloat(draft.pdvAmount);
+  if (!isFinite(v) || v <= 0) return null;
+  if (!(pdvBasePrice > 0)) return null;
+  const final = draft.mode === 'percent'
+    ? pdvBasePrice * (1 - v / 100)
+    : draft.mode === 'value'
+      ? pdvBasePrice - v
+      : v;
+  if (!(final > 0) || final >= pdvBasePrice) return null;
+  return Number(final.toFixed(2));
+}
+
+/** Preço "de" do PDV (price_pdv quando definido, senão o price do site). */
+function pdvBasePriceOf(item: { price_pdv?: number | null; price: number }): number {
+  const v = Number(item?.price_pdv ?? 0);
+  return v > 0 ? v : Number(item?.price ?? 0);
+}
+
+function StatusBadge({ status, className = '' }: { status: PromoStatus; className?: string }) {
+  if (status === 'none') return null;
+  return (
+    <Badge variant="outline" className={`${PROMO_STATUS_CLASS[status]} ${className}`}>
+      {PROMO_STATUS_LABEL[status]}
+    </Badge>
+  );
+}
+
+/** Melhor status entre o produto e suas variações (prioriza ativa > agendada > outros). */
+const STATUS_RANK: Record<PromoStatus, number> = { active: 5, scheduled: 4, sold_out: 3, invalid: 2, expired: 1, none: 0 };
+
+function basePriceOf(item: { min_sale_price: number | null; price: number }): number {
+  return Number(Number(item.min_sale_price) > 0 ? item.min_sale_price : item.price);
+}
+
+interface PromoRow {
+  key: string;
+  table: 'products' | 'product_variations';
+  id: string;
+  name: string;
+  sub: string | null;
+  image: string | null;
+  category: string;
+  status: PromoStatus;
+  basePrice: number;
+  salePrice: number;
+  pdvBasePrice: number;
+  salePricePdv: number | null;
+  discountPct: number;
+  channel: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  limitQty: number | null;
+  soldQty: number;
+  stock: number;
+  margin: number;
+  fixedCost: number;
+  taxPct: number;
+}
+
 export function PromotionsManagement() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'on_sale' | 'off'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [, setTick] = useState(0);
+
+  // Atualiza contagens regressivas / status sem recarregar do banco
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -165,26 +250,90 @@ export function PromotionsManagement() {
 
   useEffect(() => { load(); }, []);
 
+  /** Status agregado de um produto (considerando variações). */
+  const productStatus = (p: Product): PromoStatus => {
+    const all: PromoStatus[] = [promoStatus(p), ...p.variations.map((v) => promoStatus(v))];
+    return all.reduce((best, s) => (STATUS_RANK[s] > STATUS_RANK[best] ? s : best), 'none' as PromoStatus);
+  };
+
+  const matchesFilter = (s: PromoStatus, f: typeof filter) => {
+    if (f === 'all') return true;
+    if (f === 'off') return s === 'none';
+    if (f === 'expired') return s === 'expired' || s === 'sold_out' || s === 'invalid';
+    return s === f;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (filter === 'on_sale') {
-        return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-      }
-      if (filter === 'off') {
-        return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
-      }
-      return true;
+      return matchesFilter(productStatus(p), filter);
     });
   }, [products, search, filter]);
 
-  const onSaleCount = products.filter(
-    (p) => isPromoActive(p) || p.variations.some((v) => isPromoActive(v))
-  ).length;
+  /** Todas as linhas com alguma promoção cadastrada (ativa, agendada, expirada ou incompleta). */
+  const promoRows = useMemo<PromoRow[]>(() => {
+    const rows: PromoRow[] = [];
+    const push = (
+      table: 'products' | 'product_variations',
+      p: Product,
+      v: Variation | null,
+    ) => {
+      const item: any = v ?? p;
+      const status = promoStatus(item);
+      if (status === 'none') return;
+      const basePrice = basePriceOf(item);
+      const salePrice = Number(item.sale_price ?? 0);
+      const cost = Number(v ? (v.cost ?? p.cost ?? 0) : p.cost ?? 0);
+      const fPct = Number((v ? v.freight_pct ?? p.freight_pct : p.freight_pct) || 0) / 100;
+      const oPct = Number((v ? v.op_cost_pct ?? p.op_cost_pct : p.op_cost_pct) || 0) / 100;
+      const tPct = Number((v ? v.tax_pct ?? p.tax_pct : p.tax_pct) || 0) / 100;
+      const totalCost = cost + cost * fPct + cost * oPct + salePrice * tPct;
+      rows.push({
+        key: `${table}:${item.id}`,
+        table,
+        id: item.id,
+        name: p.name,
+        sub: v ? v.name : null,
+        image: (v?.image_url || p.image_url) ?? null,
+        category: p.category,
+        status,
+        basePrice,
+        salePrice,
+        pdvBasePrice: pdvBasePriceOf(item),
+        salePricePdv: item.sale_price_pdv != null && Number(item.sale_price_pdv) > 0 ? Number(item.sale_price_pdv) : null,
+        discountPct: basePrice > 0 ? Math.round((1 - salePrice / basePrice) * 100) : 0,
+        channel: item.sale_channel,
+        startsAt: item.sale_starts_at,
+        endsAt: item.sale_ends_at,
+        limitQty: item.sale_limit_qty,
+        soldQty: Number(item.sale_sold_qty ?? 0),
+        stock: Number(item.stock ?? 0),
+        margin: salePrice - totalCost,
+        fixedCost: cost + cost * fPct + cost * oPct,
+        taxPct: tPct,
+      });
+    };
+    products.forEach((p) => {
+      push('products', p, null);
+      p.variations.forEach((v) => push('product_variations', p, v));
+    });
+    return rows;
+  }, [products]);
 
-  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both'): Draft => {
-    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel);
+  const counts = useMemo(() => {
+    const c = { active: 0, scheduled: 0, expired: 0, invalid: 0, sold_out: 0 };
+    promoRows.forEach((r) => {
+      if (r.status in c) (c as any)[r.status]++;
+    });
+    return c;
+  }, [promoRows]);
+
+  const onSaleCount = counts.active;
+
+
+  const getDraft = (key: string, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both', salePricePdv: number | null = null): Draft => {
+    return drafts[key] || buildDraft(basePrice, salePrice, startsAt, endsAt, limitQty, channel, salePricePdv);
   };
 
   const updateDraft = (key: string, patch: Partial<Draft>, basePrice: number, salePrice: number | null, startsAt: string | null, endsAt: string | null, limitQty: number | null, channel: Channel = 'both') => {
@@ -197,16 +346,22 @@ export function PromotionsManagement() {
     table: 'products' | 'product_variations',
     id: string,
     basePrice: number,
-    draft: Draft
+    draft: Draft,
+    pdvBasePrice = 0,
   ) => {
     const key = `${table}:${id}`;
-    setSaving((s) => ({ ...s, [key]: true }));
+    const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
     const final = computeFinalPrice(basePrice, draft);
     if (final >= basePrice) {
       toast({ title: 'Preço promocional inválido', description: 'O preço final deve ser menor que o preço atual.', variant: 'destructive' });
       setSaving((s) => ({ ...s, [key]: false }));
       return;
     }
+    setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const payload: any = {
       on_sale: true,
@@ -215,6 +370,7 @@ export function PromotionsManagement() {
       sale_ends_at: draft.endsAt ? new Date(draft.endsAt).toISOString() : null,
       sale_limit_qty: limitParsed,
       sale_channel: draft.channel,
+      sale_price_pdv: computePdvFinalPrice(pdvBasePrice, draft),
     };
     const { error } = await supabase.from(table).update(payload).eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
@@ -231,7 +387,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from(table)
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .eq('id', id);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -246,8 +402,13 @@ export function PromotionsManagement() {
   };
   const applyBulkToVariations = async (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     if (product.variations.length === 0) return;
+    const periodError = validatePromotionPeriod(draft.startsAt, draft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
     setSaving((s) => ({ ...s, [key]: true }));
     const limitParsed = draft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(draft.limitQty)));
     const endsAtIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
@@ -271,6 +432,7 @@ export function PromotionsManagement() {
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
           sale_channel: draft.channel,
+          sale_price_pdv: computePdvFinalPrice(pdvBasePriceOf(v), draft),
         })
         .eq('id', v.id);
       if (error) errors.push(`${v.name}: ${error.message}`);
@@ -297,7 +459,7 @@ export function PromotionsManagement() {
     setSaving((s) => ({ ...s, [key]: true }));
     const { error } = await supabase
       .from('product_variations')
-      .update({ on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
+      .update({ on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 })
       .in('id', ids);
     setSaving((s) => ({ ...s, [key]: false }));
     if (error) {
@@ -310,7 +472,7 @@ export function PromotionsManagement() {
 
   const renderBulkEditor = (product: Product) => {
     const key = `bulk:${product.id}`;
-    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
+    const draft: Draft = drafts[key] || { mode: 'percent' as Mode, amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' };
     const setBulk = (patch: Partial<Draft>) => setDrafts({ ...drafts, [key]: { ...draft, ...patch } });
     const onSaleCount = product.variations.filter((v) => v.on_sale).length;
     return (
@@ -353,6 +515,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -364,6 +527,22 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => setBulk({ pdvAmount: e.target.value })}
+                className="w-36"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -443,11 +622,14 @@ export function PromotionsManagement() {
     freightPct: number,
     opCostPct: number,
     taxPct: number,
-    saleChannel: string | null = 'both'
+    saleChannel: string | null = 'both',
+    pdvBasePrice = 0,
+    salePricePdv: number | null = null,
   ) => {
     const key = `${table}:${id}`;
     const initialChannel: Channel = (saleChannel === 'site' || saleChannel === 'pdv' || saleChannel === 'both') ? saleChannel : 'both';
-    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel);
+    const draft = getDraft(key, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel, salePricePdv);
+    const pdvFinal = computePdvFinalPrice(pdvBasePrice, draft);
     const final = computeFinalPrice(basePrice, draft);
     const discountPct = basePrice > 0 ? Math.round(((basePrice - final) / basePrice) * 100) : 0;
     const expired = endsAt ? new Date(endsAt) < new Date() : false;
@@ -494,6 +676,7 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {draft.channel === 'both' ? 'Site — ' : ''}
               {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input
@@ -505,6 +688,25 @@ export function PromotionsManagement() {
               className="w-32"
             />
           </div>
+          {draft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {draft.mode === 'percent' ? '% de desconto' : draft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input
+                type="number"
+                min={0}
+                step={draft.mode === 'percent' ? 1 : 0.01}
+                placeholder="igual ao site"
+                value={draft.pdvAmount}
+                onChange={(e) => updateDraft(key, { pdvAmount: e.target.value }, basePrice, salePrice, startsAt, endsAt, limitQty, initialChannel)}
+                className="w-36"
+              />
+              <span className="text-[11px] text-muted-foreground">
+                Base PDV: R$ {pdvBasePrice.toFixed(2)} → {pdvFinal != null ? `R$ ${pdvFinal.toFixed(2)}` : `R$ ${final.toFixed(2)} (igual ao site)`}
+              </span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input
@@ -577,7 +779,7 @@ export function PromotionsManagement() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
-          <Button size="sm" onClick={() => apply(table, id, basePrice, draft)} disabled={saving[key]}>
+          <Button size="sm" onClick={() => apply(table, id, basePrice, draft, pdvBasePrice)} disabled={saving[key]}>
             {saving[key] ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
             {isActuallyActive ? 'Atualizar promoção' : onSale ? 'Promoção expirada — aplicar nova' : 'Aplicar promoção'}
           </Button>
@@ -607,8 +809,8 @@ export function PromotionsManagement() {
   type SelKey = string; // "products:<id>" | "product_variations:<id>"
   const [selected, setSelected] = useState<Set<SelKey>>(new Set());
   const [batchSearch, setBatchSearch] = useState('');
-  const [batchFilter, setBatchFilter] = useState<'all' | 'on_sale' | 'off'>('all');
-  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [batchFilter, setBatchFilter] = useState<'all' | 'active' | 'scheduled' | 'expired' | 'off'>('all');
+  const [batchDraft, setBatchDraft] = useState<Draft>({ mode: 'percent', amount: '10', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
   const [batchSaving, setBatchSaving] = useState(false);
 
   const toggleSel = (key: SelKey) => {
@@ -623,11 +825,12 @@ export function PromotionsManagement() {
     const q = batchSearch.trim().toLowerCase();
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false;
-      if (batchFilter === 'on_sale') return isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
-      if (batchFilter === 'off') return !isPromoActive(p) && !p.variations.some((v) => isPromoActive(v));
-      return true;
+      return matchesFilter(productStatus(p), batchFilter);
     });
   }, [products, batchSearch, batchFilter]);
+
+
+
 
   const selectAllVisible = () => {
     const n = new Set(selected);
@@ -644,6 +847,11 @@ export function PromotionsManagement() {
       toast({ title: 'Selecione ao menos um item' });
       return;
     }
+    const periodError = validatePromotionPeriod(batchDraft.startsAt, batchDraft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
     setBatchSaving(true);
     const limitParsed = batchDraft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(batchDraft.limitQty)));
     const endsAtIso = batchDraft.endsAt ? new Date(batchDraft.endsAt).toISOString() : null;
@@ -652,40 +860,47 @@ export function PromotionsManagement() {
     const errors: string[] = [];
 
     // Indexar preços base
-    const priceOf = (table: 'products' | 'product_variations', id: string): number => {
+    const itemOf = (table: 'products' | 'product_variations', id: string): { price: number; pdvPrice: number } | null => {
       if (table === 'products') {
         const p = products.find((x) => x.id === id);
-        return p ? Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) : 0;
+        if (!p) return null;
+        return { price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), pdvPrice: pdvBasePriceOf(p) };
       }
       for (const p of products) {
         const v = p.variations.find((x) => x.id === id);
-        if (v) return Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+        if (v) return { price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), pdvPrice: pdvBasePriceOf(v) };
       }
-      return 0;
+      return null;
     };
 
-    // Agrupar por tabela e por preço final (para poder usar .in())
-    const byTable: Record<'products' | 'product_variations', Map<number, string[]>> = {
+    // Agrupar por tabela e por par (preço site | preço PDV) para poder usar .in()
+    const byTable: Record<'products' | 'product_variations', Map<string, string[]>> = {
       products: new Map(),
       product_variations: new Map(),
     };
 
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
-      const basePrice = priceOf(table, id);
+      const info = itemOf(table, id);
+      const basePrice = info?.price ?? 0;
       const final = computeFinalPrice(basePrice, batchDraft);
       if (basePrice <= 0 || final <= 0 || final >= basePrice) { skipped++; continue; }
       const rounded = Number(final.toFixed(2));
-      const arr = byTable[table].get(rounded) || [];
+      const pdvFinal = computePdvFinalPrice(info?.pdvPrice ?? 0, batchDraft);
+      const groupKey = `${rounded}|${pdvFinal ?? ''}`;
+      const arr = byTable[table].get(groupKey) || [];
       arr.push(id);
-      byTable[table].set(rounded, arr);
+      byTable[table].set(groupKey, arr);
     }
 
     for (const table of ['products', 'product_variations'] as const) {
-      for (const [finalPrice, ids] of byTable[table].entries()) {
+      for (const [groupKey, ids] of byTable[table].entries()) {
+        const [finalStr, pdvStr] = groupKey.split('|');
+        const finalPrice = Number(finalStr);
         const { error } = await supabase.from(table).update({
           on_sale: true,
           sale_price: finalPrice,
+          sale_price_pdv: pdvStr === '' ? null : Number(pdvStr),
           sale_starts_at: startsAtIso,
           sale_ends_at: endsAtIso,
           sale_limit_qty: limitParsed,
@@ -711,7 +926,7 @@ export function PromotionsManagement() {
   const removeBatch = async () => {
     if (selected.size === 0) return;
     setBatchSaving(true);
-    const clear = { on_sale: false, sale_price: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
+    const clear = { on_sale: false, sale_price: null, sale_price_pdv: null, sale_starts_at: null, sale_ends_at: null, sale_limit_qty: null, sale_sold_qty: 0 };
     const prodIds: string[] = [];
     const varIds: string[] = [];
     for (const key of selected) {
@@ -727,21 +942,88 @@ export function PromotionsManagement() {
   };
 
   const selectedItems = useMemo(() => {
-    const out: { key: SelKey; name: string; sub: string; image?: string | null; price: number }[] = [];
+    const out: {
+      key: SelKey;
+      name: string;
+      sub: string;
+      image?: string | null;
+      price: number;
+      pdvPrice: number;
+      siteProfit: number;
+      pdvProfit: number;
+      totalCost: number;
+      profit: number;
+      baseCost: number;
+      baseProfit: number;
+      finalPrice: number;
+      pdvFinalPrice: number | null;
+    }[] = [];
+    const calc = (price: number, pdvPrice: number, cost: number, freightPct: number, opCostPct: number, taxPct: number) => {
+      const finalPrice = computeFinalPrice(price, batchDraft);
+      const c = Number(cost || 0);
+      const fixed = c + c * (Number(freightPct || 0) / 100) + c * (Number(opCostPct || 0) / 100);
+      const t = Number(taxPct || 0) / 100;
+      const totalCost = fixed + finalPrice * t;
+      const baseCost = fixed + price * t;
+      return {
+        totalCost,
+        profit: finalPrice - totalCost,
+        baseCost,
+        baseProfit: price - baseCost,
+        finalPrice,
+        pdvFinalPrice: computePdvFinalPrice(pdvPrice, batchDraft),
+        siteProfit: price - baseCost,
+        pdvProfit: pdvPrice > 0 ? pdvPrice - (fixed + pdvPrice * t) : 0,
+      };
+    };
+
     for (const key of selected) {
       const [table, id] = key.split(':') as ['products' | 'product_variations', string];
       if (table === 'products') {
         const p = products.find((x) => x.id === id);
-        if (p) out.push({ key, name: p.name, sub: p.category || 'Produto', image: p.image_url, price: Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price) });
+        if (p) {
+          const price = Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price);
+          const pdvPrice = pdvBasePriceOf(p);
+          out.push({
+            key,
+            name: p.name,
+            sub: p.category || 'Produto',
+            image: p.image_url,
+            price,
+            pdvPrice,
+            ...calc(price, pdvPrice, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0)),
+          });
+        }
       } else {
         for (const p of products) {
           const v = p.variations.find((x) => x.id === id);
-          if (v) { out.push({ key, name: `${p.name}`, sub: v.name, image: v.image_url || p.image_url, price: Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price) }); break; }
+          if (v) {
+            const price = Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price);
+            const pdvPrice = pdvBasePriceOf(v);
+            out.push({
+              key,
+              name: `${p.name}`,
+              sub: v.name,
+              image: v.image_url || p.image_url,
+              price,
+              pdvPrice,
+              ...calc(
+                price,
+                pdvPrice,
+                Number(v.cost ?? p.cost ?? 0),
+                Number(v.freight_pct ?? p.freight_pct ?? 0),
+                Number(v.op_cost_pct ?? p.op_cost_pct ?? 0),
+                Number(v.tax_pct ?? p.tax_pct ?? 0),
+              ),
+            });
+            break;
+          }
         }
       }
     }
     return out;
-  }, [selected, products]);
+  }, [selected, products, batchDraft]);
+
 
   const renderBatchTab = () => (
     <div className="space-y-4">
@@ -751,9 +1033,9 @@ export function PromotionsManagement() {
           <Input placeholder="Buscar produto..." value={batchSearch} onChange={(e) => setBatchSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-1">
-          {(['all', 'on_sale', 'off'] as const).map((f) => (
+          {(['all', 'active', 'scheduled', 'expired', 'off'] as const).map((f) => (
             <Button key={f} size="sm" variant={batchFilter === f ? 'default' : 'outline'} onClick={() => setBatchFilter(f)}>
-              {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+              {f === 'all' ? 'Todos' : f === 'active' ? 'Ativas' : f === 'scheduled' ? 'Agendadas' : f === 'expired' ? 'Encerradas' : 'Sem promoção'}
             </Button>
           ))}
         </div>
@@ -784,7 +1066,7 @@ export function PromotionsManagement() {
                     <div className="text-sm font-medium truncate">{p.name}</div>
                     <div className="text-[11px] text-muted-foreground">{p.category} • R$ {Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price).toFixed(2)}</div>
                   </div>
-                  {isPromoActive(p) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                  <StatusBadge status={promoStatus(p)} className="text-[10px]" />
                 </label>
               );
             }
@@ -820,7 +1102,7 @@ export function PromotionsManagement() {
                         <div className="text-sm truncate">{v.name}</div>
                         <div className="text-[11px] text-muted-foreground">R$ {Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price).toFixed(2)} • Estoque: {v.stock}</div>
                       </div>
-                      {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600 text-[10px]">Promo</Badge>}
+                      <StatusBadge status={promoStatus(v)} className="text-[10px]" />
                     </label>
                   );
                 })}
@@ -852,7 +1134,23 @@ export function PromotionsManagement() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm truncate">{it.name}</div>
                   <div className="text-[11px] text-muted-foreground truncate">{it.sub} • R$ {it.price.toFixed(2)}</div>
+                  <div className="text-[11px] flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span className="text-muted-foreground">Valor site: R$ {it.price.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Valor PDV: R$ {it.pdvPrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground">
+                      Promo site: R$ {it.finalPrice.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">
+                      Promo PDV: R$ {(it.pdvFinalPrice ?? it.finalPrice).toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground">Custo: R$ {it.totalCost.toFixed(2)}</span>
+                    <span className={it.profit < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                      Lucro promo: R$ {it.profit.toFixed(2)}
+                    </span>
+
+                  </div>
                 </div>
+
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => toggleSel(it.key)}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -892,11 +1190,22 @@ export function PromotionsManagement() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">
+              {batchDraft.channel === 'both' ? 'Site — ' : ''}
               {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
             </label>
             <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01}
               value={batchDraft.amount} onChange={(e) => setBatchDraft({ ...batchDraft, amount: e.target.value })} className="w-32" />
           </div>
+          {batchDraft.channel === 'both' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">
+                PDV — {batchDraft.mode === 'percent' ? '% de desconto' : batchDraft.mode === 'value' ? 'Valor de desconto (R$)' : 'Preço promocional (R$)'}
+              </label>
+              <Input type="number" min={0} step={batchDraft.mode === 'percent' ? 1 : 0.01} placeholder="igual ao site"
+                value={batchDraft.pdvAmount} onChange={(e) => setBatchDraft({ ...batchDraft, pdvAmount: e.target.value })} className="w-36" />
+              <span className="text-[11px] text-muted-foreground">Deixe vazio para usar o mesmo desconto do site.</span>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-muted-foreground">Inicia em (opcional)</label>
             <Input type="datetime-local" value={batchDraft.startsAt}
@@ -941,25 +1250,384 @@ export function PromotionsManagement() {
     </div>
   );
 
+  // ═══════════════ PAINEL ═══════════════
+  const [overviewStatus, setOverviewStatus] = useState<'all' | PromoStatus>('all');
+  const [overviewChannel, setOverviewChannel] = useState<'all' | Channel>('all');
+  const [overviewSearch, setOverviewSearch] = useState('');
+
+  const overviewRows = useMemo(() => {
+    const q = overviewSearch.trim().toLowerCase();
+    const rank = { active: 0, scheduled: 1, sold_out: 2, invalid: 3, expired: 4, none: 5 } as Record<PromoStatus, number>;
+    return promoRows
+      .filter((r) => {
+        if (q && !`${r.name} ${r.sub ?? ''}`.toLowerCase().includes(q)) return false;
+        if (overviewStatus !== 'all' && r.status !== overviewStatus) return false;
+        if (overviewChannel !== 'all') {
+          const ch = (r.channel ?? 'both') as Channel;
+          if (overviewChannel === 'site' && ch === 'pdv') return false;
+          if (overviewChannel === 'pdv' && ch === 'site') return false;
+          if (overviewChannel === 'both' && ch !== 'both') return false;
+        }
+        return true;
+      })
+      .sort((a, b) => rank[a.status] - rank[b.status] || a.name.localeCompare(b.name));
+  }, [promoRows, overviewSearch, overviewStatus, overviewChannel]);
+
+  // Edição de uma promoção existente (dialog com todos os dados preenchidos)
+  const [editRow, setEditRow] = useState<PromoRow | null>(null);
+  const [editDraft, setEditDraft] = useState<Draft>({ mode: 'price', amount: '', pdvAmount: '', startsAt: '', endsAt: '', limitQty: '', channel: 'both' });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (r: PromoRow) => {
+    setEditRow(r);
+    setEditDraft({
+      mode: 'price',
+      amount: r.salePrice.toFixed(2),
+      pdvAmount: r.salePricePdv != null ? r.salePricePdv.toFixed(2) : '',
+      startsAt: toLocalDateTime(r.startsAt),
+      endsAt: toLocalDateTime(r.endsAt),
+      limitQty: r.limitQty != null ? String(r.limitQty) : '',
+      channel: (r.channel as Channel) || 'both',
+    });
+  };
+
+  const editFinalPrice = editRow ? computeFinalPrice(editRow.basePrice, editDraft) : 0;
+  const editPdvFinalPrice = editRow ? computePdvFinalPrice(editRow.pdvBasePrice, editDraft) : null;
+  const editTotalCost = editRow ? editRow.fixedCost + editFinalPrice * editRow.taxPct : 0;
+  const editProfit = editFinalPrice - editTotalCost;
+
+  const saveEdit = async () => {
+    if (!editRow) return;
+    const periodError = validatePromotionPeriod(editDraft.startsAt, editDraft.endsAt);
+    if (periodError) {
+      toast({ title: 'Prazo inválido', description: periodError, variant: 'destructive' });
+      return;
+    }
+    if (editFinalPrice <= 0 || editFinalPrice >= editRow.basePrice) {
+      toast({ title: 'Preço promocional inválido', description: 'O preço final deve ser maior que zero e menor que o preço atual.', variant: 'destructive' });
+      return;
+    }
+    setEditSaving(true);
+    const limitParsed = editDraft.limitQty.trim() === '' ? null : Math.max(1, Math.floor(Number(editDraft.limitQty)));
+    const { error } = await supabase
+      .from(editRow.table)
+      .update({
+        on_sale: true,
+        sale_price: Number(editFinalPrice.toFixed(2)),
+        sale_price_pdv: editPdvFinalPrice,
+        sale_starts_at: editDraft.startsAt ? new Date(editDraft.startsAt).toISOString() : null,
+        sale_ends_at: editDraft.endsAt ? new Date(editDraft.endsAt).toISOString() : null,
+        sale_limit_qty: limitParsed,
+        sale_channel: editDraft.channel,
+      })
+      .eq('id', editRow.id);
+    setEditSaving(false);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Promoção atualizada' });
+    setEditRow(null);
+    await load();
+  };
+
+  const renderEditDialog = () => (
+    <Dialog open={!!editRow} onOpenChange={(o) => { if (!o) setEditRow(null); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            Editar promoção
+          </DialogTitle>
+        </DialogHeader>
+        {editRow && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              {editRow.image ? <img src={editRow.image} alt="" className="w-12 h-12 rounded object-cover" /> : <div className="w-12 h-12 rounded bg-muted" />}
+              <div className="min-w-0">
+                <div className="text-sm font-medium truncate">{editRow.name}</div>
+                {editRow.sub && <div className="text-xs text-muted-foreground truncate">Variação: {editRow.sub}</div>}
+                <div className="flex items-center gap-2 mt-1">
+                  <StatusBadge status={editRow.status} className="text-[10px]" />
+                  <span className="text-[11px] text-muted-foreground">Preço atual: R$ {editRow.basePrice.toFixed(2)} • Estoque: {editRow.stock}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(['percent', 'value', 'price'] as Mode[]).map((m) => (
+                <Button key={m} size="sm" variant={editDraft.mode === m ? 'default' : 'outline'}
+                  onClick={() => setEditDraft((d) => ({ ...d, mode: m }))}>
+                  {m === 'percent' ? '% Desconto' : m === 'value' ? 'R$ Desconto' : 'Preço final'}
+                </Button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">
+                  {editDraft.channel === 'both' ? 'Site — ' : ''}
+                  {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
+                </label>
+                <Input type="number" step="0.01" value={editDraft.amount}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, amount: e.target.value }))} />
+              </div>
+              {editDraft.channel === 'both' && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">
+                    PDV — {editDraft.mode === 'percent' ? 'Desconto (%)' : editDraft.mode === 'value' ? 'Desconto (R$)' : 'Preço final (R$)'}
+                  </label>
+                  <Input type="number" step="0.01" placeholder="igual ao site" value={editDraft.pdvAmount}
+                    onChange={(e) => setEditDraft((d) => ({ ...d, pdvAmount: e.target.value }))} />
+                  <span className="text-[11px] text-muted-foreground">
+                    Base PDV: R$ {editRow.pdvBasePrice.toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Limite de peças (opcional)</label>
+                <Input type="number" min="1" placeholder="sem limite" value={editDraft.limitQty}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, limitQty: e.target.value }))} />
+                {editRow.limitQty != null && (
+                  <span className="text-[11px] text-muted-foreground">Já vendidas: {editRow.soldQty}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Início (opcional)</label>
+                <Input type="datetime-local" value={editDraft.startsAt}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, startsAt: e.target.value }))} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground">Término (obrigatório)</label>
+                <Input type="datetime-local" value={editDraft.endsAt}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, endsAt: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-muted-foreground">Aplicar em</label>
+              <div className="flex gap-2">
+                {(['site', 'pdv', 'both'] as Channel[]).map((c) => (
+                  <Button key={c} size="sm" variant={editDraft.channel === c ? 'default' : 'outline'}
+                    onClick={() => setEditDraft((d) => ({ ...d, channel: c }))}>
+                    {c === 'site' ? 'Site' : c === 'pdv' ? 'PDV' : 'Ambos'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3 text-xs flex flex-wrap gap-x-4 gap-y-1">
+              <span className="line-through text-muted-foreground">R$ {editRow.basePrice.toFixed(2)}</span>
+              <span className="font-semibold">Promo site: R$ {editFinalPrice.toFixed(2)}</span>
+              {editDraft.channel === 'both' && (
+                <span className="font-semibold">Promo PDV: R$ {(editPdvFinalPrice ?? editFinalPrice).toFixed(2)}</span>
+              )}
+              <span className="text-muted-foreground">
+                -{editRow.basePrice > 0 ? Math.round((1 - editFinalPrice / editRow.basePrice) * 100) : 0}%
+              </span>
+              <span className="text-muted-foreground">Custo: R$ {editTotalCost.toFixed(2)}</span>
+              <span className={editProfit < 0 ? 'text-destructive font-semibold' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}>
+                Lucro: R$ {editProfit.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" className="text-destructive"
+            onClick={() => { if (editRow) { const r = editRow; setEditRow(null); remove(r.table, r.id); } }}>
+            <Trash2 className="w-4 h-4 mr-1" /> Remover promoção
+          </Button>
+          <Button onClick={saveEdit} disabled={editSaving}>
+            {editSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const patchRow = async (row: PromoRow, payload: Record<string, any>, msg: string) => {
+    setSaving((s) => ({ ...s, [row.key]: true }));
+    const { error } = await supabase.from(row.table).update(payload).eq('id', row.id);
+    setSaving((s) => ({ ...s, [row.key]: false }));
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: msg });
+    await load();
+  };
+
+  const kpiCards = [
+    { label: 'Ativas agora', value: counts.active, icon: CheckCircle2, cls: PROMO_STATUS_CLASS.active },
+    { label: 'Agendadas', value: counts.scheduled, icon: CalendarClock, cls: PROMO_STATUS_CLASS.scheduled },
+    { label: 'Encerradas', value: counts.expired, icon: TimerOff, cls: PROMO_STATUS_CLASS.expired },
+    { label: 'Esgotadas', value: counts.sold_out, icon: Square, cls: PROMO_STATUS_CLASS.sold_out },
+    { label: 'Incompletas', value: counts.invalid, icon: AlertTriangle, cls: PROMO_STATUS_CLASS.invalid },
+  ];
+
+  const renderOverviewTab = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {kpiCards.map((k) => (
+          <button
+            key={k.label}
+            onClick={() =>
+              setOverviewStatus((prev) => {
+                const map: Record<string, PromoStatus> = {
+                  'Ativas agora': 'active',
+                  Agendadas: 'scheduled',
+                  Encerradas: 'expired',
+                  Esgotadas: 'sold_out',
+                  Incompletas: 'invalid',
+                };
+                const target = map[k.label];
+                return prev === target ? 'all' : target;
+              })
+            }
+            className={`text-left rounded-lg border p-3 transition hover:shadow-sm ${k.cls}`}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium opacity-80">
+              <k.icon className="w-3.5 h-3.5" /> {k.label}
+            </div>
+            <div className="text-2xl font-bold mt-1">{k.value}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Buscar promoção..." value={overviewSearch} onChange={(e) => setOverviewSearch(e.target.value)} className="pl-9" />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {(['all', 'active', 'scheduled', 'expired', 'sold_out', 'invalid'] as const).map((s) => (
+            <Button key={s} size="sm" variant={overviewStatus === s ? 'default' : 'outline'} onClick={() => setOverviewStatus(s)}>
+              {s === 'all' ? 'Todas' : PROMO_STATUS_LABEL[s]}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-1 sm:ml-auto">
+          {(['all', 'site', 'pdv', 'both'] as const).map((c) => (
+            <Button key={c} size="sm" variant={overviewChannel === c ? 'secondary' : 'ghost'} onClick={() => setOverviewChannel(c)}>
+              {c === 'all' ? 'Todos canais' : channelLabel(c)}
+            </Button>
+          ))}
+          <Button size="sm" variant="ghost" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Carregando...
+        </div>
+      ) : overviewRows.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm">
+          Nenhuma promoção nesse filtro. Crie uma na aba “Em lote”.
+        </div>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {overviewRows.map((r) => (
+            <div
+              key={r.key}
+              role="button"
+              tabIndex={0}
+              onClick={() => openEdit(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter') openEdit(r); }}
+              className="flex flex-col md:flex-row md:items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer"
+            >
+              {r.image ? <img src={r.image} alt="" className="w-11 h-11 rounded object-cover" /> : <div className="w-11 h-11 rounded bg-muted" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium truncate">{r.name}</span>
+                  {r.sub && <span className="text-xs text-muted-foreground truncate">• {r.sub}</span>}
+                  <StatusBadge status={r.status} className="text-[10px]" />
+                  <Badge variant="outline" className="text-[10px]">{channelLabel(r.channel)}</Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                  <span className="line-through">R$ {r.basePrice.toFixed(2)}</span>
+                  <span className="text-foreground font-semibold">R$ {r.salePrice.toFixed(2)} (-{r.discountPct}%)</span>
+                  <span className={r.margin < 0 ? 'text-destructive font-medium' : 'text-emerald-600 dark:text-emerald-400 font-medium'}>
+                    Lucro: R$ {r.margin.toFixed(2)}
+                  </span>
+                  <span>Estoque: {r.stock}</span>
+                  {r.limitQty != null && <span>Limite: {r.soldQty}/{r.limitQty}</span>}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  {r.status === 'scheduled' && r.startsAt && (
+                    <>Começa em {new Date(r.startsAt).toLocaleString('pt-BR')} ({countdownLabel(r.startsAt)})</>
+                  )}
+                  {r.status === 'active' && r.endsAt && (
+                    <>Termina em {new Date(r.endsAt).toLocaleString('pt-BR')} ({countdownLabel(r.endsAt)} restantes)</>
+                  )}
+                  {r.status === 'expired' && r.endsAt && <>Terminou em {new Date(r.endsAt).toLocaleString('pt-BR')}</>}
+                  {r.status === 'invalid' && <>Promoção sem prazo final ou com preço inválido — não é aplicada nas vendas.</>}
+                  {r.status === 'sold_out' && <>Limite de peças atingido.</>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1 md:justify-end" onClick={(e) => e.stopPropagation()}>
+                <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Editar
+                </Button>
+                {r.status === 'scheduled' && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_starts_at: new Date().toISOString() }, 'Promoção iniciada agora')}>
+                    <Play className="w-3.5 h-3.5 mr-1" /> Iniciar agora
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'sold_out') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => patchRow(r, { sale_ends_at: new Date().toISOString() }, 'Promoção encerrada')}>
+                    <Square className="w-3.5 h-3.5 mr-1" /> Encerrar
+                  </Button>
+                )}
+                {(r.status === 'active' || r.status === 'expired') && (
+                  <Button size="sm" variant="outline" disabled={saving[r.key]}
+                    onClick={() => {
+                      const base = r.status === 'expired' ? Date.now() : new Date(r.endsAt as string).getTime();
+                      patchRow(r, { sale_ends_at: new Date(base + 7 * 86400000).toISOString(), on_sale: true }, 'Prazo estendido em 7 dias');
+                    }}>
+                    <CalendarClock className="w-3.5 h-3.5 mr-1" /> +7 dias
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive" disabled={saving[r.key]}
+                  onClick={() => remove(r.table, r.id)}>
+                  <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {renderEditDialog()}
+    </div>
+  );
+
   return (
     <Card className="overflow-hidden border-0 shadow-sm">
       <PanelHeader
         icon={Tag}
         title="Promoções"
-        description="Defina preços promocionais e o tempo de duração para produtos e variações."
+        description="Painel completo: crie, agende, acompanhe e encerre promoções do site e do PDV."
         kpis={[
           { label: 'Produtos', value: products.length },
-          { label: 'Em promoção', value: onSaleCount, tone: 'success' },
+          { label: 'Ativas', value: counts.active, tone: 'success' },
+          { label: 'Agendadas', value: counts.scheduled },
         ]}
       />
       <CardContent className="p-4 md:p-6 space-y-4">
-        <Tabs defaultValue="batch" className="space-y-4">
+        <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="w-4 h-4" /> Painel</TabsTrigger>
             <TabsTrigger value="batch" className="gap-2"><ListChecks className="w-4 h-4" /> Em lote</TabsTrigger>
             <TabsTrigger value="individual" className="gap-2"><Tag className="w-4 h-4" /> Individual</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="overview">{renderOverviewTab()}</TabsContent>
+
           <TabsContent value="batch">{renderBatchTab()}</TabsContent>
+
 
           <TabsContent value="individual" className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-2">
@@ -973,14 +1641,14 @@ export function PromotionsManagement() {
                 />
               </div>
               <div className="flex gap-1">
-                {(['all', 'on_sale', 'off'] as const).map((f) => (
+                {(['all', 'active', 'scheduled', 'expired', 'off'] as const).map((f) => (
                   <Button
                     key={f}
                     size="sm"
                     variant={filter === f ? 'default' : 'outline'}
                     onClick={() => setFilter(f)}
                   >
-                    {f === 'all' ? 'Todos' : f === 'on_sale' ? 'Em promoção' : 'Sem promoção'}
+                    {f === 'all' ? 'Todos' : f === 'active' ? 'Ativas' : f === 'scheduled' ? 'Agendadas' : f === 'expired' ? 'Encerradas' : 'Sem promoção'}
                   </Button>
                 ))}
               </div>
@@ -997,7 +1665,7 @@ export function PromotionsManagement() {
                 {filtered.map((p) => {
                   const hasVars = p.variations.length > 0;
                   const isOpen = expanded[p.id] ?? false;
-                  const anyOnSale = isPromoActive(p) || p.variations.some((v) => isPromoActive(v));
+                  const aggStatus = productStatus(p);
                   return (
                     <div key={p.id} className="border rounded-lg overflow-hidden">
                       <div className="flex items-center gap-3 p-3 bg-card">
@@ -1026,12 +1694,12 @@ export function PromotionsManagement() {
                             {hasVars && ` • ${p.variations.length} variações`}
                           </div>
                         </div>
-                        {anyOnSale && <Badge className="bg-green-600 hover:bg-green-600">Em promoção</Badge>}
+                        <StatusBadge status={aggStatus} />
                       </div>
 
                       {!hasVars && (
                         <div className="p-3 border-t">
-                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel)}
+                          {renderEditor('products', p.id, Number(Number(p.min_sale_price) > 0 ? p.min_sale_price : p.price), p.sale_price, p.sale_starts_at, p.sale_ends_at, p.on_sale, p.sale_limit_qty, p.sale_sold_qty, Number(p.cost || 0), Number(p.freight_pct || 0), Number(p.op_cost_pct || 0), Number(p.tax_pct || 0), p.sale_channel, pdvBasePriceOf(p), p.sale_price_pdv)}
                         </div>
                       )}
 
@@ -1056,9 +1724,9 @@ export function PromotionsManagement() {
                                     {' '}• Estoque: {v.stock}
                                   </div>
                                 </div>
-                                {isPromoActive(v) && <Badge className="bg-green-600 hover:bg-green-600">Promo</Badge>}
+                                <StatusBadge status={promoStatus(v)} />
                               </div>
-                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel)}
+                              {renderEditor('product_variations', v.id, Number(Number(v.min_sale_price) > 0 ? v.min_sale_price : v.price), v.sale_price, v.sale_starts_at, v.sale_ends_at, v.on_sale, v.sale_limit_qty, v.sale_sold_qty, Number(v.cost ?? p.cost ?? 0), Number(v.freight_pct ?? p.freight_pct ?? 0), Number(v.op_cost_pct ?? p.op_cost_pct ?? 0), Number(v.tax_pct ?? p.tax_pct ?? 0), v.sale_channel, pdvBasePriceOf(v), v.sale_price_pdv)}
                             </div>
                           ))}
                         </div>

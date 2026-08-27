@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -1014,6 +1014,30 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
       expense_overrides: {
         Row: {
           amount: number | null
@@ -1762,6 +1786,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           sku: string | null
@@ -1793,6 +1818,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           sku?: string | null
@@ -1824,6 +1850,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           sku?: string | null
@@ -1896,6 +1923,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
@@ -1956,6 +1984,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
@@ -2016,6 +2045,7 @@ export type Database = {
           sale_ends_at?: string | null
           sale_limit_qty?: number | null
           sale_price?: number | null
+          sale_price_pdv?: number | null
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
@@ -3008,6 +3038,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
@@ -3054,6 +3085,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           sku: string | null
@@ -3117,6 +3149,7 @@ export type Database = {
           sale_ends_at: string | null
           sale_limit_qty: number | null
           sale_price: number | null
+          sale_price_pdv: number | null
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null

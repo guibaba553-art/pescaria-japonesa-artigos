@@ -4,23 +4,41 @@
 export interface PromoFields {
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
+  sale_channel?: string | null;
   price?: number | null;
+  min_sale_price?: number | null;
+}
+
+export function promoBasePrice(item: PromoFields): number {
+  const min = Number(item?.min_sale_price ?? 0);
+  if (min > 0) return min;
+  return Number(item?.price ?? 0);
 }
 
 export function isPromoActive(item: PromoFields | null | undefined, now: Date = new Date()): boolean {
   if (!item) return false;
   if (!item.on_sale) return false;
   if (item.sale_price == null) return false;
-  const base = Number(item.price ?? 0);
+  if (item.sale_channel && item.sale_channel === 'pdv') return false;
+  const base = promoBasePrice(item);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
-  if (item.sale_ends_at) {
-    const ends = new Date(item.sale_ends_at);
-    if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
+  if (item.sale_starts_at) {
+    const starts = new Date(item.sale_starts_at);
+    if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
   }
+  // Toda promoção precisa de prazo final definido.
+  if (!item.sale_ends_at) return false;
+  {
+    const ends = new Date(item.sale_ends_at);
+    if (isNaN(ends.getTime())) return false;
+    if (ends.getTime() <= now.getTime()) return false;
+  }
+
   if (item.sale_limit_qty != null) {
     const sold = Number(item.sale_sold_qty ?? 0);
     if (sold >= Number(item.sale_limit_qty)) return false;
@@ -30,8 +48,11 @@ export function isPromoActive(item: PromoFields | null | undefined, now: Date = 
 
 export function effectiveProductPrice(product: PromoFields): number {
   if (isPromoActive(product)) return Number(product.sale_price);
+  const min = Number(product.min_sale_price ?? 0);
+  if (min > 0) return min;
   return Number(product.price ?? 0);
 }
+
 
 export function effectiveVariationPrice(
   variation: PromoFields & { min_sale_price?: number | null },
@@ -47,7 +68,7 @@ export function effectiveVariationPrice(
 
   const vBase = Number(variation.price ?? 0);
   if (product && isPromoActive(product)) {
-    const baseP = Number(product.price ?? 0);
+    const baseP = promoBasePrice(product);
     if (baseP > 0) {
       const discount = 1 - Number(product.sale_price) / baseP;
       return vBase * (1 - discount);

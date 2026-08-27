@@ -3,6 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { calcBaseCost } from '@/lib/pricing';
+import {
+  ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
+} from 'recharts';
+
 
 export interface SiteProfitItem {
   name: string;
@@ -18,6 +23,8 @@ export interface SiteProfitOrder {
   id: string;
   createdAt: string;
   status: string;
+  source?: string | null;
+  paymentMethod?: string | null;
   revenue: number;
   cost: number;
   profit: number;
@@ -25,7 +32,10 @@ export interface SiteProfitOrder {
   items: SiteProfitItem[];
 }
 
+
+const ALL_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
 const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
+const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -33,11 +43,15 @@ export function SiteProfitReport({
   rangeStart,
   rangeEnd,
   onTotals,
+  channel = 'site',
 }: {
   rangeStart?: Date;
   rangeEnd?: Date;
   onTotals?: (totals: { revenue: number; cost: number; profit: number }) => void;
+  channel?: 'site' | 'pdv' | 'all';
 }) {
+  const isPdv = channel === 'pdv';
+  const isAll = channel === 'all';
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<SiteProfitOrder[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -56,60 +70,69 @@ export function SiteProfitReport({
           rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate(), 23, 59, 59,
         ).toISOString();
 
-        const { data: ordersData, error } = await supabase
-          .from('orders')
-          .select('id, created_at, status, total_amount, shipping_cost, source')
-          .neq('source', 'pdv')
-          .in('status', SITE_FINALIZED)
-          .gte('created_at', startISO)
-          .lte('created_at', endISO)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
+        const PAGE = 1000;
+        const ordersData: any[] = [];
+        for (let from = 0; ; from += PAGE) {
+          let query = supabase
+            .from('orders')
+            .select('id, created_at, status, total_amount, shipping_cost, source, payment_method');
+          if (!isAll) query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
 
-        const ids = (ordersData || []).map((o) => o.id);
-        const items: any[] = [];
-        for (let i = 0; i < ids.length; i += 200) {
-          const chunk = ids.slice(i, i + 200);
-          if (chunk.length === 0) break;
-          const { data } = await supabase
-            .from('order_items')
-            .select('order_id, quantity, price_at_purchase, product_id, variation_id')
-            .in('order_id', chunk);
-          if (data) items.push(...data);
+          const { data, error } = await query
+            .in('status', (isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
+            .gte('created_at', startISO)
+            .lte('created_at', endISO)
+            .order('created_at', { ascending: false })
+            .range(from, from + PAGE - 1);
+          if (error) throw error;
+          ordersData.push(...(data || []));
+          if (!data || data.length < PAGE) break;
         }
 
-        const productCostMap = new Map<string, number>();
-        const variationCostMap = new Map<string, number>();
-        const productNames = new Map<string, string>();
-        const variationNames = new Map<string, string>();
+        const ids = ordersData.map((o) => o.id);
+        const items: any[] = [];
+        for (let i = 0; i < ids.length; i += 100) {
+          const chunk = ids.slice(i, i + 100);
+          if (chunk.length === 0) break;
+          for (let from = 0; ; from += PAGE) {
+            const { data } = await supabase
+              .from('order_items')
+              .select('order_id, quantity, price_at_purchase, product_id, variation_id')
+              .in('order_id', chunk)
+              .range(from, from + PAGE - 1);
+            if (data) items.push(...data);
+            if (!data || data.length < PAGE) break;
+          }
+        }
+
+        const productMap = new Map<string, any>();
+        const variationMap = new Map<string, any>();
         if (items.length > 0) {
           const [prodRes, varRes] = await Promise.all([
             supabase.rpc('get_products_admin'),
             supabase.rpc('get_product_variations_admin'),
           ]);
-          (prodRes.data || []).forEach((p: any) => {
-            productCostMap.set(p.id, Number(p.cost ?? 0));
-            productNames.set(p.id, p.name ?? '');
-          });
-          (varRes.data || []).forEach((v: any) => {
-            variationCostMap.set(v.id, Number(v.cost ?? 0));
-            variationNames.set(v.id, v.name ?? '');
-          });
+          (prodRes.data || []).forEach((p: any) => productMap.set(p.id, p));
+          (varRes.data || []).forEach((v: any) => variationMap.set(v.id, v));
         }
 
         const byOrder = new Map<string, SiteProfitItem[]>();
         items.forEach((it: any) => {
           const qty = Number(it.quantity || 0);
           const unitPrice = Number(it.price_at_purchase || 0);
-          const variationCost = it.variation_id ? variationCostMap.get(it.variation_id) : undefined;
-          const unitCost = Number(
-            variationCost != null && variationCost > 0
-              ? variationCost
-              : productCostMap.get(it.product_id) || 0,
-          );
-          const name = it.variation_id && variationNames.has(it.variation_id)
-            ? `${productNames.get(it.product_id) || 'Produto'} — ${variationNames.get(it.variation_id) || ''}`
-            : productNames.get(it.product_id) || 'Produto';
+          const variationInfo = it.variation_id ? variationMap.get(it.variation_id) : undefined;
+          const productInfo = productMap.get(it.product_id);
+          const useVariation = variationInfo != null && Number(variationInfo.cost ?? 0) > 0;
+          const rawCost = Number(useVariation ? variationInfo.cost : (productInfo?.cost ?? 0));
+          const src = useVariation ? variationInfo : productInfo;
+          const freightPct = Number(src?.freight_pct ?? productInfo?.freight_pct ?? 0);
+          const opCostPct = Number(src?.op_cost_pct ?? productInfo?.op_cost_pct ?? 0);
+          // Custo total = custo + frete + custos operacionais (mesma base do cadastro)
+          const unitCost = calcBaseCost(rawCost, freightPct, opCostPct);
+
+          const name = it.variation_id && variationInfo?.name
+            ? `${productInfo?.name || 'Produto'} — ${variationInfo.name}`
+            : productInfo?.name || 'Produto';
           const revenue = unitPrice * qty;
           const cost = unitCost * qty;
           const list = byOrder.get(it.order_id) || [];
@@ -127,7 +150,10 @@ export function SiteProfitReport({
             id: o.id,
             createdAt: o.created_at,
             status: o.status,
+            source: o.source ?? null,
+            paymentMethod: o.payment_method ?? null,
             revenue,
+
             cost,
             profit,
             margin: revenue > 0 ? (profit / revenue) * 100 : 0,
@@ -150,7 +176,7 @@ export function SiteProfitReport({
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
+  }, [rangeStart?.getTime(), rangeEnd?.getTime(), isPdv, isAll]);
 
   const totals = useMemo(() => ({
     revenue: orders.reduce((s, o) => s + o.revenue, 0),
@@ -158,10 +184,38 @@ export function SiteProfitReport({
     profit: orders.reduce((s, o) => s + o.profit, 0),
   }), [orders]);
 
+  const averages = useMemo(() => {
+    const n = orders.length || 1;
+    const revenue = totals.revenue / n;
+    const cost = totals.cost / n;
+    const profit = totals.profit / n;
+    const margin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
+    return { revenue, cost, profit, margin };
+  }, [orders.length, totals]);
+
+  const chartData = useMemo(() => {
+    const byDay = new Map<string, { revenue: number; cost: number; profit: number }>();
+    orders.forEach((o) => {
+      const d = new Date(o.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const cur = byDay.get(key) || { revenue: 0, cost: 0, profit: 0 };
+      cur.revenue += o.revenue;
+      cur.cost += o.cost;
+      cur.profit += o.profit;
+      byDay.set(key, cur);
+    });
+    return Array.from(byDay.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, v]) => {
+        const [y, m, d] = key.split('-');
+        return { date: `${d}/${m}/${y}`, ...v };
+      });
+  }, [orders]);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Lucro por Venda — Site</CardTitle>
+        <CardTitle>Lucro por Venda — {isAll ? 'Vendas Gerais' : isPdv ? 'PDV' : 'Site'}</CardTitle>
         <CardDescription>
           {loading
             ? 'Carregando vendas...'
@@ -173,8 +227,69 @@ export function SiteProfitReport({
         {loading ? (
           <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Nenhuma venda do site no período.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma venda {isAll ? '' : isPdv ? 'do PDV' : 'do site'} no período.
+          </p>
         ) : (
+          <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Receita total</p>
+              <p className="text-lg font-semibold">{fmt(totals.revenue)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Custo total</p>
+              <p className="text-lg font-semibold">{fmt(totals.cost)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Lucro total</p>
+              <p className="text-lg font-semibold text-primary">{fmt(totals.profit)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Margem</p>
+              <p className="text-lg font-semibold">{totals.revenue > 0 ? ((totals.profit / totals.revenue) * 100).toFixed(1) : '0.0'}%</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Ticket médio</p>
+              <p className="text-lg font-semibold">{fmt(averages.revenue)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Custo médio</p>
+              <p className="text-lg font-semibold">{fmt(averages.cost)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Lucro médio</p>
+              <p className="text-lg font-semibold text-primary">{fmt(averages.profit)}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Margem média</p>
+              <p className="text-lg font-semibold">{averages.margin.toFixed(1)}%</p>
+            </div>
+          </div>
+
+
+          {chartData.length > 1 && (
+            <div className="rounded-lg border p-3 mb-4">
+              <p className="text-sm font-medium mb-2">
+                Receita e Lucro Diário — {isAll ? 'Vendas Gerais' : isPdv ? 'PDV' : 'Site'}
+              </p>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(v: number) => fmt(Number(v))} />
+                  <Legend />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" name="Receita" strokeWidth={2} />
+                  <Line type="monotone" dataKey="profit" stroke="#10b981" name="Lucro" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -204,7 +319,16 @@ export function SiteProfitReport({
                         <td className="py-2 font-mono text-xs">
                           #{o.id.slice(0, 8)}
                           <Badge variant="outline" className="ml-2 text-[10px]">{o.status}</Badge>
+                          {isAll && (
+                            <Badge variant="outline" className="ml-1 text-[10px]">
+                              {o.source === 'pdv' ? 'PDV' : 'Site'}
+                            </Badge>
+                          )}
+                          {(isPdv || isAll) && o.paymentMethod && (
+                            <Badge variant="secondary" className="ml-1 text-[10px]">{o.paymentMethod}</Badge>
+                          )}
                         </td>
+
                         <td className="py-2 whitespace-nowrap">
                           {new Date(o.createdAt).toLocaleDateString('pt-BR')}
                         </td>
@@ -260,6 +384,8 @@ export function SiteProfitReport({
               </tbody>
             </table>
           </div>
+          </>
+
         )}
       </CardContent>
     </Card>

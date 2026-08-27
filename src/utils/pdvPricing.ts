@@ -30,6 +30,9 @@ export interface PdvPricingFields {
   // Promoções do catálogo — refletidas no PDV
   on_sale?: boolean | null;
   sale_price?: number | null;
+  // Preço promocional exclusivo do PDV (usado quando a promo vale para os dois canais
+  // mas com valores diferentes). Quando nulo, o PDV usa sale_price.
+  sale_price_pdv?: number | null;
   sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
@@ -42,8 +45,8 @@ export interface PdvPricingFields {
 export const PDV_METHOD_MARKUP: Record<PdvPaymentMethod, number> = {
   pix: 0,        // base
   cash: 0,       // mesmo do PIX
-  debit: 0.02,   // PIX + 2%
-  credit: 0.03,  // PIX + 3%
+  debit: 0.03,   // PIX + 3%
+  credit: 0.04,  // PIX + 4%
 };
 
 /**
@@ -73,22 +76,43 @@ export function isExemptFromMarkup(p: PdvPricingFields): boolean {
   return EXEMPT_KEYWORDS.some((kw) => name.includes(normalize(kw)));
 }
 
+/** Preço "de" no PDV (price_pdv quando definido, senão price do site). */
+function pdvBaseListPrice(p: PdvPricingFields): number {
+  return p.price_pdv != null && !isNaN(Number(p.price_pdv))
+    ? Number(p.price_pdv)
+    : Number(p.price ?? 0);
+}
+
+/** Preço promocional aplicável no PDV (sale_price_pdv tem prioridade sobre sale_price). */
+export function pdvPromoPrice(p: PdvPricingFields): number | null {
+  const pdvSpecific = Number(p.sale_price_pdv ?? NaN);
+  if (isFinite(pdvSpecific) && pdvSpecific > 0) return pdvSpecific;
+  const generic = Number(p.sale_price ?? NaN);
+  if (isFinite(generic) && generic > 0) return generic;
+  return null;
+}
+
 /** Verifica se a promoção do catálogo está ativa para uso no PDV. */
 export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): boolean {
   if (!p.on_sale) return false;
   if (p.sale_channel && p.sale_channel === 'site') return false;
-  if (p.sale_price == null) return false;
-  const base = Number(p.price ?? 0);
+  const promo = pdvPromoPrice(p);
+  if (promo == null) return false;
+  const base = pdvBaseListPrice(p);
   if (base <= 0) return false;
-  if (Number(p.sale_price) >= base) return false;
+  if (promo >= base) return false;
   if (p.sale_starts_at) {
     const starts = new Date(p.sale_starts_at);
     if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
   }
-  if (p.sale_ends_at) {
+  // Toda promoção precisa de prazo final — sem prazo, não vale.
+  if (!p.sale_ends_at) return false;
+  {
     const ends = new Date(p.sale_ends_at);
-    if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
+    if (isNaN(ends.getTime())) return false;
+    if (ends.getTime() <= now.getTime()) return false;
   }
+
   if (p.sale_limit_qty != null) {
     const sold = Number(p.sale_sold_qty ?? 0);
     if (sold >= Number(p.sale_limit_qty)) return false;
@@ -96,11 +120,12 @@ export function isPdvPromoActive(p: PdvPricingFields, now: Date = new Date()): b
   return true;
 }
 
+
 /** Retorna o preço base do PDV, considerando promoção ativa primeiro. */
 export function getPdvBasePrice(p: PdvPricingFields): number {
   // Promoção ativa tem prioridade sobre price_pdv e price
   if (isPdvPromoActive(p)) {
-    return Number(p.sale_price);
+    return Number(pdvPromoPrice(p));
   }
   return p.price_pdv != null && !isNaN(Number(p.price_pdv))
     ? Number(p.price_pdv)
@@ -155,13 +180,13 @@ export function getPdvPriceForVariation(
 ): number {
   // Promoção própria da variação tem prioridade
   if (variation && isPdvPromoActive(variation)) {
-    return applyMethodMarkup(Number(variation.sale_price), method, isExemptFromMarkup(parent));
+    return applyMethodMarkup(Number(pdvPromoPrice(variation)), method, isExemptFromMarkup(parent));
   }
   // Promoção do produto pai aplicada proporcionalmente
   if (isPdvPromoActive(parent)) {
-    const baseP = Number(parent.price ?? 0);
+    const baseP = pdvBaseListPrice(parent);
     if (baseP > 0) {
-      const discount = 1 - Number(parent.sale_price) / baseP;
+      const discount = 1 - Number(pdvPromoPrice(parent)) / baseP;
       const proportionalPrice = Number(variationPrice) * (1 - discount);
       return applyMethodMarkup(proportionalPrice, method, isExemptFromMarkup(parent));
     }

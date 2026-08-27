@@ -20,6 +20,36 @@ export interface PromoFields {
   sale_sold_qty?: number | null;
   sale_channel?: string | null;
   price?: number | null;
+  min_sale_price?: number | null;
+}
+
+/** Valida o prazo antes de gravar uma promoção. Promoções sempre devem expirar. */
+export function validatePromotionPeriod(
+  startsAt: string,
+  endsAt: string,
+  now: Date = new Date(),
+): string | null {
+  if (!endsAt) return 'Informe a data final da promoção.';
+
+  const end = new Date(endsAt);
+  if (isNaN(end.getTime())) return 'A data final da promoção é inválida.';
+
+  const start = startsAt ? new Date(startsAt) : now;
+  if (isNaN(start.getTime())) return 'A data inicial da promoção é inválida.';
+  if (end.getTime() <= start.getTime()) return 'A data final deve ser posterior à data inicial.';
+
+  return null;
+}
+
+/**
+ * Preço base "de" exibido no site: min_sale_price quando definido,
+ * senão o price cadastrado. A promoção é comparada contra esse valor
+ * porque é o preço que o cliente vê riscado.
+ */
+export function promoBasePrice(item: PromoFields): number {
+  const min = Number(item?.min_sale_price ?? 0);
+  if (min > 0) return min;
+  return Number(item?.price ?? 0);
 }
 
 /** Retorna true se a promo está válida (ativa, no prazo e com estoque promocional). */
@@ -29,23 +59,28 @@ export function isPromoActive(item: PromoFields, now: Date = new Date()): boolea
   if (item.sale_price == null) return false;
   // Canal da promoção: 'site' | 'pdv' | 'both'. No site, ignora 'pdv'.
   if (item.sale_channel && item.sale_channel === 'pdv') return false;
-  const base = Number(item.price ?? 0);
+  const base = promoBasePrice(item);
   if (base <= 0) return false;
   if (Number(item.sale_price) >= base) return false;
   if (item.sale_starts_at) {
     const starts = new Date(item.sale_starts_at);
     if (!isNaN(starts.getTime()) && starts.getTime() > now.getTime()) return false;
   }
-  if (item.sale_ends_at) {
+  // Toda promoção precisa de prazo final definido — sem prazo, não é considerada ativa.
+  if (!item.sale_ends_at) return false;
+  {
     const ends = new Date(item.sale_ends_at);
-    if (!isNaN(ends.getTime()) && ends.getTime() <= now.getTime()) return false;
+    if (isNaN(ends.getTime())) return false;
+    if (ends.getTime() <= now.getTime()) return false;
   }
+
   if (item.sale_limit_qty != null) {
     const sold = Number(item.sale_sold_qty ?? 0);
     if (sold >= Number(item.sale_limit_qty)) return false;
   }
   return true;
 }
+
 
 /** Retorna true se a promo está agendada para o futuro (ainda não começou). */
 export function isPromoScheduled(item: PromoFields, now: Date = new Date()): boolean {
@@ -90,7 +125,7 @@ export function effectiveVariationPrice(
 
   const vBase = Number(variation.price ?? 0);
   if (product && isPromoActive(product)) {
-    const baseP = Number(product.price ?? 0);
+    const baseP = promoBasePrice(product);
     if (baseP > 0) {
       const discount = 1 - Number(product.sale_price) / baseP;
       return vBase * (1 - discount);

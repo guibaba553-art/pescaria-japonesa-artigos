@@ -89,6 +89,7 @@ interface ProductVariation {
   // Promoções do catálogo
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_price_pdv?: number | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
@@ -115,6 +116,7 @@ interface Product {
   // Promoções do catálogo
   on_sale?: boolean | null;
   sale_price?: number | null;
+  sale_price_pdv?: number | null;
   sale_ends_at?: string | null;
   sale_limit_qty?: number | null;
   sale_sold_qty?: number | null;
@@ -1135,7 +1137,7 @@ export default function PDV() {
         const [{ data: prod }, { data: vars }] = await Promise.all([
           supabase
             .from('products')
-            .select('id, name, price, stock, image_url, category, sku, minimum_quantity, sold_by_weight')
+            .select('*')
             .eq('id', productId)
             .maybeSingle(),
           (supabase.rpc as any)('get_product_variations_by_product', { p_product_id: productId }),
@@ -1373,6 +1375,7 @@ export default function PDV() {
           price_pdv_credit: (item.variation as any).price_pdv_credit ?? null,
           on_sale: (item.variation as any).on_sale ?? item.product.on_sale ?? null,
           sale_price: (item.variation as any).sale_price ?? item.product.sale_price ?? null,
+          sale_price_pdv: (item.variation as any).sale_price_pdv ?? (item.product as any).sale_price_pdv ?? null,
           sale_ends_at: (item.variation as any).sale_ends_at ?? item.product.sale_ends_at ?? null,
           sale_limit_qty: (item.variation as any).sale_limit_qty ?? item.product.sale_limit_qty ?? null,
           sale_sold_qty: (item.variation as any).sale_sold_qty ?? item.product.sale_sold_qty ?? null,
@@ -2994,6 +2997,7 @@ export default function PDV() {
                           price_pdv_credit: (variation as any).price_pdv_credit ?? null,
                           on_sale: (variation as any).on_sale ?? selectedProduct.on_sale ?? null,
                           sale_price: (variation as any).sale_price ?? selectedProduct.sale_price ?? null,
+                          sale_price_pdv: (variation as any).sale_price_pdv ?? (selectedProduct as any).sale_price_pdv ?? null,
                           sale_ends_at: (variation as any).sale_ends_at ?? selectedProduct.sale_ends_at ?? null,
                           sale_limit_qty: (variation as any).sale_limit_qty ?? selectedProduct.sale_limit_qty ?? null,
                           sale_sold_qty: (variation as any).sale_sold_qty ?? selectedProduct.sale_sold_qty ?? null,

@@ -65,23 +65,25 @@ const FlashDealsCountdown = () => {
       // 1) Produtos com promoção no próprio produto
       const { data: directData } = await supabase
         .from("products")
-        .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
+.select(`id, name, description, short_description, price, sale_price, on_sale, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
         .eq("on_sale", true)
         .neq("sale_channel", "pdv")
         .gt("stock", 0)
         .not("sale_price", "is", null)
         .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
+        .or(`sale_starts_at.is.null,sale_starts_at.lte.${nowIso}`)
         .order("sale_ends_at", { ascending: true, nullsFirst: false })
         .limit(12);
 
       // 2) IDs de produtos cujas variações estão em promoção
       const { data: promoVars } = await supabase
         .from("product_variations")
-        .select("product_id, sale_ends_at, sale_channel")
+        .select("product_id, sale_ends_at, sale_starts_at, sale_channel")
         .eq("on_sale", true)
         .neq("sale_channel", "pdv")
         .not("sale_price", "is", null)
-        .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`);
+        .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
+        .or(`sale_starts_at.is.null,sale_starts_at.lte.${nowIso}`);
 
       const varProductIds = Array.from(
         new Set((promoVars || []).map((v: any) => v.product_id).filter(Boolean))
@@ -91,7 +93,7 @@ const FlashDealsCountdown = () => {
       if (varProductIds.length > 0) {
         const { data: vpData } = await supabase
           .from("products")
-          .select(`id, name, description, short_description, price, sale_price, on_sale, sale_ends_at, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
+.select(`id, name, description, short_description, price, sale_price, on_sale, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel, image_url, images, stock, category, sku, minimum_quantity, sold_by_weight, rating, featured, min_sale_price, variations:product_variations(${PUBLIC_VARIATION_COLUMNS})`)
           .in("id", varProductIds)
           .eq("pdv_only", false)
           .gt("stock", 0)

@@ -237,6 +237,17 @@ export default function Dashboard() {
     setSiteProfit(t.profit);
   }, []);
 
+  const [pdvProfit, setPdvProfit] = useState<number | null>(null);
+  const handlePdvTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setPdvProfit(t.profit);
+  }, []);
+
+  const [allProfit, setAllProfit] = useState<number | null>(null);
+  const handleAllTotals = useCallback((t: { revenue: number; cost: number; profit: number }) => {
+    setAllProfit(t.profit);
+  }, []);
+
+
   useEffect(() => {
     if (!loading && !canView) navigate('/admin');
   }, [canView, loading, navigate]);
@@ -1163,6 +1174,9 @@ export default function Dashboard() {
             <TabsTrigger value="site" className="gap-2">
               <Globe className="h-4 w-4" /> Site
             </TabsTrigger>
+            <TabsTrigger value="vendas-gerais" className="gap-2">
+              <DollarSign className="h-4 w-4" /> Vendas Gerais
+            </TabsTrigger>
             <TabsTrigger value="traffic">Tráfego do Site</TabsTrigger>
           </TabsList>
 
@@ -1556,8 +1570,18 @@ export default function Dashboard() {
               dataKey="pdv"
               orderKey="pdvOrders"
               top={topPdv}
+              profit={pdvProfit}
             />
+            <div className="mt-6">
+              <SiteProfitReport
+                channel="pdv"
+                rangeStart={range.from}
+                rangeEnd={range.to}
+                onTotals={handlePdvTotals}
+              />
+            </div>
           </TabsContent>
+
 
           {/* ============ SITE ============ */}
           <TabsContent value="site">
@@ -1574,6 +1598,60 @@ export default function Dashboard() {
             <div className="mt-6">
               <SiteProfitReport rangeStart={range.from} rangeEnd={range.to} onTotals={handleSiteTotals} />
             </div>
+          </TabsContent>
+
+          {/* ============ VENDAS GERAIS ============ */}
+          <TabsContent value="vendas-gerais" className="space-y-6">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold">Vendas Gerais</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Receita Total"
+                value={formatBRL(totalRevenue)}
+                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Pedidos"
+                value={String(totalOrders)}
+                icon={<ShoppingCart className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Ticket Médio"
+                value={formatBRL(overallAvgTicket)}
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+              <StatCard
+                title="Lucro Total"
+                value={formatBRL(allProfit ?? 0)}
+                hint={totalRevenue > 0 ? `Margem ${((allProfit ?? 0) / totalRevenue * 100).toFixed(1)}%` : undefined}
+                icon={<TrendingUp className="h-4 w-4 text-emerald-600" />}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Receita Diária — Vendas Gerais ({rangeLabel})</CardTitle>
+                <CardDescription>Comparativo PDV vs Site ao longo do período</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    <Legend />
+                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} />
+                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <SiteProfitReport channel="all" rangeStart={range.from} rangeEnd={range.to} onTotals={handleAllTotals} />
           </TabsContent>
 
           {/* ============ TRÁFEGO ============ */}
