@@ -122,7 +122,10 @@ Run (SQL Editor do dashboard, ou `supabase db push` com acesso ao projeto):
 2. Depois dela, **uma única vez**:
 
 ```sql
-SELECT vault.update_secret('functions_base_url', 'https://qiwcngzbpxddowyqaulm.supabase.co');
+SELECT vault.update_secret(
+  (SELECT id FROM vault.secrets WHERE name = 'functions_base_url'),
+  'https://qiwcngzbpxddowyqaulm.supabase.co'
+);
 ```
 
 Expected: sem erros; o update_secret não retorna erro mesmo se o secret já existir.

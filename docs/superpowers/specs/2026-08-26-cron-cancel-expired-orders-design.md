@@ -70,7 +70,10 @@ se não for atualizado, o job único recriaria com URL local (mesmo problema).
 Portanto, **uma única vez**, após aplicar a migração:
 
 ```sql
-SELECT vault.update_secret('functions_base_url', 'https://qiwcngzbpxddowyqaulm.supabase.co');
+SELECT vault.update_secret(
+  (SELECT id FROM vault.secrets WHERE name = 'functions_base_url'),
+  'https://qiwcngzbpxddowyqaulm.supabase.co'
+);
 ```
 
 Sem isso, o job fica com a URL errada. (Nota: `cron.job_run_details` mantém o
@@ -89,7 +92,7 @@ A Edge Function `cancel-expired-orders` já aceita `x-cron-secret` igual ao env
   vault.
 - **PRD:**
   1. Rodar a migração (via CLI ou SQL Editor do dashboard).
-  2. Aplicar `vault.update_secret('functions_base_url', …)`.
+  2. Aplicar `vault.update_secret((SELECT id FROM vault.secrets WHERE name = 'functions_base_url'), …)`.
   3. `SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'cancel-expired-orders%'`
      → exatamente 1 linha, `active = true`.
   4. Em ~5-10 min, conferir `cron.job_run_details` (status `success`) e/ou os
