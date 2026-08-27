@@ -8,8 +8,29 @@ export const TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
 let _jwt: string | null = null;
 const _employeeJwts: Map<string, { jwt: string; id: string }> = new Map();
 
+// As EFs de pagamento exigem phone_confirmed_at (guarda server-side). O usuário
+// de teste (admin@pescaria.com / TEST_USER_ID) nasce sem telefone confirmado —
+// este helper confirma via Admin API (idempotente) para os testes fluírem.
+export async function ensureTestUserPhoneConfirmed(): Promise<void> {
+  const headers = {
+    "apikey": ANON_KEY,
+    "Authorization": `Bearer ${SERVICE_KEY}`,
+    "Content-Type": "application/json",
+  };
+  const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${TEST_USER_ID}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ phone: "+5511999999999", phone_confirm: true }),
+  });
+  const bodyText = await resp.text();
+  if (!resp.ok) {
+    console.error("ensureTestUserPhoneConfirmed falhou:", resp.status, bodyText);
+  }
+}
+
 export async function getJwt(): Promise<string> {
   if (_jwt) return _jwt;
+  await ensureTestUserPhoneConfirmed();
   const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { "apikey": ANON_KEY, "Content-Type": "application/json" },

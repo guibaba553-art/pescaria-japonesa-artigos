@@ -101,6 +101,14 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
+    // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+    if (!user.phone_confirmed_at) {
+      return new Response(
+        JSON.stringify({ error: 'PHONE_NOT_CONFIRMED', success: false }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Authenticated user:', user.id);
 
     const { data: payProfile } = await supabase

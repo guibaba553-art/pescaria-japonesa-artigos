@@ -75,6 +75,15 @@ export async function processAsaasCreditCardPayment(
     );
   }
 
+  // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+  // Vale para create-payment-asaas E retry-payment-asaas (handler compartilhado).
+  if (!user.phone_confirmed_at) {
+    return new Response(
+      JSON.stringify({ error: 'PHONE_NOT_CONFIRMED' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
   // ── Parse and validate body ─────────────────────────────────────────────
   const {
     orderId,

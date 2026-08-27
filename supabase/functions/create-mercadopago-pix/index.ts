@@ -54,6 +54,17 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
+    // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+    if (!user.phone_confirmed_at) {
+      return new Response(
+        JSON.stringify({ error: "PHONE_NOT_CONFIRMED" }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     // ── Parse request body ──────────────────────────────────────────────────
     const { orderId } = await req.json();
 

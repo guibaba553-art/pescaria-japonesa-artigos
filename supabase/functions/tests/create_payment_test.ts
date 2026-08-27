@@ -83,6 +83,25 @@ function callAsSessaoMockada(body: Record<string, unknown>): Promise<Response> {
 
 const itemPadrao = [{ id: PRODUTO_ID, name: "Vara de Pesca Teste", quantity: 1, price: 49.9 }];
 
+Deno.test("telefone não confirmado → 403 PHONE_NOT_CONFIRMED (guarda server-side)", async () => {
+  mockInternalFn((url) => {
+    if (url.includes("/auth/v1/user")) {
+      return { status: 200, body: { ...usuarioSemEmail(), phone_confirmed_at: null } };
+    }
+    return null;
+  });
+  const r = await callAsSessaoMockada({
+    amount: 49.9,
+    paymentMethod: "pix",
+    items: itemPadrao,
+    userName: "Cliente WhatsApp",
+    userCpf: CPF_VALIDO,
+  });
+  mockInternalFn(null);
+  assertEquals(r.status, 403);
+  assertEquals((await r.json()).error, "PHONE_NOT_CONFIRMED");
+});
+
 Deno.test("PIX sem userEmail usa placeholder server-side no payer.email do MP", async () => {
   await limparRateLimit();
   mockSessaoEProdutos();

@@ -140,6 +140,19 @@ function capturarCustomerCreate(fn: (body: Record<string, unknown> | null) => vo
   });
 }
 
+Deno.test("telefone não confirmado → 403 PHONE_NOT_CONFIRMED (guarda server-side)", async () => {
+  mockInternalFn((url) => {
+    if (url.includes("/auth/v1/user")) {
+      return { status: 200, body: { ...usuarioSemEmail(), phone_confirmed_at: null } };
+    }
+    return null;
+  });
+  const r = await callAs("mock-jwt-sem-phone", { orderId: crypto.randomUUID() });
+  mockInternalFn(null);
+  assertEquals(r.status, 403);
+  assertEquals((await r.json()).error, "PHONE_NOT_CONFIRMED");
+});
+
 Deno.test("usuário sem e-mail: customer NÃO envia chave email (correção string vazia)", async () => {
   await withAsaasCustomerIdResetado(async () => {
     const oid = await createOrder();

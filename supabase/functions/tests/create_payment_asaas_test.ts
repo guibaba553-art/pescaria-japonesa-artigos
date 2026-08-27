@@ -246,6 +246,25 @@ Deno.test("cartão recusado retorna attemptsRemaining", async () => {
 // GoTrue local não permite remover o e-mail do usuário; mockamos apenas a
 // fronteira GoTrue (mesmo padrão de tokenize_card_test.ts) — DB real.
 
+Deno.test("telefone não confirmado → 403 PHONE_NOT_CONFIRMED (guarda server-side)", async () => {
+  mockInternalFn((url) => {
+    if (url.includes("/auth/v1/user")) {
+      return { status: 200, body: { ...usuarioSemEmail(), phone_confirmed_at: null } };
+    }
+    return null;
+  });
+  const r = await call({
+    orderId: crypto.randomUUID(),
+    installmentCount: 1,
+    remoteIp: "127.0.0.1",
+    customerData: { name: "T", cpfCnpj: "123", phone: "11" },
+    creditCardToken: "x",
+  });
+  mockInternalFn(null);
+  assertEquals(r.status, 403);
+  assertEquals((await r.json()).error, "PHONE_NOT_CONFIRMED");
+});
+
 function usuarioSemEmail(): Record<string, unknown> {
   return {
     id: TEST_USER_ID,
