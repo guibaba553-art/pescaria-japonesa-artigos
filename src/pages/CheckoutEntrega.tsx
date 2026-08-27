@@ -770,7 +770,11 @@ export default function CheckoutEntrega() {
 
         const cleanContactEmail = contactEmail.trim();
         if (cleanContactEmail) {
-          await supabase.from('profiles').update({ card_contact_email: cleanContactEmail }).eq('id', user!.id);
+          try {
+            await supabase.from('profiles').update({ card_contact_email: cleanContactEmail }).eq('id', user!.id);
+          } catch (err) {
+            console.warn('Falha ao persistir card_contact_email (não-bloqueante):', err);
+          }
         }
 
         setCardLoading(true);

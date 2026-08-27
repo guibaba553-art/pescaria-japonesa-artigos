@@ -488,4 +488,42 @@ describe('CheckoutEntrega — e-mail de contato do cartão (antifraude Asaas)', 
     expect(capturedProfilesUpdate).toEqual({ card_contact_email: 'contato@email.com' });
     expect(callLog.indexOf('profiles.update')).toBeLessThan(callLog.indexOf('invoke:create-payment-asaas'));
   });
+
+  it('falha de rede ao persistir card_contact_email não bloqueia o pagamento', async () => {
+    mockUser.email = null;
+    const chain = mockFrom('profiles');
+    chain.update = vi.fn().mockImplementation(() => {
+      if (currentFromTable === 'profiles') {
+        return Promise.reject(new Error('Network error'));
+      }
+      return chain;
+    });
+    const invokeSpy = vi.mocked(supabase.functions.invoke).mockResolvedValue({
+      data: { success: true, paymentStatus: 'PENDING' },
+      error: null,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ip: '127.0.0.1' }) }));
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/E-mail \(opcional/), {
+      target: { value: 'contato@email.com' },
+    });
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(invokeSpy).toHaveBeenCalled();
+    });
+    expect(invokeSpy).toHaveBeenCalledWith('create-payment-asaas', expect.anything());
+  });
 });
