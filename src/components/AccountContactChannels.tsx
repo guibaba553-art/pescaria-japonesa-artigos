@@ -32,11 +32,23 @@ export function AccountContactChannels() {
 
   const handleChangePhone = async () => {
     if (!isValidBrMobile(newPhone)) return toast.error('Telefone inválido');
+
+    // Reautenticação antes da troca (spec 5.3). Contas criadas por OTP puro
+    // não têm senha — se signInWithPassword falhar, cai para OTP no telefone
+    // atual (updateUser mesmo phone → phone_change → verify) como reauth.
     const credentials = confirmedEmail
       ? { email: confirmedEmail, password }
       : { phone: toE164(user.phone ?? ''), password };
     const { error: pwError } = await supabase.auth.signInWithPassword(credentials);
-    if (pwError) return toast.error('Senha incorreta');
+    if (pwError) {
+      const currentPhone = user.phone ?? '';
+      const { error: otpError } = await sendPhoneOtp(currentPhone);
+      if (otpError) return toast.error('Erro ao enviar código de confirmação: ' + otpError.message);
+      const code = window.prompt('Digite o código enviado para o seu telefone atual:');
+      if (!code) return;
+      const { error: verifyError } = await verifyPhoneOtp(currentPhone, code);
+      if (verifyError) return toast.error('Código inválido. A troca não foi concluída.');
+    }
 
     const { error } = await sendPhoneOtp(newPhone);
     if (!error) {

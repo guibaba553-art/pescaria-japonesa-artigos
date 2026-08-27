@@ -208,7 +208,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
   });
 
-  it('senha incorreta não envia OTP', async () => {
+  it('senha incorreta cai para reauth por OTP no telefone atual e a troca prossegue', async () => {
     mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
@@ -221,8 +221,47 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
     await waitFor(() => {
-      expect(mocks.toast.error).toHaveBeenCalledWith('Senha incorreta');
-      expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
+      // reauth via OTP no telefone atual
+      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
+      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
+      // e a troca acontece com OTP no novo número
+      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('11988887777');
+      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('11988887777', '123456');
     });
+  });
+
+  it('conta só-telefone sem senha: reauth por OTP no telefone atual e a troca acontece', async () => {
+    mockUser.email = null;
+    mockUser.email_confirmed_at = null;
+    mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
+    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
+    render(<AccountContactChannels />);
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar telefone' }));
+    fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
+      target: { value: '11988887777' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    await waitFor(() => {
+      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
+      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
+      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('11988887777');
+    });
+  });
+
+  it('reauth por OTP com código inválido bloqueia a troca', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
+    mocks.verifyPhoneOtp.mockResolvedValue({ error: { message: 'código inválido' } });
+    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
+    render(<AccountContactChannels />);
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar telefone' }));
+    fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
+      target: { value: '11988887777' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    await waitFor(() => {
+      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
+    });
+    // NÃO prossegue para o OTP do novo número
+    expect(mocks.sendPhoneOtp).not.toHaveBeenCalledWith('11988887777');
   });
 });
