@@ -56,6 +56,7 @@ const mockFrom = vi.fn();
 const mockRpc = vi.fn();
 let currentFromTable = '';
 let capturedOrdersInsert: { payment_method?: string; payment_gateway?: string; [key: string]: unknown } | null = null;
+let capturedProfilesUpdate: { card_contact_email?: string } | null = null;
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -189,8 +190,13 @@ beforeEach(() => {
     if (currentFromTable === 'orders') capturedOrdersInsert = payload;
     return mockChain;
   });
+  mockChain.update = vi.fn().mockImplementation((payload: { card_contact_email?: string }) => {
+    if (currentFromTable === 'profiles') capturedProfilesUpdate = payload;
+    return mockChain;
+  });
   mockChain.single = vi.fn().mockResolvedValue({ data: { id: 'order-1' }, error: null });
   capturedOrdersInsert = null;
+  capturedProfilesUpdate = null;
   mockCartTotal = 100;
 
   // Default rpc mock — stock disponível, sem erros
@@ -207,6 +213,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  mockUser.email = 'test@test.com';
   vi.unstubAllGlobals();
 });
 
@@ -398,5 +405,87 @@ describe('CheckoutEntrega — grava forma de pagamento na criação do pedido', 
       payment_method: 'credit_card',
       payment_gateway: 'asaas',
     });
+  });
+});
+
+describe('CheckoutEntrega — e-mail de contato do cartão (antifraude Asaas)', () => {
+  it('não exibe campo de e-mail quando usuário tem email confirmado', async () => {
+    mockUser.email = 'test@test.com';
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText(/E-mail \(opcional/)).not.toBeInTheDocument();
+  });
+
+  it('exibe campo de e-mail e pré-carrega card_contact_email do perfil quando usuário não tem email', async () => {
+    mockUser.email = null;
+    mockFrom('profiles').maybeSingle.mockResolvedValue({
+      data: { card_contact_email: 'salvo@email.com' },
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText(/E-mail \(opcional/)).toHaveValue('salvo@email.com');
+  });
+
+  it('persiste card_contact_email no perfil antes do invoke de pagamento', async () => {
+    mockUser.email = null;
+    const callLog: string[] = [];
+    const chain = mockFrom('profiles');
+    chain.update = vi.fn().mockImplementation((payload: { card_contact_email?: string }) => {
+      if (currentFromTable === 'profiles') {
+        capturedProfilesUpdate = payload;
+        callLog.push('profiles.update');
+      }
+      return chain;
+    });
+    vi.mocked(supabase.functions.invoke).mockImplementation(async (fnName: string) => {
+      callLog.push(`invoke:${fnName}`);
+      return { data: { success: true, paymentStatus: 'PENDING' }, error: null };
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ip: '127.0.0.1' }) }));
+
+    render(
+      <MemoryRouter>
+        <CheckoutEntrega />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText('Cartão de Crédito'));
+    await waitFor(() => {
+      expect(screen.getByTestId('credit-card-form')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/E-mail \(opcional/), {
+      target: { value: 'contato@email.com' },
+    });
+
+    fireEvent.click(screen.getByText('Finalizar pedido'));
+
+    await waitFor(() => {
+      expect(callLog).toContain('invoke:create-payment-asaas');
+    });
+
+    expect(capturedProfilesUpdate).toEqual({ card_contact_email: 'contato@email.com' });
+    expect(callLog.indexOf('profiles.update')).toBeLessThan(callLog.indexOf('invoke:create-payment-asaas'));
   });
 });

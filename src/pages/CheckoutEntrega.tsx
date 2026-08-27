@@ -110,6 +110,7 @@ export default function CheckoutEntrega() {
   const [cardError, setCardError] = useState<string | undefined>();
   // Profile data for pre-filling card holder info
   const [profileData, setProfileData] = useState<{ name: string; email: string; cpf: string; phone: string } | null>(null);
+  const [contactEmail, setContactEmail] = useState('');
 
   const selectedAddress = typeof selectedOption === 'string' && selectedOption !== 'pickup'
     ? addresses.find((a) => a.id === selectedOption) ?? null
@@ -346,7 +347,7 @@ export default function CheckoutEntrega() {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('full_name, cpf, phone')
+      .select('full_name, cpf, phone, card_contact_email')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -357,6 +358,7 @@ export default function CheckoutEntrega() {
             cpf: data.cpf || '',
             phone: data.phone || '',
           });
+          setContactEmail(data.card_contact_email || '');
         }
       });
   }, [user]);
@@ -764,6 +766,11 @@ export default function CheckoutEntrega() {
         if (!cardData) {
           toast.error('Corrija os erros no formulário do cartão antes de continuar.');
           return;
+        }
+
+        const cleanContactEmail = contactEmail.trim();
+        if (cleanContactEmail) {
+          await supabase.from('profiles').update({ card_contact_email: cleanContactEmail }).eq('id', user!.id);
         }
 
         setCardLoading(true);
@@ -1267,6 +1274,21 @@ export default function CheckoutEntrega() {
                           is_default: a.is_default,
                         }))}
                       />
+                      {!user?.email && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label htmlFor="card-contact-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            E-mail (opcional — aumenta a aprovação do seu cartão)
+                          </Label>
+                          <Input
+                            id="card-contact-email"
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={contactEmail}
+                            onChange={(e) => setContactEmail(e.target.value)}
+                            className="h-11 rounded-xl"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
