@@ -16,6 +16,7 @@ import { CreditCardForm, type CreditCardFormHandle } from '@/components/CreditCa
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MyAddresses } from '@/components/MyAddresses';
 import { MyProfile } from '@/components/MyProfile';
+import { AccountContactChannels } from '@/components/AccountContactChannels';
 import { MyPaymentMethods } from '@/components/MyPaymentMethods';
 import { OrderTrackingTimeline } from '@/components/OrderTrackingTimeline';
 import { RefundReceiptDialog, generateRefundPdf } from '@/components/RefundReceiptDialog';
@@ -597,6 +598,7 @@ export default function Account() {
       </div>
 
       <div className="max-w-4xl mx-auto p-6 -mt-4 space-y-6">
+        <AccountContactChannels />
         <Tabs defaultValue="pedidos" className="w-full">
           <TabsList className="w-full grid grid-cols-4 h-12 rounded-full p-1">
             <TabsTrigger value="pedidos" className="rounded-full text-sm font-semibold gap-1.5">
