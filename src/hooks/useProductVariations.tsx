@@ -27,11 +27,10 @@ export function useProductVariations(productId?: string) {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('product_variations')
-        .select('*')
-        .eq('product_id', targetId)
-        .order('name', { ascending: true });
+      const { data, error } = await (supabase.rpc as any)(
+        'get_product_variations_by_product',
+        { p_product_id: targetId }
+      );
       
       if (error) {
         console.error('❌ Erro ao carregar variações:', error);
@@ -44,8 +43,8 @@ export function useProductVariations(productId?: string) {
         return;
       }
       
-      setVariations(data || []);
-      console.log(`✅ ${data?.length || 0} variações carregadas`);
+      setVariations((data as ProductVariation[]) || []);
+      console.log(`✅ ${(data as any[])?.length || 0} variações carregadas`);
     } catch (error) {
       console.error('❌ Erro inesperado ao carregar variações:', error);
       setVariations([]);
