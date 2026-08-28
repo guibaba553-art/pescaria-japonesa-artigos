@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 const mocks = {
   updateUser: vi.fn(),
@@ -17,6 +18,7 @@ interface MockUser {
   phone_confirmed_at: string | null;
   email: string | null;
   email_confirmed_at: string | null;
+  new_email?: string | null;
   app_metadata: { provider: string[] };
 }
 
@@ -95,12 +97,34 @@ describe('AccountContactChannels — WhatsApp / e-mail / vínculos', () => {
     expect(screen.getByText('Confirmado')).toBeInTheDocument();
   });
 
-  it('exibe input + botão Confirmar quando e-mail não confirmado', async () => {
+  it('exibe input + botão Adicionar e-mail quando não há e-mail', async () => {
     mockUser.email_confirmed_at = null;
+    mockUser.email = null;
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
     expect(screen.getByPlaceholderText('seu@email.com')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Adicionar e-mail' })).toBeInTheDocument();
+  });
+
+  it('exibe e-mail PENDENTE de verificação com botão Alterar (user.new_email)', async () => {
+    mockUser.email_confirmed_at = null;
+    mockUser.email = null;
+    mockUser.new_email = 'pendente@email.com';
+    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
+    render(<AccountContactChannels />);
+    expect(screen.getByText('pendente@email.com')).toBeInTheDocument();
+    expect(screen.getByText('Pendente de verificação')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alterar' })).toBeInTheDocument();
+  });
+
+  it('Alterar abre o input pré-preenchido com o e-mail pendente', async () => {
+    mockUser.email_confirmed_at = null;
+    mockUser.email = null;
+    mockUser.new_email = 'pendente@email.com';
+    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
+    render(<AccountContactChannels />);
+    await userEvent.click(screen.getByRole('button', { name: 'Alterar' }));
+    expect(screen.getByPlaceholderText('seu@email.com')).toHaveValue('pendente@email.com');
   });
 
   it('mostra botão Vincular conta Google quando não vinculado', async () => {
@@ -131,7 +155,7 @@ describe('AccountContactChannels — confirmação de e-mail', () => {
     fireEvent.change(screen.getByPlaceholderText('seu@email.com'), {
       target: { value: 'novo@email.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar e-mail' }));
     await waitFor(() => {
       expect(mocks.updateUser).toHaveBeenCalledWith({ email: 'novo@email.com' });
       expect(mocks.toast.success).toHaveBeenCalled();
@@ -146,7 +170,7 @@ describe('AccountContactChannels — confirmação de e-mail', () => {
     fireEvent.change(screen.getByPlaceholderText('seu@email.com'), {
       target: { value: 'novo@email.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar e-mail' }));
     await waitFor(() => {
       expect(mocks.toast.error).toHaveBeenCalled();
     });
@@ -161,7 +185,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '119' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.toast.error).toHaveBeenCalledWith('Telefone inválido');
       expect(mocks.signInWithPassword).not.toHaveBeenCalled();
@@ -175,10 +199,10 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '11988887777' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Nova senha (confirmação)'), {
+    fireEvent.change(screen.getByPlaceholderText('Senha atual (confirmação)'), {
       target: { value: '123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.signInWithPassword).toHaveBeenCalledWith({
         email: 'joao@email.com',
@@ -199,10 +223,10 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '11988887777' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Nova senha (confirmação)'), {
+    fireEvent.change(screen.getByPlaceholderText('Senha atual (confirmação)'), {
       target: { value: '123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.signInWithPassword).toHaveBeenCalledWith({
         phone: '+5511999999999',
@@ -219,10 +243,10 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '11988887777' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Nova senha (confirmação)'), {
+    fireEvent.change(screen.getByPlaceholderText('Senha atual (confirmação)'), {
       target: { value: '123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       // reauth via OTP no telefone atual
       expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
@@ -243,7 +267,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '11988887777' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
       expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
@@ -260,7 +284,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
       target: { value: '11988887777' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
     });

@@ -10,6 +10,12 @@ test_otp = { "5566992110000" = "123456" }
 
 # Teto GLOBAL de mensagens OTP por hora (GoTrue) — controle de custo.
 # Nosso hook ainda aplica caps por telefone (5/dia) e global diário (300/dia).
+[auth.email]
+# Confirmação de TROCA de e-mail (Fluxo D da spec): updateUser({email}) mantém
+# o e-mail pendente (user.new_email) até o link ser clicado. Signup continua
+# sendo por telefone — este toggle não afeta o cadastro.
+enable_confirmations = true
+
 [auth.rate_limit]
 sms_sent = 30
 
