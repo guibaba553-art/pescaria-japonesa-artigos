@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { signUpSchema } from '@/utils/validation';
 import { VALIDATION_RULES } from '@/config/constants';
+import { toE164 } from '@/lib/whatsappOtp';
 
 export interface EmployeePermissions {
   pdv: boolean;
@@ -25,8 +26,12 @@ const ADMIN_PERMS: EmployeePermissions = {
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (phone: string, password: string, fullName: string, cpf: string, _cep?: string) => Promise<{ error: any }>;
+  signIn: (identifier: string, password: string) => Promise<{ error: any }>;
+  sendPhoneOtp: (phone: string) => Promise<{ error: any }>;
+  sendRecoveryOtp: (phone: string) => Promise<{ error: any }>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: any }>;
+  linkGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
@@ -184,93 +189,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, cpf: string, phone: string, cep?: string) => {
-    // Validar todos os campos usando zod
+  const signUp = async (phone: string, password: string, fullName: string, cpf: string, _cep?: string) => {
     try {
-      signUpSchema.parse({
-        email,
-        password,
-        fullName,
-        cpf,
-        cep: cep || '',
-        phone
-      });
+      signUpSchema.parse({ password, fullName, cpf, phone });
     } catch (error: any) {
-      const firstError = error.errors?.[0];
-      toast({
-        title: "Erro de validação",
-        description: firstError?.message || "Dados inválidos",
-        variant: "destructive"
-      });
+      const firstError = error.issues?.[0];
+      toast({ title: "Erro de validação", description: firstError?.message || "Dados inválidos", variant: "destructive" });
       return { error: new Error(firstError?.message || "Dados inválidos") };
     }
-    
-    const redirectUrl = `${window.location.origin}/`;
-    
+
     const { data, error } = await supabase.auth.signUp({
-      email,
+      phone: toE164(phone),
       password,
       options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          cpf: cpf,
-          phone: phone,
-        }
-      }
+        // phone no metadata é essencial: o trigger de profiles o usa para
+        // popular profiles.phone (checkProfileCompleteness exige cpf+phone).
+        // Digitos apenas — profiles.phone tem CHECK (phone ~ '^\d{10,11}$').
+        data: { full_name: fullName, cpf, phone },
+      },
     });
 
     if (error) {
-      // Verificar se é erro de email duplicado
       if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-        toast({
-          title: "Email já cadastrado",
-          description: "Este email já possui uma conta. Por favor, faça login ou use outro email.",
-          variant: "destructive"
-        });
-        return { error: new Error('EMAIL_ALREADY_EXISTS') };
+        toast({ title: "Telefone já cadastrado", description: "Este telefone já tem conta. Faça login.", variant: "destructive" });
+        return { error: new Error('PHONE_ALREADY_EXISTS') };
       }
-      
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast({ title: "Erro ao criar conta", description: error.message, variant: "destructive" });
       return { error };
     }
 
-    // Email já registrado: Supabase retorna user sem session mas com identities vazias
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      toast({
-        title: "Email já cadastrado",
-        description: "Este email já possui uma conta. Verifique sua caixa de entrada ou faça login.",
-        variant: "destructive"
-      });
-      return { error: new Error('EMAIL_ALREADY_EXISTS') };
+      toast({ title: "Telefone já cadastrado", description: "Este telefone já possui uma conta.", variant: "destructive" });
+      return { error: new Error('PHONE_ALREADY_EXISTS') };
     }
 
-    toast({
-      title: "Conta criada!",
-      description: "Verifique seu e-mail para confirmar o cadastro antes de fazer login."
-    });
-
+    toast({ title: "Conta criada!", description: "Digite o código que enviamos no seu WhatsApp." });
     return { error: null };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
+  const signIn = async (identifier: string, password: string) => {
+    const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier.trim());
+    const credentials = isEmail
+      ? { email: identifier.trim(), password }
+      : { phone: toE164(identifier), password };
+
+    const { error } = await supabase.auth.signInWithPassword(credentials);
 
     if (error) {
-      toast({
-        title: "Erro ao fazer login",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast({ title: "Erro ao fazer login", description: error.message, variant: "destructive" });
     }
-
     return { error };
   };
 
@@ -327,12 +294,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const sendPhoneOtp = async (phone: string) => {
+    const e164 = toE164(phone);
+    // Logado (checkout/legado/troca): atualiza telefone → dispara OTP phone_change.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.auth.updateUser({ phone: e164 });
+      if (error) {
+        toast({ title: "Erro ao enviar código", description: translatePhoneError(error.message), variant: "destructive" });
+        return { error };
+      }
+      return { error: null };
+    }
+
+    // Login via WhatsApp temporariamente desativado (custo por mensagem).
+    // Cadastro continua enviando OTP via fluxo nativo do GoTrue; o caminho
+    // deslogado aqui era o único que gerava custo adicional.
+    toast({
+      title: "Login via WhatsApp indisponível",
+      description: "Use telefone+senha para entrar. Em breve novamente!",
+      variant: "destructive",
+    });
+    return { error: new Error('WHATSAPP_LOGIN_DISABLED') };
+  };
+
+  const sendRecoveryOtp = async (phone: string) => {
+    // "Esqueci minha senha" via WhatsApp — fluxo essencial (único caminho de
+    // recuperação para contas só-telefone). Custo aceito pelo negócio.
+    const { error } = await supabase.auth.signInWithOtp({ phone: toE164(phone) });
+    if (error) {
+      toast({ title: "Erro ao enviar código", description: translatePhoneError(error.message), variant: "destructive" });
+    } else {
+      toast({ title: "Código enviado!", description: "Confira o WhatsApp deste número." });
+    }
+    return { error };
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    const e164 = toE164(phone);
+    const { data: { user } } = await supabase.auth.getUser();
+    const type = user ? ('phone_change' as const) : ('sms' as const);
+    const { error } = await supabase.auth.verifyOtp({ phone: e164, token, type });
+    if (error) {
+      toast({ title: "Código inválido", description: "Confira os 6 dígitos e tente novamente.", variant: "destructive" });
+      return { error };
+    }
+    toast({ title: "Telefone confirmado!" });
+    return { error: null };
+  };
+
+  const linkGoogle = async () => {
+    const { error } = await supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: window.location.origin } });
+    if (error) toast({ title: "Não foi possível vincular o Google", description: error.message, variant: "destructive" });
+    return { error };
+  };
+
+  const translatePhoneError = (message: string): string => {
+    if (message.includes('already registered')) return 'Este telefone já tem uma conta. Faça login.';
+    if (message.includes('Phone already in use') || message.includes('exists')) return 'Telefone já vinculado a outra conta.';
+    return message;
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       session, 
       signUp, 
       signIn, 
+      sendPhoneOtp,
+      sendRecoveryOtp,
+      verifyPhoneOtp,
+      linkGoogle,
       signOut,
       resetPassword,
       updatePassword,
