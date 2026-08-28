@@ -12,7 +12,7 @@ import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
 import { ProductReviews } from '@/components/ProductReviews';
 import { ProductVariationSelector, sitePriceForVariation } from '@/components/ProductVariationSelector';
-import { PUBLIC_PRODUCT_COLUMNS } from '@/utils/productColumns';
+import { PUBLIC_PRODUCT_COLUMNS, PUBLIC_VARIATION_COLUMNS } from '@/utils/productColumns';
 import { effectiveProductPrice, isPromoActive, getProductDisplayImage, usePromoExpiryTick } from '@/utils/promoPrice';
 import { getStockMessage } from '@/utils/stockDisplay';
 
@@ -94,14 +94,14 @@ export default function ProductDetails() {
       // Carregar variações
       const { data: variationsData } = await supabase
         .from('product_variations')
-        .select('*')
+        .select(PUBLIC_VARIATION_COLUMNS)
         .eq('product_id', id);
       
       if (variationsData) {
         // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
         // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
         // via sitePriceForVariation em cada componente.
-        const vars = variationsData as ProductVariation[];
+        const vars = variationsData as unknown as ProductVariation[];
         setVariations(vars);
         const wanted = searchParams.get('variacao');
         const preselected = wanted ? vars.find((v) => v.id === wanted) : null;

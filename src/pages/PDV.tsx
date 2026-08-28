@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } fro
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import type { PostgrestError } from '@supabase/supabase-js';
+import type { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -131,6 +133,20 @@ interface CartItem {
   customPrice?: number; // Preço unitário sobrescrito manualmente no PDV
   priceInput?: string;  // String editável do input (permite digitar "12,")
 }
+
+// Linhas de variação devolvidas pelas RPCs admin/employee.
+type VariationAdminRow = Database['public']['Functions']['get_product_variations_admin']['Returns'][number];
+
+// get_product_variations_by_product não está nos tipos gerados do Supabase;
+// wrapper tipado local (sem any) com a mesma forma de retorno das demais RPCs.
+const getVariationsByProduct = (productId: string) =>
+  (supabase.rpc as unknown as (
+    fn: 'get_product_variations_by_product',
+    args: { p_product_id: string }
+  ) => Promise<{
+    data: VariationAdminRow[] | null;
+    error: PostgrestError | null;
+  }>)('get_product_variations_by_product', { p_product_id: productId });
 
 function StepIndicator({ step, label, active, complete }: { step: number; label: string; active: boolean; complete: boolean }) {
   return (
@@ -609,28 +625,15 @@ export default function PDV() {
       console.log(`[PDV] Produtos carregados: ${prods.length}`);
 
       const ids = (prods || []).map((p: any) => p.id);
-      const vars: any[] = [];
-      const CHUNK = 100;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const slice = ids.slice(i, i + CHUNK);
-        let from = 0;
-        const PAGE = 1000;
-        // paginar dentro de cada chunk
-        // (raramente passa de 1 página, mas garante robustez)
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data: page, error: vErr } = await supabase
-            .from('product_variations')
-            .select('*')
-            .in('product_id', slice)
-            .range(from, from + PAGE - 1);
-          if (vErr) { console.error('Erro variações:', vErr); break; }
-          if (!page || page.length === 0) break;
-          vars.push(...page);
-          if (page.length < PAGE) break;
-          from += PAGE;
-        }
-      }
+      // Perf: a RLS da camada 1 bloqueia select('*') em product_variations, então
+      // o chunking antigo por ids (.in('product_id', slice)) não pode ser
+      // restaurado. Não existe RPC que filtre por lista de ids (chamar a RPC por
+      // produto seria N+1). get_product_variations_admin (SECURITY DEFINER) devolve
+      // a tabela inteira em uma única chamada; o filtro por ids é feito no cliente.
+      const { data: allVars, error: vErr } = await supabase
+        .rpc('get_product_variations_admin');
+      if (vErr) { console.error('Erro variações:', vErr); }
+      const vars = (allVars || []).filter((v) => ids.includes(v.product_id));
       const byProduct = new Map<string, any[]>();
       (vars || []).forEach((v: any) => {
         if (!byProduct.has(v.product_id)) byProduct.set(v.product_id, []);
@@ -912,12 +915,9 @@ export default function PDV() {
     // banco antes de tratar como produto simples — caso contrário o item
     // seria adicionado com o preço-base e ignoraria o estoque da variação.
     try {
-      const { data: vars } = await supabase
-        .from('product_variations')
-        .select('*')
-        .eq('product_id', product.id);
+      const { data: vars } = await getVariationsByProduct(product.id);
       if (vars && vars.length > 0) {
-        const enriched = { ...product, variations: vars as any } as Product;
+        const enriched = { ...product, variations: vars } as Product;
         // Atualiza o cache local para próximos cliques
         setProducts((prev) => prev.map((p) => (p.id === product.id ? enriched : p)));
         setSelectedProduct(enriched);
@@ -1123,12 +1123,9 @@ export default function PDV() {
         // o cache local está desatualizado.
         let effective: Product = matched;
         if (!matched.variations || matched.variations.length === 0) {
-          const { data: vars } = await supabase
-            .from('product_variations')
-            .select('*')
-            .eq('product_id', matched.id);
+          const { data: vars } = await getVariationsByProduct(matched.id);
           if (vars && vars.length > 0) {
-            effective = { ...matched, variations: vars as any } as Product;
+            effective = { ...matched, variations: vars } as Product;
             setProducts((prev) => prev.map((p) => (p.id === matched.id ? effective : p)));
           }
         }
@@ -1152,16 +1149,20 @@ export default function PDV() {
       console.log('🔎 Não encontrado no cache, consultando banco...', candidates);
 
       const fetchProductWithVariations = async (productId: string) => {
-        const [{ data: prod }, { data: vars }] = await Promise.all([
-          supabase
-            .from('products')
-            .select('*')
-            .eq('id', productId)
-            .maybeSingle(),
-          supabase.from('product_variations').select('*').eq('product_id', productId),
+        // get_product_admin é SECURITY DEFINER (gate admin/employee) e devolve
+        // TODAS as colunas — o PDV precisa de cost/price_pdv/margens para
+        // precificar. select('*') direto em products falharia com a RLS da
+        // camada 1 (colunas sensíveis revogadas para authenticated).
+        const [{ data: prods, error: prodErr }, { data: vars, error: varsErr }] = await Promise.all([
+          supabase.rpc('get_product_admin', { p_id: productId }),
+          getVariationsByProduct(productId),
         ]);
+        // Não engolir erros: o try/catch externo exibe toast visível.
+        if (prodErr) throw prodErr;
+        if (varsErr) throw varsErr;
+        const prod = prods?.[0];
         if (!prod) return null;
-        return { ...prod, variations: vars || [] } as any;
+        return { ...prod, variations: vars || [] } as Product;
       };
 
       const { data: dbVars, error: varErr } = await supabase
