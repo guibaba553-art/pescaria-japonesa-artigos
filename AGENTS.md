@@ -109,3 +109,11 @@ Every implementation or bugfix starts with a failing test, then the fix. No exce
 
 - **CodeGraph** is indexed — use `codegraph_explore` before reading files for structural analysis (call paths, blast radius, dependencies)
 - **Superpowers** workflow via `.opencode/commands/` — follow `brainstorming` → `writing-plans` → `test-driven-development` → `subagent-driven-development` → `requesting-code-review` patterns
+
+## Bento (small-prs)
+
+- Nunca abra um PR sem rodar `node scripts/pr-split-verify.mjs check` (ou `bento check`).
+- Diff acima de .pr-limits.yaml bloqueia o PR: ofereça o split antes.
+- Splits em cadeia são entregues com gh-stack (`gs init/add/push/submit`).
+- Equivalência do split é obrigatória: `node scripts/pr-split-verify.mjs equivalence <base> <head> <camada1> ...`.
+
