@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
+import { OtpVerificationDialog } from "@/components/OtpVerificationDialog";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { formatPhone, sanitizeNumericInput } from "@/utils/validation";
 import { isValidBrMobile } from "@/lib/whatsappOtp";
@@ -15,6 +16,8 @@ const ForgotPassword = () => {
   const [phone, setPhone] = useState("");
   const [tab, setTab] = useState("email");
   const [loading, setLoading] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState("");
   const { resetPassword, sendRecoveryOtp } = useAuth();
   const navigate = useNavigate();
 
@@ -41,9 +44,8 @@ const ForgotPassword = () => {
 
     setLoading(false);
     if (!error) {
-      navigate(
-        `/verificar-telefone?ctx=recovery&phone=${encodeURIComponent(digits)}&redirect=${encodeURIComponent("/reset-password")}`,
-      );
+      setOtpPhone(digits);
+      setOtpDialogOpen(true);
     }
   };
 
@@ -116,6 +118,13 @@ const ForgotPassword = () => {
           </Tabs>
         </CardContent>
       </Card>
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={otpPhone}
+        alreadySent
+        onSuccess={() => navigate("/reset-password")}
+      />
     </div>
   );
 };
