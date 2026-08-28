@@ -6,9 +6,15 @@ import VerificarTelefone from '@/pages/VerificarTelefone';
 
 const mocks = vi.hoisted(() => ({
   sendPhoneOtp: vi.fn(async () => ({ error: null })),
-  verifyPhoneOtp: vi.fn(async (_p: string, t: string) => ({ error: t === '123456' ? { error: null } : { error: new Error('invalid') } })),
+  verifyPhoneOtp: vi.fn(async (_p: string, t: string) => ({ error: t === '123456' ? null : new Error('invalid') })),
+  navigate: vi.fn(),
   user: null as unknown,
 }));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mocks.navigate };
+});
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: mocks.user, sendPhoneOtp: mocks.sendPhoneOtp, verifyPhoneOtp: mocks.verifyPhoneOtp }),
@@ -106,5 +112,20 @@ describe('VerificarTelefone', () => {
 
     await userEvent.type(screen.getByLabelText(/código/i), '123456');
     await waitFor(() => expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('66992110000', '123456'));
+  });
+
+  it('reauth (troca de telefone): auto-send no mount e navega para o redirect encadeado', async () => {
+    mocks.user = { id: 'u-reauth', email: null, phone: '+5566992110000', user_metadata: {}, phone_confirmed_at: null };
+    const nextStep = '/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta';
+    renderPage(`/verificar-telefone?ctx=reauth&phone=66992110000&redirect=${encodeURIComponent(nextStep)}`);
+
+    // OTP no telefone atual é disparado automaticamente (login via reauth)
+    await waitFor(() => expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('66992110000'));
+
+    // Código válido → navega para o PRÓXIMO passo (OTP do novo número)
+    await userEvent.type(screen.getByLabelText(/código/i), '123456');
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith(nextStep, { replace: true }),
+    );
   });
 });

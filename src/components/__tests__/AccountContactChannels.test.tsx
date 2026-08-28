@@ -2,14 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return { ...actual, useNavigate: () => mocks.navigate };
+});
+
 const mocks = {
+  navigate: vi.fn(),
   updateUser: vi.fn(),
   signInWithPassword: vi.fn(),
   sendPhoneOtp: vi.fn(),
   verifyPhoneOtp: vi.fn(),
   linkGoogle: vi.fn(),
   toast: { error: vi.fn(), success: vi.fn() },
-  prompt: vi.fn(),
 };
 
 interface MockUser {
@@ -56,8 +61,6 @@ beforeEach(() => {
   mocks.signInWithPassword.mockResolvedValue({ error: null });
   mocks.sendPhoneOtp.mockResolvedValue({ error: null });
   mocks.verifyPhoneOtp.mockResolvedValue({ error: null });
-  mocks.prompt.mockReturnValue('123456');
-  vi.stubGlobal('prompt', mocks.prompt);
   mockUser = {
     id: 'user-123',
     phone: '+5511999999999',
@@ -208,9 +211,9 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
         email: 'joao@email.com',
         password: '123456',
       });
-      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('11988887777');
-      expect(mocks.prompt).toHaveBeenCalled();
-      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('11988887777', '123456');
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        '/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta',
+      );
     });
   });
 
@@ -232,6 +235,9 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
         phone: '+5511999999999',
         password: '123456',
       });
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        '/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta',
+      );
     });
   });
 
@@ -248,12 +254,11 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
-      // reauth via OTP no telefone atual
-      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
-      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
-      // e a troca acontece com OTP no novo número
-      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('11988887777');
-      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('11988887777', '123456');
+      expect(mocks.signInWithPassword).toHaveBeenCalled();
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        '/verificar-telefone?ctx=reauth&phone=11999999999&redirect=' +
+          encodeURIComponent('/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta'),
+      );
     });
   });
 
@@ -269,26 +274,11 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
-      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5511999999999');
-      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
-      expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('11988887777');
+      expect(mocks.navigate).toHaveBeenCalledWith(
+        '/verificar-telefone?ctx=reauth&phone=11999999999&redirect=' +
+          encodeURIComponent('/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta'),
+      );
     });
   });
 
-  it('reauth por OTP com código inválido bloqueia a troca', async () => {
-    mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
-    mocks.verifyPhoneOtp.mockResolvedValue({ error: { message: 'código inválido' } });
-    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
-    render(<AccountContactChannels />);
-    fireEvent.click(screen.getByRole('button', { name: 'Trocar telefone' }));
-    fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
-      target: { value: '11988887777' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
-    await waitFor(() => {
-      expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('+5511999999999', '123456');
-    });
-    // NÃO prossegue para o OTP do novo número
-    expect(mocks.sendPhoneOtp).not.toHaveBeenCalledWith('11988887777');
-  });
 });

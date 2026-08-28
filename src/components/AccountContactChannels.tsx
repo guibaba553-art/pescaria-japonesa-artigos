@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,8 @@ import { isValidBrMobile, toE164, toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
 
 export function AccountContactChannels() {
-  const { user, sendPhoneOtp, verifyPhoneOtp, linkGoogle } = useAuth();
+  const navigate = useNavigate();
+  const { user, linkGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
@@ -40,31 +42,33 @@ export function AccountContactChannels() {
 
   const handleChangePhone = async () => {
     if (!isValidBrMobile(newPhone)) return toast.error('Telefone inválido');
+    setSending(true);
 
-    // Reautenticação antes da troca (spec 5.3). Contas criadas por OTP puro
-    // não têm senha — se signInWithPassword falhar, cai para OTP no telefone
-    // atual (updateUser mesmo phone → phone_change → verify) como reauth.
+    // Próximo passo após a autorização: mesma tela de código, OTP no novo
+    // número. O redirect encadeado (aninhado em query) volta para /conta.
+    const nextStep = `/verificar-telefone?ctx=phone_change&phone=${encodeURIComponent(newPhone)}&redirect=${encodeURIComponent('/conta')}`;
+
+    // Reautenticação antes da troca (spec 5.3) — sem popups: contas sem
+    // senha (OTP puro) ou senha incorreta caem na MESMA tela de código,
+    // com OTP no telefone atual; após verificar, o redirect segue o fluxo.
     const credentials = confirmedEmail
       ? { email: confirmedEmail, password }
       : { phone: toE164(user.phone ?? ''), password };
     const { error: pwError } = await supabase.auth.signInWithPassword(credentials);
     if (pwError) {
-      const currentPhone = user.phone ?? '';
-      const { error: otpError } = await sendPhoneOtp(currentPhone);
-      if (otpError) return toast.error('Erro ao enviar código de confirmação: ' + otpError.message);
-      const code = window.prompt('Digite o código enviado para o seu telefone atual:');
-      if (!code) return;
-      const { error: verifyError } = await verifyPhoneOtp(currentPhone, code);
-      if (verifyError) return toast.error('Código inválido. A troca não foi concluída.');
+      setChangingPhone(false);
+      setSending(false);
+      const currentDigits = toLocalDigits(user.phone ?? '');
+      navigate(
+        `/verificar-telefone?ctx=reauth&phone=${encodeURIComponent(currentDigits)}&redirect=${encodeURIComponent(nextStep)}`,
+      );
+      return;
     }
 
-    const { error } = await sendPhoneOtp(newPhone);
-    if (!error) {
-      setChangingPhone(false);
-      toast.success('Código enviado para o novo número. Confirme para concluir.');
-      const code = window.prompt('Digite o código recebido no novo número:');
-      if (code) await verifyPhoneOtp(newPhone, code);
-    }
+    setChangingPhone(false);
+    setSending(false);
+    toast.success('Código enviado para o novo número. Confirme para concluir.');
+    navigate(nextStep);
   };
 
   return (
