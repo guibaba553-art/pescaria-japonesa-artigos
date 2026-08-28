@@ -6,6 +6,43 @@ import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
 import { safeVariationPrice, buildVariationPayload } from '@/lib/pricing';
 
 /**
+ * Linha retornada pela RPC get_product_variations_by_product
+ * (colunas seguras — espelha o GRANT da migration restrict_public_column_access)
+ */
+interface VariationRow {
+  id: string;
+  product_id: string;
+  name: string;
+  price: number;
+  stock: number;
+  sku: string | null;
+  created_at: string;
+  updated_at: string;
+  description: string | null;
+  image_url: string | null;
+  weight_grams: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
+  min_stock: number;
+  on_sale: boolean;
+  sale_price: number | null;
+  sale_starts_at: string | null;
+  sale_ends_at: string | null;
+  sale_limit_qty: number | null;
+  sale_sold_qty: number;
+  min_sale_price: number | null;
+  sale_channel: string;
+}
+
+type LoadVariationsRpc = (
+  fn: 'get_product_variations_by_product',
+  args: { p_product_id: string }
+) => PromiseLike<{ data: VariationRow[] | null; error: { message: string } | null }>;
+
+const loadVariationsRpc = supabase.rpc as unknown as LoadVariationsRpc;
+
+/**
  * Hook centralizado para gerenciar variações de produtos
  * Corrigido para evitar loops infinitos de carregamento
  */
@@ -27,7 +64,7 @@ export function useProductVariations(productId?: string) {
 
     try {
       setLoading(true);
-      const { data, error } = await (supabase.rpc as any)(
+      const { data, error } = await loadVariationsRpc(
         'get_product_variations_by_product',
         { p_product_id: targetId }
       );
@@ -43,8 +80,8 @@ export function useProductVariations(productId?: string) {
         return;
       }
       
-      setVariations((data as ProductVariation[]) || []);
-      console.log(`✅ ${(data as any[])?.length || 0} variações carregadas`);
+      setVariations(data ?? []);
+      console.log(`✅ ${data?.length || 0} variações carregadas`);
     } catch (error) {
       console.error('❌ Erro inesperado ao carregar variações:', error);
       setVariations([]);
