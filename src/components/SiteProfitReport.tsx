@@ -97,7 +97,7 @@ export function SiteProfitReport({
           for (let from = 0; ; from += PAGE) {
             const { data } = await supabase
               .from('order_items')
-              .select('order_id, quantity, price_at_purchase, product_id, variation_id, products(name, cost, freight_pct, op_cost_pct), product_variations(name, cost, freight_pct, op_cost_pct)')
+              .select('order_id, quantity, price_at_purchase, product_id, variation_id')
               .in('order_id', chunk)
               .range(from, from + PAGE - 1);
             if (data) items.push(...data);
@@ -105,23 +105,34 @@ export function SiteProfitReport({
           }
         }
 
+        const productMap = new Map<string, any>();
+        const variationMap = new Map<string, any>();
+        if (items.length > 0) {
+          const [prodRes, varRes] = await Promise.all([
+            supabase.rpc('get_products_admin'),
+            supabase.rpc('get_product_variations_admin'),
+          ]);
+          (prodRes.data || []).forEach((p: any) => productMap.set(p.id, p));
+          (varRes.data || []).forEach((v: any) => variationMap.set(v.id, v));
+        }
 
         const byOrder = new Map<string, SiteProfitItem[]>();
         items.forEach((it: any) => {
           const qty = Number(it.quantity || 0);
           const unitPrice = Number(it.price_at_purchase || 0);
-          const variationCost = it.product_variations?.cost;
-          const useVariation = variationCost != null && Number(variationCost) > 0;
-          const rawCost = Number(useVariation ? variationCost : it.products?.cost || 0);
-          const src = useVariation ? it.product_variations : it.products;
-          const freightPct = Number(src?.freight_pct ?? it.products?.freight_pct ?? 0);
-          const opCostPct = Number(src?.op_cost_pct ?? it.products?.op_cost_pct ?? 0);
+          const variationInfo = it.variation_id ? variationMap.get(it.variation_id) : undefined;
+          const productInfo = productMap.get(it.product_id);
+          const useVariation = variationInfo != null && Number(variationInfo.cost ?? 0) > 0;
+          const rawCost = Number(useVariation ? variationInfo.cost : (productInfo?.cost ?? 0));
+          const src = useVariation ? variationInfo : productInfo;
+          const freightPct = Number(src?.freight_pct ?? productInfo?.freight_pct ?? 0);
+          const opCostPct = Number(src?.op_cost_pct ?? productInfo?.op_cost_pct ?? 0);
           // Custo total = custo + frete + custos operacionais (mesma base do cadastro)
           const unitCost = calcBaseCost(rawCost, freightPct, opCostPct);
 
-          const name = it.product_variations?.name
-            ? `${it.products?.name || 'Produto'} — ${it.product_variations.name}`
-            : it.products?.name || 'Produto';
+          const name = it.variation_id && variationInfo?.name
+            ? `${productInfo?.name || 'Produto'} — ${variationInfo.name}`
+            : productInfo?.name || 'Produto';
           const revenue = unitPrice * qty;
           const cost = unitCost * qty;
           const list = byOrder.get(it.order_id) || [];

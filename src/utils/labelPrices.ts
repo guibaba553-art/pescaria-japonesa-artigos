@@ -25,27 +25,17 @@ export async function fetchLabelPrices(
   );
 
   const [prodRes, varRes] = await Promise.all([
-    supabase
-      .from('products')
-      .select(
-        'id, name, price, price_pdv, price_pdv_pix, price_pdv_cash, price_pdv_debit, price_pdv_credit, pdv_no_markup, on_sale, sale_price, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel'
-      )
-      .in('id', productIds),
+    supabase.rpc('get_products_admin'),
     variationIds.length
-      ? supabase
-          .from('product_variations')
-          .select(
-            'id, product_id, name, price, price_pdv, on_sale, sale_price, sale_starts_at, sale_ends_at, sale_limit_qty, sale_sold_qty, sale_channel'
-          )
-          .in('id', variationIds)
+      ? supabase.rpc('get_product_variations_admin')
       : Promise.resolve({ data: [], error: null } as any),
   ]);
 
   const products = new Map<string, any>(
-    ((prodRes.data as any[]) || []).map((p) => [p.id, p])
+    (((prodRes.data as any[]) || []).filter((p) => productIds.includes(p.id))).map((p) => [p.id, p])
   );
   const variations = new Map<string, any>(
-    ((varRes.data as any[]) || []).map((v) => [v.id, v])
+    (((varRes.data as any[]) || []).filter((v) => variationIds.includes(v.id))).map((v) => [v.id, v])
   );
 
   for (const t of targets) {
