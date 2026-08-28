@@ -26,7 +26,7 @@ const ADMIN_PERMS: EmployeePermissions = {
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  signUp: (phone: string, password: string, fullName: string, cpf: string, _cep?: string) => Promise<{ error: any }>;
+  signUp: (phone: string, password: string, fullName: string, cpf: string) => Promise<{ error: any }>;
   signIn: (identifier: string, password: string) => Promise<{ error: any }>;
   sendPhoneOtp: (phone: string) => Promise<{ error: any }>;
   sendRecoveryOtp: (phone: string) => Promise<{ error: any }>;
@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (phone: string, password: string, fullName: string, cpf: string, _cep?: string) => {
+  const signUp = async (phone: string, password: string, fullName: string, cpf: string) => {
     try {
       signUpSchema.parse({ password, fullName, cpf, phone });
     } catch (error: any) {

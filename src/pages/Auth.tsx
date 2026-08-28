@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { lovable } from '@/integrations/lovable/index';
 import { sanitizeNumericInput, formatCPF, formatPhone } from '@/utils/validation';
+
 import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
@@ -19,9 +21,8 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
   const { signIn, signUp, user } = useAuth();
-  const [loginEmail, setLoginEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -33,6 +34,8 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState('login');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // Carrega último email salvo + preferência de "lembrar"
@@ -40,7 +43,7 @@ export default function Auth() {
     const remembered = localStorage.getItem(REMEMBER_ME_KEY);
     if (remembered) {
       setRememberMe(true);
-      setLoginEmail(remembered);
+      setIdentifier(remembered);
     }
   }, []);
 
@@ -58,11 +61,11 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPassword);
+    const { error } = await signIn(identifier, loginPassword);
     setLoading(false);
     if (!error) {
       if (rememberMe) {
-        localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+        localStorage.setItem(REMEMBER_ME_KEY, identifier);
       } else {
         localStorage.removeItem(REMEMBER_ME_KEY);
       }
@@ -82,16 +85,19 @@ export default function Auth() {
     }
     setPasswordError('');
     setLoading(true);
-    const { error } = await signUp(signupEmail, signupPassword, signupName, signupCpf, signupPhone);
+    const { error } = await signUp(signupPhone, signupPassword, signupName, signupCpf);
     setLoading(false);
 
-    if (error && error.message === 'EMAIL_ALREADY_EXISTS') {
-      setLoginEmail(signupEmail);
+    if (error && (error.message === 'PHONE_ALREADY_EXISTS')) {
+      setIdentifier(signupPhone);
       setActiveTab('login');
       return;
     }
 
-    if (!error) navigate(redirectTo);
+    if (!error) {
+      setOtpPhone(signupPhone);
+      setOtpDialogOpen(true);
+    }
   };
 
   const handleGoogle = async () => {
@@ -186,7 +192,7 @@ export default function Auth() {
             <p className="text-sm text-muted-foreground">
               {activeTab === 'login'
                 ? 'Acesse seu perfil, pedidos e ofertas exclusivas.'
-                : 'Cadastre-se em segundos e ganhe ofertas no email.'}
+                : 'Cadastre-se com seu telefone e ganhe ofertas no WhatsApp.'}
             </p>
           </div>
 
@@ -222,13 +228,19 @@ export default function Auth() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
+                  <Label htmlFor="login-identifier" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">E-mail ou Telefone</Label>
                   <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
+                    id="login-identifier"
+                    type="text"
+                    placeholder="seu@email.com ou (00) 00000-0000"
+                    value={/^\d+$/.test(identifier) ? formatPhone(identifier) : identifier}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      // Caracteres fora de dígitos e da máscara de telefone
+                      // (parênteses, espaço, hífen) ativam modo texto livre (email);
+                      // senão mantém apenas dígitos (telefone).
+                      setIdentifier(/[^\d()\s-]/.test(v) ? v : sanitizeNumericInput(v));
+                    }}
                     required
                     className="h-12 rounded-xl"
                   />
@@ -259,15 +271,15 @@ export default function Auth() {
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
                 <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="link"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-sm text-muted-foreground hover:text-primary"
-                  >
-                    Esqueci minha senha
-                  </Button>
-                </div>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={() => navigate('/forgot-password')}
+                      className="text-sm text-muted-foreground hover:text-primary"
+                    >
+                      Esqueci minha senha
+                    </Button>
+                  </div>
               </form>
             </TabsContent>
 
@@ -284,10 +296,6 @@ export default function Auth() {
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-phone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telefone</Label>
                   <Input id="signup-phone" type="text" placeholder="(00) 00000-0000" value={formatPhone(signupPhone)} onChange={(e) => setSignupPhone(sanitizeNumericInput(e.target.value))} required maxLength={15} className="h-11 rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Email</Label>
-                  <Input id="signup-email" type="email" placeholder="seu@email.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required className="h-11 rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="signup-password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Senha</Label>
@@ -332,6 +340,14 @@ export default function Auth() {
           </Tabs>
         </div>
       </div>
+
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={otpPhone}
+        alreadySent
+        onSuccess={() => navigate(redirectTo)}
+      />
     </div>
   );
 }

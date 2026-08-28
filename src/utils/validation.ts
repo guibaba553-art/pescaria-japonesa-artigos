@@ -39,7 +39,6 @@ export const authSchemas = {
 };
 
 export const signUpSchema = z.object({
-  email: authSchemas.email,
   password: authSchemas.password,
   fullName: authSchemas.fullName,
   cpf: authSchemas.cpf,
