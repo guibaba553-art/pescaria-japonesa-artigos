@@ -19,6 +19,7 @@ export function AccountContactChannels() {
   const [localPendingEmail, setLocalPendingEmail] = useState<string | null>(null);
   const [newPhone, setNewPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [changingPhone, setChangingPhone] = useState(false);
   // Confirmação da troca em MODAL: OTP enviado para o novo número.
   const [otpPhone, setOtpPhone] = useState('');
@@ -51,14 +52,14 @@ export function AccountContactChannels() {
       : { phone: toE164(user.phone ?? ''), password };
     const { error: pwError } = await supabase.auth.signInWithPassword(credentials);
     if (pwError) {
-      setChangingPhone(false);
       setSending(false);
-      setPassword('');
-      return toast.error('Senha incorreta');
+      setPasswordError('Senha incorreta');
+      return;
     }
 
     setChangingPhone(false);
     setSending(false);
+    setPasswordError('');
     setOtpPhone(newPhone);
     toast.success('Código enviado para o novo número. Confirme para concluir.');
   };
@@ -88,15 +89,16 @@ export function AccountContactChannels() {
           <div className="mt-3">
             {changingPhone ? (
               <div className="space-y-2 max-w-md rounded-lg border bg-muted/40 p-3">
-                <Input placeholder="Senha atual (confirmação)" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input placeholder="Senha atual (confirmação)" type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }} />
                 <div className="flex gap-2">
                   <Input placeholder="(00) 00000-0000" value={formatPhone(newPhone)} onChange={(e) => setNewPhone(sanitizeNumericInput(e.target.value))} />
                   <Button onClick={handleChangePhone} disabled={sending}>Confirmar troca</Button>
-                  <Button variant="ghost" onClick={() => { setChangingPhone(false); setNewPhone(''); setPassword(''); }}>Cancelar</Button>
+                  <Button variant="ghost" onClick={() => { setChangingPhone(false); setNewPhone(''); setPassword(''); setPasswordError(''); }}>Cancelar</Button>
                 </div>
+                {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
               </div>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => setChangingPhone(true)}>Trocar telefone</Button>
+              <Button variant="outline" size="sm" onClick={() => { setChangingPhone(true); setPasswordError(''); }}>Trocar telefone</Button>
             )}
           </div>
         </div>
