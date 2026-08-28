@@ -19,8 +19,11 @@ export function parseNumstat(text) {
   return files;
 }
 
-export function getDiffStats(base, head, cwd) {
-  const text = runGit(['-c', 'core.quotepath=false', 'diff', '--numstat', base, head], cwd);
+export function getDiffStats(base, head, cwd, mergeBase = false) {
+  const args = mergeBase
+    ? ['-c', 'core.quotepath=false', 'diff', '--numstat', `${base}...${head}`]
+    : ['-c', 'core.quotepath=false', 'diff', '--numstat', base, head];
+  const text = runGit(args, cwd);
   return parseNumstat(text);
 }
 

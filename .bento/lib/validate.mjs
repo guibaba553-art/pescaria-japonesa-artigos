@@ -35,10 +35,10 @@ export function evaluate(limits, files) {
 
 export function runCheck({ base, head, cwd }) {
   const limits = loadLimits(cwd);
-  const files = getDiffStats(base, head, cwd);
+  const files = getDiffStats(base, head, cwd, true);
   const summary = summarize(files);
   const result = evaluate(limits, files);
-  console.log(`Diff ${base}..${head}: ${summary.lines} linhas, ${summary.files} arquivos`);
+  console.log(`Diff ${base}...${head} (merge-base): ${summary.lines} linhas, ${summary.files} arquivos`);
   for (const [dir, count] of summary.byDir) {
     console.log(`  ${dir}: ${count} arquivo(s)`);
   }
