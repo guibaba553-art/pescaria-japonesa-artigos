@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import japaLogo from '@/assets/japa-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { canResend, RESEND_COOLDOWN_MS, toLocalDigits } from '@/lib/whatsappOtp';
+import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
 
 export default function VerificarTelefone() {
@@ -17,28 +18,20 @@ export default function VerificarTelefone() {
   const redirectTo = searchParams.get('redirect') ?? '/';
   const phoneFromParam = searchParams.get('phone');
 
-  const { user, sendPhoneOtp, verifyPhoneOtp } = useAuth();
+  const { user } = useAuth();
   const [phone, setPhone] = useState(() => {
     if (phoneFromParam) return phoneFromParam;
     if (user?.phone) return user.phone;
     if (user?.user_metadata?.phone) return user.user_metadata.phone;
     return '';
   });
-  const [code, setCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [lastSentAt, setLastSentAt] = useState<number | null>(null);
-  const [nowTick, setNowTick] = useState(Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
-  const autoSentRef = useRef(false);
 
   useEffect(() => {
     inputRef.current?.focus();
-    const i = setInterval(() => setNowTick(Date.now()), 1000);
-    return () => clearInterval(i);
   }, []);
 
-  // A guarda do checkout (ctx=checkout) chega SEM phone no param. Resolve na
-  // ordem: user.phone → user.user_metadata.phone → profiles.phone.
+  // Resolve telefone quando não vem no param: user.phone → metadata → profiles
   useEffect(() => {
     if (phone) return;
     if (user?.phone) return setPhone(user.phone);
@@ -53,40 +46,16 @@ export default function VerificarTelefone() {
   }, [phone, user]);
 
   // O código só foi enviado pela origem em signup/login/recovery com phone no
-  // param (GoTrue auto-send). Nos demais casos (guarda do checkout, phone
-  // derivado) disparamos o OTP aqui mesmo, uma única vez no mount.
-  useEffect(() => {
-    if (!phone || autoSentRef.current) return;
-    const codeAlreadySent = !!phoneFromParam && (ctx === 'signup' || ctx === 'login' || ctx === 'recovery');
-    if (codeAlreadySent) {
-      setLastSentAt(Date.now());
-      return;
-    }
-    autoSentRef.current = true;
-    sendPhoneOtp(phone).then(({ error }) => { if (!error) setLastSentAt(Date.now()); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone]);
+  // param (GoTrue auto-send). Nos demais casos o hook dispara o OTP no mount.
+  const alreadySent = !!phoneFromParam && (ctx === 'signup' || ctx === 'login' || ctx === 'recovery');
 
-  useEffect(() => {
-    if (code.length === 6 && !loading) void submit(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  const { code, setCode, loading, canResendNow, cooldownLeft, handleResend } = useOtpVerification({
+    phone,
+    autoSend: !alreadySent,
+    alreadySent,
+    onSuccess: () => navigate(redirectTo, { replace: true }), // searchParams.get já decodifica
+  });
 
-  const submit = async (value: string) => {
-    setLoading(true);
-    const { error } = await verifyPhoneOtp(phone, value);
-    setLoading(false);
-    if (!error) navigate(redirectTo, { replace: true });  // searchParams.get já decodifica
-    else setCode('');
-  };
-
-  const handleResend = async () => {
-    if (!canResend(lastSentAt, nowTick)) return;
-    setLastSentAt(Date.now());
-    await sendPhoneOtp(phone);
-  };
-
-  const cooldownLeft = lastSentAt ? Math.max(0, Math.ceil((RESEND_COOLDOWN_MS - (nowTick - lastSentAt)) / 1000)) : 0;
   const phoneForDisplay = toLocalDigits(phone);
 
   return (
@@ -121,7 +90,7 @@ export default function VerificarTelefone() {
           />
         </div>
 
-        <Button onClick={handleResend} variant="ghost" size="sm" disabled={!canResend(lastSentAt, nowTick)}>
+        <Button onClick={handleResend} variant="ghost" size="sm" disabled={!canResendNow}>
           {cooldownLeft > 0 ? `Reenviar em ${cooldownLeft}s` : 'Reenviar código'}
         </Button>
 

@@ -21,12 +21,18 @@ const mockUser = {
   phone_confirmed_at: '2026-01-01',
   aud: 'authenticated',
   app_metadata: {},
-  user_metadata: {},
+  user_metadata: { phone: '+5566992110000' },
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 };
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: mockUser, loading: false, permissions: {} }),
+  useAuth: () => ({
+    user: mockUser,
+    loading: false,
+    permissions: {},
+    sendPhoneOtp: vi.fn(async () => ({ error: null })),
+    verifyPhoneOtp: vi.fn(async () => ({ error: null })),
+  }),
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
@@ -315,7 +321,7 @@ describe('CheckoutEntrega — gateway routing PIX', () => {
 });
 
 describe('CheckoutEntrega — guarda de telefone confirmado', () => {
-  it('redireciona para verificação quando phone_confirmed_at ausente', async () => {
+  it('abre modal de verificação OTP quando phone_confirmed_at ausente', async () => {
     vi.mocked(supabase.auth.getUser).mockResolvedValue({
       data: { user: { ...mockUser, phone_confirmed_at: null } },
       error: null,
@@ -330,8 +336,10 @@ describe('CheckoutEntrega — guarda de telefone confirmado', () => {
     fireEvent.click(screen.getByText('Finalizar pedido'));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/verificar-telefone?ctx=checkout&redirect=%2F');
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      expect(screen.getByText(/confirme o número/)).toBeInTheDocument();
     });
+    expect(mockNavigate).not.toHaveBeenCalled();
     expect(capturedOrdersInsert).toBeNull();
   });
 });

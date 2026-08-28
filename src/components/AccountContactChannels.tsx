@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -7,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, Mail, Link2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 import { toast } from 'sonner';
 import { isValidBrMobile, toE164, toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
 
 export function AccountContactChannels() {
-  const navigate = useNavigate();
   const { user, linkGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -21,6 +20,9 @@ export function AccountContactChannels() {
   const [newPhone, setNewPhone] = useState('');
   const [password, setPassword] = useState('');
   const [changingPhone, setChangingPhone] = useState(false);
+  // Fluxo da troca em MODAL: 'reauth' (OTP no número atual) → 'new' (OTP no novo)
+  const [otpStep, setOtpStep] = useState<'reauth' | 'new' | null>(null);
+  const [otpPhone, setOtpPhone] = useState('');
 
   if (!user) return null;
 
@@ -44,13 +46,8 @@ export function AccountContactChannels() {
     if (!isValidBrMobile(newPhone)) return toast.error('Telefone inválido');
     setSending(true);
 
-    // Próximo passo após a autorização: mesma tela de código, OTP no novo
-    // número. O redirect encadeado (aninhado em query) volta para /conta.
-    const nextStep = `/verificar-telefone?ctx=phone_change&phone=${encodeURIComponent(newPhone)}&redirect=${encodeURIComponent('/conta')}`;
-
-    // Reautenticação antes da troca (spec 5.3) — sem popups: contas sem
-    // senha (OTP puro) ou senha incorreta caem na MESMA tela de código,
-    // com OTP no telefone atual; após verificar, o redirect segue o fluxo.
+    // Reautenticação antes da troca (spec 5.3) — via MODAL de OTP no número
+    // atual (sem popups). Após autorizar, a modal encadeia para o novo número.
     const credentials = confirmedEmail
       ? { email: confirmedEmail, password }
       : { phone: toE164(user.phone ?? ''), password };
@@ -58,17 +55,16 @@ export function AccountContactChannels() {
     if (pwError) {
       setChangingPhone(false);
       setSending(false);
-      const currentDigits = toLocalDigits(user.phone ?? '');
-      navigate(
-        `/verificar-telefone?ctx=reauth&phone=${encodeURIComponent(currentDigits)}&redirect=${encodeURIComponent(nextStep)}`,
-      );
+      setOtpPhone(toLocalDigits(user.phone ?? ''));
+      setOtpStep('reauth');
       return;
     }
 
     setChangingPhone(false);
     setSending(false);
+    setOtpPhone(newPhone);
+    setOtpStep('new');
     toast.success('Código enviado para o novo número. Confirme para concluir.');
-    navigate(nextStep);
   };
 
   return (
@@ -162,6 +158,30 @@ export function AccountContactChannels() {
           )}
         </div>
       </CardContent>
+
+      <OtpVerificationDialog
+        open={otpStep !== null}
+        onOpenChange={(open) => { if (!open) setOtpStep(null); }}
+        phone={otpPhone}
+        autoSend
+        title={otpStep === 'reauth' ? 'Autorize a troca de telefone' : 'Confirme o novo número'}
+        description={
+          otpStep === 'reauth'
+            ? 'Confirmamos o número atual para liberar a troca.'
+            : `Enviamos um código de 6 dígitos para ${formatPhone(newPhone)} no WhatsApp.`
+        }
+        onSuccess={() => {
+          if (otpStep === 'reauth') {
+            // Encadeia: reauth OK → OTP no novo número (remount com key=phone)
+            setOtpPhone(newPhone);
+            setOtpStep('new');
+          } else {
+            setOtpStep(null);
+            setNewPhone('');
+            setPassword('');
+          }
+        }}
+      />
     </Card>
   );
 }

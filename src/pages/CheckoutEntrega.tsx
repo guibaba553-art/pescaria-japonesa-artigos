@@ -37,7 +37,8 @@ import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
-import { needsPhoneVerification } from '@/lib/whatsappOtp';
+import { needsPhoneVerification, toLocalDigits } from '@/lib/whatsappOtp';
+import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
 
@@ -92,6 +93,8 @@ export default function CheckoutEntrega() {
   // Endereço
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
   const [editMode, setEditMode] = useState<'new' | string | null>(null); // null = not editing, 'new' = new, string = address id
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -450,7 +453,25 @@ export default function CheckoutEntrega() {
     if (!currentUser) throw new Error('Usuário não autenticado');
 
     if (needsPhoneVerification(currentUser)) {
-      navigate(`/verificar-telefone?ctx=checkout&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      // Resolve o telefone para a verificação em modal (legado: só em profiles)
+      const metaPhone =
+        currentUser.phone ?? (currentUser.user_metadata?.phone as string | undefined) ?? '';
+      if (metaPhone) {
+        setOtpPhone(toLocalDigits(metaPhone));
+        setOtpDialogOpen(true);
+        return;
+      }
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (prof?.phone) {
+        setOtpPhone(prof.phone);
+        setOtpDialogOpen(true);
+        return;
+      }
+      toast.error('Cadastre um telefone em "Meus Dados" antes de finalizar o pedido.');
       return;
     }
 
@@ -1499,6 +1520,15 @@ export default function CheckoutEntrega() {
           </div>
         </div>
       )}
+
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={otpPhone}
+        autoSend
+        title="Confirme seu telefone"
+        description="Para concluir a compra, confirme o número que usamos para contato e entrega."
+      />
     </div>
   );
 }

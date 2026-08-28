@@ -2,13 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return { ...actual, useNavigate: () => mocks.navigate };
-});
-
 const mocks = {
-  navigate: vi.fn(),
   updateUser: vi.fn(),
   signInWithPassword: vi.fn(),
   sendPhoneOtp: vi.fn(),
@@ -211,9 +205,8 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
         email: 'joao@email.com',
         password: '123456',
       });
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta',
-      );
+      // modal do NOVO número aberta com auto-send
+      expect(screen.getByText('Confirme o novo número')).toBeInTheDocument();
     });
   });
 
@@ -235,9 +228,8 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
         phone: '+5511999999999',
         password: '123456',
       });
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta',
-      );
+      // modal do NOVO número aberta com auto-send
+      expect(screen.getByText('Confirme o novo número')).toBeInTheDocument();
     });
   });
 
@@ -255,10 +247,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
       expect(mocks.signInWithPassword).toHaveBeenCalled();
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=reauth&phone=11999999999&redirect=' +
-          encodeURIComponent('/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta'),
-      );
+      expect(screen.getByText('Autorize a troca de telefone')).toBeInTheDocument();
     });
   });
 
@@ -274,10 +263,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=reauth&phone=11999999999&redirect=' +
-          encodeURIComponent('/verificar-telefone?ctx=phone_change&phone=11988887777&redirect=%2Fconta'),
-      );
+      expect(screen.getByText('Autorize a troca de telefone')).toBeInTheDocument();
     });
   });
 
