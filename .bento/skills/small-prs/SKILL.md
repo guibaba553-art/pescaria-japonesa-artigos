@@ -20,9 +20,10 @@ Ao planejar (superpowers:writing-plans), cada task do plano é um slice de PR:
 
 Antes de abrir qualquer PR (superpowers:finishing-a-development-branch):
 
-1. Rode `node scripts/pr-split-verify.mjs check` (ou `bento check`).
-2. Se exit 0: prossiga com gh-stack (`gh stack push`, `gh stack submit`; alias `gs` disponível via `gh stack alias`, opcional).
-3. Se exit != 0 (PR GRANDE): NÃO abra o PR. Apresente o relatório e ofereça o split (Modo 3).
+1. Garanta que AS DUAS branches envolvidas (base e head) estão atualizadas com o remote: `git fetch origin <base> <head>`. Refs locais desatualizadas produzem diffs fantasmas (commits de outros PRs já mergeados aparecem como mudanças do seu PR).
+2. Rode `node scripts/pr-split-verify.mjs check` (ou `bento check`).
+3. Se exit 0: prossiga com gh-stack (`gh stack push`, `gh stack submit`; alias `gs` disponível via `gh stack alias`, opcional).
+4. Se exit != 0 (PR GRANDE): NÃO abra o PR. Apresente o relatório e ofereça o split (Modo 3).
 
 ## Modo 3 — Correção (split retroativo)
 
