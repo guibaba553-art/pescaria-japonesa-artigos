@@ -30,6 +30,7 @@ import type { UserAddress } from '@/components/MyAddresses';
 import { MyAddresses } from '@/components/MyAddresses';
 import { formatCEP } from '@/utils/validation';
 import { getBrandLabel } from '@/lib/creditCardValidation';
+import { needsPhoneVerification } from '@/lib/whatsappOtp';
 
 interface CheckoutProps {
   open: boolean;
@@ -538,6 +539,11 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         throw new Error('Usuário não autenticado');
       }
 
+      if (needsPhoneVerification(user)) {
+        window.location.href = `/verificar-telefone?ctx=checkout&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('cpf, full_name')
@@ -809,7 +815,6 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
             securityCode: cardData.cvv
           } : null,
           installments: paymentMethod === 'credit' ? installments : '1',
-          userEmail: user?.email,
           userCpf: profile?.cpf,
           userName: profile?.full_name || user?.user_metadata?.full_name,
           orderId: orderData.id
