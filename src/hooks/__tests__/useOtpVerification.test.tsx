@@ -3,17 +3,25 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 
 const mocks = vi.hoisted(() => ({
+  user: null as unknown,
   sendPhoneOtp: vi.fn(async () => ({ error: null })),
+  sendRecoveryOtp: vi.fn(async () => ({ error: null })),
   verifyPhoneOtp: vi.fn(async () => ({ error: null })),
 }));
 
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ sendPhoneOtp: mocks.sendPhoneOtp, verifyPhoneOtp: mocks.verifyPhoneOtp }),
+  useAuth: () => ({
+    user: mocks.user,
+    sendPhoneOtp: mocks.sendPhoneOtp,
+    sendRecoveryOtp: mocks.sendRecoveryOtp,
+    verifyPhoneOtp: mocks.verifyPhoneOtp,
+  }),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
+  mocks.user = null;
 });
 
 describe('useOtpVerification', () => {
@@ -70,5 +78,27 @@ describe('useOtpVerification', () => {
     expect(result.current.canResendNow).toBe(false);
     await vi.advanceTimersByTimeAsync(61_000);
     expect(result.current.canResendNow).toBe(true);
+  });
+
+  it('deslogado (signup/recovery): reenvio usa o OTP nativo do GoTrue e NÃO sendPhoneOtp', async () => {
+    mocks.user = null;
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { result } = renderHook(() => useOtpVerification({ phone: '66992110000', alreadySent: true }));
+    await vi.advanceTimersByTimeAsync(61_000);
+    await act(async () => {
+      await result.current.handleResend();
+    });
+    expect(mocks.sendRecoveryOtp).toHaveBeenCalledWith('66992110000');
+    expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
+  });
+
+  it('logado (checkout/phone_change): reenvio usa sendPhoneOtp e NÃO sendRecoveryOtp', async () => {
+    mocks.user = { id: 'u1', phone: '+5566992110000' };
+    const { result } = renderHook(() => useOtpVerification({ phone: '66992110000' }));
+    await act(async () => {
+      await result.current.handleResend();
+    });
+    expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('66992110000');
+    expect(mocks.sendRecoveryOtp).not.toHaveBeenCalled();
   });
 });

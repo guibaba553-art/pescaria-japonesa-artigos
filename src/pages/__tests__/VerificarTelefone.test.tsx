@@ -6,6 +6,7 @@ import VerificarTelefone from '@/pages/VerificarTelefone';
 
 const mocks = vi.hoisted(() => ({
   sendPhoneOtp: vi.fn(async () => ({ error: null })),
+  sendRecoveryOtp: vi.fn(async () => ({ error: null })),
   verifyPhoneOtp: vi.fn(async (_p: string, t: string) => ({ error: t === '123456' ? null : new Error('invalid') })),
   navigate: vi.fn(),
   user: null as unknown,
@@ -17,7 +18,12 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: mocks.user, sendPhoneOtp: mocks.sendPhoneOtp, verifyPhoneOtp: mocks.verifyPhoneOtp }),
+  useAuth: () => ({
+    user: mocks.user,
+    sendPhoneOtp: mocks.sendPhoneOtp,
+    sendRecoveryOtp: mocks.sendRecoveryOtp,
+    verifyPhoneOtp: mocks.verifyPhoneOtp,
+  }),
 }));
 
 const profilesPhone = vi.hoisted(() => ({ value: '+5566992110000' }));
@@ -59,7 +65,7 @@ describe('VerificarTelefone', () => {
     await waitFor(() => expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('66992110000', '123456'));
   });
 
-  it('reenvia após cooldown', async () => {
+  it('reenvia após cooldown (deslogado): reenvio usa OTP nativo do GoTrue, sem erro de WhatsApp', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderPage();
     const resend = screen.getByRole('button', { name: /reenviar/i });
@@ -67,7 +73,8 @@ describe('VerificarTelefone', () => {
     await vi.advanceTimersByTimeAsync(61_000);
     await waitFor(() => expect(resend).not.toBeDisabled());
     await userEvent.click(resend);
-    expect(mocks.sendPhoneOtp).toHaveBeenCalled();
+    expect(mocks.sendRecoveryOtp).toHaveBeenCalledWith('66992110000');
+    expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 
@@ -101,14 +108,21 @@ describe('VerificarTelefone', () => {
     await waitFor(() => expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5566992110000'));
   });
 
-  it('recovery: código já enviado pela origem — NÃO dispara OTP no mount', async () => {
+  it('recovery: código já enviado pela origem — NÃO dispara OTP no mount; reenvio usa OTP nativo', async () => {
     mocks.user = null;
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     renderPage('/verificar-telefone?ctx=recovery&phone=66992110000&redirect=%2Freset-password');
 
     // Sem auto-send (o GoTrue enviou no recover) — só o reenvio manual existe
     expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
     const resend = screen.getByRole('button', { name: /reenviar/i });
     expect(resend).toBeDisabled();
+
+    await vi.advanceTimersByTimeAsync(61_000);
+    await waitFor(() => expect(resend).not.toBeDisabled());
+    await userEvent.click(resend);
+    expect(mocks.sendRecoveryOtp).toHaveBeenCalledWith('66992110000');
+    vi.useRealTimers();
 
     await userEvent.type(screen.getByLabelText(/código/i), '123456');
     await waitFor(() => expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('66992110000', '123456'));

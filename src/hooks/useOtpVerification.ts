@@ -17,7 +17,7 @@ export interface UseOtpVerificationOptions {
 }
 
 export function useOtpVerification({ phone, autoSend = false, alreadySent = false, onSuccess, onError }: UseOtpVerificationOptions) {
-  const { sendPhoneOtp, verifyPhoneOtp } = useAuth();
+  const { user, sendPhoneOtp, sendRecoveryOtp, verifyPhoneOtp } = useAuth();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastSentAt, setLastSentAt] = useState<number | null>(null);
@@ -64,7 +64,14 @@ export function useOtpVerification({ phone, autoSend = false, alreadySent = fals
   const handleResend = async () => {
     if (!canResend(lastSentAt, nowTick)) return;
     setLastSentAt(Date.now());
-    await sendPhoneOtp(phone);
+    // O reenvio espelha o fluxo de origem: logado → phone_change (updateUser);
+    // deslogado (signup/recovery) → OTP nativo do GoTrue (signInWithOtp),
+    // o mesmo mecanismo que já enviou o código original.
+    if (user) {
+      await sendPhoneOtp(phone);
+    } else {
+      await sendRecoveryOtp(phone);
+    }
   };
 
   return {
