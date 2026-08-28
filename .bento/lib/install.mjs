@@ -1,4 +1,4 @@
-import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,8 +9,12 @@ export function packageRoot() {
 }
 
 export function version() {
-  const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'));
-  return pkg.version;
+  try {
+    const pkg = JSON.parse(readFileSync(join(PKG_ROOT, 'package.json'), 'utf8'));
+    return pkg.version;
+  } catch {
+    return readFileSync(join(PKG_ROOT, 'VERSION'), 'utf8').trim();
+  }
 }
 
 const SHIM = `#!/usr/bin/env node
@@ -31,7 +35,10 @@ export function install(projectRoot, { noAgents = false } = {}) {
   const dotBento = join(projectRoot, '.bento');
   mkdirSync(dotBento, { recursive: true });
   for (const sub of ['lib', 'bin', 'skills', 'templates']) {
-    cpSync(join(PKG_ROOT, sub), join(dotBento, sub), { recursive: true });
+    const src = join(PKG_ROOT, sub);
+    const dest = join(dotBento, sub);
+    if (src === dest) continue;
+    cpSync(src, dest, { recursive: true });
   }
   writeFileSync(join(dotBento, 'VERSION'), `${version()}\n`);
 
@@ -58,4 +65,60 @@ export function install(projectRoot, { noAgents = false } = {}) {
   }
 
   return { dotBento, skillDir };
+}
+
+function stripBentoSection(content) {
+  const m = /^## Bento \(small-prs\)\s*$/m.exec(content);
+  if (!m) return null;
+  let from = m.index;
+  if (from > 0 && content[from - 1] === '\n' && (from === 1 || content[from - 2] === '\n')) from -= 1;
+  const next = /^## /gm;
+  next.lastIndex = m.index + m[0].length;
+  const n = next.exec(content);
+  const to = n ? n.index : content.length;
+  return content.slice(0, from) + content.slice(to);
+}
+
+export function uninstall(projectRoot) {
+  const removed = [];
+
+  const dotBento = join(projectRoot, '.bento');
+  if (existsSync(dotBento)) {
+    rmSync(dotBento, { recursive: true, force: true });
+    removed.push('.bento');
+  }
+
+  const skillDir = join(projectRoot, '.opencode', 'skills', 'small-prs');
+  if (existsSync(skillDir)) {
+    rmSync(skillDir, { recursive: true, force: true });
+    removed.push('.opencode/skills/small-prs');
+  }
+
+  const shimPath = join(projectRoot, 'scripts', 'pr-split-verify.mjs');
+  if (existsSync(shimPath) && readFileSync(shimPath, 'utf8').includes('../.bento/lib/validate.mjs')) {
+    rmSync(shimPath, { force: true });
+    removed.push('scripts/pr-split-verify.mjs');
+  }
+
+  const configPath = join(projectRoot, '.pr-limits.yaml');
+  if (existsSync(configPath)) {
+    rmSync(configPath, { force: true });
+    removed.push('.pr-limits.yaml');
+  }
+
+  const agentsPath = join(projectRoot, 'AGENTS.md');
+  if (existsSync(agentsPath)) {
+    const content = readFileSync(agentsPath, 'utf8');
+    const rest = stripBentoSection(content);
+    if (rest !== null) {
+      if (rest.trim() === '') {
+        rmSync(agentsPath, { force: true });
+      } else {
+        writeFileSync(agentsPath, rest);
+      }
+      removed.push('AGENTS.md');
+    }
+  }
+
+  return { removed };
 }

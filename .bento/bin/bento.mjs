@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import { runCheck, runEquivalence } from '../lib/validate.mjs';
-import { install } from '../lib/install.mjs';
+import { install, uninstall } from '../lib/install.mjs';
 
 const [, , cmd, ...args] = process.argv;
 
@@ -36,6 +36,22 @@ function run() {
       console.log('bento atualizado.');
       return;
     }
+    case 'uninstall': {
+      try {
+        execFileSync('gh', ['extension', 'remove', 'github/gh-stack'], { stdio: 'ignore' });
+      } catch (err) {
+        const detail = err.stderr?.trim() || err.message;
+        console.error(`aviso: gh-stack não pôde ser removido (${detail})`);
+      }
+      const { removed } = uninstall(process.cwd());
+      if (removed.length === 0) {
+        console.log('bento: nada para remover.');
+      } else {
+        console.log('bento desinstalado:');
+        for (const path of removed) console.log(`  removido: ${path}`);
+      }
+      return;
+    }
     case 'check':
       process.exitCode = runCheck({ base: args[0] ?? 'main', head: args[1] ?? 'HEAD', cwd: process.cwd() });
       return;
@@ -43,9 +59,10 @@ function run() {
       process.exitCode = runEquivalence({ base: args[0], head: args[1], layers: args.slice(2), cwd: process.cwd() });
       return;
     default:
-      console.error(`uso: bento install|update|check|equivalence
+      console.error(`uso: bento install|update|uninstall|check|equivalence
   install          instala skill, scripts, config e gh-stack no projeto
   update           re-instala mantendo .pr-limits.yaml (não toca gh-stack)
+  uninstall        remove tudo do bento (gh-stack, .bento, skill, shim, config, seção AGENTS.md)
   check [base]     valida tamanho do diff (head = HEAD, base default = main)
   equivalence <base> <head> <camada1> [camada2 ...]
 `);
