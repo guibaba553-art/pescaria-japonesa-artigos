@@ -233,7 +233,7 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
   });
 
-  it('senha incorreta em conta com senha: bloqueia com erro e NÃO envia OTP', async () => {
+  it('senha incorreta em conta com senha: mostra erro inline no form, mantém form aberto e NÃO envia OTP', async () => {
     mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
@@ -250,14 +250,18 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
         email: 'joao@email.com',
         password: '123456',
       });
-      expect(mocks.toast.error).toHaveBeenCalledWith('Senha incorreta');
+      // Erro INLINE no form — sem toast
+      expect(mocks.toast.error).not.toHaveBeenCalledWith('Senha incorreta');
+      expect(screen.getByText('Senha incorreta')).toBeInTheDocument();
+      // Form de confirmação permanece aberto
+      expect(screen.getByPlaceholderText('Senha atual (confirmação)')).toBeInTheDocument();
       // Nenhuma modal de OTP deve abrir — o envio do código é bloqueado.
       expect(screen.queryByText('Autorize a troca de telefone')).not.toBeInTheDocument();
       expect(screen.queryByText('Confirme o novo número')).not.toBeInTheDocument();
     });
   });
 
-  it('conta só-telefone COM senha e senha incorreta: bloqueia com erro e NÃO envia OTP', async () => {
+  it('senha incorreta em conta só-telefone: erro inline, form aberto e NÃO envia OTP', async () => {
     mockUser.email = null;
     mockUser.email_confirmed_at = null;
     mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
@@ -272,10 +276,28 @@ describe('AccountContactChannels — troca de telefone exige senha', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
     await waitFor(() => {
-      expect(mocks.toast.error).toHaveBeenCalledWith('Senha incorreta');
+      expect(mocks.toast.error).not.toHaveBeenCalledWith('Senha incorreta');
+      expect(screen.getByText('Senha incorreta')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Senha atual (confirmação)')).toBeInTheDocument();
       expect(screen.queryByText('Autorize a troca de telefone')).not.toBeInTheDocument();
       expect(screen.queryByText('Confirme o novo número')).not.toBeInTheDocument();
     });
+  });
+
+  it('erro inline de senha some ao digitar nova senha', async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: { message: 'Invalid login' } });
+    const { AccountContactChannels } = await import('@/components/AccountContactChannels');
+    render(<AccountContactChannels />);
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar telefone' }));
+    fireEvent.change(screen.getByPlaceholderText('(00) 00000-0000'), {
+      target: { value: '11988887777' },
+    });
+    const passwordInput = screen.getByPlaceholderText('Senha atual (confirmação)');
+    fireEvent.change(passwordInput, { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar troca' }));
+    await waitFor(() => expect(screen.getByText('Senha incorreta')).toBeInTheDocument());
+    fireEvent.change(passwordInput, { target: { value: '654321' } });
+    expect(screen.queryByText('Senha incorreta')).not.toBeInTheDocument();
   });
 
 });
