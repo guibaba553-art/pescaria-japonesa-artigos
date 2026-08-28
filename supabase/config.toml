@@ -8,6 +8,11 @@ enable_signup = true
 enable_confirmations = true
 test_otp = { "5566992110000" = "123456" }
 
+# Teto GLOBAL de mensagens OTP por hora (GoTrue) — controle de custo.
+# Nosso hook ainda aplica caps por telefone (5/dia) e global diário (300/dia).
+[auth.rate_limit]
+sms_sent = 30
+
 [auth.hook.send_sms]
 enabled = true
 uri = "http://host.docker.internal:54321/functions/v1/send-whatsapp-otp"

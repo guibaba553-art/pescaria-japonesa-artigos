@@ -115,6 +115,44 @@ Deno.test("cap diário atingido → 429 e Cloud API não é chamada", async () =
   await fetch(`${url}?phone=eq.%2B5566992155555`, { method: "DELETE", headers: svcHeaders }).then(r => r.text());
 });
 
+Deno.test("teto global diário atingido → 429 mesmo com número novo", async () => {
+  const prevGlobal = Deno.env.get("OTP_DAILY_CAP_GLOBAL");
+  Deno.env.set("OTP_DAILY_CAP_GLOBAL", "3");
+  mockInternalFn((url) => {
+    if (url.includes("graph.facebook.com")) throw new Error("Cloud API não deveria ser chamada");
+    return null;
+  });
+  const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" };
+  const url = `${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log`;
+  for (let i = 0; i < 3; i++) await fetch(url, { method: "POST", headers: svcHeaders, body: JSON.stringify({ phone: `+5566992170${String(i).padStart(2, "0")}0` }) }).then(r => r.text());
+  const r = await call(smsPayload("+5566992171000"));
+  assertEquals(r.status, 429);
+  if (prevGlobal === null) Deno.env.delete("OTP_DAILY_CAP_GLOBAL");
+  else Deno.env.set("OTP_DAILY_CAP_GLOBAL", prevGlobal!);
+  for (let i = 0; i < 3; i++) await fetch(`${url}?phone=eq.%2B5566992170${String(i).padStart(2, "0")}0`, { method: "DELETE", headers: svcHeaders }).then(r => r.text());
+});
+
+Deno.test("cleanup: logs com mais de 7 dias são removidos no próximo envio", async () => {
+  const prevDry = Deno.env.get("WHATSAPP_DRY_RUN");
+  Deno.env.set("WHATSAPP_DRY_RUN", "true"); // evita chamada real à Cloud API neste caso
+  try {
+    const SVC = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const svcHeaders = { apikey: SVC, Authorization: `Bearer ${SVC}`, "Content-Type": "application/json" };
+    const url = `${Deno.env.get("SUPABASE_URL")}/rest/v1/otp_send_log`;
+    const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+    const ins = await fetch(url, { method: "POST", headers: svcHeaders, body: JSON.stringify({ phone: "+5566992172000", sent_at: old }) }).then(r => r.text());
+    assertEquals(typeof ins, "string");
+    await call(smsPayload("+5566992173000")); // dispara o cleanup
+    const check = await fetch(`${url}?phone=eq.%2B5566992172000&select=id`, { headers: svcHeaders });
+    const rows = await check.json();
+    assertEquals(rows.length, 0);
+  } finally {
+    if (prevDry === null) Deno.env.delete("WHATSAPP_DRY_RUN");
+    else Deno.env.set("WHATSAPP_DRY_RUN", prevDry!);
+  }
+});
+
 Deno.test("falha na Cloud API → 502 (Supabase aborta)", async () => {
   mockInternalFn((url) => url.includes("graph.facebook.com") ? { status: 500, body: { error: { message: "boom" } } } : null);
   const r = await call(smsPayload("+5566992166666"));

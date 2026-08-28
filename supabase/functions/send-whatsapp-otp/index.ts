@@ -29,6 +29,7 @@ export async function handleRequest(req: Request): Promise<Response> {
   const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
   const TEMPLATE = Deno.env.get("WHATSAPP_TEMPLATE_AUTH");
   const DAILY_CAP = parseInt(Deno.env.get("OTP_DAILY_CAP_PER_PHONE") ?? "5", 10);
+  const GLOBAL_DAILY_CAP = parseInt(Deno.env.get("OTP_DAILY_CAP_GLOBAL") ?? "300", 10);
 
   // DRY RUN: em ambiente local loga o OTP no console sem chamar a Cloud API
   const dryRunFlag = Deno.env.get("WHATSAPP_DRY_RUN");
@@ -58,14 +59,28 @@ export async function handleRequest(req: Request): Promise<Response> {
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
-  // Cap diário anti-bombing/custo (spec 5.2)
+  // Cap diário anti-bombing/custo (spec 5.2) — por telefone E global (teto
+  // de custo diário da loja inteira). Remove logs > 7 dias para a tabela não
+  // crescer sem limite.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  await admin
+    .from("otp_send_log")
+    .delete()
+    .lt("sent_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
   const { count } = await admin
     .from("otp_send_log")
     .select("*", { count: "exact", head: true })
     .eq("phone", to)
     .gte("sent_at", since);
   if ((count ?? 0) >= DAILY_CAP) {
+    return new Response(JSON.stringify({ error: "Limite diário de envios atingido" }), { status: 429, headers: corsHeaders });
+  }
+  const { count: globalCount } = await admin
+    .from("otp_send_log")
+    .select("*", { count: "exact", head: true })
+    .gte("sent_at", since);
+  if ((globalCount ?? 0) >= GLOBAL_DAILY_CAP) {
+    console.error(`[send-whatsapp-otp] teto global diário atingido (${globalCount}/${GLOBAL_DAILY_CAP})`);
     return new Response(JSON.stringify({ error: "Limite diário de envios atingido" }), { status: 429, headers: corsHeaders });
   }
 
