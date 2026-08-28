@@ -89,10 +89,8 @@ describe('Auth — login inteligente', () => {
     expect(screen.queryByRole('button', { name: /entrar com whatsapp/i })).not.toBeInTheDocument();
   });
 
-  it('"Esqueci minha senha" só aparece quando identificador é e-mail', () => {
+  it('"Esqueci minha senha" sempre visível (recuperação por WhatsApp p/ telefone)', () => {
     renderPage();
-    expect(screen.queryByRole('button', { name: /esqueci minha senha/i })).not.toBeInTheDocument();
-    fireEvent.change(getIdentifierInput(), { target: { value: 'user@test.com' } });
     expect(screen.getByRole('button', { name: /esqueci minha senha/i })).toBeInTheDocument();
   });
 });

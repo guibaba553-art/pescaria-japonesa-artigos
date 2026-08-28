@@ -94,4 +94,17 @@ describe('VerificarTelefone', () => {
     await waitFor(() => expect(screen.getByText(/66\) 99211-0000/)).toBeInTheDocument());
     await waitFor(() => expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('+5566992110000'));
   });
+
+  it('recovery: código já enviado pela origem — NÃO dispara OTP no mount', async () => {
+    mocks.user = null;
+    renderPage('/verificar-telefone?ctx=recovery&phone=66992110000&redirect=%2Freset-password');
+
+    // Sem auto-send (o GoTrue enviou no recover) — só o reenvio manual existe
+    expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
+    const resend = screen.getByRole('button', { name: /reenviar/i });
+    expect(resend).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText(/código/i), '123456');
+    await waitFor(() => expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('66992110000', '123456'));
+  });
 });

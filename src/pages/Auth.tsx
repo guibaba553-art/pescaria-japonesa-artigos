@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { lovable } from '@/integrations/lovable/index';
 import { sanitizeNumericInput, formatCPF, formatPhone } from '@/utils/validation';
-import { isEmailIdentifier } from '@/lib/whatsappOtp';
+
 import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
@@ -266,8 +266,7 @@ export default function Auth() {
                 <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
-                {isEmailIdentifier(identifier) && (
-                  <div className="text-center">
+                <div className="text-center">
                     <Button
                       type="button"
                       variant="link"
@@ -277,7 +276,6 @@ export default function Auth() {
                       Esqueci minha senha
                     </Button>
                   </div>
-                )}
               </form>
             </TabsContent>
 

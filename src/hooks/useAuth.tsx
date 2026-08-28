@@ -29,6 +29,7 @@ interface AuthContextType {
   signUp: (phone: string, password: string, fullName: string, cpf: string) => Promise<{ error: any }>;
   signIn: (identifier: string, password: string) => Promise<{ error: any }>;
   sendPhoneOtp: (phone: string) => Promise<{ error: any }>;
+  sendRecoveryOtp: (phone: string) => Promise<{ error: any }>;
   verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: any }>;
   linkGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -317,6 +318,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: new Error('WHATSAPP_LOGIN_DISABLED') };
   };
 
+  const sendRecoveryOtp = async (phone: string) => {
+    // "Esqueci minha senha" via WhatsApp — fluxo essencial (único caminho de
+    // recuperação para contas só-telefone). Custo aceito pelo negócio.
+    const { error } = await supabase.auth.signInWithOtp({ phone: toE164(phone) });
+    if (error) {
+      toast({ title: "Erro ao enviar código", description: translatePhoneError(error.message), variant: "destructive" });
+    } else {
+      toast({ title: "Código enviado!", description: "Confira o WhatsApp deste número." });
+    }
+    return { error };
+  };
+
   const verifyPhoneOtp = async (phone: string, token: string) => {
     const e164 = toE164(phone);
     const { data: { user } } = await supabase.auth.getUser();
@@ -349,6 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp, 
       signIn, 
       sendPhoneOtp,
+      sendRecoveryOtp,
       verifyPhoneOtp,
       linkGoogle,
       signOut,

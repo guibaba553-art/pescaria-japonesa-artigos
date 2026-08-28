@@ -244,6 +244,42 @@ describe('useAuth.sendPhoneOtp', () => {
   });
 });
 
+describe('useAuth.sendRecoveryOtp', () => {
+  it('deslogado: dispara signInWithOtp com E.164 e avisa sobre o WhatsApp', async () => {
+    authMocks.signInWithOtp.mockResolvedValue({ data: {}, error: null });
+    const { result } = renderAuth();
+
+    let response: { error: any };
+    await act(async () => {
+      response = await result.current.sendRecoveryOtp(VALID_PHONE);
+    });
+
+    expect(authMocks.signInWithOtp).toHaveBeenCalledWith({ phone: '+5511987654321' });
+    expect(response!.error).toBeNull();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Código enviado!' })
+    );
+  });
+
+  it('traduz erro de número não cadastrado', async () => {
+    authMocks.signInWithOtp.mockResolvedValue({
+      data: {},
+      error: { message: 'Signup not allowed for otp' },
+    });
+    const { result } = renderAuth();
+
+    let response: { error: any };
+    await act(async () => {
+      response = await result.current.sendRecoveryOtp(VALID_PHONE);
+    });
+
+    expect(response!.error).toBeTruthy();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Erro ao enviar código' })
+    );
+  });
+});
+
 describe('useAuth.verifyPhoneOtp', () => {
   it('deslogado: verifica com type sms', async () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null }, error: null });

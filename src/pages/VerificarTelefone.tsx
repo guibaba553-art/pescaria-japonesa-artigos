@@ -52,12 +52,12 @@ export default function VerificarTelefone() {
       .then(({ data }) => { if (data?.phone) setPhone(data.phone); });
   }, [phone, user]);
 
-  // O código só foi enviado pela origem em signup/login com phone no param
-  // (GoTrue auto-send). Nos demais casos (guarda do checkout, phone derivado)
-  // disparamos o OTP aqui mesmo, uma única vez no mount.
+  // O código só foi enviado pela origem em signup/login/recovery com phone no
+  // param (GoTrue auto-send). Nos demais casos (guarda do checkout, phone
+  // derivado) disparamos o OTP aqui mesmo, uma única vez no mount.
   useEffect(() => {
     if (!phone || autoSentRef.current) return;
-    const codeAlreadySent = !!phoneFromParam && (ctx === 'signup' || ctx === 'login');
+    const codeAlreadySent = !!phoneFromParam && (ctx === 'signup' || ctx === 'login' || ctx === 'recovery');
     if (codeAlreadySent) {
       setLastSentAt(Date.now());
       return;
