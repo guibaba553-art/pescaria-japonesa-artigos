@@ -45,7 +45,6 @@ const AdminErrors = lazy(() => import("./pages/AdminErrors"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 // const StockAudit = lazy(() => import("./pages/StockAudit")); // desativado
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
-const VerificarTelefone = lazy(() => import("./pages/VerificarTelefone"));
 
 const queryClient = new QueryClient();
 
@@ -120,7 +119,6 @@ const App = () => (
                 <Route path="/retirada/:id" element={<PickupOrder />} />
                 <Route path="/completar-cadastro" element={<CompletarCadastro />} />
                 <Route path="/unsubscribe" element={<Unsubscribe />} />
-                <Route path="/verificar-telefone" element={<VerificarTelefone />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
