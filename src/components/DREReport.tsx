@@ -71,6 +71,12 @@ export function DREReport() {
       // 2) CMV — custo dos produtos vendidos
       let cmv = 0;
       if (validIds.length > 0) {
+        const { data: allProducts } = await supabase.rpc('get_products_admin');
+        const productCostMap = new Map<string, number>();
+        (allProducts || []).forEach((p) => {
+          productCostMap.set(p.id, Number(p.cost ?? 0));
+        });
+
         // Buscar em chunks para não estourar limite de 1000
         const chunks: string[][] = [];
         for (let i = 0; i < validIds.length; i += 200) {
@@ -79,10 +85,10 @@ export function DREReport() {
         for (const chunk of chunks) {
           const { data: items } = await supabase
             .from('order_items')
-            .select('quantity, product_id, products(cost)')
+            .select('quantity, product_id')
             .in('order_id', chunk);
-          (items || []).forEach((it: any) => {
-            const cost = Number(it.products?.cost || 0);
+          (items || []).forEach((it) => {
+            const cost = productCostMap.get(it.product_id) ?? 0;
             cmv += Number(it.quantity) * cost;
           });
         }
@@ -99,7 +105,7 @@ export function DREReport() {
       const periodStart = new Date(startDate);
       const periodEnd = new Date(endDate);
 
-      (expenses || []).forEach((e: any) => {
+      (expenses || []).forEach((e) => {
         const start = new Date(e.expense_date);
         const end = e.end_date ? new Date(e.end_date) : null;
         const inRange = start <= periodEnd && (!end || end >= periodStart);
@@ -136,8 +142,12 @@ export function DREReport() {
         margemBruta,
         margemLiquida,
       });
-    } catch (e: any) {
-      toast({ title: 'Erro ao gerar DRE', description: e.message, variant: 'destructive' });
+    } catch (e) {
+      toast({
+        title: 'Erro ao gerar DRE',
+        description: e instanceof Error ? e.message : String(e),
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
