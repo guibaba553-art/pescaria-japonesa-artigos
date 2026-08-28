@@ -20,8 +20,7 @@ export function AccountContactChannels() {
   const [newPhone, setNewPhone] = useState('');
   const [password, setPassword] = useState('');
   const [changingPhone, setChangingPhone] = useState(false);
-  // Fluxo da troca em MODAL: 'reauth' (OTP no número atual) → 'new' (OTP no novo)
-  const [otpStep, setOtpStep] = useState<'reauth' | 'new' | null>(null);
+  // Confirmação da troca em MODAL: OTP enviado para o novo número.
   const [otpPhone, setOtpPhone] = useState('');
 
   if (!user) return null;
@@ -46,8 +45,7 @@ export function AccountContactChannels() {
     if (!isValidBrMobile(newPhone)) return toast.error('Telefone inválido');
     setSending(true);
 
-    // Reautenticação antes da troca (spec 5.3) — via MODAL de OTP no número
-    // atual (sem popups). Após autorizar, a modal encadeia para o novo número.
+    // Reautenticação antes da troca (spec 5.3): exige a senha atual correta.
     const credentials = confirmedEmail
       ? { email: confirmedEmail, password }
       : { phone: toE164(user.phone ?? ''), password };
@@ -55,15 +53,13 @@ export function AccountContactChannels() {
     if (pwError) {
       setChangingPhone(false);
       setSending(false);
-      setOtpPhone(toLocalDigits(user.phone ?? ''));
-      setOtpStep('reauth');
-      return;
+      setPassword('');
+      return toast.error('Senha incorreta');
     }
 
     setChangingPhone(false);
     setSending(false);
     setOtpPhone(newPhone);
-    setOtpStep('new');
     toast.success('Código enviado para o novo número. Confirme para concluir.');
   };
 
@@ -160,26 +156,16 @@ export function AccountContactChannels() {
       </CardContent>
 
       <OtpVerificationDialog
-        open={otpStep !== null}
-        onOpenChange={(open) => { if (!open) setOtpStep(null); }}
+        open={otpPhone !== ''}
+        onOpenChange={(open) => { if (!open) setOtpPhone(''); }}
         phone={otpPhone}
         autoSend
-        title={otpStep === 'reauth' ? 'Autorize a troca de telefone' : 'Confirme o novo número'}
-        description={
-          otpStep === 'reauth'
-            ? 'Confirmamos o número atual para liberar a troca.'
-            : `Enviamos um código de 6 dígitos para ${formatPhone(newPhone)} no WhatsApp.`
-        }
+        title="Confirme o novo número"
+        description={`Enviamos um código de 6 dígitos para ${formatPhone(newPhone)} no WhatsApp.`}
         onSuccess={() => {
-          if (otpStep === 'reauth') {
-            // Encadeia: reauth OK → OTP no novo número (remount com key=phone)
-            setOtpPhone(newPhone);
-            setOtpStep('new');
-          } else {
-            setOtpStep(null);
-            setNewPhone('');
-            setPassword('');
-          }
+          setOtpPhone('');
+          setNewPhone('');
+          setPassword('');
         }}
       />
     </Card>
