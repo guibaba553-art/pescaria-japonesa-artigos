@@ -201,9 +201,8 @@ describe('useAuth.signIn — identificador inteligente', () => {
 });
 
 describe('useAuth.sendPhoneOtp', () => {
-  it('deslogado: usa signInWithOtp e confirma envio', async () => {
+  it('deslogado: login via WhatsApp desativado — retorna erro e NÃO chama signInWithOtp', async () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    authMocks.signInWithOtp.mockResolvedValue({ data: {}, error: null });
     const { result } = renderAuth();
 
     let response: { error: any };
@@ -211,19 +210,15 @@ describe('useAuth.sendPhoneOtp', () => {
       response = await result.current.sendPhoneOtp(VALID_PHONE);
     });
 
-    expect(authMocks.signInWithOtp).toHaveBeenCalledWith({ phone: '+5511987654321' });
-    expect(response!.error).toBeNull();
+    expect(authMocks.signInWithOtp).not.toHaveBeenCalled();
+    expect(response!.error).toBeTruthy();
     expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Código enviado!' })
+      expect.objectContaining({ title: 'Login via WhatsApp indisponível' })
     );
   });
 
-  it('deslogado: traduz erro de número já registrado', async () => {
+  it('deslogado: login via WhatsApp desativado — tradução de erro não é mais alcançada', async () => {
     authMocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
-    authMocks.signInWithOtp.mockResolvedValue({
-      data: {},
-      error: { message: 'Phone already registered by another user' },
-    });
     const { result } = renderAuth();
 
     let response: { error: any };
@@ -232,12 +227,7 @@ describe('useAuth.sendPhoneOtp', () => {
     });
 
     expect(response!.error).toBeTruthy();
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Erro ao enviar código',
-        description: 'Este telefone já tem uma conta. Faça login.',
-      })
-    );
+    expect(authMocks.signInWithOtp).not.toHaveBeenCalled();
   });
 
   it('logado: usa updateUser e não dispara signInWithOtp', async () => {

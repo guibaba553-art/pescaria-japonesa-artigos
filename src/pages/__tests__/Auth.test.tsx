@@ -84,24 +84,9 @@ describe('Auth — login inteligente', () => {
     await waitFor(() => expect(mocks.signIn).toHaveBeenCalledWith('66992110000', 'secret123'));
   });
 
-  it('"Entrar com WhatsApp" envia OTP e navega para verificação', async () => {
-    renderPage('?redirect=/perfil');
-    await userEvent.type(getIdentifierInput(), '66992110000');
-    fireEvent.click(screen.getByRole('button', { name: /entrar com whatsapp/i }));
-    await waitFor(() => expect(mocks.sendPhoneOtp).toHaveBeenCalledWith('66992110000'));
-    await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=login&phone=66992110000&redirect=%2Fperfil',
-      ),
-    );
-  });
-
-  it('"Entrar com WhatsApp" com número inválido mostra erro e não envia', async () => {
+  it('"Entrar com WhatsApp" não aparece (login via WhatsApp desativado)', () => {
     renderPage();
-    fireEvent.change(getIdentifierInput(), { target: { value: '123' } });
-    fireEvent.click(screen.getByRole('button', { name: /entrar com whatsapp/i }));
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(expect.stringContaining('DDD')));
-    expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /entrar com whatsapp/i })).not.toBeInTheDocument();
   });
 
   it('"Esqueci minha senha" só aparece quando identificador é e-mail', () => {

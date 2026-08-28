@@ -296,7 +296,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendPhoneOtp = async (phone: string) => {
     const e164 = toE164(phone);
     // Logado (checkout/legado/troca): atualiza telefone → dispara OTP phone_change.
-    // Não-logado (login por WhatsApp): signInWithOtp dispara OTP de acesso.
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { error } = await supabase.auth.updateUser({ phone: e164 });
@@ -306,13 +305,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return { error: null };
     }
-    const { error } = await supabase.auth.signInWithOtp({ phone: e164 });
-    if (error) {
-      toast({ title: "Erro ao enviar código", description: translatePhoneError(error.message), variant: "destructive" });
-    } else {
-      toast({ title: "Código enviado!", description: "Confira o WhatsApp deste número." });
-    }
-    return { error };
+
+    // Login via WhatsApp temporariamente desativado (custo por mensagem).
+    // Cadastro continua enviando OTP via fluxo nativo do GoTrue; o caminho
+    // deslogado aqui era o único que gerava custo adicional.
+    toast({
+      title: "Login via WhatsApp indisponível",
+      description: "Use telefone+senha para entrar. Em breve novamente!",
+      variant: "destructive",
+    });
+    return { error: new Error('WHATSAPP_LOGIN_DISABLED') };
   };
 
   const verifyPhoneOtp = async (phone: string, token: string) => {

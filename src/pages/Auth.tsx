@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { lovable } from '@/integrations/lovable/index';
 import { sanitizeNumericInput, formatCPF, formatPhone } from '@/utils/validation';
-import { isEmailIdentifier, isValidBrMobile } from '@/lib/whatsappOtp';
-import { ArrowLeft, Truck, CreditCard, ShieldCheck, MessageCircle } from 'lucide-react';
+import { isEmailIdentifier } from '@/lib/whatsappOtp';
+import { ArrowLeft, Truck, CreditCard, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import japaLogo from '@/assets/japa-logo.png';
 
@@ -19,7 +19,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
-  const { signIn, signUp, sendPhoneOtp, user } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -93,17 +93,6 @@ export default function Auth() {
 
     if (!error) {
       navigate(`/verificar-telefone?ctx=signup&phone=${encodeURIComponent(signupPhone)}&redirect=${encodeURIComponent(redirectTo)}`);
-    }
-  };
-
-  const handleWhatsAppLogin = async () => {
-    const digits = sanitizeNumericInput(identifier);
-    if (!isValidBrMobile(digits)) return toast.error('Digite seu telefone com DDD para entrar via WhatsApp.');
-    setLoading(true);
-    const { error } = await sendPhoneOtp(digits);
-    setLoading(false);
-    if (!error) {
-      navigate(`/verificar-telefone?ctx=login&phone=${encodeURIComponent(digits)}&redirect=${encodeURIComponent(redirectTo)}`);
     }
   };
 
@@ -276,15 +265,6 @@ export default function Auth() {
                 </div>
                 <Button type="submit" className="w-full h-12 rounded-full font-bold text-base btn-press" disabled={loading}>
                   {loading ? 'Entrando...' : 'Entrar'}
-                </Button>
-                <div className="relative flex items-center gap-3 py-1">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">ou</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <Button type="button" variant="outline" onClick={handleWhatsAppLogin} disabled={loading}
-                  className="w-full h-12 rounded-full font-semibold text-sm gap-2">
-                  <MessageCircle className="w-5 h-5 text-[#25D366]" /> Entrar com WhatsApp
                 </Button>
                 {isEmailIdentifier(identifier) && (
                   <div className="text-center">
