@@ -1,5 +1,5 @@
 import { loadLimits, matchesOverride } from './config.mjs';
-import { getDiffStats, summarize } from './diff.mjs';
+import { getDiffStats, runGit, summarize } from './diff.mjs';
 
 export function evaluate(limits, files) {
   const global = { lines: 0, files: 0 };
@@ -57,6 +57,16 @@ export function runEquivalence({ base, head, layers, cwd }) {
   if (!layers.length) {
     console.error('uso: equivalence <base> <head> <camada1> [camada2 …]');
     return 2;
+  }
+  let prev = base;
+  for (const layer of layers) {
+    try {
+      runGit(['merge-base', '--is-ancestor', prev, layer], cwd);
+    } catch (err) {
+      console.error(`camadas não formam cadeia: ${layer} não deriva de ${prev}`);
+      return 1;
+    }
+    prev = layer;
   }
   const last = layers[layers.length - 1];
   let stats;
