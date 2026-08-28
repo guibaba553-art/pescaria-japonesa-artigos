@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   signIn: vi.fn(async () => ({ error: null })),
   signUp: vi.fn(async () => ({ error: null })),
   sendPhoneOtp: vi.fn(async () => ({ error: null })),
+  verifyPhoneOtp: vi.fn(async () => ({ error: null })),
   toastError: vi.fn(),
 }));
 
@@ -23,6 +24,7 @@ vi.mock('@/hooks/useAuth', () => ({
     signIn: mocks.signIn,
     signUp: mocks.signUp,
     sendPhoneOtp: mocks.sendPhoneOtp,
+    verifyPhoneOtp: mocks.verifyPhoneOtp,
   }),
 }));
 
@@ -103,7 +105,7 @@ describe('Auth — cadastro por telefone', () => {
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
   });
 
-  it('chama signUp com telefone e navega para /verificar-telefone', async () => {
+  it('chama signUp com telefone e abre modal OTP; código verifica e navega para o redirect', async () => {
     renderPage('?redirect=/perfil');
     await userEvent.click(screen.getByRole('tab', { name: /criar conta/i }));
     await fillSignupForm();
@@ -111,11 +113,13 @@ describe('Auth — cadastro por telefone', () => {
     await waitFor(() =>
       expect(mocks.signUp).toHaveBeenCalledWith('66992110000', 'secret123', 'Gus Anglers', '52998224725'),
     );
-    await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith(
-        '/verificar-telefone?ctx=signup&phone=66992110000&redirect=%2Fperfil',
-      ),
-    );
+    expect(mocks.navigate).not.toHaveBeenCalledWith(expect.stringContaining('/verificar-telefone'));
+
+    const codeInput = await screen.findByLabelText(/código/i);
+    expect(codeInput).toBeInTheDocument();
+    await userEvent.type(codeInput, '123456');
+    await waitFor(() => expect(mocks.verifyPhoneOtp).toHaveBeenCalledWith('66992110000', '123456'));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/perfil'));
   });
 
   it('PHONE_ALREADY_EXISTS volta para login com telefone preenchido', async () => {

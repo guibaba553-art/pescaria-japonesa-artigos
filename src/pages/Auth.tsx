@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,8 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState('login');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
   const tabsRef = useRef<HTMLDivElement>(null);
 
   // Carrega último email salvo + preferência de "lembrar"
@@ -92,7 +95,8 @@ export default function Auth() {
     }
 
     if (!error) {
-      navigate(`/verificar-telefone?ctx=signup&phone=${encodeURIComponent(signupPhone)}&redirect=${encodeURIComponent(redirectTo)}`);
+      setOtpPhone(signupPhone);
+      setOtpDialogOpen(true);
     }
   };
 
@@ -336,6 +340,14 @@ export default function Auth() {
           </Tabs>
         </div>
       </div>
+
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={otpPhone}
+        alreadySent
+        onSuccess={() => navigate(redirectTo)}
+      />
     </div>
   );
 }
