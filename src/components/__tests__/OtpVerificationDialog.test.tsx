@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 
@@ -70,7 +70,9 @@ describe('OtpVerificationDialog', () => {
     expect(mocks.sendPhoneOtp).not.toHaveBeenCalled();
     const resend = screen.getByRole('button', { name: /reenviar/i });
     expect(resend).toBeDisabled();
-    await vi.advanceTimersByTimeAsync(61_000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(61_000);
+    });
     await waitFor(() => expect(resend).not.toBeDisabled());
     await userEvent.click(resend);
     expect(mocks.sendRecoveryOtp).toHaveBeenCalledWith('66992110000');
