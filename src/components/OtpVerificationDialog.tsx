@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -12,13 +13,15 @@ import { toLocalDigits } from '@/lib/whatsappOtp';
 interface OtpFormProps {
   phone: string;
   autoSend: boolean;
+  alreadySent: boolean;
   onSuccess: () => void;
 }
 
-function OtpForm({ phone, autoSend, onSuccess }: OtpFormProps) {
+function OtpForm({ phone, autoSend, alreadySent, onSuccess }: OtpFormProps) {
   const { code, setCode, loading, canResendNow, cooldownLeft, handleResend } = useOtpVerification({
     phone,
     autoSend,
+    alreadySent,
     onSuccess,
   });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,9 +46,11 @@ function OtpForm({ phone, autoSend, onSuccess }: OtpFormProps) {
           className="h-14 rounded-xl text-center text-2xl tracking-[0.5em] font-bold"
         />
       </div>
-      <Button variant="ghost" size="sm" onClick={handleResend} disabled={!canResendNow}>
-        {cooldownLeft > 0 ? `Reenviar em ${cooldownLeft}s` : 'Reenviar código'}
-      </Button>
+      <div className="flex justify-center">
+        <Button variant="ghost" size="sm" onClick={handleResend} disabled={!canResendNow}>
+          {cooldownLeft > 0 ? `Reenviar em ${cooldownLeft}s` : 'Reenviar código'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -59,6 +64,8 @@ export interface OtpVerificationDialogProps {
   description?: string;
   /** Dispara o OTP automaticamente ao abrir (checkout/phone_change/reauth) */
   autoSend?: boolean;
+  /** Código já enviado pela origem (signup/recovery): sem auto-send, cooldown ativo */
+  alreadySent?: boolean;
   onSuccess?: () => void;
 }
 
@@ -69,6 +76,7 @@ export function OtpVerificationDialog({
   title = 'Confirme seu telefone',
   description,
   autoSend = false,
+  alreadySent = false,
   onSuccess,
 }: OtpVerificationDialogProps) {
   const handleSuccess = () => {
@@ -82,6 +90,15 @@ export function OtpVerificationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 -mt-1 w-fit text-muted-foreground hover:text-foreground"
+            onClick={() => onOpenChange(false)}
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {description ??
@@ -89,7 +106,7 @@ export function OtpVerificationDialog({
           </DialogDescription>
         </DialogHeader>
         {/* Remount a cada abertura: estado limpo + auto-send novo */}
-        {open && <OtpForm key={phone} phone={phone} autoSend={autoSend} onSuccess={handleSuccess} />}
+        {open && <OtpForm key={phone} phone={phone} autoSend={autoSend} alreadySent={alreadySent} onSuccess={handleSuccess} />}
       </DialogContent>
     </Dialog>
   );
