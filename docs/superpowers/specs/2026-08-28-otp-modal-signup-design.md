@@ -31,7 +31,9 @@ produção gerando esses redirects.
 
 Reutilizar `OtpVerificationDialog` em todos os fluxos e remover a página.
 
-### 1. `OtpVerificationDialog.tsx` — nova prop `alreadySent`
+### 1. `OtpVerificationDialog.tsx` — nova prop `alreadySent` + UX dos botões
+
+**`alreadySent`**
 
 - Adicionar `alreadySent?: boolean` em `OtpVerificationDialogProps` e em
   `OtpFormProps`, repassado a `useOtpVerification`.
@@ -39,6 +41,21 @@ Reutilizar `OtpVerificationDialog` em todos os fluxos e remover a página.
   reenvio (60s) já ativo. Reenvio de deslogado usa `sendRecoveryOtp` (comportamento
   já existente no hook `useOtpVerification.ts:70-74`).
 - Padrão: `false` — nenhum caller existente (checkout, conta) muda de comportamento.
+
+**UX do modal (validação de posicionamento)**
+
+O layout da página `/verificar-telefone` será descartado junto com ela. O modal
+segue o padrão PicPay/iFood:
+
+- **Voltar**: seta `←` (ícone `ArrowLeft`, `aria-label="Voltar"`) no topo-esquerdo
+  do conteúdo do modal, antes do título — fecha o modal (`onOpenChange(false)`),
+  voltando ao formulário de cadastro/recuperação. O X do Radix Dialog permanece
+  no topo-direito.
+- **Reenviar código**: centralizado abaixo do campo de código (wrapper
+  `flex justify-center`), mantendo `variant="ghost" size="sm"` e o countdown
+  ("Reenviar em Xs").
+- O botão "Voltar" do rodapé da página (com `-ml-2`) deixa de existir com a
+  página.
 
 ### 2. `Auth.tsx` (cadastro)
 
@@ -72,6 +89,8 @@ Reutilizar `OtpVerificationDialog` em todos os fluxos e remover a página.
 1. `src/components/__tests__/OtpVerificationDialog.test.tsx`:
    - `alreadySent: true` → `sendPhoneOtp` **não** é chamado no mount; botão
      "Reenviar" começa desabilitado com cooldown.
+   - Seta "Voltar" no topo-esquerdo fecha o modal (`onOpenChange(false)`).
+   - Botão "Reenviar" dentro de wrapper centralizado (regressão de posicionamento).
 2. `src/pages/__tests__/Auth.test.tsx`:
    - Signup com sucesso → dialog abre (não navega para `/verificar-telefone`);
      código de 6 dígitos → `verifyPhoneOtp` chamado com o telefone → `navigate`
