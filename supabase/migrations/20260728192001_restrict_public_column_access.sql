@@ -11,6 +11,11 @@ GRANT SELECT (
   include_in_nfe, pdv_only, sale_channel
 ) ON public.products TO anon, authenticated;
 
+-- Colunas concedidas na migração 20260522195027 que NÃO estão na lista pública
+-- acima (created_by, min_stock). Sem este REVOKE column-level, o GRANT anterior
+-- continuaria legível mesmo após o REVOKE table-level.
+REVOKE SELECT (created_by, min_stock) ON public.products FROM anon, authenticated;
+
 -- 2) Restrict SELECT on product_variations — only safe columns for anon/authenticated
 REVOKE SELECT ON public.product_variations FROM anon, authenticated;
 

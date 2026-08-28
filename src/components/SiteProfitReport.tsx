@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
@@ -7,6 +8,42 @@ import { calcBaseCost } from '@/lib/pricing';
 import {
   ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend,
 } from 'recharts';
+
+type OrderStatus = Database['public']['Enums']['order_status'];
+
+interface OrderSubset {
+  id: string;
+  created_at: string;
+  status: string;
+  total_amount: number;
+  shipping_cost: number | null;
+  source: string | null;
+  payment_method: string | null;
+}
+
+interface OrderItemSubset {
+  order_id: string;
+  quantity: number;
+  price_at_purchase: number;
+  product_id: string;
+  variation_id: string | null;
+}
+
+interface AdminProductRow {
+  id: string;
+  name: string;
+  cost: number | null;
+  freight_pct: number;
+  op_cost_pct: number;
+}
+
+interface AdminVariationRow {
+  id: string;
+  name: string;
+  cost: number | null;
+  freight_pct: number;
+  op_cost_pct: number;
+}
 
 
 export interface SiteProfitItem {
@@ -33,9 +70,9 @@ export interface SiteProfitOrder {
 }
 
 
-const ALL_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
-const SITE_FINALIZED = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'] as const;
-const PDV_FINALIZED = ['entregado', 'retirado', 'pronto_retirada'] as const;
+const ALL_FINALIZED: OrderStatus[] = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'];
+const SITE_FINALIZED: OrderStatus[] = ['entregado', 'retirado', 'pronto_retirada', 'em_preparo', 'enviado'];
+const PDV_FINALIZED: OrderStatus[] = ['entregado', 'retirado', 'pronto_retirada'];
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -71,7 +108,7 @@ export function SiteProfitReport({
         ).toISOString();
 
         const PAGE = 1000;
-        const ordersData: any[] = [];
+        const ordersData: OrderSubset[] = [];
         for (let from = 0; ; from += PAGE) {
           let query = supabase
             .from('orders')
@@ -79,7 +116,7 @@ export function SiteProfitReport({
           if (!isAll) query = isPdv ? query.eq('source', 'pdv') : query.neq('source', 'pdv');
 
           const { data, error } = await query
-            .in('status', (isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED) as any)
+            .in('status', isAll ? ALL_FINALIZED : isPdv ? PDV_FINALIZED : SITE_FINALIZED)
             .gte('created_at', startISO)
             .lte('created_at', endISO)
             .order('created_at', { ascending: false })
@@ -90,7 +127,7 @@ export function SiteProfitReport({
         }
 
         const ids = ordersData.map((o) => o.id);
-        const items: any[] = [];
+        const items: OrderItemSubset[] = [];
         for (let i = 0; i < ids.length; i += 100) {
           const chunk = ids.slice(i, i + 100);
           if (chunk.length === 0) break;
@@ -105,19 +142,19 @@ export function SiteProfitReport({
           }
         }
 
-        const productMap = new Map<string, any>();
-        const variationMap = new Map<string, any>();
+        const productMap = new Map<string, AdminProductRow>();
+        const variationMap = new Map<string, AdminVariationRow>();
         if (items.length > 0) {
           const [prodRes, varRes] = await Promise.all([
             supabase.rpc('get_products_admin'),
             supabase.rpc('get_product_variations_admin'),
           ]);
-          (prodRes.data || []).forEach((p: any) => productMap.set(p.id, p));
-          (varRes.data || []).forEach((v: any) => variationMap.set(v.id, v));
+          (prodRes.data || []).forEach((p) => productMap.set(p.id, p));
+          (varRes.data || []).forEach((v) => variationMap.set(v.id, v));
         }
 
         const byOrder = new Map<string, SiteProfitItem[]>();
-        items.forEach((it: any) => {
+        items.forEach((it) => {
           const qty = Number(it.quantity || 0);
           const unitPrice = Number(it.price_at_purchase || 0);
           const variationInfo = it.variation_id ? variationMap.get(it.variation_id) : undefined;
@@ -140,7 +177,7 @@ export function SiteProfitReport({
           byOrder.set(it.order_id, list);
         });
 
-        const result: SiteProfitOrder[] = (ordersData || []).map((o: any) => {
+        const result: SiteProfitOrder[] = ordersData.map((o) => {
           const list = byOrder.get(o.id) || [];
           const revenue = list.reduce((s, i) => s + i.revenue, 0)
             || Number(o.total_amount || 0) - Number(o.shipping_cost || 0);

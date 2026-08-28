@@ -3,12 +3,16 @@
  * etiquetas. Retorna um mapa `${product_id}:${variation_id ?? ''}` -> preço.
  */
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { getPdvPrice, getPdvPriceForVariation } from '@/utils/pdvPricing';
 
 export interface LabelPriceTarget {
   product_id: string;
   variation_id: string | null;
 }
+
+type ProductAdmin = Database['public']['Functions']['get_products_admin']['Returns'][number];
+type VariationAdmin = Database['public']['Functions']['get_product_variations_admin']['Returns'][number];
 
 export const labelPriceKey = (productId: string, variationId: string | null) =>
   `${productId}:${variationId || ''}`;
@@ -28,14 +32,14 @@ export async function fetchLabelPrices(
     supabase.rpc('get_products_admin'),
     variationIds.length
       ? supabase.rpc('get_product_variations_admin')
-      : Promise.resolve({ data: [], error: null } as any),
+      : Promise.resolve<{ data: VariationAdmin[] | null; error: null }>({ data: [], error: null }),
   ]);
 
-  const products = new Map<string, any>(
-    (((prodRes.data as any[]) || []).filter((p) => productIds.includes(p.id))).map((p) => [p.id, p])
+  const products = new Map<string, ProductAdmin>(
+    ((prodRes.data || []) as ProductAdmin[]).filter((p) => productIds.includes(p.id)).map((p) => [p.id, p])
   );
-  const variations = new Map<string, any>(
-    (((varRes.data as any[]) || []).filter((v) => variationIds.includes(v.id))).map((v) => [v.id, v])
+  const variations = new Map<string, VariationAdmin>(
+    ((varRes.data || []) as VariationAdmin[]).filter((v) => variationIds.includes(v.id)).map((v) => [v.id, v])
   );
 
   for (const t of targets) {
