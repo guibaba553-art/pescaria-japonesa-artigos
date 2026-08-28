@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, Mail, Link2 } from 'lucide-react';
+import { MessageCircle, Mail, Link2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { isValidBrMobile, toE164, toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
@@ -66,14 +67,28 @@ export function AccountContactChannels() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-medium">WhatsApp</p>
-            <p className="text-muted-foreground">{formatPhone(toLocalDigits(user.phone ?? ''))} {phoneConfirmed ? '· verificado' : '· pendente'}</p>
+            <p className="text-muted-foreground">{formatPhone(toLocalDigits(user.phone ?? ''))}</p>
           </div>
+          {phoneConfirmed ? (
+            <Badge className="border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Verificado
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="gap-1 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="w-3.5 h-3.5" /> Pendente
+            </Badge>
+          )}
         </div>
 
         <div className="border-t pt-4">
           <p className="font-medium flex items-center gap-2"><Mail className="w-4 h-4" /> E-mail</p>
           {confirmedEmail ? (
-            <p className="text-muted-foreground">{confirmedEmail} · confirmado</p>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-muted-foreground truncate">{confirmedEmail}</p>
+              <Badge className="border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 gap-1 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Confirmado
+              </Badge>
+            </div>
           ) : (
             <div className="mt-2 flex gap-2 max-w-md">
               <Input placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />

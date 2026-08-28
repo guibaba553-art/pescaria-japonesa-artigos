@@ -76,20 +76,23 @@ describe('AccountContactChannels — WhatsApp / e-mail / vínculos', () => {
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
     expect(screen.getByText('WhatsApp')).toBeInTheDocument();
-    expect(screen.getByText(/\(11\) 99999-9999 · verificado/)).toBeInTheDocument();
+    expect(screen.getByText(/\(11\) 99999-9999/)).toBeInTheDocument();
+    expect(screen.getByText('Verificado')).toBeInTheDocument();
   });
 
   it('exibe pendente quando telefone não confirmado', async () => {
     mockUser.phone_confirmed_at = null;
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
-    expect(screen.getByText(/\(11\) 99999-9999 · pendente/)).toBeInTheDocument();
+    expect(screen.getByText(/\(11\) 99999-9999/)).toBeInTheDocument();
+    expect(screen.getByText('Pendente')).toBeInTheDocument();
   });
 
   it('exibe e-mail confirmado quando email_confirmed_at existe', async () => {
     const { AccountContactChannels } = await import('@/components/AccountContactChannels');
     render(<AccountContactChannels />);
-    expect(screen.getByText('joao@email.com · confirmado')).toBeInTheDocument();
+    expect(screen.getByText('joao@email.com')).toBeInTheDocument();
+    expect(screen.getByText('Confirmado')).toBeInTheDocument();
   });
 
   it('exibe input + botão Confirmar quando e-mail não confirmado', async () => {
