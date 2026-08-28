@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MessageCircle, Mail, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { isValidBrMobile, toE164 } from '@/lib/whatsappOtp';
+import { isValidBrMobile, toE164, toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
 
 export function AccountContactChannels() {
@@ -66,7 +66,7 @@ export function AccountContactChannels() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="font-medium">WhatsApp</p>
-            <p className="text-muted-foreground">{formatPhone(user.phone?.replace('+55', '') ?? '')} {phoneConfirmed ? '· verificado' : '· pendente'}</p>
+            <p className="text-muted-foreground">{formatPhone(toLocalDigits(user.phone ?? ''))} {phoneConfirmed ? '· verificado' : '· pendente'}</p>
           </div>
         </div>
 

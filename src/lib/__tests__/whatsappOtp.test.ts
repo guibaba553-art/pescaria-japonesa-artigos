@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toE164, isValidBrMobile, isEmailIdentifier, canResend, RESEND_COOLDOWN_MS, needsPhoneVerification } from '@/lib/whatsappOtp';
+import { toE164, toLocalDigits, isValidBrMobile, isEmailIdentifier, canResend, RESEND_COOLDOWN_MS, needsPhoneVerification } from '@/lib/whatsappOtp';
 
 describe('toE164', () => {
   it('adiciona +55 a celular de 11 dígitos', () => {
@@ -22,6 +22,24 @@ describe('toE164', () => {
   });
   it('remove caracteres não numéricos', () => {
     expect(toE164('(66) 99211-0000')).toBe('+5566992110000');
+  });
+});
+
+describe('toLocalDigits', () => {
+  it('remove código do país de E.164 sem + (formato do GoTrue)', () => {
+    expect(toLocalDigits('5563992843900')).toBe('63992843900');
+  });
+  it('remove código do país de E.164 com +', () => {
+    expect(toLocalDigits('+5563992843900')).toBe('63992843900');
+  });
+  it('remove código do país de fixo (12 dígitos)', () => {
+    expect(toLocalDigits('556633221100')).toBe('6633221100');
+  });
+  it('NÃO corta número local com DDD 55 (RS)', () => {
+    expect(toLocalDigits('55999112233')).toBe('55999112233');
+  });
+  it('devolve número local como está', () => {
+    expect(toLocalDigits('63992843900')).toBe('63992843900');
   });
 });
 

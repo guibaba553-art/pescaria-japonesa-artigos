@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import japaLogo from '@/assets/japa-logo.png';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { canResend, RESEND_COOLDOWN_MS } from '@/lib/whatsappOtp';
+import { canResend, RESEND_COOLDOWN_MS, toLocalDigits } from '@/lib/whatsappOtp';
 import { formatPhone, sanitizeNumericInput } from '@/utils/validation';
 
 export default function VerificarTelefone() {
@@ -87,7 +87,7 @@ export default function VerificarTelefone() {
   };
 
   const cooldownLeft = lastSentAt ? Math.max(0, Math.ceil((RESEND_COOLDOWN_MS - (nowTick - lastSentAt)) / 1000)) : 0;
-  const phoneForDisplay = phone.replace(/^\+55/, '');
+  const phoneForDisplay = toLocalDigits(phone);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-8">

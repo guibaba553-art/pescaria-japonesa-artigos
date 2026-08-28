@@ -10,6 +10,15 @@ export function toE164(digits: string): string {
   return `+${d}`;
 }
 
+// Remove o código do país para EXIBIÇÃO (formatPhone espera 10-11 dígitos).
+// GoTrue guarda user.phone sem o "+" (ex.: "5563992843900", 13 dígitos);
+// números locais com DDD 55 (RS) têm 11 dígitos iniciando em 55 — NÃO cortar.
+export function toLocalDigits(phone: string): string {
+  const d = phone.replace(/\D/g, '');
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) return d.slice(2);
+  return d;
+}
+
 export function isValidBrMobile(digits: string): boolean {
   if (!/^\d{10,11}$/.test(digits)) return false;
   const ddd = parseInt(digits.slice(0, 2), 10);
