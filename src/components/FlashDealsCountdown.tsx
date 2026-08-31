@@ -98,7 +98,7 @@ const FlashDealsCountdown = () => {
           .eq("pdv_only", false)
           .gt("stock", 0)
           .limit(12);
-        varProducts = (vpData as Product[]) || [];
+        varProducts = (vpData as unknown as Product[]) || [];
       }
 
       // Merge sem duplicar
