@@ -545,7 +545,7 @@ export default function AdminSalesAnalysis() {
           product_id: p.id || c.id || c.product_id || '',
           variation_id: v?.id || c.variation_id || null,
           quantity: Number(c.quantity || c.qty || 1),
-          price_at_purchase: Number(c.customPrice ?? p.price ?? c.price ?? c.unit_price ?? 0),
+          price_at_purchase: savedCartUnitPrice(c, row.raw?.payment_method),
           product_name: p.name || c.name || c.product_name || 'Produto',
           variation_name: v?.name || c.variation_name || null,
           sku: p.sku || c.sku || null,
