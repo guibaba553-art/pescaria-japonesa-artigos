@@ -104,7 +104,7 @@ const FlashDealsCountdown = () => {
       // Merge sem duplicar
       const merged: Product[] = [];
       const seen = new Set<string>();
-      for (const p of [...((directData as Product[]) || []), ...varProducts]) {
+      for (const p of [...((directData as unknown as Product[]) || []), ...varProducts]) {
         if (!seen.has(p.id)) {
           seen.add(p.id);
           merged.push(p);
