@@ -30,6 +30,26 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getPdvPrice, getPdvPriceForVariation, type PdvPaymentMethod } from '@/utils/pdvPricing';
+
+/** Preço unitário de um item de orçamento (cart_data), respeitando a regra de preço do PDV. */
+function savedCartUnitPrice(item: any, paymentMethod?: string | null): number {
+  if (typeof item?.customPrice === 'number' && !isNaN(item.customPrice)) return item.customPrice;
+  const p = item?.product || {};
+  const map: Record<string, PdvPaymentMethod> = {
+    cash: 'cash', dinheiro: 'cash', debit: 'debit', debito: 'debit',
+    credit: 'credit', credito: 'credit', pix: 'pix',
+  };
+  const method = map[String(paymentMethod || 'cash').toLowerCase()] || 'cash';
+  try {
+    if (item?.variation) {
+      return getPdvPriceForVariation(p, Number(item.variation.price ?? p.price ?? 0), method, item.variation);
+    }
+    return getPdvPrice(p, method);
+  } catch {
+    return Number(p.price ?? item?.price ?? item?.unit_price ?? 0);
+  }
+}
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
