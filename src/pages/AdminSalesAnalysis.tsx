@@ -30,6 +30,26 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getPdvPrice, getPdvPriceForVariation, type PdvPaymentMethod } from '@/utils/pdvPricing';
+
+/** Preço unitário de um item de orçamento (cart_data), respeitando a regra de preço do PDV. */
+function savedCartUnitPrice(item: any, paymentMethod?: string | null): number {
+  if (typeof item?.customPrice === 'number' && !isNaN(item.customPrice)) return item.customPrice;
+  const p = item?.product || {};
+  const map: Record<string, PdvPaymentMethod> = {
+    cash: 'cash', dinheiro: 'cash', debit: 'debit', debito: 'debit',
+    credit: 'credit', credito: 'credit', pix: 'pix',
+  };
+  const method = map[String(paymentMethod || 'cash').toLowerCase()] || 'cash';
+  try {
+    if (item?.variation) {
+      return getPdvPriceForVariation(p, Number(item.variation.price ?? p.price ?? 0), method, item.variation);
+    }
+    return getPdvPrice(p, method);
+  } catch {
+    return Number(p.price ?? item?.price ?? item?.unit_price ?? 0);
+  }
+}
 
 type RowKind = 'order' | 'saved' | 'nfe';
 type StatusGroup = 'concluido' | 'orcamento' | 'nota' | 'cancelado' | 'pendente';
@@ -525,7 +545,7 @@ export default function AdminSalesAnalysis() {
           product_id: p.id || c.id || c.product_id || '',
           variation_id: v?.id || c.variation_id || null,
           quantity: Number(c.quantity || c.qty || 1),
-          price_at_purchase: Number(c.customPrice ?? p.price ?? c.price ?? c.unit_price ?? 0),
+          price_at_purchase: savedCartUnitPrice(c, row.raw?.payment_method),
           product_name: p.name || c.name || c.product_name || 'Produto',
           variation_name: v?.name || c.variation_name || null,
           sku: p.sku || c.sku || null,
@@ -925,7 +945,7 @@ export default function AdminSalesAnalysis() {
               order_id: newOrder.id,
               product_id: p.id || it.id || it.product_id,
               quantity: Number(it.quantity || 1),
-              price_at_purchase: Number(it.customPrice ?? p.price ?? it.price ?? it.unit_price ?? 0),
+              price_at_purchase: savedCartUnitPrice(it, row.raw?.payment_method),
               variation_id: it.variation?.id || it.variation_id || null,
             };
           });

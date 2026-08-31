@@ -98,13 +98,13 @@ const FlashDealsCountdown = () => {
           .eq("pdv_only", false)
           .gt("stock", 0)
           .limit(12);
-        varProducts = (vpData as Product[]) || [];
+        varProducts = (vpData as unknown as Product[]) || [];
       }
 
       // Merge sem duplicar
       const merged: Product[] = [];
       const seen = new Set<string>();
-      for (const p of [...((directData as Product[]) || []), ...varProducts]) {
+      for (const p of [...((directData as unknown as Product[]) || []), ...varProducts]) {
         if (!seen.has(p.id)) {
           seen.add(p.id);
           merged.push(p);
