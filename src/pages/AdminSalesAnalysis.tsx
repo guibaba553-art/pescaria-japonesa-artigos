@@ -945,7 +945,7 @@ export default function AdminSalesAnalysis() {
               order_id: newOrder.id,
               product_id: p.id || it.id || it.product_id,
               quantity: Number(it.quantity || 1),
-              price_at_purchase: Number(it.customPrice ?? p.price ?? it.price ?? it.unit_price ?? 0),
+              price_at_purchase: savedCartUnitPrice(it, row.raw?.payment_method),
               variation_id: it.variation?.id || it.variation_id || null,
             };
           });
