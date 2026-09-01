@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from "@/lib/utils";
 import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement";
 import { applyCardFee } from "@/utils/cardFees";
+import { getPdvReceivableBreakdown } from "@/utils/pdvReceivableBreakdown";
+
 
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
@@ -702,35 +704,10 @@ function UnifiedList({
 
   pdvReceivables.forEach(r => {
     items.push(
-      <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
-        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="default" className="text-[10px]">PDV</Badge>
-              <Badge variant="outline" className="text-[10px]">Entrada</Badge>
-            </div>
-            <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
-              title="Baixar PDF com as vendas desta liquidação"
-            >
-              <FileDown className="w-4 h-4 mr-1" /> PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <PdvReceivableCard key={`pdv-${r.date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada" />
     );
   });
+
 
   incomes.forEach(i => {
     items.push(
@@ -810,6 +787,98 @@ function UnifiedList({
 
 
 
+function PdvReceivableCard({
+  receivable, pdvOrders, label,
+}: { receivable: PdvReceivable; pdvOrders: IncomeEntry[]; label: string }) {
+  const [open, setOpen] = useState(false);
+  const breakdown = useMemo(
+    () => getPdvReceivableBreakdown(receivable.date, pdvOrders),
+    [receivable.date, pdvOrders],
+  );
+  return (
+    <Card className="hover:shadow-md transition-shadow border-emerald-500/20">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="default" className="text-[10px]">PDV</Badge>
+              <Badge variant="outline" className="text-[10px]">{label}</Badge>
+            </div>
+            <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(receivable.date), "dd/MM/yyyy", { locale: ptBR })} • {receivable.count} transação(ões) liquidando neste dia
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Bruto {fmtBRL(breakdown.totalGross)} • Taxa <span className="text-red-600">- {fmtBRL(breakdown.totalFee)}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-lg font-bold text-emerald-600">{fmtBRL(receivable.total)}</div>
+              <div className="text-[10px] text-muted-foreground">líquido</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)}>
+              {open ? "Ocultar" : "Detalhar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => generatePdvReceivablePdf(receivable.date, pdvOrders)}
+              title="Baixar PDF com as vendas desta liquidação"
+            >
+              <FileDown className="w-4 h-4 mr-1" /> PDF
+            </Button>
+          </div>
+        </div>
+
+        {open && (
+          <div className="mt-3 border-t pt-3 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr className="text-left">
+                  <th className="py-1 pr-2">#</th>
+                  <th className="py-1 pr-2">Venda</th>
+                  <th className="py-1 pr-2">Pagamento</th>
+                  <th className="py-1 pr-2">Parcela</th>
+                  <th className="py-1 pr-2 text-right">Bruto</th>
+                  <th className="py-1 pr-2 text-right">Taxa</th>
+                  <th className="py-1 text-right">Líquido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {breakdown.lines.map((l, i) => (
+                  <tr key={`${l.orderId}-${l.parcelIndex}`} className="border-t border-border/50">
+                    <td className="py-1 pr-2 text-muted-foreground">{i + 1}</td>
+                    <td className="py-1 pr-2 whitespace-nowrap">
+                      {format(parseISO(l.saleDate), "dd/MM HH:mm", { locale: ptBR })}
+                      <span className="text-muted-foreground"> #{l.orderId.slice(0, 8)}</span>
+                    </td>
+                    <td className="py-1 pr-2">{l.paymentMethod}</td>
+                    <td className="py-1 pr-2">{l.parcelCount > 1 ? `${l.parcelIndex}/${l.parcelCount}` : "—"}</td>
+                    <td className="py-1 pr-2 text-right">{fmtBRL(l.gross)}</td>
+                    <td className="py-1 pr-2 text-right text-red-600">
+                      {l.feeRate > 0 ? `- ${fmtBRL(l.fee)}` : "—"}
+                    </td>
+                    <td className="py-1 text-right font-medium text-emerald-600">{fmtBRL(l.net)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t font-semibold">
+                  <td className="py-1 pr-2" colSpan={4}>Total</td>
+                  <td className="py-1 pr-2 text-right">{fmtBRL(breakdown.totalGross)}</td>
+                  <td className="py-1 pr-2 text-right text-red-600">- {fmtBRL(breakdown.totalFee)}</td>
+                  <td className="py-1 text-right text-emerald-600">{fmtBRL(breakdown.totalNet)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; pdvOrders: IncomeEntry[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (incomes.length === 0 && pdvReceivables.length === 0) return (
@@ -820,34 +889,9 @@ function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: 
   return (
     <div className="space-y-2">
       {pdvReceivables.map(r => (
-        <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
-          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="default" className="text-[10px]">PDV</Badge>
-                <Badge variant="outline" className="text-[10px]">A receber</Badge>
-              </div>
-              <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
-                title="Baixar PDF com as vendas desta liquidação"
-              >
-                <FileDown className="w-4 h-4 mr-1" /> PDF
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <PdvReceivableCard key={`pdv-${r.date}`} receivable={r} pdvOrders={pdvOrders} label="A receber" />
       ))}
+
       {incomes.map(i => (
         <Card key={i.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
