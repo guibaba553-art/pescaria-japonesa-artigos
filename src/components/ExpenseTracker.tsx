@@ -702,35 +702,10 @@ function UnifiedList({
 
   pdvReceivables.forEach(r => {
     items.push(
-      <Card key={`pdv-${r.date}`} className="hover:shadow-md transition-shadow border-emerald-500/20">
-        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="default" className="text-[10px]">PDV</Badge>
-              <Badge variant="outline" className="text-[10px]">Entrada</Badge>
-            </div>
-            <div className="font-semibold mt-1 truncate">Entrada de vendas</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {format(parseISO(r.date), "dd/MM/yyyy", { locale: ptBR })} • {r.count} venda(s) liquidando neste dia
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-lg font-bold text-emerald-600">{fmtBRL(r.total)}</div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => generatePdvReceivablePdf(r.date, pdvOrders)}
-              title="Baixar PDF com as vendas desta liquidação"
-            >
-              <FileDown className="w-4 h-4 mr-1" /> PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <PdvReceivableCard key={`pdv-${r.date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada" />
     );
   });
+
 
   incomes.forEach(i => {
     items.push(
