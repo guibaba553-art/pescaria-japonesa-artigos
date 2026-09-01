@@ -1900,6 +1900,31 @@ export default function PDV() {
 
       createdOrderId = order.id;
 
+      // Grava o rateio do pagamento (uma linha por meio usado). Vendas com um
+      // único meio também registram uma linha, para o financeiro ler sempre daqui.
+      const paymentRows = (splitMode && splitParts.length > 0
+        ? splitParts
+        : [{
+            method: paymentMethod,
+            amount: calculateTotal(),
+            installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
+          }]
+      ).map(p => ({
+        order_id: order.id,
+        payment_method: p.method,
+        amount: Number(Number(p.amount).toFixed(2)),
+        installments: p.method === 'credit' ? Math.max(1, Number(p.installments) || 1) : 1,
+        cash_received: p.method === 'cash'
+          ? (splitMode
+            ? Number(Number(p.amount).toFixed(2))
+            : (parseFloat((cashReceived || '').replace(',', '.')) || null))
+          : null,
+      }));
+      const { error: paymentsError } = await supabase.from('order_payments').insert(paymentRows as any);
+      if (paymentsError) console.error('Erro ao registrar rateio de pagamento:', paymentsError);
+
+
+
       // Vincula a transação TEF ao pedido criado
       if (tefData?.transaction_id) {
         await supabase
