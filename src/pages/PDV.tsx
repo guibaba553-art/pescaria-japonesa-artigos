@@ -1715,7 +1715,33 @@ export default function PDV() {
       return;
     }
 
-    if (paymentMethod === 'cash') {
+    // Pagamento dividido: as partes precisam fechar o total da venda.
+    if (splitMode) {
+      const check = validateSplit(calculateTotal(), splitParts);
+      if (!check.valid) {
+        toast({
+          title: 'Pagamento dividido incompleto',
+          description: check.error,
+          variant: 'destructive',
+        });
+        finalizingRef.current = false;
+        return;
+      }
+    }
+
+    // Crédito exige o número de parcelas — sem isso a previsão de recebíveis
+    // joga o valor inteiro em D+30 e diverge do extrato da maquininha.
+    if (!splitMode && paymentMethod === 'credit' && (Number(installments) || 0) < 1) {
+      toast({
+        title: 'Informe as parcelas',
+        description: 'Selecione em quantas vezes o crédito foi passado na maquininha.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+
+    if (!splitMode && paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
       // Comparar em centavos para evitar erro de ponto flutuante
       // (ex.: total 50.00000000001 vs recebido 50 quebrava venda exata)
