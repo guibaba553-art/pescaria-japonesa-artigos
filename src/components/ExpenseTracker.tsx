@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from "@/lib/utils";
 import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement";
 import { applyCardFee } from "@/utils/cardFees";
+import { getPdvReceivableBreakdown } from "@/utils/pdvReceivableBreakdown";
+
 
 
 const CATEGORIES_FIXED = ["Aluguel", "Energia", "Internet", "Água", "Telefone", "Salários", "Contador", "Sistema/Software", "Seguro", "Financiamento", "Outros"];
