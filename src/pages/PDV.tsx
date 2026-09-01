@@ -2890,32 +2890,149 @@ export default function PDV() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Forma de Pagamento</Label>
-                    <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
-                        <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
-                          <TabsTrigger value="cash" className="shrink-0">
-                            <Banknote className="w-4 h-4 mr-2" />
-                            Dinheiro
-                          </TabsTrigger>
-                          <TabsTrigger value="debit" className="shrink-0">
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Débito
-                          </TabsTrigger>
-                          <TabsTrigger value="credit" className="shrink-0">
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Crédito
-                          </TabsTrigger>
-                          <TabsTrigger value="pix" className="shrink-0">
-                            <DollarSign className="w-4 h-4 mr-2" />
-                            PIX
-                          </TabsTrigger>
-                        </TabsList>
-                      </div>
-                    </Tabs>
+                    <div className="flex items-center justify-between">
+                      <Label>Forma de Pagamento</Label>
+                      <Button
+                        type="button"
+                        variant={splitMode ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const next = !splitMode;
+                          setSplitMode(next);
+                          setSplitParts(next
+                            ? [{ method: 'credit', amount: Number(total.toFixed(2)), installments: 0 }]
+                            : []);
+                        }}
+                      >
+                        {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
+                      </Button>
+                    </div>
+                    {!splitMode && (
+                      <Tabs value={paymentMethod} onValueChange={(v: any) => { setPaymentMethod(v); if (v !== 'credit') setInstallments(0); }}>
+                        <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
+                          <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
+                            <TabsTrigger value="cash" className="shrink-0">
+                              <Banknote className="w-4 h-4 mr-2" />
+                              Dinheiro
+                            </TabsTrigger>
+                            <TabsTrigger value="debit" className="shrink-0">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Débito
+                            </TabsTrigger>
+                            <TabsTrigger value="credit" className="shrink-0">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Crédito
+                            </TabsTrigger>
+                            <TabsTrigger value="pix" className="shrink-0">
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              PIX
+                            </TabsTrigger>
+                          </TabsList>
+                        </div>
+                      </Tabs>
+                    )}
                   </div>
 
-                  {paymentMethod === 'cash' && (
+                  {splitMode && (
+                    <div className="space-y-3">
+                      {splitParts.map((part, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border space-y-2">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={part.method}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, method: e.target.value, installments: e.target.value === 'credit' ? (p.installments || 0) : 1 } : p))}
+                              className="flex-1 h-9 px-2 text-sm rounded-md border border-input bg-background"
+                            >
+                              <option value="cash">Dinheiro</option>
+                              <option value="debit">Débito</option>
+                              <option value="credit">Crédito</option>
+                              <option value="pix">PIX</option>
+                            </select>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="w-28 h-9"
+                              placeholder="0,00"
+                              value={part.amount || ''}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, amount: Number(e.target.value) } : p))}
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => setSplitParts(prev => prev.filter((_, i) => i !== idx))}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {part.method === 'credit' && (
+                            <select
+                              value={part.installments ?? 0}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, installments: Number(e.target.value) } : p))}
+                              className="w-full h-9 px-2 text-sm rounded-md border border-input bg-background"
+                            >
+                              <option value={0}>Selecione as parcelas…</option>
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                <option key={num} value={num}>
+                                  {num}x de R$ {((Number(part.amount) || 0) / num).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setSplitParts(prev => {
+                          const rest = Math.max(0, Number((total - prev.reduce((s, p) => s + (Number(p.amount) || 0), 0)).toFixed(2)));
+                          return [...prev, { method: 'cash', amount: rest, installments: 1 }];
+                        })}
+                      >
+                        <Plus className="w-4 h-4 mr-2" /> Adicionar forma de pagamento
+                      </Button>
+                      {(() => {
+                        const check = validateSplit(total, splitParts);
+                        const troco = splitChange(total, splitParts);
+                        return (
+                          <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span>Total da venda:</span>
+                              <span className="font-bold">R$ {total.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Informado:</span>
+                              <span>R$ {check.paid.toFixed(2)}</span>
+                            </div>
+                            {check.remaining > 0 && (
+                              <div className="flex justify-between text-destructive font-medium">
+                                <span>Falta:</span>
+                                <span>R$ {check.remaining.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {troco > 0 && (
+                              <div className="flex justify-between">
+                                <span>Troco:</span>
+                                <span className="font-bold">R$ {troco.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {!check.valid && check.error && (
+                              <p className="text-xs text-destructive pt-1">{check.error}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {!splitMode && paymentMethod === 'cash' && (
                     <>
                       <div className="space-y-2">
                         <Label>Valor Recebido</Label>
@@ -2940,34 +3057,47 @@ export default function PDV() {
                     </>
                   )}
 
-                  {paymentMethod === 'credit' && (
+                  {!splitMode && paymentMethod === 'credit' && (
                     <div className="space-y-2">
-                      <Label>Número de Parcelas</Label>
+                      <Label>
+                        Número de Parcelas <span className="text-destructive">*</span>
+                      </Label>
                       <select
                         value={installments}
                         onChange={(e) => setInstallments(Number(e.target.value))}
-                        className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        className={cn(
+                          "w-full h-10 px-3 py-2 text-sm rounded-md border bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                          installments < 1 ? "border-destructive" : "border-input",
+                        )}
                       >
+                        <option value={0}>Selecione as parcelas…</option>
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
                           <option key={num} value={num}>
                             {num}x de R$ {(total / num).toFixed(2)}
                           </option>
                         ))}
                       </select>
-                      <div className="p-3 bg-muted rounded-lg space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>Valor da Parcela:</span>
-                          <span className="font-bold">
-                            R$ {(total / installments).toFixed(2)}
-                          </span>
+                      {installments < 1 ? (
+                        <p className="text-xs text-destructive">
+                          Informe em quantas vezes o crédito foi passado na maquininha — isso é o que faz o recebível bater com a Stone.
+                        </p>
+                      ) : (
+                        <div className="p-3 bg-muted rounded-lg space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Valor da Parcela:</span>
+                            <span className="font-bold">
+                              R$ {(total / installments).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Total:</span>
+                            <span>R$ {total.toFixed(2)}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Total:</span>
-                          <span>R$ {total.toFixed(2)}</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
+
 
                   <Button
                     onClick={finalizeSale}
