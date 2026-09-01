@@ -1841,6 +1841,16 @@ export default function PDV() {
 
       // Criar pedido com idempotency_key (índice único impede duplicatas)
       const tefData = tefResultRef.current;
+      // No pagamento dividido o pedido guarda a parte de maior valor como
+      // método "principal"; o rateio completo vai para order_payments.
+      const mainPart = splitMode ? primaryPart(splitParts) : null;
+      const effectiveMethod = mainPart ? mainPart.method : paymentMethod;
+      const effectiveInstallments = mainPart
+        ? (mainPart.method === 'credit' ? Math.max(1, Number(mainPart.installments) || 1) : 1)
+        : (paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1);
+      const splitCashReceived = splitMode
+        ? splitParts.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount || 0), 0)
+        : 0;
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -1853,8 +1863,8 @@ export default function PDV() {
           shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
           customer_id: selectedCustomer?.id || null,
           source: 'pdv',
-          payment_method: paymentMethod,
-          installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
+          payment_method: effectiveMethod,
+          installments: effectiveInstallments,
           idempotency_key: idempotencyKey,
           tef_transaction_id: tefData?.transaction_id ?? null,
           card_brand: tefData?.card_brand ?? null,
@@ -1862,9 +1872,11 @@ export default function PDV() {
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
           notes: saleNotes || null,
-          cash_received: paymentMethod === 'cash'
-            ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
-            : null,
+          cash_received: splitMode
+            ? (splitCashReceived || null)
+            : (paymentMethod === 'cash'
+              ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+              : null),
           pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
             ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
             : null,
