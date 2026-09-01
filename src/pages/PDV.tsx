@@ -833,7 +833,9 @@ export default function PDV() {
     setCashReceived('');
     setSelectedCustomer(null);
     setPaymentMethod('credit');
-    setInstallments(1);
+    setInstallments(0);
+    setSplitMode(false);
+    setSplitParts([]);
     setDiscountInput('');
     setSaleNotes('');
     setCurrentSaleId(null);
