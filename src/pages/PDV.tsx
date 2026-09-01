@@ -1762,6 +1762,7 @@ export default function PDV() {
     // antes de criar o pedido. Só prossegue após aprovação.
     if (
       tefEnabled &&
+      !splitMode &&
       (paymentMethod === 'credit' || paymentMethod === 'debit') &&
       !tefResultRef.current
     ) {
