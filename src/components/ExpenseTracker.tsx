@@ -93,7 +93,7 @@ export function ExpenseTracker() {
     const monthEnd = endOfMonth(currentMonth);
     // Olhar 12 meses para trás para capturar parcelas de crédito que caem neste mês
     const pdvLookbackStart = startOfMonth(addMonths(monthStart, -12)).toISOString();
-    const [{ data: exp }, { data: ov }, { data: siteOrd }, { data: pdvOrd }] = await Promise.all([
+    const [{ data: exp }, { data: ov }, { data: siteOrd }, pdvOrd] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       supabase
@@ -104,15 +104,20 @@ export function ExpenseTracker() {
         .lte("created_at", monthEnd.toISOString())
         .neq("status", "cancelado" as any)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status, installments")
-        .eq("source", "pdv" as any)
-        .gte("created_at", pdvLookbackStart)
-        .lte("created_at", monthEnd.toISOString())
-        .neq("status", "cancelado" as any)
-        .order("created_at", { ascending: false }),
+      // Pagina: o PostgREST corta em 1000 linhas e isso escondia parcelas antigas.
+      fetchAllPaged<any>((from, to) =>
+        supabase
+          .from("orders")
+          .select("id, source, created_at, total_amount, payment_method, status, installments")
+          .eq("source", "pdv" as any)
+          .gte("created_at", pdvLookbackStart)
+          .lte("created_at", monthEnd.toISOString())
+          .neq("status", "cancelado" as any)
+          .order("created_at", { ascending: false })
+          .range(from, to) as any,
+      ),
     ]);
+
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
     const mapOrder = (o: any): IncomeEntry => ({
