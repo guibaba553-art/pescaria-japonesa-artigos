@@ -92,8 +92,9 @@ export function ExpenseTracker() {
     setLoading(true);
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    // Olhar 12 meses para trás para capturar parcelas de crédito que caem neste mês
-    const pdvLookbackStart = startOfMonth(addMonths(monthStart, -12)).toISOString();
+    // Olhar 18 meses para trás: crédito em 12x tem a última parcela em D+360,
+    // então 12 meses de janela ainda cortava parcelas antigas.
+    const pdvLookbackStart = startOfMonth(addMonths(monthStart, -18)).toISOString();
     const [{ data: exp }, { data: ov }, { data: siteOrd }, pdvOrd] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
