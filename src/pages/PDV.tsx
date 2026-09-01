@@ -4183,7 +4183,7 @@ export default function PDV() {
             open={showTefDialog}
             amount={calculateTotal()}
             paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-            installments={installments}
+            installments={Math.max(1, installments)}
             onCancel={() => {
               setShowTefDialog(false);
               tefResultRef.current = null;
