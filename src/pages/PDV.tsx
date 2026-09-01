@@ -1909,17 +1909,23 @@ export default function PDV() {
             amount: calculateTotal(),
             installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
           }]
-      ).map(p => ({
-        order_id: order.id,
-        payment_method: p.method,
-        amount: Number(Number(p.amount).toFixed(2)),
-        installments: p.method === 'credit' ? Math.max(1, Number(p.installments) || 1) : 1,
-        cash_received: p.method === 'cash'
-          ? (splitMode
-            ? Number(Number(p.amount).toFixed(2))
-            : (parseFloat((cashReceived || '').replace(',', '.')) || null))
-          : null,
-      }));
+      ).map((p, idx, arr) => {
+        // Dinheiro pode ser informado com troco: registra só o valor que cobre a venda.
+        const others = arr.reduce((s, q, i) => i === idx ? s : s + (Number(q.amount) || 0), 0);
+        const raw = Number(p.amount) || 0;
+        const amount = p.method === 'cash'
+          ? Math.max(0, Math.min(raw, calculateTotal() - others))
+          : raw;
+        return {
+          order_id: order.id,
+          payment_method: p.method,
+          amount: Number(amount.toFixed(2)),
+          installments: p.method === 'credit' ? Math.max(1, Number(p.installments) || 1) : 1,
+          cash_received: p.method === 'cash'
+            ? (splitMode ? Number(raw.toFixed(2)) : (parseFloat((cashReceived || '').replace(',', '.')) || null))
+            : null,
+        };
+      });
       const { error: paymentsError } = await supabase.from('order_payments').insert(paymentRows as any);
       if (paymentsError) console.error('Erro ao registrar rateio de pagamento:', paymentsError);
 
