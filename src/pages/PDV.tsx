@@ -236,7 +236,12 @@ export default function PDV() {
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
-  const [installments, setInstallments] = useState(1);
+  // 0 = ainda não escolhido. No crédito a escolha é obrigatória: sem isso o
+  // financeiro projeta tudo em D+30 e não bate com o extrato da maquininha.
+  const [installments, setInstallments] = useState(0);
+  // Pagamento dividido (ex.: parte no cartão, parte em dinheiro)
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitParts, setSplitParts] = useState<PaymentPart[]>([]);
   const [discountInput, setDiscountInput] = useState(''); // desconto em R$ (valor direto)
   const [saleNotes, setSaleNotes] = useState(''); // anotação livre da venda
   
