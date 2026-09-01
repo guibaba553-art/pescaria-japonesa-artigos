@@ -132,7 +132,45 @@ export function ExpenseTracker() {
       installments: o.installments ?? 1,
     });
     setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
-    setPdvOrders(((pdvOrd ?? []) as any[]).map(mapOrder));
+
+    // Pedidos do PDV: quando existe rateio em order_payments (pagamento dividido
+    // ou registro detalhado), cada parte vira uma entrada própria — assim o
+    // recebível respeita o meio e o parcelamento reais de cada valor.
+    const pdvList = ((pdvOrd ?? []) as any[]).map(mapOrder);
+    const pdvIds = pdvList.map(o => o.id);
+    const payments: any[] = [];
+    for (let i = 0; i < pdvIds.length; i += 300) {
+      const chunk = pdvIds.slice(i, i + 300);
+      const { data } = await supabase
+        .from("order_payments")
+        .select("order_id, payment_method, amount, installments")
+        .in("order_id", chunk as any);
+      if (data) payments.push(...(data as any[]));
+    }
+    const byOrder = new Map<string, any[]>();
+    for (const p of payments) {
+      const arr = byOrder.get(p.order_id) ?? [];
+      arr.push(p);
+      byOrder.set(p.order_id, arr);
+    }
+    const expanded: IncomeEntry[] = [];
+    for (const o of pdvList) {
+      const parts = byOrder.get(o.id);
+      if (!parts || parts.length === 0) {
+        expanded.push(o);
+        continue;
+      }
+      parts.forEach((p, idx) => {
+        expanded.push({
+          ...o,
+          id: parts.length > 1 ? `${o.id}#${idx + 1}` : o.id,
+          total_amount: Number(p.amount || 0),
+          payment_method: p.payment_method,
+          installments: Number(p.installments || 1),
+        });
+      });
+    }
+    setPdvOrders(expanded);
     setLoading(false);
   };
   useEffect(() => { loadData(); }, [currentMonth]);

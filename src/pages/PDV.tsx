@@ -70,6 +70,7 @@ import { Award } from 'lucide-react';
 import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import type { TefApprovedResult } from '@/components/TefChargeDialog';
+import { validateSplit, splitChange, primaryPart, type PaymentPart } from '@/utils/paymentSplit';
 const TefChargeDialog = lazy(() =>
   import('@/components/TefChargeDialog').then((m) => ({ default: m.TefChargeDialog }))
 );
@@ -236,7 +237,12 @@ export default function PDV() {
   const [cashReceived, setCashReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
-  const [installments, setInstallments] = useState(1);
+  // 0 = ainda não escolhido. No crédito a escolha é obrigatória: sem isso o
+  // financeiro projeta tudo em D+30 e não bate com o extrato da maquininha.
+  const [installments, setInstallments] = useState(0);
+  // Pagamento dividido (ex.: parte no cartão, parte em dinheiro)
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitParts, setSplitParts] = useState<PaymentPart[]>([]);
   const [discountInput, setDiscountInput] = useState(''); // desconto em R$ (valor direto)
   const [saleNotes, setSaleNotes] = useState(''); // anotação livre da venda
   
@@ -828,7 +834,9 @@ export default function PDV() {
     setCashReceived('');
     setSelectedCustomer(null);
     setPaymentMethod('credit');
-    setInstallments(1);
+    setInstallments(0);
+    setSplitMode(false);
+    setSplitParts([]);
     setDiscountInput('');
     setSaleNotes('');
     setCurrentSaleId(null);
@@ -1707,7 +1715,33 @@ export default function PDV() {
       return;
     }
 
-    if (paymentMethod === 'cash') {
+    // Pagamento dividido: as partes precisam fechar o total da venda.
+    if (splitMode) {
+      const check = validateSplit(calculateTotal(), splitParts);
+      if (!check.valid) {
+        toast({
+          title: 'Pagamento dividido incompleto',
+          description: check.error,
+          variant: 'destructive',
+        });
+        finalizingRef.current = false;
+        return;
+      }
+    }
+
+    // Crédito exige o número de parcelas — sem isso a previsão de recebíveis
+    // joga o valor inteiro em D+30 e diverge do extrato da maquininha.
+    if (!splitMode && paymentMethod === 'credit' && (Number(installments) || 0) < 1) {
+      toast({
+        title: 'Informe as parcelas',
+        description: 'Selecione em quantas vezes o crédito foi passado na maquininha.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+
+    if (!splitMode && paymentMethod === 'cash') {
       const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
       // Comparar em centavos para evitar erro de ponto flutuante
       // (ex.: total 50.00000000001 vs recebido 50 quebrava venda exata)
@@ -1728,6 +1762,7 @@ export default function PDV() {
     // antes de criar o pedido. Só prossegue após aprovação.
     if (
       tefEnabled &&
+      !splitMode &&
       (paymentMethod === 'credit' || paymentMethod === 'debit') &&
       !tefResultRef.current
     ) {
@@ -1806,6 +1841,16 @@ export default function PDV() {
 
       // Criar pedido com idempotency_key (índice único impede duplicatas)
       const tefData = tefResultRef.current;
+      // No pagamento dividido o pedido guarda a parte de maior valor como
+      // método "principal"; o rateio completo vai para order_payments.
+      const mainPart = splitMode ? primaryPart(splitParts) : null;
+      const effectiveMethod = mainPart ? mainPart.method : paymentMethod;
+      const effectiveInstallments = mainPart
+        ? (mainPart.method === 'credit' ? Math.max(1, Number(mainPart.installments) || 1) : 1)
+        : (paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1);
+      const splitCashReceived = splitMode
+        ? splitParts.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount || 0), 0)
+        : 0;
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
@@ -1818,8 +1863,8 @@ export default function PDV() {
           shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
           customer_id: selectedCustomer?.id || null,
           source: 'pdv',
-          payment_method: paymentMethod,
-          installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
+          payment_method: effectiveMethod,
+          installments: effectiveInstallments,
           idempotency_key: idempotencyKey,
           tef_transaction_id: tefData?.transaction_id ?? null,
           card_brand: tefData?.card_brand ?? null,
@@ -1827,9 +1872,11 @@ export default function PDV() {
           nsu: tefData?.nsu ?? null,
           authorization_code: tefData?.authorization_code ?? null,
           notes: saleNotes || null,
-          cash_received: paymentMethod === 'cash'
-            ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
-            : null,
+          cash_received: splitMode
+            ? (splitCashReceived || null)
+            : (paymentMethod === 'cash'
+              ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+              : null),
           pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
             ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
             : null,
@@ -1852,6 +1899,37 @@ export default function PDV() {
       }
 
       createdOrderId = order.id;
+
+      // Grava o rateio do pagamento (uma linha por meio usado). Vendas com um
+      // único meio também registram uma linha, para o financeiro ler sempre daqui.
+      const paymentRows = (splitMode && splitParts.length > 0
+        ? splitParts
+        : [{
+            method: paymentMethod,
+            amount: calculateTotal(),
+            installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
+          }]
+      ).map((p, idx, arr) => {
+        // Dinheiro pode ser informado com troco: registra só o valor que cobre a venda.
+        const others = arr.reduce((s, q, i) => i === idx ? s : s + (Number(q.amount) || 0), 0);
+        const raw = Number(p.amount) || 0;
+        const amount = p.method === 'cash'
+          ? Math.max(0, Math.min(raw, calculateTotal() - others))
+          : raw;
+        return {
+          order_id: order.id,
+          payment_method: p.method,
+          amount: Number(amount.toFixed(2)),
+          installments: p.method === 'credit' ? Math.max(1, Number(p.installments) || 1) : 1,
+          cash_received: p.method === 'cash'
+            ? (splitMode ? Number(raw.toFixed(2)) : (parseFloat((cashReceived || '').replace(',', '.')) || null))
+            : null,
+        };
+      });
+      const { error: paymentsError } = await supabase.from('order_payments').insert(paymentRows as any);
+      if (paymentsError) console.error('Erro ao registrar rateio de pagamento:', paymentsError);
+
+
 
       // Vincula a transação TEF ao pedido criado
       if (tefData?.transaction_id) {
@@ -2818,32 +2896,149 @@ export default function PDV() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Forma de Pagamento</Label>
-                    <Tabs value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
-                        <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
-                          <TabsTrigger value="cash" className="shrink-0">
-                            <Banknote className="w-4 h-4 mr-2" />
-                            Dinheiro
-                          </TabsTrigger>
-                          <TabsTrigger value="debit" className="shrink-0">
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Débito
-                          </TabsTrigger>
-                          <TabsTrigger value="credit" className="shrink-0">
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Crédito
-                          </TabsTrigger>
-                          <TabsTrigger value="pix" className="shrink-0">
-                            <DollarSign className="w-4 h-4 mr-2" />
-                            PIX
-                          </TabsTrigger>
-                        </TabsList>
-                      </div>
-                    </Tabs>
+                    <div className="flex items-center justify-between">
+                      <Label>Forma de Pagamento</Label>
+                      <Button
+                        type="button"
+                        variant={splitMode ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          const next = !splitMode;
+                          setSplitMode(next);
+                          setSplitParts(next
+                            ? [{ method: 'credit', amount: Number(total.toFixed(2)), installments: 0 }]
+                            : []);
+                        }}
+                      >
+                        {splitMode ? 'Pagamento único' : 'Dividir pagamento'}
+                      </Button>
+                    </div>
+                    {!splitMode && (
+                      <Tabs value={paymentMethod} onValueChange={(v: any) => { setPaymentMethod(v); if (v !== 'credit') setInstallments(0); }}>
+                        <div className="-mx-3 lg:mx-0 px-3 lg:px-0 overflow-x-auto scrollbar-hide">
+                          <TabsList className="inline-flex lg:grid w-max lg:w-full lg:grid-cols-4 gap-1">
+                            <TabsTrigger value="cash" className="shrink-0">
+                              <Banknote className="w-4 h-4 mr-2" />
+                              Dinheiro
+                            </TabsTrigger>
+                            <TabsTrigger value="debit" className="shrink-0">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Débito
+                            </TabsTrigger>
+                            <TabsTrigger value="credit" className="shrink-0">
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Crédito
+                            </TabsTrigger>
+                            <TabsTrigger value="pix" className="shrink-0">
+                              <DollarSign className="w-4 h-4 mr-2" />
+                              PIX
+                            </TabsTrigger>
+                          </TabsList>
+                        </div>
+                      </Tabs>
+                    )}
                   </div>
 
-                  {paymentMethod === 'cash' && (
+                  {splitMode && (
+                    <div className="space-y-3">
+                      {splitParts.map((part, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border space-y-2">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={part.method}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, method: e.target.value, installments: e.target.value === 'credit' ? (p.installments || 0) : 1 } : p))}
+                              className="flex-1 h-9 px-2 text-sm rounded-md border border-input bg-background"
+                            >
+                              <option value="cash">Dinheiro</option>
+                              <option value="debit">Débito</option>
+                              <option value="credit">Crédito</option>
+                              <option value="pix">PIX</option>
+                            </select>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              className="w-28 h-9"
+                              placeholder="0,00"
+                              value={part.amount || ''}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, amount: Number(e.target.value) } : p))}
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => setSplitParts(prev => prev.filter((_, i) => i !== idx))}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {part.method === 'credit' && (
+                            <select
+                              value={part.installments ?? 0}
+                              onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
+                                i === idx ? { ...p, installments: Number(e.target.value) } : p))}
+                              className="w-full h-9 px-2 text-sm rounded-md border border-input bg-background"
+                            >
+                              <option value={0}>Selecione as parcelas…</option>
+                              {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                                <option key={num} value={num}>
+                                  {num}x de R$ {((Number(part.amount) || 0) / num).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setSplitParts(prev => {
+                          const rest = Math.max(0, Number((total - prev.reduce((s, p) => s + (Number(p.amount) || 0), 0)).toFixed(2)));
+                          return [...prev, { method: 'cash', amount: rest, installments: 1 }];
+                        })}
+                      >
+                        <Plus className="w-4 h-4 mr-2" /> Adicionar forma de pagamento
+                      </Button>
+                      {(() => {
+                        const check = validateSplit(total, splitParts);
+                        const troco = splitChange(total, splitParts);
+                        return (
+                          <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span>Total da venda:</span>
+                              <span className="font-bold">R$ {total.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Informado:</span>
+                              <span>R$ {check.paid.toFixed(2)}</span>
+                            </div>
+                            {check.remaining > 0 && (
+                              <div className="flex justify-between text-destructive font-medium">
+                                <span>Falta:</span>
+                                <span>R$ {check.remaining.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {troco > 0 && (
+                              <div className="flex justify-between">
+                                <span>Troco:</span>
+                                <span className="font-bold">R$ {troco.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {!check.valid && check.error && (
+                              <p className="text-xs text-destructive pt-1">{check.error}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {!splitMode && paymentMethod === 'cash' && (
                     <>
                       <div className="space-y-2">
                         <Label>Valor Recebido</Label>
@@ -2868,34 +3063,47 @@ export default function PDV() {
                     </>
                   )}
 
-                  {paymentMethod === 'credit' && (
+                  {!splitMode && paymentMethod === 'credit' && (
                     <div className="space-y-2">
-                      <Label>Número de Parcelas</Label>
+                      <Label>
+                        Número de Parcelas <span className="text-destructive">*</span>
+                      </Label>
                       <select
                         value={installments}
                         onChange={(e) => setInstallments(Number(e.target.value))}
-                        className="w-full h-10 px-3 py-2 text-sm rounded-md border border-input bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        className={cn(
+                          "w-full h-10 px-3 py-2 text-sm rounded-md border bg-background ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                          installments < 1 ? "border-destructive" : "border-input",
+                        )}
                       >
+                        <option value={0}>Selecione as parcelas…</option>
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
                           <option key={num} value={num}>
                             {num}x de R$ {(total / num).toFixed(2)}
                           </option>
                         ))}
                       </select>
-                      <div className="p-3 bg-muted rounded-lg space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>Valor da Parcela:</span>
-                          <span className="font-bold">
-                            R$ {(total / installments).toFixed(2)}
-                          </span>
+                      {installments < 1 ? (
+                        <p className="text-xs text-destructive">
+                          Informe em quantas vezes o crédito foi passado na maquininha — isso é o que faz o recebível bater com a Stone.
+                        </p>
+                      ) : (
+                        <div className="p-3 bg-muted rounded-lg space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Valor da Parcela:</span>
+                            <span className="font-bold">
+                              R$ {(total / installments).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Total:</span>
+                            <span>R$ {total.toFixed(2)}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Total:</span>
-                          <span>R$ {total.toFixed(2)}</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
+
 
                   <Button
                     onClick={finalizeSale}
@@ -3981,7 +4189,7 @@ export default function PDV() {
             open={showTefDialog}
             amount={calculateTotal()}
             paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-            installments={installments}
+            installments={Math.max(1, installments)}
             onCancel={() => {
               setShowTefDialog(false);
               tefResultRef.current = null;

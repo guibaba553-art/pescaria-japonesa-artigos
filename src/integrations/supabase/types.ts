@@ -1457,6 +1457,47 @@ export type Database = {
           },
         ]
       }
+      order_payments: {
+        Row: {
+          amount: number
+          cash_received: number | null
+          created_at: string
+          id: string
+          installments: number
+          order_id: string
+          payment_method: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          cash_received?: number | null
+          created_at?: string
+          id?: string
+          installments?: number
+          order_id: string
+          payment_method: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cash_received?: number | null
+          created_at?: string
+          id?: string
+          installments?: number
+          order_id?: string
+          payment_method?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           asaas_installment_id: string | null
