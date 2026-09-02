@@ -3143,6 +3143,47 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_product_variations_by_product: {
+        Args: { p_product_id: string }
+        Returns: {
+          cost: number | null
+          cost_group_id: string | null
+          created_at: string
+          description: string | null
+          freight_pct: number
+          height_cm: number | null
+          id: string
+          image_url: string | null
+          length_cm: number | null
+          min_sale_price: number | null
+          min_stock: number
+          name: string
+          on_sale: boolean
+          op_cost_pct: number
+          price: number
+          price_pdv: number | null
+          product_id: string
+          sale_channel: string
+          sale_ends_at: string | null
+          sale_limit_qty: number | null
+          sale_price: number | null
+          sale_price_pdv: number | null
+          sale_sold_qty: number
+          sale_starts_at: string | null
+          sku: string | null
+          stock: number
+          tax_pct: number
+          updated_at: string
+          weight_grams: number | null
+          width_cm: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "product_variations"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_products_admin: {
         Args: never
         Returns: {
