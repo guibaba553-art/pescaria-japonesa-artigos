@@ -1,0 +1,16 @@
+# Limites de tamanho de PR (bento/small-prs)
+max_lines: 400
+max_files: 10
+overrides:
+  - glob: "openspec/**"
+    max_lines: 1500
+    exempt: true
+  - glob: ".opencode/commands/**"
+    max_lines: 2500
+    exempt: true
+  - glob: "docs/superpowers/plans/**"
+    max_lines: 1000
+    exempt: true
+  - glob: "docs/superpowers/specs/**"
+    max_lines: 1000
+    exempt: true
