@@ -2064,10 +2064,26 @@ export default function PDV() {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = (() => {
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return products;
+    const codeTerm = normalizeBarcode(searchQuery);
+    const codeCands = barcodeCandidates(codeTerm).map((c) => c.toLowerCase());
+    const skuMatches = (sku?: string | null) => {
+      if (!sku) return false;
+      const n = normalizeBarcode(sku).toLowerCase();
+      if (n.includes(term)) return true;
+      const stripped = /^\d+$/.test(n) ? (n.replace(/^0+/, '') || '0') : n;
+      return codeCands.some((c) => c === n || c === stripped);
+    };
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(term) ||
+      p.category.toLowerCase().includes(term) ||
+      skuMatches(p.sku) ||
+      (p.variations || []).some((v) => skuMatches(v.sku) || (v.name || '').toLowerCase().includes(term))
+    );
+  })();
+
 
   if (loading || loadingProducts) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
