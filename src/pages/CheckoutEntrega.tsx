@@ -37,6 +37,8 @@ import { formatCEP } from '@/utils/validation';
 import { packItems } from '@/utils/packShipment';
 import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
+import { needsPhoneVerification, toLocalDigits } from '@/lib/whatsappOtp';
+import { OtpVerificationDialog } from '@/components/OtpVerificationDialog';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
 
@@ -91,6 +93,8 @@ export default function CheckoutEntrega() {
   // Endereço
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
   const [editMode, setEditMode] = useState<'new' | string | null>(null); // null = not editing, 'new' = new, string = address id
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
@@ -109,6 +113,7 @@ export default function CheckoutEntrega() {
   const [cardError, setCardError] = useState<string | undefined>();
   // Profile data for pre-filling card holder info
   const [profileData, setProfileData] = useState<{ name: string; email: string; cpf: string; phone: string } | null>(null);
+  const [contactEmail, setContactEmail] = useState('');
 
   const selectedAddress = typeof selectedOption === 'string' && selectedOption !== 'pickup'
     ? addresses.find((a) => a.id === selectedOption) ?? null
@@ -345,7 +350,7 @@ export default function CheckoutEntrega() {
     if (!user) return;
     supabase
       .from('profiles')
-      .select('full_name, cpf, phone')
+      .select('full_name, cpf, phone, card_contact_email')
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -356,6 +361,7 @@ export default function CheckoutEntrega() {
             cpf: data.cpf || '',
             phone: data.phone || '',
           });
+          setContactEmail(data.card_contact_email || '');
         }
       });
   }, [user]);
@@ -441,6 +447,33 @@ export default function CheckoutEntrega() {
 
   const handleFinalizeOrder = async () => {
     if (finalizingRef.current) return;
+
+    // ── Guarda: telefone confirmado obrigatório antes de pagar ────────────
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) throw new Error('Usuário não autenticado');
+
+    if (needsPhoneVerification(currentUser)) {
+      // Resolve o telefone para a verificação em modal (legado: só em profiles)
+      const metaPhone =
+        currentUser.phone ?? (currentUser.user_metadata?.phone as string | undefined) ?? '';
+      if (metaPhone) {
+        setOtpPhone(toLocalDigits(metaPhone));
+        setOtpDialogOpen(true);
+        return;
+      }
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('phone')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+      if (prof?.phone) {
+        setOtpPhone(prof.phone);
+        setOtpDialogOpen(true);
+        return;
+      }
+      toast.error('Cadastre um telefone em "Meus Dados" antes de finalizar o pedido.');
+      return;
+    }
 
     // ── Validações de formulário (backend guard) ──────────────
     if (!selectedOption || !paymentDeliveryReady) {
@@ -756,6 +789,15 @@ export default function CheckoutEntrega() {
           return;
         }
 
+        const cleanContactEmail = contactEmail.trim();
+        if (cleanContactEmail) {
+          try {
+            await supabase.from('profiles').update({ card_contact_email: cleanContactEmail }).eq('id', user!.id);
+          } catch (err) {
+            console.warn('Falha ao persistir card_contact_email (não-bloqueante):', err);
+          }
+        }
+
         setCardLoading(true);
         setCardError(undefined);
 
@@ -780,6 +822,13 @@ export default function CheckoutEntrega() {
           const isRetry = !!pendingOrderId;
           const fnName = isRetry ? 'retry-payment-asaas' : 'create-payment-asaas';
 
+          // O e-mail NÃO vai no body — a escada em _shared/asaasPayment.ts
+          // (confirmado > card_contact_email > placeholder) é a fonte única.
+          // Enviar e-mail não confirmado aqui furaria a regra D9 da spec.
+          const holderInfo = cardData.creditCardHolderInfo;
+          const holderInfoForPayload = holderInfo ? { ...holderInfo } : undefined;
+          if (holderInfoForPayload) delete holderInfoForPayload.email;
+
           const { data: paymentResult, error: paymentError } = await supabase.functions.invoke(
             fnName,
             {
@@ -788,12 +837,11 @@ export default function CheckoutEntrega() {
                 installmentCount: cardData.installmentCount,
                 saveCard: cardData.saveCard,
                 creditCard: cardData.creditCard,
-                creditCardHolderInfo: cardData.creditCardHolderInfo,
+                creditCardHolderInfo: holderInfoForPayload,
                 creditCardToken: cardData.creditCardToken,
                 remoteIp,
                 customerData: {
                   name: profile?.full_name || cardData.creditCardHolderInfo?.name || '',
-                  email: user?.email || '',
                   cpfCnpj: profile?.cpf || cardData.creditCardHolderInfo?.cpfCnpj || '',
                   phone: profile?.phone || cardData.creditCardHolderInfo?.phone || '',
                 },
@@ -1257,6 +1305,21 @@ export default function CheckoutEntrega() {
                           is_default: a.is_default,
                         }))}
                       />
+                      {!user?.email && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label htmlFor="card-contact-email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            E-mail (opcional — aumenta a aprovação do seu cartão)
+                          </Label>
+                          <Input
+                            id="card-contact-email"
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={contactEmail}
+                            onChange={(e) => setContactEmail(e.target.value)}
+                            className="h-11 rounded-xl"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1457,6 +1520,15 @@ export default function CheckoutEntrega() {
           </div>
         </div>
       )}
+
+      <OtpVerificationDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={otpPhone}
+        autoSend
+        title="Confirme seu telefone"
+        description="Para concluir a compra, confirme o número que usamos para contato e entrega."
+      />
     </div>
   );
 }
