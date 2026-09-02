@@ -5,13 +5,14 @@ import { normalizePaymentMethod } from "@/utils/pdvSettlement";
 /**
  * Retorna a taxa (fração, ex: 0.023 = 2,30%) cobrada pela maquininha
  * para o método de pagamento + número de parcelas informados.
- * Métodos sem cartão (pix, dinheiro, etc) retornam 0.
+ * PIX: 0,75%. Dinheiro e outros: 0.
  */
 export function getCardFeeRate(
   paymentMethod: string | null | undefined,
   installments: number = 1,
 ): number {
   const method = normalizePaymentMethod(paymentMethod);
+  if (method === "pix") return 0.0075;
   if (method === "debit") return 0.0106;
   if (method !== "credit") return 0;
   const n = Math.max(1, Math.floor(installments || 1));
