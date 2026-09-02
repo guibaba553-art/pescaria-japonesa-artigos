@@ -2064,10 +2064,26 @@ export default function PDV() {
     }
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = (() => {
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return products;
+    const codeTerm = normalizeBarcode(searchQuery);
+    const codeCands = barcodeCandidates(codeTerm).map((c) => c.toLowerCase());
+    const skuMatches = (sku?: string | null) => {
+      if (!sku) return false;
+      const n = normalizeBarcode(sku).toLowerCase();
+      if (n.includes(term)) return true;
+      const stripped = /^\d+$/.test(n) ? (n.replace(/^0+/, '') || '0') : n;
+      return codeCands.some((c) => c === n || c === stripped);
+    };
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(term) ||
+      p.category.toLowerCase().includes(term) ||
+      skuMatches(p.sku) ||
+      (p.variations || []).some((v) => skuMatches(v.sku) || (v.name || '').toLowerCase().includes(term))
+    );
+  })();
+
 
   if (loading || loadingProducts) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
@@ -2258,11 +2274,22 @@ export default function PDV() {
                 <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Buscar produto por nome, SKU ou EAN..."
+                    placeholder="Buscar por nome, SKU ou código de barras (bipe aqui)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const code = normalizeBarcode(searchQuery);
+                        if (/^\d{6,}$/.test(code)) {
+                          handleBarcodeSearch(searchQuery);
+                          setSearchQuery('');
+                        }
+                      }
+                    }}
                     className="pl-10 rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
                   />
+
                 </div>
 
                 <ScrollArea className="h-[calc(100vh-260px)] lg:h-auto lg:flex-1 lg:min-h-0">
