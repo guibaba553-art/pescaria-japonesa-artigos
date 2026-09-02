@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { resolveCardholderEmail } from "../_shared/payerEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +49,17 @@ export async function handleRequest(req: Request): Promise<Response> {
         JSON.stringify({ error: "Invalid authentication" }),
         {
           status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+    if (!user.phone_confirmed_at) {
+      return new Response(
+        JSON.stringify({ error: "PHONE_NOT_CONFIRMED" }),
+        {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
@@ -183,7 +195,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Fetch user profile ─────────────────────────────────────────────────
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("full_name, cpf, phone")
+      .select("full_name, cpf, phone, card_contact_email")
       .eq("id", user.id)
       .single();
 
@@ -230,7 +242,14 @@ export async function handleRequest(req: Request): Promise<Response> {
       description,
       payment_method_id: "pix",
       payer: {
-        email: user.email || "",
+        // payer.email é OBRIGATÓRIO no Mercado Pago → escada com placeholder
+        // (nunca string vazia, nunca chave ausente).
+        email: resolveCardholderEmail({
+          authEmail: user.email,
+          authEmailConfirmed: !!user.email_confirmed_at,
+          contactEmail: profile.card_contact_email ?? null,
+          userId: user.id,
+        }),
         first_name: firstName.substring(0, 50),
         last_name: lastName.substring(0, 50),
         identification: {
