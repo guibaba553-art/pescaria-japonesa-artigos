@@ -35,13 +35,6 @@ interface VariationRow {
   sale_channel: string;
 }
 
-type LoadVariationsRpc = (
-  fn: 'get_product_variations_by_product',
-  args: { p_product_id: string }
-) => PromiseLike<{ data: VariationRow[] | null; error: { message: string } | null }>;
-
-const loadVariationsRpc = supabase.rpc as unknown as LoadVariationsRpc;
-
 /**
  * Hook centralizado para gerenciar variações de produtos
  * Corrigido para evitar loops infinitos de carregamento
@@ -64,10 +57,11 @@ export function useProductVariations(productId?: string) {
 
     try {
       setLoading(true);
-      const { data, error } = await loadVariationsRpc(
+      // rpc depende do `this` interno do cliente; não desacoplar o método.
+      const { data, error } = await supabase.rpc(
         'get_product_variations_by_product',
         { p_product_id: targetId }
-      );
+      ) as unknown as { data: VariationRow[] | null; error: { message: string } | null };
       
       if (error) {
         console.error('❌ Erro ao carregar variações:', error);
