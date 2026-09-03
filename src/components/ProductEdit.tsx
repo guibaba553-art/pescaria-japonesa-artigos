@@ -185,12 +185,21 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
     console.trace('🔴 stack trace da mudança');
   }, [siteMarginPct]);
 
-  // ── Carregar grupos de custo ──
+  // ── Carregar grupos de custo (cacheado + só com o diálogo aberto) ──
+  // Sem isso, cada card do catálogo disparava seu próprio SELECT em cost_groups,
+  // estourando o limite de conexões do navegador e derrubando outras chamadas
+  // (as variações do produto ficavam sem carregar).
   useEffect(() => {
-    supabase.from('cost_groups').select('id, name, cost').order('name').then(({ data }) => {
-      if (data) setCostGroups(data as { id: string; name: string; cost: number }[]);
+    if (!open) return;
+    let active = true;
+    loadCostGroups(supabase).then((data) => {
+      if (active) setCostGroups(data);
     });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
 
   // ── Handlers de formação de preço ──
   // Calcula preço final: baseCost * (1 + margin/100) / (1 - taxPct/100)
