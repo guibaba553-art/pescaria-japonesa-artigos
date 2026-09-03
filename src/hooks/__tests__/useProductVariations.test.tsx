@@ -78,6 +78,21 @@ beforeEach(() => {
 });
 
 describe('useProductVariations data fetching', () => {
+  it('deve chamar a RPC preservando o contexto do cliente', async () => {
+    mockRpc.mockImplementation(function (this: unknown) {
+      if (!this) throw new TypeError('contexto do cliente ausente');
+      return Promise.resolve({ data: variationRows, error: null });
+    });
+
+    const { result } = renderHook(() => useProductVariations());
+
+    await act(async () => {
+      await result.current.loadVariations('prod-1');
+    });
+
+    expect(result.current.variations).toHaveLength(2);
+  });
+
   it('deve chamar a RPC get_product_variations_by_product com o payload correto', async () => {
     mockRpc.mockResolvedValue({ data: variationRows, error: null });
 
