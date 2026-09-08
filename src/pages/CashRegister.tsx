@@ -79,35 +79,11 @@ export default function CashRegister() {
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
 
-  const summarizeSales = (orders: Array<{ total_amount: number; payment_method: string | null }>) => {
-    const summary = { cash: 0, card: 0, pix: 0 };
+  const summarizeSales = (
+    orders: Array<{ id: string; total_amount: number; payment_method: string | null }>,
+    payments: Array<{ order_id: string; payment_method: string | null; amount: number }> = [],
+  ) => summarizeSalesByMethod(orders, payments);
 
-    orders.forEach((sale) => {
-      const total = Number(sale.total_amount) || 0;
-      const method = String(sale.payment_method || '').toLowerCase();
-
-      if (method.includes('pix')) {
-        summary.pix += total;
-        return;
-      }
-
-      if (method.includes('cash') || method.includes('dinheiro')) {
-        summary.cash += total;
-        return;
-      }
-
-      if (
-        method.includes('credit') ||
-        method.includes('debit') ||
-        method.includes('card') ||
-        method.includes('cart')
-      ) {
-        summary.card += total;
-      }
-    });
-
-    return summary;
-  };
 
   const movementTotals = useMemo(() => {
     return movements.reduce(
