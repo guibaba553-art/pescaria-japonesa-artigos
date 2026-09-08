@@ -157,7 +157,7 @@ export async function generateLabelsPdf(
         // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 6);
+          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
         }
 
         // Código numérico embaixo do barcode
