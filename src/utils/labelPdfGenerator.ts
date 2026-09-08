@@ -124,11 +124,11 @@ export async function generateLabelsPdf(
   const cellW = labelW;
   const cellH = labelH;
 
-  // Pré-gera os barcodes únicos pra evitar reprocesso
-  const barcodeCache = new Map<string, string>();
+  // Pré-gera as barras (vetor) únicas pra evitar reprocesso
+  const barcodeCache = new Map<string, BarcodeBars | null>();
   const uniqueCodes = Array.from(new Set(expanded.map((e) => e.code).filter(Boolean)));
   for (const c of uniqueCodes) {
-    barcodeCache.set(c, barcodeDataUrl(c));
+    barcodeCache.set(c, getBarcodeBars(c));
   }
 
   const slotsPerPage = cols * rows;
@@ -152,10 +152,10 @@ export async function generateLabelsPdf(
         const offX = -0.5; // esquerda
         const offY = 1.5;  // baixo
 
-        // Barcode (no topo, menor)
-        const dataUrl = barcodeCache.get(item.code);
-        if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
+        // Barcode em vetor (barras pretas nítidas)
+        const bars = barcodeCache.get(item.code);
+        if (bars) {
+          drawBarcode(doc, bars, x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
         }
 
         // Código numérico embaixo do barcode
