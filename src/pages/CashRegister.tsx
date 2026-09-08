@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
+
 
 interface CashRegister {
   id: string;
@@ -79,35 +81,11 @@ export default function CashRegister() {
   const [loadingAction, setLoadingAction] = useState(false);
   const [salesSummary, setSalesSummary] = useState({ cash: 0, card: 0, pix: 0 });
 
-  const summarizeSales = (orders: Array<{ total_amount: number; payment_method: string | null }>) => {
-    const summary = { cash: 0, card: 0, pix: 0 };
+  const summarizeSales = (
+    orders: Array<{ id: string; total_amount: number; payment_method: string | null }>,
+    payments: Array<{ order_id: string; payment_method: string | null; amount: number }> = [],
+  ) => summarizeSalesByMethod(orders, payments);
 
-    orders.forEach((sale) => {
-      const total = Number(sale.total_amount) || 0;
-      const method = String(sale.payment_method || '').toLowerCase();
-
-      if (method.includes('pix')) {
-        summary.pix += total;
-        return;
-      }
-
-      if (method.includes('cash') || method.includes('dinheiro')) {
-        summary.cash += total;
-        return;
-      }
-
-      if (
-        method.includes('credit') ||
-        method.includes('debit') ||
-        method.includes('card') ||
-        method.includes('cart')
-      ) {
-        summary.card += total;
-      }
-    });
-
-    return summary;
-  };
 
   const movementTotals = useMemo(() => {
     return movements.reduce(
@@ -149,7 +127,7 @@ export default function CashRegister() {
   const loadRegisterActivity = async (register: Pick<CashRegister, 'id' | 'opened_at'>, closedAt?: string) => {
     let ordersQuery = supabase
       .from('orders')
-      .select('total_amount, payment_method, status, source, created_at')
+      .select('id, total_amount, payment_method, status, source, created_at')
       .eq('source', 'pdv')
       .gte('created_at', register.opened_at)
       .in('status', ['entregado', 'retirado']);
@@ -169,7 +147,22 @@ export default function CashRegister() {
 
     if (movementsError) throw movementsError;
 
-    const summary = summarizeSales((pdvOrders || []) as Array<{ total_amount: number; payment_method: string | null }>);
+    // Pagamento dividido: cada parte da venda entra no seu próprio meio.
+    const orderIds = (pdvOrders || []).map((o: any) => o.id);
+    const splitPayments: Array<{ order_id: string; payment_method: string | null; amount: number }> = [];
+    for (let i = 0; i < orderIds.length; i += 300) {
+      const { data: pays } = await supabase
+        .from('order_payments')
+        .select('order_id, payment_method, amount')
+        .in('order_id', orderIds.slice(i, i + 300) as any);
+      if (pays) splitPayments.push(...(pays as any[]));
+    }
+
+    const summary = summarizeSales(
+      (pdvOrders || []) as Array<{ id: string; total_amount: number; payment_method: string | null }>,
+      splitPayments,
+    );
+
     const totals = (movs || []).reduce(
       (acc: { additions: number; withdrawals: number; change: number }, movement: any) => {
         const amount = Number(movement.amount || 0);
