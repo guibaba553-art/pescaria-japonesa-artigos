@@ -41,8 +41,8 @@ function barcodeDataUrl(code: string): string {
       format: 'CODE39',
       displayValue: false,
       margin: 0,
-      height: 32.5,
-      width: 0.7,
+      height: 42,
+      width: 0.5,
       lineColor: '#000000',
     });
     return canvas.toDataURL('image/png');
