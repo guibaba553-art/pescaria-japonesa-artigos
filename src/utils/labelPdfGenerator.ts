@@ -7,7 +7,7 @@
  */
 
 import jsPDF from 'jspdf';
-import JsBarcode from 'jsbarcode';
+import { getBarcodeBars, type BarcodeBars } from './barcodeVector';
 
 export interface LabelItem {
   /** Código que vai virar barcode (SKU/EAN). */
@@ -33,23 +33,21 @@ export interface LabelPdfOptions {
   skipSlots?: number;
 }
 
-/** Gera código de barras Code39 (com asteriscos) como dataURL PNG. */
-function barcodeDataUrl(code: string): string {
-  const canvas = document.createElement('canvas');
-  try {
-    JsBarcode(canvas, code, {
-      format: 'CODE39',
-      displayValue: false,
-      margin: 0,
-      height: 42,
-      width: 0.5,
-      lineColor: '#000000',
-    });
-    return canvas.toDataURL('image/png');
-  } catch {
-    return '';
+/** Desenha o código de barras em vetor (barras pretas sólidas) no PDF. */
+function drawBarcode(
+  doc: jsPDF,
+  bars: BarcodeBars,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  doc.setFillColor(0, 0, 0);
+  for (const b of bars.bars) {
+    doc.rect(x + b.x * w, y, Math.max(b.w * w, 0.12), h, 'F');
   }
 }
+
 
 /** Quebra texto em até N linhas com largura máxima por linha. */
 function wrapLines(text: string, maxCharsPerLine: number, maxLines: number): string[] {
@@ -126,11 +124,11 @@ export async function generateLabelsPdf(
   const cellW = labelW;
   const cellH = labelH;
 
-  // Pré-gera os barcodes únicos pra evitar reprocesso
-  const barcodeCache = new Map<string, string>();
+  // Pré-gera as barras (vetor) únicas pra evitar reprocesso
+  const barcodeCache = new Map<string, BarcodeBars | null>();
   const uniqueCodes = Array.from(new Set(expanded.map((e) => e.code).filter(Boolean)));
   for (const c of uniqueCodes) {
-    barcodeCache.set(c, barcodeDataUrl(c));
+    barcodeCache.set(c, getBarcodeBars(c));
   }
 
   const slotsPerPage = cols * rows;
@@ -154,10 +152,10 @@ export async function generateLabelsPdf(
         const offX = -0.5; // esquerda
         const offY = 1.5;  // baixo
 
-        // Barcode (no topo, menor)
-        const dataUrl = barcodeCache.get(item.code);
-        if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
+        // Barcode em vetor (barras pretas nítidas)
+        const bars = barcodeCache.get(item.code);
+        if (bars) {
+          drawBarcode(doc, bars, x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
         }
 
         // Código numérico embaixo do barcode
