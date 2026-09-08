@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
+
 
 interface CashRegister {
   id: string;
