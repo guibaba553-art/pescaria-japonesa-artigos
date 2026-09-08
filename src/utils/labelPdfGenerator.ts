@@ -41,8 +41,9 @@ function barcodeDataUrl(code: string): string {
       format: 'CODE39',
       displayValue: false,
       margin: 0,
-      height: 25,
-      width: 1,
+      height: 32.5,
+      width: 0.7,
+      lineColor: '#000000',
     });
     return canvas.toDataURL('image/png');
   } catch {
@@ -156,7 +157,7 @@ export async function generateLabelsPdf(
         // Barcode (no topo, menor)
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 6);
+          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 7.8);
         }
 
         // Código numérico embaixo do barcode
