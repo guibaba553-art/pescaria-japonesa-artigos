@@ -127,7 +127,7 @@ export default function CashRegister() {
   const loadRegisterActivity = async (register: Pick<CashRegister, 'id' | 'opened_at'>, closedAt?: string) => {
     let ordersQuery = supabase
       .from('orders')
-      .select('total_amount, payment_method, status, source, created_at')
+      .select('id, total_amount, payment_method, status, source, created_at')
       .eq('source', 'pdv')
       .gte('created_at', register.opened_at)
       .in('status', ['entregado', 'retirado']);
@@ -147,7 +147,22 @@ export default function CashRegister() {
 
     if (movementsError) throw movementsError;
 
-    const summary = summarizeSales((pdvOrders || []) as Array<{ total_amount: number; payment_method: string | null }>);
+    // Pagamento dividido: cada parte da venda entra no seu próprio meio.
+    const orderIds = (pdvOrders || []).map((o: any) => o.id);
+    const splitPayments: Array<{ order_id: string; payment_method: string | null; amount: number }> = [];
+    for (let i = 0; i < orderIds.length; i += 300) {
+      const { data: pays } = await supabase
+        .from('order_payments')
+        .select('order_id, payment_method, amount')
+        .in('order_id', orderIds.slice(i, i + 300) as any);
+      if (pays) splitPayments.push(...(pays as any[]));
+    }
+
+    const summary = summarizeSales(
+      (pdvOrders || []) as Array<{ id: string; total_amount: number; payment_method: string | null }>,
+      splitPayments,
+    );
+
     const totals = (movs || []).reduce(
       (acc: { additions: number; withdrawals: number; change: number }, movement: any) => {
         const amount = Number(movement.amount || 0);
