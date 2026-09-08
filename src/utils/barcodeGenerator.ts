@@ -1,39 +1,22 @@
 /**
- * Gerador de códigos de barras internos (EAN-13 válido).
+ * Gerador de códigos de barras internos curtos (6 dígitos).
  *
- * Códigos começam com "200" — prefixo reservado para uso interno
- * de lojas (não conflita com códigos de fabricantes reais).
- *
- * Formato: 200 + 9 dígitos aleatórios + 1 dígito verificador (EAN-13)
+ * Formato: 6 dígitos numéricos (ex.: 204731), impressos em CODE39 nas etiquetas.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
-const INTERNAL_PREFIX = '200';
+const CODE_LENGTH = 6;
 
 /**
- * Calcula o dígito verificador EAN-13.
- */
-function calcEAN13CheckDigit(twelveDigits: string): number {
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    const d = parseInt(twelveDigits[i], 10);
-    sum += i % 2 === 0 ? d : d * 3;
-  }
-  const mod = sum % 10;
-  return mod === 0 ? 0 : 10 - mod;
-}
-
-/**
- * Gera um candidato a código EAN-13 com prefixo interno.
+ * Gera um candidato a código de 6 dígitos.
  */
 function generateCandidate(): string {
-  let body = INTERNAL_PREFIX;
-  for (let i = 0; i < 9; i++) {
-    body += Math.floor(Math.random() * 10).toString();
+  let code = '';
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += Math.floor(Math.random() * 10).toString();
   }
-  const check = calcEAN13CheckDigit(body);
-  return body + check.toString();
+  return code;
 }
 
 /**
@@ -48,11 +31,11 @@ async function codeExists(code: string): Promise<boolean> {
 }
 
 /**
- * Gera um código de barras interno único (EAN-13, prefixo 200).
- * Tenta no máximo 10 vezes para encontrar um código não duplicado.
+ * Gera um código de barras interno único de 6 dígitos.
+ * Tenta no máximo 20 vezes para encontrar um código não duplicado.
  */
 export async function generateUniqueBarcode(): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const candidate = generateCandidate();
     const exists = await codeExists(candidate);
     if (!exists) return candidate;
