@@ -29,6 +29,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   subcategoryName: string;
   primaryName?: string;
+  /** Quando a subcategoria está dentro de outra, só mostra produtos dessa origem */
+  parentSubcategoryName?: string;
 }
 
 export function SubcategoryProductPicker({
@@ -36,6 +38,7 @@ export function SubcategoryProductPicker({
   onOpenChange,
   subcategoryName,
   primaryName,
+  parentSubcategoryName,
 }: Props) {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,16 +65,30 @@ export function SubcategoryProductPicker({
     })();
   }, [open, toast]);
 
+  const scoped = useMemo(() => {
+    let list = products;
+    if (primaryName) {
+      list = list.filter((p) => p.category === primaryName);
+    }
+    if (parentSubcategoryName) {
+      list = list.filter(
+        (p) => p.subcategory === parentSubcategoryName || p.subcategory === subcategoryName
+      );
+    }
+    return list;
+  }, [products, primaryName, parentSubcategoryName, subcategoryName]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
+    if (!q) return scoped;
+    return scoped.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         (p.sku || '').toLowerCase().includes(q) ||
         (p.category || '').toLowerCase().includes(q)
     );
-  }, [products, search]);
+  }, [scoped, search]);
+
 
   const handleSelect = async (product: Product) => {
     if (product.subcategory === subcategoryName) return;
