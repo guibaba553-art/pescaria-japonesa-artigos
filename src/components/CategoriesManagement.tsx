@@ -332,10 +332,15 @@ export function CategoriesManagement() {
                               setPickerSub({
                                 name: sub.name,
                                 primaryName: primary.name,
-                                parentSubName:
-                                  sub.parent_id && sub.parent_id !== primary.id
-                                    ? categories.find((c) => c.id === sub.parent_id)?.name
-                                    : undefined,
+                                ancestorSubNames: (() => {
+                                  const names: string[] = [];
+                                  let cur = categories.find((c) => c.id === sub.parent_id);
+                                  while (cur && cur.id !== primary.id) {
+                                    names.push(cur.name);
+                                    cur = categories.find((c) => c.id === cur!.parent_id);
+                                  }
+                                  return names;
+                                })(),
                               })
                             }
 
