@@ -44,6 +44,25 @@ export function ProductListing({
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Caminho hierárquico da subcategoria atual (da raiz até o nível selecionado)
+  const selectedSubcategoryPath = useMemo(() => {
+    if (!subcategoryParam || !allCategories.length) return [] as string[];
+    const target = allCategories.find((c) => c.name === subcategoryParam);
+    if (!target) return [subcategoryParam];
+    const path: string[] = [];
+    let current: Category | undefined = target;
+    // Evita loop infinito em caso de dados corrompidos
+    const seen = new Set<string>();
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      path.unshift(current.name);
+      if (!current.parent_id) break;
+      current = allCategories.find((c) => c.id === current!.parent_id);
+    }
+    return path;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subcategoryParam, allCategories]);
   const [searchQuery, setSearchQuery] = useState(searchParam);
 
   // Sincroniza o input com o parâmetro de URL quando muda (ex: nova busca pelo header)
