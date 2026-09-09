@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCategories, type Category } from '@/hooks/useCategories';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, Lock, ChevronRight, PackagePlus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus } from 'lucide-react';
 import { SubcategoryProductPicker } from './SubcategoryProductPicker';
 
 const slugify = (s: string) =>
@@ -45,6 +45,28 @@ export function CategoriesManagement() {
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
+  const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+  const [expandedProducts, setExpandedProducts] = useState<
+    { id: string; name: string; image_url: string | null; price: number | null }[]
+  >([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  const toggleExpand = async (sub: Category) => {
+    if (expandedSubId === sub.id) {
+      setExpandedSubId(null);
+      setExpandedProducts([]);
+      return;
+    }
+    setExpandedSubId(sub.id);
+    setLoadingProducts(true);
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, image_url, price')
+      .eq('subcategory', sub.name)
+      .order('name');
+    setExpandedProducts(data || []);
+    setLoadingProducts(false);
+  };
 
   const openNew = (presetParentId?: string) => {
     setEditing(null);
