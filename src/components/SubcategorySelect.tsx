@@ -50,14 +50,14 @@ export function SubcategorySelect({
   onChange,
   triggerId,
 }: SubcategorySelectProps) {
-  const { primaries, getSubcategoriesOf, reload } = useCategories();
+  const { primaries, getDescendantsOf, reload } = useCategories();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
 
   const parent = primaries.find((p) => p.name === parentCategoryName);
-  const subs = parent ? getSubcategoriesOf(parent.id) : [];
+  const subs = parent ? getDescendantsOf(parent.id) : [];
 
   const handleCreate = async () => {
     if (!parent) {
@@ -135,7 +135,7 @@ export function SubcategorySelect({
             <SelectItem value="none">Nenhuma</SelectItem>
             {subs.map((s) => (
               <SelectItem key={s.id} value={s.name}>
-                {s.name}
+                {s.depth > 1 ? `${'\u00A0'.repeat((s.depth - 1) * 4)}↳ ${s.name}` : s.name}
               </SelectItem>
             ))}
           </SelectContent>

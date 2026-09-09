@@ -34,7 +34,7 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, '');
 
 export function CategoriesManagement() {
-  const { categories, primaries, getSubcategoriesOf, reload } = useCategories();
+  const { categories, primaries, getDescendantsOf, reload } = useCategories();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -74,7 +74,19 @@ export function CategoriesManagement() {
     if (!parentId && !editing?.is_primary) {
       toast({
         title: 'Categoria pai obrigatória',
-        description: 'Subcategorias precisam de uma categoria primária pai.',
+        description: 'Toda subcategoria precisa ficar dentro de outra categoria.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      editing &&
+      parentId &&
+      getDescendantsOf(editing.id).some((d) => d.id === parentId)
+    ) {
+      toast({
+        title: 'Escolha inválida',
+        description: 'Uma categoria não pode ficar dentro de uma das suas próprias subcategorias.',
         variant: 'destructive',
       });
       return;
@@ -148,6 +160,16 @@ export function CategoriesManagement() {
       return;
     }
 
+    const children = getDescendantsOf(cat.id);
+    if (children.length > 0) {
+      toast({
+        title: 'Não é possível excluir',
+        description: `"${cat.name}" tem ${children.length} subcategoria(s) dentro dela. Exclua-as antes.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const { count } = await supabase
       .from('products')
       .select('id', { count: 'exact', head: true })
@@ -194,7 +216,7 @@ export function CategoriesManagement() {
           </p>
         ) : (
           primaries.map((primary) => {
-            const subs = getSubcategoriesOf(primary.id);
+            const subs = getDescendantsOf(primary.id);
             return (
               <div key={primary.id} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
@@ -233,11 +255,17 @@ export function CategoriesManagement() {
                     {subs.map((sub) => (
                       <div
                         key={sub.id}
+                        style={{ marginLeft: (sub.depth - 1) * 20 }}
                         className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40"
                       >
                         <div className="flex items-center gap-2">
                           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                           <span className="font-medium">{sub.name}</span>
+                          {sub.depth > 1 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              nível {sub.depth}
+                            </Badge>
+                          )}
                           {sub.description && (
                             <span className="text-xs text-muted-foreground">
                               — {sub.description}
@@ -255,6 +283,16 @@ export function CategoriesManagement() {
                           >
                             <PackagePlus className="w-3.5 h-3.5 mr-1" />
                             Selecionar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => openNew(sub.id)}
+                            title={`Nova subcategoria dentro de ${sub.name}`}
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Sub
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(sub)}>
                             <Pencil className="w-3.5 h-3.5" />
@@ -292,17 +330,24 @@ export function CategoriesManagement() {
           <div className="space-y-4 py-4">
             {!editing?.is_primary && (
               <div>
-                <Label>Categoria primária (pai) *</Label>
+                <Label>Categoria pai *</Label>
                 <Select value={parentId || undefined} onValueChange={setParentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Escolha a primária" />
+                    <SelectValue placeholder="Escolha onde ela vai ficar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {primaries.map((p) => (
+                    {primaries.flatMap((p) => [
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>,
+                      ...getDescendantsOf(p.id)
+                        .filter((d) => d.id !== editing?.id)
+                        .map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {`${'\u00A0'.repeat(d.depth * 4)}↳ ${d.name}`}
+                          </SelectItem>
+                        )),
+                    ])}
                   </SelectContent>
                 </Select>
               </div>
