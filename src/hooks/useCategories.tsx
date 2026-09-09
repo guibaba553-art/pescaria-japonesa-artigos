@@ -82,6 +82,21 @@ export function useCategories() {
   const subcategories = categories.filter((c) => !c.is_primary);
   const getSubcategoriesOf = (primaryId: string) =>
     categories.filter((c) => c.parent_id === primaryId);
+
+  /**
+   * Todos os descendentes (subcategorias e sub-subcategorias) de uma categoria,
+   * em ordem hierárquica, com o nível de profundidade (1 = filho direto).
+   */
+  const getDescendantsOf = (
+    parentId: string,
+    depth = 1
+  ): Array<Category & { depth: number }> =>
+    categories
+      .filter((c) => c.parent_id === parentId)
+      .flatMap((c) => [
+        { ...c, depth },
+        ...getDescendantsOf(c.id, depth + 1),
+      ]);
   const getPrimaryByName = (name: string) =>
     categories.find((c) => c.is_primary && c.name === name);
 
