@@ -160,6 +160,16 @@ export function CategoriesManagement() {
       return;
     }
 
+    const children = getDescendantsOf(cat.id);
+    if (children.length > 0) {
+      toast({
+        title: 'Não é possível excluir',
+        description: `"${cat.name}" tem ${children.length} subcategoria(s) dentro dela. Exclua-as antes.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const { count } = await supabase
       .from('products')
       .select('id', { count: 'exact', head: true })
