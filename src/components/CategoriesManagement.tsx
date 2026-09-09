@@ -349,6 +349,43 @@ export function CategoriesManagement() {
                           </Button>
                         </div>
                       </div>
+                      {expandedSubId === sub.id && (
+                        <div className="ml-6 mt-1 mb-2 rounded-md border bg-background p-3">
+                          {loadingProducts ? (
+                            <p className="text-xs text-muted-foreground">Carregando produtos...</p>
+                          ) : expandedProducts.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              Nenhum produto nesta categoria ainda.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {expandedProducts.map((p) => (
+                                <div key={p.id} className="flex items-center gap-2 rounded border p-1.5">
+                                  {p.image_url ? (
+                                    <img
+                                      src={p.image_url}
+                                      alt={p.name}
+                                      className="w-10 h-10 rounded object-cover bg-muted"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded bg-muted" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium truncate">{p.name}</p>
+                                    {p.price != null && (
+                                      <p className="text-xs text-muted-foreground">
+                                        R$ {p.price.toFixed(2).replace('.', ',')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      </div>
                     ))}
                   </div>
                 )}
