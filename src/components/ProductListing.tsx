@@ -121,7 +121,15 @@ export function ProductListing({
         .limit(10000);
 
       if (category) query = query.eq('category', category);
-      if (subcategory) query = query.eq('subcategory', subcategory);
+      if (subcategory) {
+        // Expande a subcategoria para incluir todos os seus descendentes
+        const target = allCategories.find((c) => c.name === subcategory);
+        const subNames = new Set<string>([subcategory]);
+        if (target) {
+          getDescendantsOf(target.id).forEach((d) => subNames.add(d.name));
+        }
+        query = query.in('subcategory', Array.from(subNames));
+      }
 
       let result = await query;
       for (let attempt = 0; attempt < 2 && result.error && /failed to fetch|networkerror|load failed/i.test(result.error.message || ''); attempt++) {
