@@ -427,7 +427,9 @@ export function CategoriesManagement() {
           onOpenChange={(o) => !o && setPickerSub(null)}
           subcategoryName={pickerSub.name}
           primaryName={pickerSub.primaryName}
+          parentSubcategoryName={pickerSub.parentSubName}
         />
+
       )}
     </Card>
   );
