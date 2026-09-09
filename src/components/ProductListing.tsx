@@ -94,7 +94,6 @@ export function ProductListing({
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
-    setSelectedSubcategories([]);
     setPriceRange(null);
     setPriceMinInput('');
     setPriceMaxInput('');
