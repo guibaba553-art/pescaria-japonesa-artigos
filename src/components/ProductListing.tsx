@@ -88,6 +88,15 @@ export function ProductListing({
     loadProducts(categoryParam, subcategoryParam);
   }, [categoryParam, subcategoryParam]);
 
+  // Recarrega produtos quando as categorias terminarem de carregar, pois
+  // a query hierárquica depende da árvore de categorias.
+  useEffect(() => {
+    if (allCategories.length) {
+      loadProducts(categoryParam, subcategoryParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCategories.length]);
+
   useProductsRealtime(() => loadProducts(categoryParam, subcategoryParam), 'products-list');
 
   // Reset filters quando muda categoria
