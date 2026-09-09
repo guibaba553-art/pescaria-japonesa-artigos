@@ -29,8 +29,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   subcategoryName: string;
   primaryName?: string;
-  /** Quando a subcategoria está dentro de outra, só mostra produtos dessa origem */
-  parentSubcategoryName?: string;
+  /** Cadeia de subcategorias acima desta (pai, avô, ...) — limita os produtos candidatos */
+  ancestorSubcategoryNames?: string[];
 }
 
 export function SubcategoryProductPicker({
@@ -38,7 +38,7 @@ export function SubcategoryProductPicker({
   onOpenChange,
   subcategoryName,
   primaryName,
-  parentSubcategoryName,
+  ancestorSubcategoryNames,
 }: Props) {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
