@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus, X, Loader2 } from 'lucide-react';
 import { SubcategoryProductPicker } from './SubcategoryProductPicker';
 
 const slugify = (s: string) =>
