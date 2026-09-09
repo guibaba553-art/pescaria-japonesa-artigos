@@ -85,6 +85,14 @@ export function useCategories() {
   const getPrimaryByName = (name: string) =>
     categories.find((c) => c.is_primary && c.name === name);
 
+  // reload() sempre busca do banco (invalida o cache compartilhado),
+  // senão uma subcategoria recém-criada não aparece na lista.
+  const reload = async () => {
+    categoriesCache = null;
+    categoriesPromise = null;
+    await load(true);
+  };
+
   return {
     categories,
     primaries,
@@ -92,6 +100,6 @@ export function useCategories() {
     getSubcategoriesOf,
     getPrimaryByName,
     loading,
-    reload: load,
+    reload,
   };
 }
