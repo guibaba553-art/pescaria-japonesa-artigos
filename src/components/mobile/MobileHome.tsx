@@ -13,6 +13,10 @@ import iscasImg from "@/assets/category-iscas.jpg";
 import anzoisImg from "@/assets/category-anzois.jpg";
 import linhasImg from "@/assets/category-linhas.jpg";
 import acessoriosImg from "@/assets/category-acessorios.jpg";
+import lanternasImg from "@/assets/category-lanternas.jpg";
+import guardaSolImg from "@/assets/category-guardasol.jpg";
+import caixaPescaImg from "@/assets/category-caixa-pesca.jpg";
+import alicatesImg from "@/assets/category-alicates.jpg";
 
 const CATEGORY_IMAGES: Record<string, string> = {
   varas: varasImg,
@@ -24,7 +28,12 @@ const CATEGORY_IMAGES: Record<string, string> = {
   linhas: linhasImg,
   acessorios: acessoriosImg,
   "acessórios": acessoriosImg,
+  lanternas: lanternasImg,
+  "guarda-sol": guardaSolImg,
+  "caixa-de-pesca": caixaPescaImg,
+  alicates: alicatesImg,
 };
+
 
 const getCategoryImage = (c: { slug?: string; name?: string }) => {
   const slug = (c.slug || "").toLowerCase();
@@ -207,7 +216,7 @@ export default function MobileHome() {
     navigate(`/produtos?search=${encodeURIComponent(q)}`);
   };
 
-  const visibleCategories = primaries.slice(0, 7);
+  const visibleCategories = primaries;
 
   return (
     <div className="bg-surface-subtle min-h-screen pb-24">
