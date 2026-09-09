@@ -489,31 +489,38 @@ export function ProductListing({
   };
 
   const renderSubcategoryLevels = () => {
-    if (subcategoryOptions.length === 0 && selectedSubcategories.length === 0) return null;
+    if (subcategoryOptions.length === 0 && selectedSubcategoryPath.length === 0) return null;
     return (
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Subcategoria
         </p>
 
-        {selectedSubcategories.length > 0 && (
+        {selectedSubcategoryPath.length > 0 && (
           <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setSelectedSubcategories([])}
+              onClick={() => setSearchParams(categoryParam ? { category: categoryParam } : {})}
               className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
             >
               {categoryParam || 'Tudo'}
             </button>
 
-            {selectedSubcategories.map((name, i) => {
-              const isLast = i === selectedSubcategories.length - 1;
+            {selectedSubcategoryPath.map((name, i) => {
+              const isLast = i === selectedSubcategoryPath.length - 1;
               return (
                 <span key={name} className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-1 duration-200">
                   <span className="text-muted-foreground/60 text-xs">›</span>
                   <button
                     type="button"
-                    onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
+                    onClick={() => {
+                      const target = selectedSubcategoryPath.slice(0, i + 1).pop();
+                      if (categoryParam && target) {
+                        setSearchParams({ category: categoryParam, subcategory: target });
+                      } else if (categoryParam) {
+                        setSearchParams({ category: categoryParam });
+                      }
+                    }}
                     className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
                       isLast
                         ? 'bg-primary text-primary-foreground border-primary shadow-sm'
