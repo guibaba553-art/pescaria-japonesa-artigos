@@ -247,7 +247,7 @@ export function ProductListing({
       : [];
     // Na raiz, acrescenta subcategorias "órfãs" presentes nos produtos
     const extras =
-      selectedSubcategories.length === 0
+      selectedSubcategoryPath.length === 0
         ? Array.from(subs)
             .filter((n) => !children.includes(n) && !categoryTreeSubOptions.includes(n))
             .sort(sorter)
@@ -258,7 +258,7 @@ export function ProductListing({
       poundOptions: Array.from(pounds).sort(sorter),
       subcategoryOptions: [...children, ...extras],
     };
-  }, [products, currentParentId, allCategories, selectedSubcategories, categoryTreeSubOptions]);
+  }, [products, currentParentId, allCategories, selectedSubcategoryPath, categoryTreeSubOptions]);
 
   // O filtro usa o último nível escolhido + todos os seus descendentes
   const expandedSubcategories = useMemo(() => {
