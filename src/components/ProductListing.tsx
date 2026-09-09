@@ -410,7 +410,8 @@ export function ProductListing({
     title: string,
     options: string[],
     selected: string[],
-    setSelected: (v: string[]) => void
+    setSelected: (v: string[]) => void,
+    labels?: Record<string, string>
   ) => {
     if (options.length === 0) return null;
     return (
@@ -430,10 +431,11 @@ export function ProductListing({
                     : 'bg-background hover:bg-muted border-border'
                 }`}
               >
-                {opt}
+                {labels?.[opt] ?? opt}
               </button>
             );
           })}
+
         </div>
       </div>
     );
