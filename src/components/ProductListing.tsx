@@ -52,7 +52,7 @@ export function ProductListing({
   }, [searchParam]);
   const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
 
-  // Caminho hierárquico da subcategoria atual (da raiz até o nível selecionado)
+  // Caminho hierárquico da subcategoria atual (a partir da categoria primária)
   const selectedSubcategoryPath = useMemo(() => {
     if (!subcategoryParam || !allCategories.length) return [] as string[];
     const target = allCategories.find((c) => c.name === subcategoryParam);
@@ -63,8 +63,8 @@ export function ProductListing({
     const seen = new Set<string>();
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
+      if (!current.parent_id) break; // a categoria primária já é representada pelo botão raiz
       path.unshift(current.name);
-      if (!current.parent_id) break;
       current = allCategories.find((c) => c.id === current!.parent_id);
     }
     return path;
