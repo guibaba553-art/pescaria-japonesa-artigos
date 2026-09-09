@@ -245,7 +245,7 @@ export function ProductListing({
 
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
+      if (expandedSubcategories.length && (!p.subcategory || !expandedSubcategories.includes(p.subcategory))) return false;
       const hasActiveVariationPromo = p.variations?.some((variation) => isPromoActive(variation)) ?? false;
       if (onSaleParam === 'true' && !isPromoActive(p) && !hasActiveVariationPromo) return false;
       if (priceRange) {
