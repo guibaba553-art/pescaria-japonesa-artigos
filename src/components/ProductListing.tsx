@@ -18,7 +18,7 @@ import { Product } from '@/types/product';
 import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories, type Category } from '@/hooks/useCategories';
 
 type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
 
