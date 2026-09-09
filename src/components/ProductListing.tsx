@@ -348,7 +348,7 @@ export function ProductListing({
   const totalActiveFilters =
     selectedBrands.length +
     selectedPounds.length +
-    selectedSubcategories.length +
+    selectedSubcategoryPath.length +
     (priceFilterActive ? 1 : 0);
 
   const clearAllFilters = () => {
