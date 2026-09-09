@@ -255,14 +255,14 @@ export function ProductListing({
 
   // O filtro usa o último nível escolhido + todos os seus descendentes
   const expandedSubcategories = useMemo(() => {
-    if (!selectedSubcategories.length) return [] as string[];
-    const last = selectedSubcategories[selectedSubcategories.length - 1];
+    if (!selectedSubcategoryPath.length) return [] as string[];
+    const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
     const names = new Set<string>([last]);
     const cat = allCategories.find((c) => c.name === last);
     if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
     return Array.from(names);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubcategories, allCategories]);
+  }, [selectedSubcategoryPath, allCategories]);
 
   // Clique em um nível: entra nele ou volta ao nível anterior
   const handleSubcategoryLevelClick = (name: string) => {
