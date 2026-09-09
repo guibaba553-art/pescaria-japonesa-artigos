@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus, X, Loader2 } from 'lucide-react';
 import { SubcategoryProductPicker } from './SubcategoryProductPicker';
 
 const slugify = (s: string) =>
@@ -45,19 +45,20 @@ export function CategoriesManagement() {
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
-  const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+  const [expandedSub, setExpandedSub] = useState<Category | null>(null);
   const [expandedProducts, setExpandedProducts] = useState<
     { id: string; name: string; image_url: string | null; price: number | null }[]
   >([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const toggleExpand = async (sub: Category) => {
-    if (expandedSubId === sub.id) {
-      setExpandedSubId(null);
+    if (expandedSub?.id === sub.id) {
+      setExpandedSub(null);
       setExpandedProducts([]);
       return;
     }
-    setExpandedSubId(sub.id);
+    setExpandedSub(sub);
     setLoadingProducts(true);
     const { data } = await supabase
       .from('products')
@@ -66,6 +67,23 @@ export function CategoriesManagement() {
       .order('name');
     setExpandedProducts(data || []);
     setLoadingProducts(false);
+  };
+
+  const removeProductFromSub = async (productId: string) => {
+    if (!expandedSub) return;
+    setRemovingId(productId);
+    const { error } = await supabase
+      .from('products')
+      .update({ subcategory: null })
+      .eq('id', productId)
+      .eq('subcategory', expandedSub.name);
+    setRemovingId(null);
+    if (error) {
+      toast({ title: 'Erro ao remover produto', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setExpandedProducts((prev) => prev.filter((p) => p.id !== productId));
+    toast({ title: 'Produto removido da categoria' });
   };
 
   const openNew = (presetParentId?: string) => {
@@ -288,7 +306,7 @@ export function CategoriesManagement() {
                             className="p-0.5 rounded hover:bg-muted"
                             title="Ver produtos desta categoria"
                           >
-                            {expandedSubId === sub.id ? (
+                            {expandedSub?.id === sub.id ? (
                               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             ) : (
                               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
@@ -349,7 +367,7 @@ export function CategoriesManagement() {
                           </Button>
                         </div>
                       </div>
-                      {expandedSubId === sub.id && (
+                      {expandedSub?.id === sub.id && (
                         <div className="ml-6 mt-1 mb-2 rounded-md border bg-background p-3">
                           {loadingProducts ? (
                             <p className="text-xs text-muted-foreground">Carregando produtos...</p>
@@ -371,7 +389,7 @@ export function CategoriesManagement() {
                                   ) : (
                                     <div className="w-10 h-10 rounded bg-muted" />
                                   )}
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <p className="text-xs font-medium truncate">{p.name}</p>
                                     {p.price != null && (
                                       <p className="text-xs text-muted-foreground">
@@ -379,6 +397,20 @@ export function CategoriesManagement() {
                                       </p>
                                     )}
                                   </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive h-7 w-7 p-0"
+                                    title="Remover da categoria"
+                                    disabled={removingId === p.id}
+                                    onClick={() => removeProductFromSub(p.id)}
+                                  >
+                                    {removingId === p.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <X className="w-3.5 h-3.5" />
+                                    )}
+                                  </Button>
                                 </div>
                               ))}
                             </div>
