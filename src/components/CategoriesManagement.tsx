@@ -34,7 +34,7 @@ const slugify = (s: string) =>
     .replace(/(^-|-$)/g, '');
 
 export function CategoriesManagement() {
-  const { categories, primaries, getSubcategoriesOf, reload } = useCategories();
+  const { categories, primaries, getDescendantsOf, reload } = useCategories();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
