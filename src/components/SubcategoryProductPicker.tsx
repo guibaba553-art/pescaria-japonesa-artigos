@@ -70,13 +70,13 @@ export function SubcategoryProductPicker({
     if (primaryName) {
       list = list.filter((p) => p.category === primaryName);
     }
-    if (parentSubcategoryName) {
-      list = list.filter(
-        (p) => p.subcategory === parentSubcategoryName || p.subcategory === subcategoryName
-      );
+    const ancestors = ancestorSubcategoryNames ?? [];
+    if (ancestors.length > 0) {
+      const allowed = new Set([...ancestors, subcategoryName]);
+      list = list.filter((p) => p.subcategory && allowed.has(p.subcategory));
     }
     return list;
-  }, [products, primaryName, parentSubcategoryName, subcategoryName]);
+  }, [products, primaryName, ancestorSubcategoryNames, subcategoryName]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
