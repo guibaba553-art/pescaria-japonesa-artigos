@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Pencil, Trash2, Plus, Lock, ChevronRight, PackagePlus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Lock, ChevronRight, ChevronDown, PackagePlus } from 'lucide-react';
 import { SubcategoryProductPicker } from './SubcategoryProductPicker';
 
 const slugify = (s: string) =>
@@ -45,6 +45,28 @@ export function CategoriesManagement() {
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
+  const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+  const [expandedProducts, setExpandedProducts] = useState<
+    { id: string; name: string; image_url: string | null; price: number | null }[]
+  >([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  const toggleExpand = async (sub: Category) => {
+    if (expandedSubId === sub.id) {
+      setExpandedSubId(null);
+      setExpandedProducts([]);
+      return;
+    }
+    setExpandedSubId(sub.id);
+    setLoadingProducts(true);
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, image_url, price')
+      .eq('subcategory', sub.name)
+      .order('name');
+    setExpandedProducts(data || []);
+    setLoadingProducts(false);
+  };
 
   const openNew = (presetParentId?: string) => {
     setEditing(null);
@@ -256,10 +278,22 @@ export function CategoriesManagement() {
                       <div
                         key={sub.id}
                         style={{ marginLeft: (sub.depth - 1) * 20 }}
-                        className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40"
+                        className="space-y-0"
                       >
+                      <div className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40">
                         <div className="flex items-center gap-2">
-                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(sub)}
+                            className="p-0.5 rounded hover:bg-muted"
+                            title="Ver produtos desta categoria"
+                          >
+                            {expandedSubId === sub.id ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </button>
                           <span className="font-medium">{sub.name}</span>
                           {sub.depth > 1 && (
                             <Badge variant="outline" className="text-[10px]">
@@ -314,6 +348,43 @@ export function CategoriesManagement() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
+                      </div>
+                      {expandedSubId === sub.id && (
+                        <div className="ml-6 mt-1 mb-2 rounded-md border bg-background p-3">
+                          {loadingProducts ? (
+                            <p className="text-xs text-muted-foreground">Carregando produtos...</p>
+                          ) : expandedProducts.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              Nenhum produto nesta categoria ainda.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {expandedProducts.map((p) => (
+                                <div key={p.id} className="flex items-center gap-2 rounded border p-1.5">
+                                  {p.image_url ? (
+                                    <img
+                                      src={p.image_url}
+                                      alt={p.name}
+                                      className="w-10 h-10 rounded object-cover bg-muted"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded bg-muted" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-medium truncate">{p.name}</p>
+                                    {p.price != null && (
+                                      <p className="text-xs text-muted-foreground">
+                                        R$ {p.price.toFixed(2).replace('.', ',')}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       </div>
                     ))}
                   </div>
