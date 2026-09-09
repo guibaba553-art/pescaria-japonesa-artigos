@@ -233,11 +233,17 @@ export function CategoriesManagement() {
                     {subs.map((sub) => (
                       <div
                         key={sub.id}
+                        style={{ marginLeft: (sub.depth - 1) * 20 }}
                         className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40"
                       >
                         <div className="flex items-center gap-2">
                           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                           <span className="font-medium">{sub.name}</span>
+                          {sub.depth > 1 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              nível {sub.depth}
+                            </Badge>
+                          )}
                           {sub.description && (
                             <span className="text-xs text-muted-foreground">
                               — {sub.description}
@@ -255,6 +261,16 @@ export function CategoriesManagement() {
                           >
                             <PackagePlus className="w-3.5 h-3.5 mr-1" />
                             Selecionar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => openNew(sub.id)}
+                            title={`Nova subcategoria dentro de ${sub.name}`}
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" />
+                            Sub
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(sub)}>
                             <Pencil className="w-3.5 h-3.5" />
