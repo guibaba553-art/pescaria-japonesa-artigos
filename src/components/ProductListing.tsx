@@ -264,13 +264,17 @@ export function ProductListing({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubcategoryPath, allCategories]);
 
-  // Clique em um nível: entra nele ou volta ao nível anterior
+  // Clique em um nível: navega para a subcategoria escolhida na URL
   const handleSubcategoryLevelClick = (name: string) => {
-    const idx = selectedSubcategories.indexOf(name);
+    if (!categoryParam) return;
+    const idx = selectedSubcategoryPath.indexOf(name);
     if (idx >= 0) {
-      setSelectedSubcategories(selectedSubcategories.slice(0, idx));
+      // Voltar para um nível anterior
+      const target = selectedSubcategoryPath[idx];
+      setSearchParams(target ? { category: categoryParam, subcategory: target } : { category: categoryParam });
     } else {
-      setSelectedSubcategories([...selectedSubcategories, name]);
+      // Descer para um novo nível
+      setSearchParams({ category: categoryParam, subcategory: name });
     }
   };
 
