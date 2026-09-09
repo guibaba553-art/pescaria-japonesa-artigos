@@ -205,6 +205,18 @@ export function ProductListing({
     };
   }, [products, categoryTreeSubOptions]);
 
+  // Ao filtrar por uma subcategoria que tem sub-subcategorias, inclui os produtos delas
+  const expandedSubcategories = useMemo(() => {
+    if (!selectedSubcategories.length) return [] as string[];
+    const names = new Set<string>(selectedSubcategories);
+    selectedSubcategories.forEach((name) => {
+      const cat = allCategories.find((c) => c.name === name);
+      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
+    });
+    return Array.from(names);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubcategories, allCategories]);
+
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
   };
@@ -233,7 +245,7 @@ export function ProductListing({
 
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (selectedSubcategories.length && (!p.subcategory || !selectedSubcategories.includes(p.subcategory))) return false;
+      if (expandedSubcategories.length && (!p.subcategory || !expandedSubcategories.includes(p.subcategory))) return false;
       const hasActiveVariationPromo = p.variations?.some((variation) => isPromoActive(variation)) ?? false;
       if (onSaleParam === 'true' && !isPromoActive(p) && !hasActiveVariationPromo) return false;
       if (priceRange) {
@@ -268,7 +280,7 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchMatchIds, selectedBrands, selectedPounds, selectedSubcategories, priceRange, sortBy, onSaleParam]);
+  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =
