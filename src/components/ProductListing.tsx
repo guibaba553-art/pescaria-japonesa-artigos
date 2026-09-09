@@ -465,33 +465,43 @@ export function ProductListing({
   const renderSubcategoryLevels = () => {
     if (subcategoryOptions.length === 0 && selectedSubcategories.length === 0) return null;
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Subcategoria
         </p>
+
         {selectedSubcategories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1 text-sm">
+          <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
               onClick={() => setSelectedSubcategories([])}
+              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
             >
               {categoryParam || 'Tudo'}
             </button>
-            {selectedSubcategories.map((name, i) => (
-              <span key={name} className="flex items-center gap-1">
-                <span className="text-muted-foreground">›</span>
-                <button
-                  type="button"
-                  className="font-medium hover:underline"
-                  onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
-                >
-                  {name}
-                </button>
-              </span>
-            ))}
-          </div>
+
+            {selectedSubcategories.map((name, i) => {
+              const isLast = i === selectedSubcategories.length - 1;
+              return (
+                <span key={name} className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-1 duration-200">
+                  <span className="text-muted-foreground/60 text-xs">›</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
+                    className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
+                      isLast
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/20'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                </span>
+              );
+            })}
+          </nav>
         )}
+
         {subcategoryOptions.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {subcategoryOptions.map((opt) => (
@@ -499,7 +509,7 @@ export function ProductListing({
                 key={opt}
                 type="button"
                 onClick={() => handleSubcategoryLevelClick(opt)}
-                className="px-3 py-1.5 text-sm rounded-full border transition-colors bg-background hover:bg-muted border-border"
+                className="px-3 py-1.5 text-sm rounded-full border transition-all bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border"
               >
                 {opt}
               </button>
