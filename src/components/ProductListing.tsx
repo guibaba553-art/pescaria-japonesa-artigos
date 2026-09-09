@@ -177,33 +177,52 @@ export function ProductListing({
   }, [products, minPrice, maxPrice]);
 
   // Nomes de todas as subcategorias e sub-subcategorias da categoria selecionada
-  const categoryTreeSubOptions = useMemo(() => {
+  const categoryTree = useMemo(() => {
     const primary = primaries.find((p) => p.name === categoryParam);
-    if (!primary) return [] as string[];
-    return getDescendantsOf(primary.id).map((c) => c.name);
+    if (!primary) return [] as Array<{ name: string; depth: number; parentName: string | null }>;
+    return getDescendantsOf(primary.id).map((c) => ({
+      name: c.name,
+      depth: c.depth,
+      parentName: allCategories.find((x) => x.id === c.parent_id)?.name ?? null,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaries, allCategories, categoryParam]);
+
+  const categoryTreeSubOptions = useMemo(
+    () => categoryTree.map((c) => c.name),
+    [categoryTree]
+  );
+
+  // Rótulos hierárquicos: "EVOLUTION › MOLINETE"
+  const subcategoryLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    categoryTree.forEach((c) => {
+      map[c.name] = c.depth > 1 && c.parentName ? `${c.parentName} › ${c.name}` : c.name;
+    });
+    return map;
+  }, [categoryTree]);
 
   // Opções dinâmicas a partir dos produtos carregados
   const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
     const brands = new Set<string>();
     const pounds = new Set<string>();
     const subs = new Set<string>();
-    // Inclui toda a árvore da categoria (subcategorias e sub-subcategorias),
-    // mesmo que ainda não tenham produtos carregados nesta listagem
-    categoryTreeSubOptions.forEach((name) => subs.add(name));
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
       if (p.pound_test) pounds.add(p.pound_test);
       if (p.subcategory) subs.add(p.subcategory);
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
+    // Mantém a ordem hierárquica da árvore e acrescenta órfãos ao final
+    const ordered = categoryTreeSubOptions.filter((n, i) => categoryTreeSubOptions.indexOf(n) === i);
+    const extras = Array.from(subs).filter((n) => !ordered.includes(n)).sort(sorter);
     return {
       brandOptions: Array.from(brands).sort(sorter),
       poundOptions: Array.from(pounds).sort(sorter),
-      subcategoryOptions: Array.from(subs).sort(sorter),
+      subcategoryOptions: [...ordered, ...extras],
     };
   }, [products, categoryTreeSubOptions]);
+
 
   // Ao filtrar por uma subcategoria que tem sub-subcategorias, inclui os produtos delas
   const expandedSubcategories = useMemo(() => {
