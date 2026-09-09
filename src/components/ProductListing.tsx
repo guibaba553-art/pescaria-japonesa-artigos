@@ -280,7 +280,7 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchMatchIds, selectedBrands, selectedPounds, selectedSubcategories, priceRange, sortBy, onSaleParam]);
+  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =
