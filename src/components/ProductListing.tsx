@@ -213,12 +213,12 @@ export function ProductListing({
 
   // Navegação em níveis: mostra apenas os filhos diretos do nível atual
   const currentParentId = useMemo(() => {
-    if (selectedSubcategories.length > 0) {
-      const last = selectedSubcategories[selectedSubcategories.length - 1];
+    if (selectedSubcategoryPath.length > 0) {
+      const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
       return allCategories.find((c) => c.name === last)?.id ?? null;
     }
     return primaries.find((p) => p.name === categoryParam)?.id ?? null;
-  }, [selectedSubcategories, allCategories, primaries, categoryParam]);
+  }, [selectedSubcategoryPath, allCategories, primaries, categoryParam]);
 
   // Opções dinâmicas a partir dos produtos carregados
   const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
