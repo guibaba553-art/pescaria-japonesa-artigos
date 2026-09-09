@@ -278,10 +278,22 @@ export function CategoriesManagement() {
                       <div
                         key={sub.id}
                         style={{ marginLeft: (sub.depth - 1) * 20 }}
-                        className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40"
+                        className="space-y-0"
                       >
+                      <div className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/40">
                         <div className="flex items-center gap-2">
-                          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(sub)}
+                            className="p-0.5 rounded hover:bg-muted"
+                            title="Ver produtos desta categoria"
+                          >
+                            {expandedSubId === sub.id ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            )}
+                          </button>
                           <span className="font-medium">{sub.name}</span>
                           {sub.depth > 1 && (
                             <Badge variant="outline" className="text-[10px]">
