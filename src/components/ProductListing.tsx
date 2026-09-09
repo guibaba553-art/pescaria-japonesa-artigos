@@ -50,7 +50,7 @@ export function ProductListing({
   useEffect(() => {
     setSearchQuery(searchParam);
   }, [searchParam]);
-  const { primaries, getSubcategoriesOf } = useCategories();
+  const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
@@ -176,11 +176,22 @@ export function ProductListing({
     }
   }, [products, minPrice, maxPrice]);
 
+  // Nomes de todas as subcategorias e sub-subcategorias da categoria selecionada
+  const categoryTreeSubOptions = useMemo(() => {
+    const primary = primaries.find((p) => p.name === categoryParam);
+    if (!primary) return [] as string[];
+    return getDescendantsOf(primary.id).map((c) => c.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaries, allCategories, categoryParam]);
+
   // Opções dinâmicas a partir dos produtos carregados
   const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
     const brands = new Set<string>();
     const pounds = new Set<string>();
     const subs = new Set<string>();
+    // Inclui toda a árvore da categoria (subcategorias e sub-subcategorias),
+    // mesmo que ainda não tenham produtos carregados nesta listagem
+    categoryTreeSubOptions.forEach((name) => subs.add(name));
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
       if (p.pound_test) pounds.add(p.pound_test);
@@ -192,7 +203,7 @@ export function ProductListing({
       poundOptions: Array.from(pounds).sort(sorter),
       subcategoryOptions: Array.from(subs).sort(sorter),
     };
-  }, [products]);
+  }, [products, categoryTreeSubOptions]);
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
