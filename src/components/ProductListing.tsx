@@ -462,6 +462,55 @@ export function ProductListing({
     );
   };
 
+  const renderSubcategoryLevels = () => {
+    if (subcategoryOptions.length === 0 && selectedSubcategories.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Subcategoria
+        </p>
+        {selectedSubcategories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 text-sm">
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setSelectedSubcategories([])}
+            >
+              {categoryParam || 'Tudo'}
+            </button>
+            {selectedSubcategories.map((name, i) => (
+              <span key={name} className="flex items-center gap-1">
+                <span className="text-muted-foreground">›</span>
+                <button
+                  type="button"
+                  className="font-medium hover:underline"
+                  onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
+                >
+                  {name}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {subcategoryOptions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {subcategoryOptions.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => handleSubcategoryLevelClick(opt)}
+                className="px-3 py-1.5 text-sm rounded-full border transition-colors bg-background hover:bg-muted border-border"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   const displayTitle = isOffersActive
     ? 'Todas as ofertas'
     : categoryParam
