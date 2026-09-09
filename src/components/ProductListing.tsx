@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { SlidersHorizontal, Filter } from 'lucide-react';
+import { SlidersHorizontal, Filter, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { supabase } from '@/integrations/supabase/client';
 import { fuzzySearch } from '@/lib/fuzzySearch';
@@ -529,7 +529,20 @@ export function ProductListing({
                   <span className="text-muted-foreground/60 text-xs">›</span>
                   <button
                     type="button"
+                    title={isLast ? 'Clique para voltar um nível' : `Voltar para ${name}`}
                     onClick={() => {
+                      if (isLast) {
+                        // Clicar no chip selecionado remove o último nível (volta um filtro)
+                        const parentTarget = i > 0 ? selectedSubcategoryPath[i - 1] : undefined;
+                        if (categoryParam && parentTarget) {
+                          setSearchParams({ category: categoryParam, subcategory: parentTarget });
+                        } else if (categoryParam) {
+                          setSearchParams({ category: categoryParam });
+                        } else {
+                          setSearchParams({});
+                        }
+                        return;
+                      }
                       const target = selectedSubcategoryPath.slice(0, i + 1).pop();
                       if (categoryParam && target) {
                         setSearchParams({ category: categoryParam, subcategory: target });
@@ -537,13 +550,14 @@ export function ProductListing({
                         setSearchParams({ category: categoryParam });
                       }
                     }}
-                    className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
                       isLast
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
                         : 'bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/20'
                     }`}
                   >
                     {name}
+                    {isLast && <X className="w-3 h-3 opacity-80" />}
                   </button>
                 </span>
               );
