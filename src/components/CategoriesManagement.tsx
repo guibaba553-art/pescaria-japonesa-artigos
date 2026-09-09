@@ -45,19 +45,20 @@ export function CategoriesManagement() {
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
-  const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+  const [expandedSub, setExpandedSub] = useState<Category | null>(null);
   const [expandedProducts, setExpandedProducts] = useState<
     { id: string; name: string; image_url: string | null; price: number | null }[]
   >([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const toggleExpand = async (sub: Category) => {
-    if (expandedSubId === sub.id) {
-      setExpandedSubId(null);
+    if (expandedSub?.id === sub.id) {
+      setExpandedSub(null);
       setExpandedProducts([]);
       return;
     }
-    setExpandedSubId(sub.id);
+    setExpandedSub(sub);
     setLoadingProducts(true);
     const { data } = await supabase
       .from('products')
@@ -66,6 +67,23 @@ export function CategoriesManagement() {
       .order('name');
     setExpandedProducts(data || []);
     setLoadingProducts(false);
+  };
+
+  const removeProductFromSub = async (productId: string) => {
+    if (!expandedSub) return;
+    setRemovingId(productId);
+    const { error } = await supabase
+      .from('products')
+      .update({ subcategory: null })
+      .eq('id', productId)
+      .eq('subcategory', expandedSub.name);
+    setRemovingId(null);
+    if (error) {
+      toast({ title: 'Erro ao remover produto', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setExpandedProducts((prev) => prev.filter((p) => p.id !== productId));
+    toast({ title: 'Produto removido da categoria' });
   };
 
   const openNew = (presetParentId?: string) => {
