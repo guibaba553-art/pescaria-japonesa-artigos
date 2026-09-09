@@ -44,6 +44,13 @@ export function ProductListing({
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(searchParam);
+
+  // Sincroniza o input com o parâmetro de URL quando muda (ex: nova busca pelo header)
+  useEffect(() => {
+    setSearchQuery(searchParam);
+  }, [searchParam]);
+  const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
 
   // Caminho hierárquico da subcategoria atual (da raiz até o nível selecionado)
   const selectedSubcategoryPath = useMemo(() => {
@@ -63,13 +70,6 @@ export function ProductListing({
     return path;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subcategoryParam, allCategories]);
-  const [searchQuery, setSearchQuery] = useState(searchParam);
-
-  // Sincroniza o input com o parâmetro de URL quando muda (ex: nova busca pelo header)
-  useEffect(() => {
-    setSearchQuery(searchParam);
-  }, [searchParam]);
-  const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
