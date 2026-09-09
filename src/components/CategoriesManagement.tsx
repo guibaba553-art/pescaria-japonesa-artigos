@@ -306,7 +306,7 @@ export function CategoriesManagement() {
                             className="p-0.5 rounded hover:bg-muted"
                             title="Ver produtos desta categoria"
                           >
-                            {expandedSubId === sub.id ? (
+                            {expandedSub?.id === sub.id ? (
                               <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                             ) : (
                               <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
