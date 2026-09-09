@@ -193,14 +193,14 @@ export function ProductListing({
     [categoryTree]
   );
 
-  // Rótulos hierárquicos: "EVOLUTION › MOLINETE"
-  const subcategoryLabels = useMemo(() => {
-    const map: Record<string, string> = {};
-    categoryTree.forEach((c) => {
-      map[c.name] = c.depth > 1 && c.parentName ? `${c.parentName} › ${c.name}` : c.name;
-    });
-    return map;
-  }, [categoryTree]);
+  // Navegação em níveis: mostra apenas os filhos diretos do nível atual
+  const currentParentId = useMemo(() => {
+    if (selectedSubcategories.length > 0) {
+      const last = selectedSubcategories[selectedSubcategories.length - 1];
+      return allCategories.find((c) => c.name === last)?.id ?? null;
+    }
+    return primaries.find((p) => p.name === categoryParam)?.id ?? null;
+  }, [selectedSubcategories, allCategories, primaries, categoryParam]);
 
   // Opções dinâmicas a partir dos produtos carregados
   const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
@@ -213,28 +213,49 @@ export function ProductListing({
       if (p.subcategory) subs.add(p.subcategory);
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
-    // Mantém a ordem hierárquica da árvore e acrescenta órfãos ao final
-    const ordered = categoryTreeSubOptions.filter((n, i) => categoryTreeSubOptions.indexOf(n) === i);
-    const extras = Array.from(subs).filter((n) => !ordered.includes(n)).sort(sorter);
+
+    // Filhos diretos do nível atual
+    const children = currentParentId
+      ? allCategories
+          .filter((c) => c.parent_id === currentParentId)
+          .map((c) => c.name)
+      : [];
+    // Na raiz, acrescenta subcategorias "órfãs" presentes nos produtos
+    const extras =
+      selectedSubcategories.length === 0
+        ? Array.from(subs)
+            .filter((n) => !children.includes(n) && !categoryTreeSubOptions.includes(n))
+            .sort(sorter)
+        : [];
+
     return {
       brandOptions: Array.from(brands).sort(sorter),
       poundOptions: Array.from(pounds).sort(sorter),
-      subcategoryOptions: [...ordered, ...extras],
+      subcategoryOptions: [...children, ...extras],
     };
-  }, [products, categoryTreeSubOptions]);
+  }, [products, currentParentId, allCategories, selectedSubcategories, categoryTreeSubOptions]);
 
-
-  // Ao filtrar por uma subcategoria que tem sub-subcategorias, inclui os produtos delas
+  // O filtro usa o último nível escolhido + todos os seus descendentes
   const expandedSubcategories = useMemo(() => {
     if (!selectedSubcategories.length) return [] as string[];
-    const names = new Set<string>(selectedSubcategories);
-    selectedSubcategories.forEach((name) => {
-      const cat = allCategories.find((c) => c.name === name);
-      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
-    });
+    const last = selectedSubcategories[selectedSubcategories.length - 1];
+    const names = new Set<string>([last]);
+    const cat = allCategories.find((c) => c.name === last);
+    if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
     return Array.from(names);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSubcategories, allCategories]);
+
+  // Clique em um nível: entra nele ou volta ao nível anterior
+  const handleSubcategoryLevelClick = (name: string) => {
+    const idx = selectedSubcategories.indexOf(name);
+    if (idx >= 0) {
+      setSelectedSubcategories(selectedSubcategories.slice(0, idx));
+    } else {
+      setSelectedSubcategories([...selectedSubcategories, name]);
+    }
+  };
+
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
@@ -441,6 +462,55 @@ export function ProductListing({
     );
   };
 
+  const renderSubcategoryLevels = () => {
+    if (subcategoryOptions.length === 0 && selectedSubcategories.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Subcategoria
+        </p>
+        {selectedSubcategories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 text-sm">
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setSelectedSubcategories([])}
+            >
+              {categoryParam || 'Tudo'}
+            </button>
+            {selectedSubcategories.map((name, i) => (
+              <span key={name} className="flex items-center gap-1">
+                <span className="text-muted-foreground">›</span>
+                <button
+                  type="button"
+                  className="font-medium hover:underline"
+                  onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
+                >
+                  {name}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {subcategoryOptions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {subcategoryOptions.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => handleSubcategoryLevelClick(opt)}
+                className="px-3 py-1.5 text-sm rounded-full border transition-colors bg-background hover:bg-muted border-border"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
   const displayTitle = isOffersActive
     ? 'Todas as ofertas'
     : categoryParam
@@ -583,10 +653,9 @@ export function ProductListing({
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto p-5 space-y-6">
                     {renderPriceRangeFilter()}
-                    {!subcategoryParam &&
-                      renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories, subcategoryLabels)}
                     {brandOptions.length > 0 &&
                       renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+                    {!subcategoryParam && renderSubcategoryLevels()}
                     {poundOptions.length > 0 &&
                       renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
                   </div>
