@@ -203,7 +203,7 @@ export function ProductListing({
       poundOptions: Array.from(pounds).sort(sorter),
       subcategoryOptions: Array.from(subs).sort(sorter),
     };
-  }, [products]);
+  }, [products, categoryTreeSubOptions]);
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
