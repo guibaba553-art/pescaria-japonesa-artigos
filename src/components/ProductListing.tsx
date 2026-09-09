@@ -18,7 +18,7 @@ import { Product } from '@/types/product';
 import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories, type Category } from '@/hooks/useCategories';
 
 type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
 
@@ -51,9 +51,27 @@ export function ProductListing({
     setSearchQuery(searchParam);
   }, [searchParam]);
   const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
+
+  // Caminho hierárquico da subcategoria atual (a partir da categoria primária)
+  const selectedSubcategoryPath = useMemo(() => {
+    if (!subcategoryParam || !allCategories.length) return [] as string[];
+    const target = allCategories.find((c) => c.name === subcategoryParam);
+    if (!target) return [subcategoryParam];
+    const path: string[] = [];
+    let current: Category | undefined = target;
+    // Evita loop infinito em caso de dados corrompidos
+    const seen = new Set<string>();
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id);
+      if (!current.parent_id) break; // a categoria primária já é representada pelo botão raiz
+      path.unshift(current.name);
+      current = allCategories.find((c) => c.id === current!.parent_id);
+    }
+    return path;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subcategoryParam, allCategories]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
   const [priceMinInput, setPriceMinInput] = useState('');
   const [priceMaxInput, setPriceMaxInput] = useState('');
@@ -70,13 +88,21 @@ export function ProductListing({
     loadProducts(categoryParam, subcategoryParam);
   }, [categoryParam, subcategoryParam]);
 
+  // Recarrega produtos quando as categorias terminarem de carregar, pois
+  // a query hierárquica depende da árvore de categorias.
+  useEffect(() => {
+    if (allCategories.length) {
+      loadProducts(categoryParam, subcategoryParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCategories.length]);
+
   useProductsRealtime(() => loadProducts(categoryParam, subcategoryParam), 'products-list');
 
   // Reset filters quando muda categoria
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
-    setSelectedSubcategories([]);
     setPriceRange(null);
     setPriceMinInput('');
     setPriceMaxInput('');
@@ -104,7 +130,15 @@ export function ProductListing({
         .limit(10000);
 
       if (category) query = query.eq('category', category);
-      if (subcategory) query = query.eq('subcategory', subcategory);
+      if (subcategory) {
+        // Expande a subcategoria para incluir todos os seus descendentes
+        const target = allCategories.find((c) => c.name === subcategory);
+        const subNames = new Set<string>([subcategory]);
+        if (target) {
+          getDescendantsOf(target.id).forEach((d) => subNames.add(d.name));
+        }
+        query = query.in('subcategory', Array.from(subNames));
+      }
 
       let result = await query;
       for (let attempt = 0; attempt < 2 && result.error && /failed to fetch|networkerror|load failed/i.test(result.error.message || ''); attempt++) {
@@ -195,12 +229,12 @@ export function ProductListing({
 
   // Navegação em níveis: mostra apenas os filhos diretos do nível atual
   const currentParentId = useMemo(() => {
-    if (selectedSubcategories.length > 0) {
-      const last = selectedSubcategories[selectedSubcategories.length - 1];
+    if (selectedSubcategoryPath.length > 0) {
+      const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
       return allCategories.find((c) => c.name === last)?.id ?? null;
     }
     return primaries.find((p) => p.name === categoryParam)?.id ?? null;
-  }, [selectedSubcategories, allCategories, primaries, categoryParam]);
+  }, [selectedSubcategoryPath, allCategories, primaries, categoryParam]);
 
   // Opções dinâmicas a partir dos produtos carregados
   const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
@@ -222,7 +256,7 @@ export function ProductListing({
       : [];
     // Na raiz, acrescenta subcategorias "órfãs" presentes nos produtos
     const extras =
-      selectedSubcategories.length === 0
+      selectedSubcategoryPath.length === 0
         ? Array.from(subs)
             .filter((n) => !children.includes(n) && !categoryTreeSubOptions.includes(n))
             .sort(sorter)
@@ -233,26 +267,30 @@ export function ProductListing({
       poundOptions: Array.from(pounds).sort(sorter),
       subcategoryOptions: [...children, ...extras],
     };
-  }, [products, currentParentId, allCategories, selectedSubcategories, categoryTreeSubOptions]);
+  }, [products, currentParentId, allCategories, selectedSubcategoryPath, categoryTreeSubOptions]);
 
   // O filtro usa o último nível escolhido + todos os seus descendentes
   const expandedSubcategories = useMemo(() => {
-    if (!selectedSubcategories.length) return [] as string[];
-    const last = selectedSubcategories[selectedSubcategories.length - 1];
+    if (!selectedSubcategoryPath.length) return [] as string[];
+    const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
     const names = new Set<string>([last]);
     const cat = allCategories.find((c) => c.name === last);
     if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
     return Array.from(names);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubcategories, allCategories]);
+  }, [selectedSubcategoryPath, allCategories]);
 
-  // Clique em um nível: entra nele ou volta ao nível anterior
+  // Clique em um nível: navega para a subcategoria escolhida na URL
   const handleSubcategoryLevelClick = (name: string) => {
-    const idx = selectedSubcategories.indexOf(name);
+    if (!categoryParam) return;
+    const idx = selectedSubcategoryPath.indexOf(name);
     if (idx >= 0) {
-      setSelectedSubcategories(selectedSubcategories.slice(0, idx));
+      // Voltar para um nível anterior
+      const target = selectedSubcategoryPath[idx];
+      setSearchParams(target ? { category: categoryParam, subcategory: target } : { category: categoryParam });
     } else {
-      setSelectedSubcategories([...selectedSubcategories, name]);
+      // Descer para um novo nível
+      setSearchParams({ category: categoryParam, subcategory: name });
     }
   };
 
@@ -326,13 +364,17 @@ export function ProductListing({
   const totalActiveFilters =
     selectedBrands.length +
     selectedPounds.length +
-    selectedSubcategories.length +
+    selectedSubcategoryPath.length +
     (priceFilterActive ? 1 : 0);
 
   const clearAllFilters = () => {
     setSelectedBrands([]);
     setSelectedPounds([]);
-    setSelectedSubcategories([]);
+    if (categoryParam) {
+      setSearchParams({ category: categoryParam });
+    } else {
+      setSearchParams({});
+    }
     setPriceRange([minPrice, maxPrice]);
     setPriceMinInput('');
     setPriceMaxInput('');
@@ -463,35 +505,52 @@ export function ProductListing({
   };
 
   const renderSubcategoryLevels = () => {
-    if (subcategoryOptions.length === 0 && selectedSubcategories.length === 0) return null;
+    if (subcategoryOptions.length === 0 && selectedSubcategoryPath.length === 0) return null;
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Subcategoria
         </p>
-        {selectedSubcategories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1 text-sm">
+
+        {selectedSubcategoryPath.length > 0 && (
+          <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => setSelectedSubcategories([])}
+              onClick={() => setSearchParams(categoryParam ? { category: categoryParam } : {})}
+              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
             >
               {categoryParam || 'Tudo'}
             </button>
-            {selectedSubcategories.map((name, i) => (
-              <span key={name} className="flex items-center gap-1">
-                <span className="text-muted-foreground">›</span>
-                <button
-                  type="button"
-                  className="font-medium hover:underline"
-                  onClick={() => setSelectedSubcategories(selectedSubcategories.slice(0, i + 1))}
-                >
-                  {name}
-                </button>
-              </span>
-            ))}
-          </div>
+
+            {selectedSubcategoryPath.map((name, i) => {
+              const isLast = i === selectedSubcategoryPath.length - 1;
+              return (
+                <span key={name} className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-1 duration-200">
+                  <span className="text-muted-foreground/60 text-xs">›</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = selectedSubcategoryPath.slice(0, i + 1).pop();
+                      if (categoryParam && target) {
+                        setSearchParams({ category: categoryParam, subcategory: target });
+                      } else if (categoryParam) {
+                        setSearchParams({ category: categoryParam });
+                      }
+                    }}
+                    className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
+                      isLast
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/20'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                </span>
+              );
+            })}
+          </nav>
         )}
+
         {subcategoryOptions.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {subcategoryOptions.map((opt) => (
@@ -499,7 +558,7 @@ export function ProductListing({
                 key={opt}
                 type="button"
                 onClick={() => handleSubcategoryLevelClick(opt)}
-                className="px-3 py-1.5 text-sm rounded-full border transition-colors bg-background hover:bg-muted border-border"
+                className="px-3 py-1.5 text-sm rounded-full border transition-all bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border"
               >
                 {opt}
               </button>
@@ -629,6 +688,17 @@ export function ProductListing({
           </div>
         </div>
 
+        {/* Desktop filters */}
+        <div className="hidden lg:flex flex-col gap-5 mb-6">
+          {renderSubcategoryLevels()}
+          <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+            {brandOptions.length > 0 &&
+              renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+            {poundOptions.length > 0 &&
+              renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+          </div>
+        </div>
+
         {(hasAnyAttribute || filteredProducts.length > 0) && (
           <div className="lg:hidden flex items-center gap-2 mb-4">
             {hasAnyAttribute && (
@@ -653,9 +723,9 @@ export function ProductListing({
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto p-5 space-y-6">
                     {renderPriceRangeFilter()}
+                    {renderSubcategoryLevels()}
                     {brandOptions.length > 0 &&
                       renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-                    {!subcategoryParam && renderSubcategoryLevels()}
                     {poundOptions.length > 0 &&
                       renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
                   </div>
