@@ -396,7 +396,7 @@ export function Header() {
             >
               Todos
             </button>
-            {primaries.slice(0, 8).map((cat) => (
+            {primaries.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => navigate(`/produtos?category=${encodeURIComponent(cat.name)}`)}
