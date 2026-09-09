@@ -216,7 +216,7 @@ export default function MobileHome() {
     navigate(`/produtos?search=${encodeURIComponent(q)}`);
   };
 
-  const visibleCategories = primaries.slice(0, 7);
+  const visibleCategories = primaries;
 
   return (
     <div className="bg-surface-subtle min-h-screen pb-24">
