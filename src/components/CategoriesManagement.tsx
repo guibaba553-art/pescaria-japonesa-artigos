@@ -44,7 +44,7 @@ export function CategoriesManagement() {
   const [displayOrder, setDisplayOrder] = useState('0');
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string } | null>(null);
+  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
 
   const openNew = (presetParentId?: string) => {
     setEditing(null);
@@ -277,8 +277,16 @@ export function CategoriesManagement() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              setPickerSub({ name: sub.name, primaryName: primary.name })
+                              setPickerSub({
+                                name: sub.name,
+                                primaryName: primary.name,
+                                parentSubName:
+                                  sub.parent_id && sub.parent_id !== primary.id
+                                    ? categories.find((c) => c.id === sub.parent_id)?.name
+                                    : undefined,
+                              })
                             }
+
                             className="h-7"
                           >
                             <PackagePlus className="w-3.5 h-3.5 mr-1" />
