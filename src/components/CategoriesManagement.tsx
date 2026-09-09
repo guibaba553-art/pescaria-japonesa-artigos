@@ -367,7 +367,7 @@ export function CategoriesManagement() {
                           </Button>
                         </div>
                       </div>
-                      {expandedSubId === sub.id && (
+                      {expandedSub?.id === sub.id && (
                         <div className="ml-6 mt-1 mb-2 rounded-md border bg-background p-3">
                           {loadingProducts ? (
                             <p className="text-xs text-muted-foreground">Carregando produtos...</p>
@@ -389,7 +389,7 @@ export function CategoriesManagement() {
                                   ) : (
                                     <div className="w-10 h-10 rounded bg-muted" />
                                   )}
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <p className="text-xs font-medium truncate">{p.name}</p>
                                     {p.price != null && (
                                       <p className="text-xs text-muted-foreground">
@@ -397,6 +397,20 @@ export function CategoriesManagement() {
                                       </p>
                                     )}
                                   </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive h-7 w-7 p-0"
+                                    title="Remover da categoria"
+                                    disabled={removingId === p.id}
+                                    onClick={() => removeProductFromSub(p.id)}
+                                  >
+                                    {removingId === p.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <X className="w-3.5 h-3.5" />
+                                    )}
+                                  </Button>
                                 </div>
                               ))}
                             </div>
