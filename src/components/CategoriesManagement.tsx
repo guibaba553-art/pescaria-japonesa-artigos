@@ -308,17 +308,24 @@ export function CategoriesManagement() {
           <div className="space-y-4 py-4">
             {!editing?.is_primary && (
               <div>
-                <Label>Categoria primária (pai) *</Label>
+                <Label>Categoria pai *</Label>
                 <Select value={parentId || undefined} onValueChange={setParentId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Escolha a primária" />
+                    <SelectValue placeholder="Escolha onde ela vai ficar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {primaries.map((p) => (
+                    {primaries.flatMap((p) => [
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>,
+                      ...getDescendantsOf(p.id)
+                        .filter((d) => d.id !== editing?.id)
+                        .map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {`${'\u00A0'.repeat(d.depth * 4)}↳ ${d.name}`}
+                          </SelectItem>
+                        )),
+                    ])}
                   </SelectContent>
                 </Select>
               </div>
