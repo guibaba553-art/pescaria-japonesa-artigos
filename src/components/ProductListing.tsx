@@ -354,7 +354,11 @@ export function ProductListing({
   const clearAllFilters = () => {
     setSelectedBrands([]);
     setSelectedPounds([]);
-    setSelectedSubcategories([]);
+    if (categoryParam) {
+      setSearchParams({ category: categoryParam });
+    } else {
+      setSearchParams({});
+    }
     setPriceRange([minPrice, maxPrice]);
     setPriceMinInput('');
     setPriceMaxInput('');
