@@ -205,6 +205,18 @@ export function ProductListing({
     };
   }, [products, categoryTreeSubOptions]);
 
+  // Ao filtrar por uma subcategoria que tem sub-subcategorias, inclui os produtos delas
+  const expandedSubcategories = useMemo(() => {
+    if (!selectedSubcategories.length) return [] as string[];
+    const names = new Set<string>(selectedSubcategories);
+    selectedSubcategories.forEach((name) => {
+      const cat = allCategories.find((c) => c.name === name);
+      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
+    });
+    return Array.from(names);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubcategories, allCategories]);
+
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
   };
