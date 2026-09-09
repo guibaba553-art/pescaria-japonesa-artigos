@@ -113,6 +113,7 @@ export function useCategories() {
     primaries,
     subcategories,
     getSubcategoriesOf,
+    getDescendantsOf,
     getPrimaryByName,
     loading,
     reload,
