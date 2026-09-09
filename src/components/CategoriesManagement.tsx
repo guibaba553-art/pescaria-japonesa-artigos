@@ -44,7 +44,7 @@ export function CategoriesManagement() {
   const [displayOrder, setDisplayOrder] = useState('0');
   const [parentId, setParentId] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; parentSubName?: string } | null>(null);
+  const [pickerSub, setPickerSub] = useState<{ name: string; primaryName?: string; ancestorSubNames?: string[] } | null>(null);
   const [expandedSub, setExpandedSub] = useState<Category | null>(null);
   const [expandedProducts, setExpandedProducts] = useState<
     { id: string; name: string; image_url: string | null; price: number | null }[]
