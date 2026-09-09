@@ -194,7 +194,7 @@ export function CategoriesManagement() {
           </p>
         ) : (
           primaries.map((primary) => {
-            const subs = getSubcategoriesOf(primary.id);
+            const subs = getDescendantsOf(primary.id);
             return (
               <div key={primary.id} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
