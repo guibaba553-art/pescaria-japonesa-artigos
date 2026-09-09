@@ -74,7 +74,19 @@ export function CategoriesManagement() {
     if (!parentId && !editing?.is_primary) {
       toast({
         title: 'Categoria pai obrigatória',
-        description: 'Subcategorias precisam de uma categoria primária pai.',
+        description: 'Toda subcategoria precisa ficar dentro de outra categoria.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (
+      editing &&
+      parentId &&
+      getDescendantsOf(editing.id).some((d) => d.id === parentId)
+    ) {
+      toast({
+        title: 'Escolha inválida',
+        description: 'Uma categoria não pode ficar dentro de uma das suas próprias subcategorias.',
         variant: 'destructive',
       });
       return;
