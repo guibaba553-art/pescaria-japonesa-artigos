@@ -604,10 +604,9 @@ export function ProductListing({
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto p-5 space-y-6">
                     {renderPriceRangeFilter()}
-                    {!subcategoryParam &&
-                      renderFilterGroup('Subcategoria', subcategoryOptions, selectedSubcategories, setSelectedSubcategories, subcategoryLabels)}
                     {brandOptions.length > 0 &&
                       renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+                    {!subcategoryParam && renderSubcategoryLevels()}
                     {poundOptions.length > 0 &&
                       renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
                   </div>
