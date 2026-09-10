@@ -91,16 +91,27 @@ export function SubcategoryProductPicker({
 
 
   const handleSelect = async (product: Product) => {
-    if (product.subcategory === subcategoryName) return;
     setSavingIds((prev) => new Set(prev).add(product.id));
 
-    const update: any = { subcategory: subcategoryName };
-    // Se o produto não está na primária pai, alinha também
-    if (primaryName && product.category !== primaryName) {
-      update.category = primaryName;
+    // Vínculo N:N — o produto pode pertencer a vários grupos ao mesmo tempo
+    const target = allCategories.find((c) => c.name === subcategoryName);
+    let error: { message: string } | null = null;
+    if (target) {
+      const { error: linkError } = await supabase
+        .from('product_categories')
+        .upsert({ product_id: product.id, category_id: target.id }, { onConflict: 'product_id,category_id' });
+      if (linkError) error = linkError;
     }
 
-    const { error } = await supabase.from('products').update(update).eq('id', product.id);
+    // Campo legado: só preenche quando o produto ainda não tem grupo principal
+    const update: any = {};
+    if (!product.subcategory) update.subcategory = subcategoryName;
+    if (primaryName && !product.category) update.category = primaryName;
+    if (!error && Object.keys(update).length > 0) {
+      const { error: updError } = await supabase.from('products').update(update).eq('id', product.id);
+      if (updError) error = updError;
+    }
+
 
     setSavingIds((prev) => {
       const next = new Set(prev);
