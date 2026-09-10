@@ -344,12 +344,12 @@ export function ExpenseTracker() {
   const monthTotals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = monthEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
-    const incomeSite = incomes.reduce((s, i) => s + i.total_amount, 0);
+    const incomeSite = siteReceivables.reduce((s, r) => s + r.total, 0);
     const incomePdv = pdvReceivables.reduce((s, r) => s + r.total, 0);
     const expensesTotal = fixed + variable;
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
-  }, [monthEntries, incomes, pdvReceivables]);
+  }, [monthEntries, siteReceivables, pdvReceivables]);
 
 
   const handleDelete = async (id: string) => {
