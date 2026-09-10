@@ -87,6 +87,89 @@ interface PdvReceivable {
   cash: number;
 }
 
+/** Card compartilhado para exibição de uma despesa, com checkbox de "pago". */
+function ExpenseCard({
+  entry,
+  label,
+  onEdit,
+  onDelete,
+  onSkip,
+  onOverride,
+  onTogglePaid,
+}: {
+  entry: MonthlyEntry;
+  label?: string;
+  onEdit: (e: Expense) => void;
+  onDelete: (id: string) => void;
+  onSkip: (e: MonthlyEntry) => void;
+  onOverride: (e: MonthlyEntry) => void;
+  onTogglePaid: (e: MonthlyEntry) => void;
+}) {
+  const isPaid = !!entry.override?.paid_at;
+  return (
+    <Card className={cn("hover:shadow-md transition-shadow", isPaid && "bg-amber-50/50 dark:bg-amber-950/10")}>
+      <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              "h-8 w-8 rounded-md border-2 transition-colors shrink-0",
+              isPaid
+                ? "bg-amber-400 border-amber-500 text-amber-950 hover:bg-amber-500 hover:text-amber-950"
+                : "bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400 hover:text-amber-600"
+            )}
+            onClick={() => onTogglePaid(entry)}
+            title={isPaid ? "Desmarcar como pago" : "Marcar como pago"}
+          >
+            {isPaid && <Check className="w-4 h-4" />}
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant={entry.expense.type === "fixed" ? "default" : "secondary"} className="text-[10px]">
+                {entry.expense.type === "fixed" ? <><Repeat className="w-3 h-3 mr-1" />Fixa</> : <><Zap className="w-3 h-3 mr-1" />Variável</>}
+              </Badge>
+              {label && <Badge variant="outline" className="text-[10px]">{label}</Badge>}
+              <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
+              {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
+              {isPaid && <Badge className="bg-amber-400 text-amber-950 text-[10px]">pago</Badge>}
+            </div>
+            <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(entry.expense.expense_date), "dd/MM/yyyy", { locale: ptBR })}
+              {entry.expense.supplier && <> • {entry.expense.supplier}</>}
+              {entry.expense.payment_method && <> • {entry.expense.payment_method}</>}
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-lg font-bold text-red-600">{fmtBRL(Number(entry.effectiveAmount))}</div>
+          {entry.expense.type === "fixed" && entry.override?.amount != null && (
+            <div className="text-[10px] text-muted-foreground line-through">{fmtBRL(entry.expense.amount)}</div>
+          )}
+        </div>
+        <div className="flex gap-1">
+          {entry.expense.type === "fixed" && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onOverride(entry)} title="Ajustar valor neste mês">
+                <TrendingUp className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onSkip(entry)} title="Pular este mês">
+                <TrendingDown className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => onEdit(entry.expense)}>
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(entry.expense.id)}>
+            <Trash2 className="w-4 h-4 text-red-600" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function ExpenseTracker() {
   const { toast } = useToast();
