@@ -483,16 +483,22 @@ export function ExpenseTracker() {
         .update({ paid_at: toggle.nextPaidAt })
         .eq("id", toggle.overrideId);
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setOverrides(prev =>
+        prev.map(o => (o.id === toggle.overrideId ? { ...o, paid_at: toggle.nextPaidAt } : o))
+      );
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("expense_overrides")
-        .insert({ expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt });
+        .insert({ expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt })
+        .select()
+        .single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      if (data) setOverrides(prev => [...prev, data as Override]);
     }
 
     toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
-    loadData();
   };
+
 
   const isToday = isSameDay(selectedDay, new Date());
 
