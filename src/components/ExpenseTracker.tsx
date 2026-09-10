@@ -21,6 +21,13 @@ import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement"
 import { applyCardFee } from "@/utils/cardFees";
 import { getPdvReceivableBreakdown } from "@/utils/pdvReceivableBreakdown";
 import { fetchAllPaged } from "@/utils/fetchAllPaged";
+import {
+  classifyIncomeAccount,
+  emptyIncomeAccountTotals,
+  INCOME_ACCOUNT_LABEL,
+  type IncomeAccount,
+  type IncomeAccountTotals,
+} from "@/utils/incomeAccounts";
 
 
 
