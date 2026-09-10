@@ -309,20 +309,21 @@ export function ExpenseTracker() {
   const dayTotals = useMemo(() => {
     const fixed = dayEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
     const variable = dayEntries.filter(e => e.expense.type === "variable").reduce((s, e) => s + Number(e.effectiveAmount), 0);
-    const incomeSite = dayIncomes.reduce((s, i) => s + i.total_amount, 0);
+    const incomeSite = daySiteReceivables.reduce((s, r) => s + r.total, 0);
     const incomePdv = dayPdvReceivables.reduce((s, r) => s + r.total, 0);
     const expensesTotal = fixed + variable;
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
-  }, [dayEntries, dayIncomes, dayPdvReceivables]);
+  }, [dayEntries, daySiteReceivables, dayPdvReceivables]);
 
   const accountsFor = (
-    siteList: IncomeEntry[],
+    siteList: { accounts: IncomeAccountTotals }[],
     receivables: PdvReceivable[],
   ): IncomeAccountTotals => {
     const totals = emptyIncomeAccountTotals();
-    for (const i of siteList) {
-      totals[classifyIncomeAccount({ source: "site", payment_method: i.payment_method, payment_gateway: i.payment_gateway })] += i.total_amount;
+    for (const s of siteList) {
+      totals.mercadopago += s.accounts.mercadopago;
+      totals.asaas += s.accounts.asaas;
     }
     for (const r of receivables) {
       totals.stone += r.stone;
@@ -332,12 +333,12 @@ export function ExpenseTracker() {
   };
 
   const dayAccounts = useMemo(
-    () => accountsFor(dayIncomes, dayPdvReceivables),
-    [dayIncomes, dayPdvReceivables],
+    () => accountsFor(daySiteReceivables, dayPdvReceivables),
+    [daySiteReceivables, dayPdvReceivables],
   );
   const monthAccounts = useMemo(
-    () => accountsFor(incomes, pdvReceivables),
-    [incomes, pdvReceivables],
+    () => accountsFor(siteReceivables, pdvReceivables),
+    [siteReceivables, pdvReceivables],
   );
 
   const monthTotals = useMemo(() => {
