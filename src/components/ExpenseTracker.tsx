@@ -246,13 +246,13 @@ export function ExpenseTracker() {
         if (parcel.date < monthStart || parcel.date > monthEnd) continue;
         const netAmount = applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1);
         const key = format(parcel.date, "yyyy-MM-dd");
-        const cur = byDate.get(key);
-        if (cur) {
-          cur.total += netAmount;
-          cur.count += 1;
-        } else {
-          byDate.set(key, { date: key, total: netAmount, count: 1 });
-        }
+        const account = classifyIncomeAccount({ source: "pdv", payment_method: o.payment_method });
+        const cur = byDate.get(key) ?? { date: key, total: 0, count: 0, stone: 0, cash: 0 };
+        cur.total += netAmount;
+        cur.count += 1;
+        if (account === "cash") cur.cash += netAmount;
+        else cur.stone += netAmount;
+        byDate.set(key, cur);
       }
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -282,6 +282,30 @@ export function ExpenseTracker() {
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [dayEntries, dayIncomes, dayPdvReceivables]);
+
+  const accountsFor = (
+    siteList: IncomeEntry[],
+    receivables: PdvReceivable[],
+  ): IncomeAccountTotals => {
+    const totals = emptyIncomeAccountTotals();
+    for (const i of siteList) {
+      totals[classifyIncomeAccount({ source: "site", payment_method: i.payment_method, payment_gateway: i.payment_gateway })] += i.total_amount;
+    }
+    for (const r of receivables) {
+      totals.stone += r.stone;
+      totals.cash += r.cash;
+    }
+    return totals;
+  };
+
+  const dayAccounts = useMemo(
+    () => accountsFor(dayIncomes, dayPdvReceivables),
+    [dayIncomes, dayPdvReceivables],
+  );
+  const monthAccounts = useMemo(
+    () => accountsFor(incomes, pdvReceivables),
+    [incomes, pdvReceivables],
+  );
 
   const monthTotals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
