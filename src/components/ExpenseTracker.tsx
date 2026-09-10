@@ -98,6 +98,7 @@ function ExpenseCard({
   onSkip,
   onOverride,
   onTogglePaid,
+  onToggleScheduled,
 }: {
   entry: MonthlyEntry;
   label?: string;
@@ -106,10 +107,22 @@ function ExpenseCard({
   onSkip: (e: MonthlyEntry) => void;
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
-  const isPaid = !!entry.override?.paid_at;
+  const status = getExpenseStatus({
+    paidAt: entry.override?.paid_at,
+    scheduledAt: entry.override?.scheduled_at,
+  });
+  const isPaid = status === "paid";
+  const isScheduled = status === "scheduled";
   return (
-    <Card className={cn("hover:shadow-md transition-shadow", isPaid && "bg-green-50/50 dark:bg-green-950/10")}>
+    <Card
+      className={cn(
+        "hover:shadow-md transition-shadow",
+        isPaid && "bg-green-50/50 dark:bg-green-950/10",
+        isScheduled && "bg-yellow-50/60 dark:bg-yellow-950/10"
+      )}
+    >
       <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <Button
@@ -125,6 +138,20 @@ function ExpenseCard({
             title={isPaid ? "Desmarcar como pago" : "Marcar como pago"}
           >
             {isPaid && <Check className="w-4 h-4" />}
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              "h-8 w-8 rounded-md border-2 transition-colors shrink-0",
+              isScheduled
+                ? "bg-yellow-400 border-yellow-500 text-yellow-950 hover:bg-yellow-500 hover:text-yellow-950"
+                : "bg-background border-muted-foreground/30 text-muted-foreground hover:border-yellow-400 hover:text-yellow-600"
+            )}
+            onClick={() => onToggleScheduled(entry)}
+            title={isScheduled ? "Remover agendamento" : "Agendar pagamento"}
+          >
+            <Clock className="w-4 h-4" />
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
