@@ -52,24 +52,36 @@ export function ProductListing({
   }, [searchParam]);
   const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
 
-  // Caminho hierárquico da subcategoria atual (a partir da categoria primária)
-  const selectedSubcategoryPath = useMemo(() => {
-    if (!subcategoryParam || !allCategories.length) return [] as string[];
-    const target = allCategories.find((c) => c.name === subcategoryParam);
-    if (!target) return [subcategoryParam];
+  // Subcategorias selecionadas (podem ser várias do mesmo nível)
+  const selectedSubs = useMemo(
+    () => subcategoryParam.split(',').map((s) => s.trim()).filter(Boolean),
+    [subcategoryParam]
+  );
+
+  const pathOf = (name: string): string[] => {
+    const target = allCategories.find((c) => c.name === name);
+    if (!target) return [name];
     const path: string[] = [];
     let current: Category | undefined = target;
-    // Evita loop infinito em caso de dados corrompidos
     const seen = new Set<string>();
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
-      if (!current.parent_id) break; // a categoria primária já é representada pelo botão raiz
+      if (!current.parent_id) break;
       path.unshift(current.name);
       current = allCategories.find((c) => c.id === current!.parent_id);
     }
     return path;
+  };
+
+  // Caminho hierárquico da subcategoria atual (a partir da categoria primária).
+  // Com várias selecionadas, mostra só o caminho até o pai comum.
+  const selectedSubcategoryPath = useMemo(() => {
+    if (!selectedSubs.length || !allCategories.length) return [] as string[];
+    const base = pathOf(selectedSubs[0]);
+    return selectedSubs.length > 1 ? base.slice(0, -1) : base;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subcategoryParam, allCategories]);
+  }, [selectedSubs, allCategories]);
+
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
