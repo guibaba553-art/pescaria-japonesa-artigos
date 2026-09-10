@@ -497,7 +497,10 @@ export function ExpenseTracker() {
     if (entry.override) {
       await supabase.from("expense_overrides").update({ amount, skipped: false }).eq("id", entry.override.id);
     } else {
-      await supabase.from("expense_overrides").insert({ expense_id: entry.expense.id, year_month: yearMonth, amount });
+      await supabase.from("expense_overrides").upsert(
+        { expense_id: entry.expense.id, year_month: yearMonth, amount },
+        { onConflict: "expense_id,year_month" }
+      );
     }
     toast({ title: "Valor ajustado neste mês" });
     loadData();
