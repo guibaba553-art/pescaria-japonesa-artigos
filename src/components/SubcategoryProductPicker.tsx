@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useCategories } from '@/hooks/useCategories';
 import { Check, Search, Loader2, Package } from 'lucide-react';
 
 interface Product {
