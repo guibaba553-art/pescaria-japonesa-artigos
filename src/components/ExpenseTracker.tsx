@@ -21,6 +21,13 @@ import { getSettlementDate, getSettlementSchedule } from "@/utils/pdvSettlement"
 import { applyCardFee } from "@/utils/cardFees";
 import { getPdvReceivableBreakdown } from "@/utils/pdvReceivableBreakdown";
 import { fetchAllPaged } from "@/utils/fetchAllPaged";
+import {
+  classifyIncomeAccount,
+  emptyIncomeAccountTotals,
+  INCOME_ACCOUNT_LABEL,
+  type IncomeAccount,
+  type IncomeAccountTotals,
+} from "@/utils/incomeAccounts";
 
 
 
@@ -64,6 +71,7 @@ interface IncomeEntry {
   total_amount: number;
   customer_name?: string | null;
   payment_method?: string | null;
+  payment_gateway?: string | null;
   installments?: number | null;
 }
 
@@ -71,6 +79,8 @@ interface PdvReceivable {
   date: string; // yyyy-MM-dd (data prevista de entrada)
   total: number;
   count: number;
+  stone: number;
+  cash: number;
 }
 
 
@@ -100,7 +110,7 @@ export function ExpenseTracker() {
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status, installments")
+        .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
         .eq("source", "site" as any)
         .gte("created_at", monthStart.toISOString())
         .lte("created_at", monthEnd.toISOString())
@@ -110,7 +120,7 @@ export function ExpenseTracker() {
       fetchAllPaged<any>((from, to) =>
         supabase
           .from("orders")
-          .select("id, source, created_at, total_amount, payment_method, status, installments")
+          .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
           .eq("source", "pdv" as any)
           .gte("created_at", pdvLookbackStart)
           .lte("created_at", monthEnd.toISOString())
@@ -129,6 +139,7 @@ export function ExpenseTracker() {
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
+      payment_gateway: o.payment_gateway,
       installments: o.installments ?? 1,
     });
     setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
@@ -242,13 +253,13 @@ export function ExpenseTracker() {
         if (parcel.date < monthStart || parcel.date > monthEnd) continue;
         const netAmount = applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1);
         const key = format(parcel.date, "yyyy-MM-dd");
-        const cur = byDate.get(key);
-        if (cur) {
-          cur.total += netAmount;
-          cur.count += 1;
-        } else {
-          byDate.set(key, { date: key, total: netAmount, count: 1 });
-        }
+        const account = classifyIncomeAccount({ source: "pdv", payment_method: o.payment_method });
+        const cur = byDate.get(key) ?? { date: key, total: 0, count: 0, stone: 0, cash: 0 };
+        cur.total += netAmount;
+        cur.count += 1;
+        if (account === "cash") cur.cash += netAmount;
+        else cur.stone += netAmount;
+        byDate.set(key, cur);
       }
     }
     return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
@@ -278,6 +289,30 @@ export function ExpenseTracker() {
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [dayEntries, dayIncomes, dayPdvReceivables]);
+
+  const accountsFor = (
+    siteList: IncomeEntry[],
+    receivables: PdvReceivable[],
+  ): IncomeAccountTotals => {
+    const totals = emptyIncomeAccountTotals();
+    for (const i of siteList) {
+      totals[classifyIncomeAccount({ source: "site", payment_method: i.payment_method, payment_gateway: i.payment_gateway })] += i.total_amount;
+    }
+    for (const r of receivables) {
+      totals.stone += r.stone;
+      totals.cash += r.cash;
+    }
+    return totals;
+  };
+
+  const dayAccounts = useMemo(
+    () => accountsFor(dayIncomes, dayPdvReceivables),
+    [dayIncomes, dayPdvReceivables],
+  );
+  const monthAccounts = useMemo(
+    () => accountsFor(incomes, pdvReceivables),
+    [incomes, pdvReceivables],
+  );
 
   const monthTotals = useMemo(() => {
     const fixed = monthEntries.filter(e => e.expense.type === "fixed").reduce((s, e) => s + Number(e.effectiveAmount), 0);
@@ -432,6 +467,8 @@ export function ExpenseTracker() {
             </CardContent>
           </Card>
 
+          <IncomeAccountsCards totals={dayAccounts} periodLabel="no dia" />
+
           {/* KPIs do DIA */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
@@ -538,6 +575,7 @@ export function ExpenseTracker() {
 
         {/* ============ MÊS ============ */}
         <TabsContent value="month" className="space-y-6 mt-4">
+          <IncomeAccountsCards totals={monthAccounts} periodLabel="no mês" />
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="p-4">
@@ -603,6 +641,37 @@ export function ExpenseTracker() {
       </Tabs>
     </div>
 
+  );
+}
+
+const ACCOUNT_STYLE: Record<IncomeAccount, { accent: string; hint: string }> = {
+  stone: { accent: "text-emerald-600", hint: "PIX, débito e crédito do balcão" },
+  mercadopago: { accent: "text-sky-600", hint: "vendas do site pelo Mercado Pago" },
+  asaas: { accent: "text-indigo-600", hint: "vendas do site pelo Asaas" },
+  cash: { accent: "text-amber-600", hint: "caixa em espécie, separado" },
+};
+
+function IncomeAccountsCards({ totals, periodLabel }: { totals: IncomeAccountTotals; periodLabel: string }) {
+  const order: IncomeAccount[] = ["stone", "mercadopago", "asaas", "cash"];
+  const sum = order.reduce((s, k) => s + totals[k], 0);
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Entradas por conta</CardTitle>
+        <CardDescription>Total {periodLabel}: {fmtBRL(sum)}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {order.map(key => (
+          <div key={key} className="rounded-lg border p-3">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
+              {INCOME_ACCOUNT_LABEL[key]}
+            </div>
+            <div className={cn("text-lg font-bold mt-1", ACCOUNT_STYLE[key].accent)}>{fmtBRL(totals[key])}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">{ACCOUNT_STYLE[key].hint}</div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
