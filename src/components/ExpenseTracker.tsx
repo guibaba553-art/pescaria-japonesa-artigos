@@ -271,14 +271,35 @@ export function ExpenseTracker() {
   }, [pdvOrders, currentMonth]);
 
 
-  const dayIncomes = useMemo(() => {
-    const ds = startOfDay(selectedDay);
-    const de = endOfDay(selectedDay);
-    return incomes.filter(i => {
-      const d = parseISO(i.created_at);
-      return d >= ds && d <= de;
-    });
-  }, [incomes, selectedDay]);
+  // Entradas do site por data de liquidação: venda parcelada (ex.: Asaas 6x)
+  // entra em 6 datas — a 1ª no dia da venda e as demais no mesmo dia dos meses seguintes.
+  const siteReceivables = useMemo(() => {
+    const monthStartKey = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+    const monthEndKey = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+    const byDate = new Map<string, { date: string; total: number; count: number; accounts: IncomeAccountTotals }>();
+    for (const o of incomes) {
+      const account = classifyIncomeAccount({
+        source: "site",
+        payment_method: o.payment_method,
+        payment_gateway: o.payment_gateway,
+      });
+      for (const p of getSiteInstallments(o as any)) {
+        const key = format(p.date, "yyyy-MM-dd");
+        if (key < monthStartKey || key > monthEndKey) continue;
+        const cur = byDate.get(key) ?? { date: key, total: 0, count: 0, accounts: emptyIncomeAccountTotals() };
+        cur.total += p.amount;
+        cur.count += 1;
+        cur.accounts[account] += p.amount;
+        byDate.set(key, cur);
+      }
+    }
+    return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [incomes, currentMonth]);
+
+  const daySiteReceivables = useMemo(() => {
+    const key = format(selectedDay, "yyyy-MM-dd");
+    return siteReceivables.filter(r => r.date === key);
+  }, [siteReceivables, selectedDay]);
 
   const dayPdvReceivables = useMemo(() => {
     const key = format(selectedDay, "yyyy-MM-dd");
