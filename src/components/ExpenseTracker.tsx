@@ -109,14 +109,18 @@ export function ExpenseTracker() {
     const [{ data: exp }, { data: ov }, { data: siteOrd }, pdvOrd] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
-      supabase
-        .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
-        .eq("source", "site" as any)
-        .gte("created_at", monthStart.toISOString())
-        .lte("created_at", monthEnd.toISOString())
-        .neq("status", "cancelado" as any)
-        .order("created_at", { ascending: false }),
+      // Site também precisa de janela longa: parcelado em até 12x cai nos meses seguintes.
+      fetchAllPaged<any>((from, to) =>
+        supabase
+          .from("orders")
+          .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
+          .eq("source", "site" as any)
+          .gte("created_at", pdvLookbackStart)
+          .lte("created_at", monthEnd.toISOString())
+          .neq("status", "cancelado" as any)
+          .order("created_at", { ascending: false })
+          .range(from, to) as any,
+      ),
       // Pagina: o PostgREST corta em 1000 linhas e isso escondia parcelas antigas.
       fetchAllPaged<any>((from, to) =>
         supabase
