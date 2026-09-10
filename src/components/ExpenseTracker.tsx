@@ -526,7 +526,7 @@ export function ExpenseTracker() {
         .select()
         .single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-      if (data) setOverrides(prev => [...prev, data as Override]);
+      if (data) setOverrides(prev => [...prev.filter(o => o.id !== (data as Override).id), data as Override]);
     }
 
     toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
