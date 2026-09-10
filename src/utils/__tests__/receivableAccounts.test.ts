@@ -37,3 +37,34 @@ describe("buildAccountReceivables", () => {
     expect(buildAccountReceivables(day, [], [])).toHaveLength(0);
   });
 });
+
+describe("parcelas de vendas do site", () => {
+  const order = {
+    id: "s6",
+    created_at: "2026-09-10T09:34:00",
+    total_amount: 508.72,
+    payment_method: "credit_card",
+    payment_gateway: "asaas",
+    installments: 6,
+  };
+
+  it("primeira parcela entra na data da venda", () => {
+    const lines = getSiteReceivableLines("2026-09-10", [order]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].parcelIndex).toBe(1);
+    expect(lines[0].parcelCount).toBe(6);
+    expect(lines[0].gross).toBeCloseTo(84.78, 2);
+  });
+
+  it("parcelas seguintes caem no mesmo dia dos meses seguintes", () => {
+    expect(getSiteReceivableLines("2026-10-10", [order])[0].parcelIndex).toBe(2);
+    expect(getSiteReceivableLines("2027-02-10", [order])[0].parcelIndex).toBe(6);
+    expect(getSiteReceivableLines("2026-09-11", [order])).toHaveLength(0);
+  });
+
+  it("a soma das parcelas fecha o valor total", () => {
+    const dates = ["2026-09-10", "2026-10-10", "2026-11-10", "2026-12-10", "2027-01-10", "2027-02-10"];
+    const sum = dates.reduce((s, d) => s + getSiteReceivableLines(d, [order])[0].gross, 0);
+    expect(sum).toBeCloseTo(508.72, 2);
+  });
+});
