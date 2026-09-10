@@ -551,7 +551,7 @@ export function ProductListing({
           <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setSearchParams(categoryParam ? { category: categoryParam } : {})}
+              onClick={() => applySubs([])}
               className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
             >
               {categoryParam || 'Tudo'}
@@ -567,23 +567,11 @@ export function ProductListing({
                     title={isLast ? 'Clique para voltar um nível' : `Voltar para ${name}`}
                     onClick={() => {
                       if (isLast) {
-                        // Clicar no chip selecionado remove o último nível (volta um filtro)
                         const parentTarget = i > 0 ? selectedSubcategoryPath[i - 1] : undefined;
-                        if (categoryParam && parentTarget) {
-                          setSearchParams({ category: categoryParam, subcategory: parentTarget });
-                        } else if (categoryParam) {
-                          setSearchParams({ category: categoryParam });
-                        } else {
-                          setSearchParams({});
-                        }
+                        applySubs(parentTarget ? [parentTarget] : []);
                         return;
                       }
-                      const target = selectedSubcategoryPath.slice(0, i + 1).pop();
-                      if (categoryParam && target) {
-                        setSearchParams({ category: categoryParam, subcategory: target });
-                      } else if (categoryParam) {
-                        setSearchParams({ category: categoryParam });
-                      }
+                      applySubs([name]);
                     }}
                     className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
                       isLast
@@ -602,17 +590,26 @@ export function ProductListing({
 
         {subcategoryOptions.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {subcategoryOptions.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => handleSubcategoryLevelClick(opt)}
-                className="px-3 py-1.5 text-sm rounded-full border transition-all bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border"
-              >
-                {opt}
-              </button>
-            ))}
+            {subcategoryOptions.map((opt) => {
+              const active = selectedSubs.includes(opt);
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => handleSubcategoryLevelClick(opt)}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-full border transition-all ${
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
+                      : 'bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border'
+                  }`}
+                >
+                  {opt}
+                  {active && <X className="w-3 h-3 opacity-80" />}
+                </button>
+              );
+            })}
           </div>
+
         )}
       </div>
     );
