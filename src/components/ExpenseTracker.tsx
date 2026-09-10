@@ -901,6 +901,117 @@ function UnifiedList({
 
 
 
+const ACCOUNT_UI: Record<IncomeAccount, { border: string; text: string; badge: string; slug: string }> = {
+  stone: { border: "border-emerald-500/40", text: "text-emerald-600", badge: "bg-emerald-500 text-white", slug: "stone" },
+  asaas: { border: "border-blue-900/40", text: "text-blue-900", badge: "bg-blue-900 text-white", slug: "asaas" },
+  mercadopago: { border: "border-sky-400/50", text: "text-sky-500", badge: "bg-sky-400 text-white", slug: "mercado-pago" },
+  cash: { border: "border-green-900/40", text: "text-green-900", badge: "bg-green-900 text-white", slug: "dinheiro" },
+};
+
+/** Entrada de vendas especializada por conta (Stone, Mercado Pago, Asaas, Dinheiro). */
+function AccountReceivableCard({ data, label }: { data: AccountReceivable; label: string }) {
+  const [open, setOpen] = useState(false);
+  const ui = ACCOUNT_UI[data.account];
+  return (
+    <Card className={cn("hover:shadow-md transition-shadow border-l-4", ui.border)}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge className={cn("text-[10px]", ui.badge)}>{data.label}</Badge>
+              <Badge variant="outline" className="text-[10px]">{label}</Badge>
+            </div>
+            <div className="font-semibold mt-1 truncate">Entrada de vendas — {data.label}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(data.date), "dd/MM/yyyy", { locale: ptBR })} • {data.lines.length} transação(ões)
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Bruto {fmtBRL(data.totalGross)}
+              {data.totalFee > 0 && <> • Taxa <span className="text-red-600">- {fmtBRL(data.totalFee)}</span></>}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className={cn("text-lg font-bold", ui.text)}>{fmtBRL(data.totalNet)}</div>
+              <div className="text-[10px] text-muted-foreground">líquido</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)}>
+              {open ? "Ocultar" : "Detalhar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                generateReceivableAccountPdf({
+                  date: data.date,
+                  title: `Entrada de vendas — ${data.label}`,
+                  accent: ACCOUNT_PDF_COLOR[data.account],
+                  lines: data.lines,
+                  fileSlug: ui.slug,
+                })
+              }
+              title="Baixar PDF desta entrada"
+            >
+              <FileDown className="w-4 h-4 mr-1" /> PDF
+            </Button>
+          </div>
+        </div>
+
+        {open && (
+          <div className="mt-3 border-t pt-3 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr className="text-left">
+                  <th className="py-1 pr-2">#</th>
+                  <th className="py-1 pr-2">Venda</th>
+                  <th className="py-1 pr-2">Pagamento</th>
+                  <th className="py-1 pr-2">Parcela</th>
+                  <th className="py-1 pr-2 text-right">Bruto</th>
+                  <th className="py-1 pr-2 text-right">Taxa</th>
+                  <th className="py-1 text-right">Líquido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.lines.map((l, i) => (
+                  <tr key={`${l.orderId}-${l.parcelIndex}`} className="border-t border-border/50">
+                    <td className="py-1 pr-2 text-muted-foreground">{i + 1}</td>
+                    <td className="py-1 pr-2 whitespace-nowrap">
+                      {format(parseISO(l.saleDate), "dd/MM HH:mm", { locale: ptBR })}
+                      <span className="text-muted-foreground"> #{l.orderId.slice(0, 8)}</span>
+                    </td>
+                    <td className="py-1 pr-2">{l.paymentMethod}</td>
+                    <td className="py-1 pr-2">{l.parcelCount > 1 ? `${l.parcelIndex}/${l.parcelCount}` : "—"}</td>
+                    <td className="py-1 pr-2 text-right">{fmtBRL(l.gross)}</td>
+                    <td className="py-1 pr-2 text-right text-red-600">{l.fee > 0 ? `- ${fmtBRL(l.fee)}` : "—"}</td>
+                    <td className={cn("py-1 text-right font-medium", ui.text)}>{fmtBRL(l.net)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Renderiza as entradas de vendas de um dia, separadas por conta. */
+function AccountReceivableGroup({
+  date, pdvOrders, siteIncomes, label,
+}: { date: string; pdvOrders: IncomeEntry[]; siteIncomes: IncomeEntry[]; label: string }) {
+  const groups = useMemo(
+    () => buildAccountReceivables(date, pdvOrders as any, siteIncomes as any),
+    [date, pdvOrders, siteIncomes],
+  );
+  return (
+    <>
+      {groups.map(g => (
+        <AccountReceivableCard key={`${date}-${g.account}`} data={g} label={label} />
+      ))}
+    </>
+  );
+}
+
 function PdvReceivableCard({
   receivable, pdvOrders, label,
 }: { receivable: PdvReceivable; pdvOrders: IncomeEntry[]; label: string }) {
