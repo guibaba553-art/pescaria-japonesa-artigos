@@ -1984,6 +1984,10 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
             ) : null}
 
             </TabsContent>
+
+              <TabsContent value="historico" className="mt-4">
+                <ProductChangeHistory productId={product?.id} />
+              </TabsContent>
           </Tabs>
 
             <div className="flex gap-2 justify-end">
