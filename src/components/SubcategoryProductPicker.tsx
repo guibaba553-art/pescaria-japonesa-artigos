@@ -203,7 +203,8 @@ export function SubcategoryProductPicker({
           ) : (
             <div className="space-y-2">
               {filtered.map((p) => {
-                const isInThisSub = p.subcategory === subcategoryName;
+                const isInThisSub =
+                  p.subcategory === subcategoryName || groupNamesOf(p.id).includes(subcategoryName);
                 const isSaving = savingIds.has(p.id);
                 const thumb = getThumb(p);
                 return (
