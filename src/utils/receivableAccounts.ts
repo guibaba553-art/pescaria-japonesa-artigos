@@ -42,7 +42,7 @@ const totals = (lines: ReceivableLine[]) => ({
  * no mesmo dia dos meses seguintes (padrão Asaas/Mercado Pago).
  * Centavos que sobram na divisão vão para a última parcela.
  */
-function siteInstallments(o: AccountOrderLike): { date: Date; amount: number }[] {
+export function getSiteInstallments(o: AccountOrderLike): { date: Date; amount: number }[] {
   const total = Number(o.total_amount || 0);
   const n = Math.max(1, Math.floor(Number(o.installments) || 1));
   const saleDate = parseISO(o.created_at);
@@ -58,7 +58,7 @@ function siteInstallments(o: AccountOrderLike): { date: Date; amount: number }[]
 export function getSiteReceivableLines(date: string, siteOrders: AccountOrderLike[]): ReceivableLine[] {
   const lines: ReceivableLine[] = [];
   for (const o of siteOrders) {
-    const parcels = siteInstallments(o);
+    const parcels = getSiteInstallments(o);
     parcels.forEach((p, idx) => {
       if (format(p.date, "yyyy-MM-dd") !== date) return;
       lines.push({
