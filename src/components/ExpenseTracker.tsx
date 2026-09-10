@@ -3,7 +3,7 @@ import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOf
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
-import { buildAccountReceivables, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
+import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -551,16 +551,17 @@ export function ExpenseTracker() {
 
           <Tabs defaultValue="all">
             <TabsList className="flex-wrap h-auto">
-              <TabsTrigger value="all">Todas do dia ({dayEntries.length + dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
+              <TabsTrigger value="all">Todas do dia ({dayEntries.length + daySiteReceivables.length + dayPdvReceivables.length})</TabsTrigger>
               <TabsTrigger value="expenses">Saídas do dia ({dayEntries.length})</TabsTrigger>
               <TabsTrigger value="fixed">Fixas ({dayEntries.filter(e => e.expense.type === "fixed").length})</TabsTrigger>
               <TabsTrigger value="variable">Variáveis ({dayEntries.filter(e => e.expense.type === "variable").length})</TabsTrigger>
-              <TabsTrigger value="incomes">Entradas ({dayIncomes.length + dayPdvReceivables.length})</TabsTrigger>
+              <TabsTrigger value="incomes">Entradas ({daySiteReceivables.length + dayPdvReceivables.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
               <UnifiedList
                 entries={dayEntries}
-                incomes={dayIncomes}
+                siteOrders={incomes}
+                siteDates={daySiteReceivables.map(r => r.date)}
                 pdvReceivables={dayPdvReceivables}
                 pdvOrders={pdvOrders}
                 loading={loading}
@@ -595,7 +596,7 @@ export function ExpenseTracker() {
               </TabsContent>
             ))}
             <TabsContent value="incomes">
-              <IncomeList incomes={dayIncomes} pdvReceivables={dayPdvReceivables} pdvOrders={pdvOrders} loading={loading} />
+              <IncomeList siteOrders={incomes} siteDates={daySiteReceivables.map(r => r.date)} pdvReceivables={dayPdvReceivables} pdvOrders={pdvOrders} loading={loading} />
             </TabsContent>
           </Tabs>
         </TabsContent>
@@ -661,7 +662,7 @@ export function ExpenseTracker() {
             selectedDay={selectedDay}
             onSelectDay={setSelectedDay}
             monthEntries={monthEntries}
-            incomes={incomes}
+            siteReceivables={siteReceivables}
             pdvReceivables={pdvReceivables}
           />
         </TabsContent>
@@ -707,14 +708,14 @@ function MonthAgenda({
   selectedDay,
   onSelectDay,
   monthEntries,
-  incomes,
+  siteReceivables,
   pdvReceivables,
 }: {
   currentMonth: Date;
   selectedDay: Date;
   onSelectDay: (d: Date) => void;
   monthEntries: MonthlyEntry[];
-  incomes: IncomeEntry[];
+  siteReceivables: { date: string; total: number }[];
   pdvReceivables: PdvReceivable[];
 }) {
   const today = startOfDay(new Date());
@@ -736,16 +737,8 @@ function MonthAgenda({
         return targetDay === effectiveDay;
       });
 
-      const ds = startOfDay(day);
-      const de = endOfDay(day);
-      const siteIn = incomes
-        .filter(i => {
-          const d = parseISO(i.created_at);
-          return d >= ds && d <= de;
-        })
-        .reduce((s, i) => s + i.total_amount, 0);
-
       const key = format(day, "yyyy-MM-dd");
+      const siteIn = siteReceivables.filter(r => r.date === key).reduce((s, r) => s + r.total, 0);
       const pdvIn = pdvReceivables.filter(r => r.date === key).reduce((s, r) => s + r.total, 0);
 
       const out = dayExpenses.reduce((s, e) => s + Number(e.effectiveAmount), 0);
@@ -759,7 +752,7 @@ function MonthAgenda({
         past: day < today,
       };
     });
-  }, [currentMonth, daysInMonth, monthEntries, incomes, pdvReceivables, today, monthEnd]);
+  }, [currentMonth, daysInMonth, monthEntries, siteReceivables, pdvReceivables, today, monthEnd]);
 
   return (
     <Card>
@@ -820,11 +813,12 @@ function MonthAgenda({
   );
 }
 function UnifiedList({
-  entries, incomes, pdvReceivables, pdvOrders, loading,
+  entries, siteOrders, siteDates, pdvReceivables, pdvOrders, loading,
   onEdit, onDelete, onSkip, onOverride,
 }: {
   entries: MonthlyEntry[];
-  incomes: IncomeEntry[];
+  siteOrders: IncomeEntry[];
+  siteDates: string[];
   pdvReceivables: PdvReceivable[];
   pdvOrders: IncomeEntry[];
   loading: boolean;
@@ -834,7 +828,7 @@ function UnifiedList({
   onOverride: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
-  const hasAny = entries.length > 0 || incomes.length > 0 || pdvReceivables.length > 0;
+  const hasAny = entries.length > 0 || siteDates.length > 0 || pdvReceivables.length > 0;
   if (!hasAny) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
       Nenhuma transação neste dia.
@@ -846,7 +840,7 @@ function UnifiedList({
   const dayKeys = Array.from(
     new Set([
       ...pdvReceivables.map(r => r.date),
-      ...incomes.map(i => format(parseISO(i.created_at), "yyyy-MM-dd")),
+      ...siteDates,
     ]),
   ).sort((a, b) => b.localeCompare(a));
 
@@ -862,7 +856,7 @@ function UnifiedList({
         key={`acc-${date}`}
         date={date}
         pdvOrders={pdvOrders}
-        siteIncomes={incomes}
+        siteIncomes={siteOrders}
         label="Entrada"
       />
     );
@@ -1126,9 +1120,9 @@ function PdvReceivableCard({
   );
 }
 
-function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: IncomeEntry[]; pdvReceivables: PdvReceivable[]; pdvOrders: IncomeEntry[]; loading: boolean }) {
+function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading }: { siteOrders: IncomeEntry[]; siteDates: string[]; pdvReceivables: PdvReceivable[]; pdvOrders: IncomeEntry[]; loading: boolean }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
-  if (incomes.length === 0 && pdvReceivables.length === 0) return (
+  if (siteDates.length === 0 && pdvReceivables.length === 0) return (
     <Card><CardContent className="p-8 text-center text-muted-foreground">
       Nenhuma entrada (venda) neste mês.
     </CardContent></Card>
@@ -1138,7 +1132,7 @@ function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: 
       {Array.from(
         new Set([
           ...pdvReceivables.map(r => r.date),
-          ...incomes.map(i => format(parseISO(i.created_at), "yyyy-MM-dd")),
+          ...siteDates,
         ]),
       )
         .sort((a, b) => b.localeCompare(a))
@@ -1152,7 +1146,7 @@ function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: 
               <AccountReceivableGroup
                 date={date}
                 pdvOrders={pdvOrders}
-                siteIncomes={incomes}
+                siteIncomes={siteOrders}
                 label="A receber"
               />
             </div>
