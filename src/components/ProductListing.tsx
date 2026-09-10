@@ -770,12 +770,13 @@ export function ProductListing({
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto p-5 space-y-6">
                     {renderPriceRangeFilter()}
-                    {renderSubcategoryLevels()}
                     {brandOptions.length > 0 &&
                       renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
+                    {renderSubcategoryLevels()}
                     {poundOptions.length > 0 &&
                       renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
                   </div>
+
                   <SheetFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:flex-row">
                     <Button
                       variant="outline"
