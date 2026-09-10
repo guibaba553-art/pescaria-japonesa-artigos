@@ -132,6 +132,7 @@ export function ExpenseTracker() {
       total_amount: Number(o.total_amount || 0),
       customer_name: o.customer_name,
       payment_method: o.payment_method,
+      payment_gateway: o.payment_gateway,
       installments: o.installments ?? 1,
     });
     setIncomes(((siteOrd ?? []) as any[]).map(mapOrder));
