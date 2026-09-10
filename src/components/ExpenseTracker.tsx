@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, isAfter, isBefore, subDays, isSameDay, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
+import { Clock, CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
 import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
