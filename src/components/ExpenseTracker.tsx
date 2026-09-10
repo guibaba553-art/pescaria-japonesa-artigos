@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, isAfter, isBefore, subDays, isSameDay, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown } from "lucide-react";
-import { generatePdvReceivablePdf } from "@/utils/pdvReceivablePdf";
+import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
+import { buildAccountReceivables, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -1108,29 +1109,29 @@ function IncomeList({ incomes, pdvReceivables, pdvOrders, loading }: { incomes: 
   );
   return (
     <div className="space-y-2">
-      {pdvReceivables.map(r => (
-        <PdvReceivableCard key={`pdv-${r.date}`} receivable={r} pdvOrders={pdvOrders} label="A receber" />
-      ))}
-
-      {incomes.map(i => (
-        <Card key={i.id} className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="secondary" className="text-[10px]">Site</Badge>
-                {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
-              </div>
-              <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {format(parseISO(i.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })} • Pedido #{i.id.slice(0, 8)}
-              </div>
+      {Array.from(
+        new Set([
+          ...pdvReceivables.map(r => r.date),
+          ...incomes.map(i => format(parseISO(i.created_at), "yyyy-MM-dd")),
+        ]),
+      )
+        .sort((a, b) => b.localeCompare(a))
+        .map(date => {
+          const r = pdvReceivables.find(x => x.date === date);
+          return (
+            <div key={date} className="space-y-2">
+              {r && (
+                <PdvReceivableCard receivable={r} pdvOrders={pdvOrders} label="A receber (geral)" />
+              )}
+              <AccountReceivableGroup
+                date={date}
+                pdvOrders={pdvOrders}
+                siteIncomes={incomes}
+                label="A receber"
+              />
             </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-emerald-600">{fmtBRL(i.total_amount)}</div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+          );
+        })}
     </div>
   );
 }
