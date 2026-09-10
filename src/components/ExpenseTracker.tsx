@@ -30,6 +30,7 @@ import {
   type IncomeAccountTotals,
 } from "@/utils/incomeAccounts";
 import { getPaidToggleAction } from "@/utils/expensePaid";
+import { getExpenseStatus, getScheduleToggleAction, shouldPromoteToPaid, todayIso } from "@/utils/expenseScheduled";
 
 
 
@@ -58,6 +59,7 @@ interface Override {
   skipped: boolean;
   notes: string | null;
   paid_at: string | null;
+  scheduled_at?: string | null;
 }
 interface MonthlyEntry {
   expense: Expense;
