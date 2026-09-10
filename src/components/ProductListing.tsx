@@ -145,9 +145,12 @@ export function ProductListing({
         .limit(10000);
 
       if (category) query = query.eq('category', category);
+
+      let memberIds: Set<string> | null = null;
       if (subcategory) {
-        // Expande cada subcategoria selecionada para incluir seus descendentes
+        // Expande cada grupo selecionado para incluir seus descendentes
         const subNames = new Set<string>();
+        const subIds = new Set<string>();
         subcategory
           .split(',')
           .map((s) => s.trim())
@@ -155,10 +158,32 @@ export function ProductListing({
           .forEach((name) => {
             subNames.add(name);
             const target = allCategories.find((c) => c.name === name);
-            if (target) getDescendantsOf(target.id).forEach((d) => subNames.add(d.name));
+            if (target) {
+              subIds.add(target.id);
+              getDescendantsOf(target.id).forEach((d) => {
+                subNames.add(d.name);
+                subIds.add(d.id);
+              });
+            }
           });
-        query = query.in('subcategory', Array.from(subNames));
+
+        // Um produto pode pertencer a vários grupos ao mesmo tempo (tabela N:N)
+        memberIds = new Set<string>();
+        if (subIds.size > 0) {
+          const { data: links } = await supabase
+            .from('product_categories')
+            .select('product_id')
+            .in('category_id', Array.from(subIds))
+            .limit(20000);
+          (links || []).forEach((l: any) => memberIds!.add(l.product_id));
+        }
+
+        const quoted = Array.from(subNames).map((n) => `"${n.replace(/"/g, '')}"`).join(',');
+        const orParts = [`subcategory.in.(${quoted})`];
+        if (memberIds.size > 0) orParts.push(`id.in.(${Array.from(memberIds).join(',')})`);
+        query = query.or(orParts.join(','));
       }
+      setGroupMemberIds(memberIds);
 
 
       let result = await query;
