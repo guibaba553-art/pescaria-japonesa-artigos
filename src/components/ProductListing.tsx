@@ -736,14 +736,15 @@ export function ProductListing({
 
         {/* Desktop filters */}
         <div className="hidden lg:flex flex-col gap-5 mb-6">
-          {renderSubcategoryLevels()}
           <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
             {brandOptions.length > 0 &&
               renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
             {poundOptions.length > 0 &&
               renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
           </div>
+          {renderSubcategoryLevels()}
         </div>
+
 
         {(hasAnyAttribute || filteredProducts.length > 0) && (
           <div className="lg:hidden flex items-center gap-2 mb-4">
