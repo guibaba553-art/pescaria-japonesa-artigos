@@ -1,6 +1,6 @@
 // Agrupa as entradas de um dia por "conta" (Stone, Mercado Pago, Asaas, Dinheiro),
 // mantendo o mesmo detalhamento linha-a-linha da entrada de vendas geral.
-import { format, parseISO } from "date-fns";
+import { addMonths, format, parseISO } from "date-fns";
 import { getPdvReceivableBreakdown, type ReceivableLine } from "@/utils/pdvReceivableBreakdown";
 import { classifyIncomeAccount, INCOME_ACCOUNT_LABEL, type IncomeAccount } from "@/utils/incomeAccounts";
 
