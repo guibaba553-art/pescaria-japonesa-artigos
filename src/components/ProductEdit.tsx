@@ -861,6 +861,9 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                 <TabsTrigger value="precificacao" className="flex-1 gap-2 py-2.5">
                   <DollarSign className="w-4 h-4" /> Preço de Venda
                 </TabsTrigger>
+                <TabsTrigger value="historico" className="flex-1 gap-2 py-2.5">
+                  <History className="w-4 h-4" /> Histórico
+                </TabsTrigger>
               </TabsList>
               )}
 
