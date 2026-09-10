@@ -18,7 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store } from 'lucide-react';
+import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store, History } from 'lucide-react';
+import { ProductChangeHistory } from '@/components/ProductChangeHistory';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
