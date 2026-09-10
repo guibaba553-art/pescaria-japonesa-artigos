@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useCategories } from '@/hooks/useCategories';
 import { Check, Search, Loader2, Package } from 'lucide-react';
 
 interface Product {
@@ -41,10 +42,13 @@ export function SubcategoryProductPicker({
   ancestorSubcategoryNames,
 }: Props) {
   const { toast } = useToast();
+  const { categories: allCategories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  // Grupos (nomes) de cada produto via tabela N:N
+  const [groupsByProduct, setGroupsByProduct] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -61,9 +65,24 @@ export function SubcategoryProductPicker({
       } else {
         setProducts((data as Product[]) || []);
       }
+
+      const { data: links } = await supabase
+        .from('product_categories')
+        .select('product_id, category_id')
+        .limit(20000);
+      const map: Record<string, string[]> = {};
+      (links || []).forEach((l: any) => {
+        map[l.product_id] = [...(map[l.product_id] || []), l.category_id];
+      });
+      setGroupsByProduct(map);
       setLoading(false);
     })();
   }, [open, toast]);
+
+  const groupNamesOf = (productId: string) =>
+    (groupsByProduct[productId] || [])
+      .map((id) => allCategories.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
 
   const scoped = useMemo(() => {
     let list = products;
@@ -73,10 +92,15 @@ export function SubcategoryProductPicker({
     const ancestors = ancestorSubcategoryNames ?? [];
     if (ancestors.length > 0) {
       const allowed = new Set([...ancestors, subcategoryName]);
-      list = list.filter((p) => p.subcategory && allowed.has(p.subcategory));
+      list = list.filter(
+        (p) =>
+          (p.subcategory && allowed.has(p.subcategory)) ||
+          groupNamesOf(p.id).some((n) => allowed.has(n))
+      );
     }
     return list;
-  }, [products, primaryName, ancestorSubcategoryNames, subcategoryName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, primaryName, ancestorSubcategoryNames, subcategoryName, groupsByProduct, allCategories]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,16 +115,27 @@ export function SubcategoryProductPicker({
 
 
   const handleSelect = async (product: Product) => {
-    if (product.subcategory === subcategoryName) return;
     setSavingIds((prev) => new Set(prev).add(product.id));
 
-    const update: any = { subcategory: subcategoryName };
-    // Se o produto não está na primária pai, alinha também
-    if (primaryName && product.category !== primaryName) {
-      update.category = primaryName;
+    // Vínculo N:N — o produto pode pertencer a vários grupos ao mesmo tempo
+    const target = allCategories.find((c) => c.name === subcategoryName);
+    let error: { message: string } | null = null;
+    if (target) {
+      const { error: linkError } = await supabase
+        .from('product_categories')
+        .upsert({ product_id: product.id, category_id: target.id }, { onConflict: 'product_id,category_id' });
+      if (linkError) error = linkError;
     }
 
-    const { error } = await supabase.from('products').update(update).eq('id', product.id);
+    // Campo legado: só preenche quando o produto ainda não tem grupo principal
+    const update: any = {};
+    if (!product.subcategory) update.subcategory = subcategoryName;
+    if (primaryName && !product.category) update.category = primaryName;
+    if (!error && Object.keys(update).length > 0) {
+      const { error: updError } = await supabase.from('products').update(update).eq('id', product.id);
+      if (updError) error = updError;
+    }
+
 
     setSavingIds((prev) => {
       const next = new Set(prev);
@@ -116,10 +151,20 @@ export function SubcategoryProductPicker({
     setProducts((prev) =>
       prev.map((p) =>
         p.id === product.id
-          ? { ...p, subcategory: subcategoryName, category: update.category ?? p.category }
+          ? {
+              ...p,
+              subcategory: update.subcategory ?? p.subcategory,
+              category: update.category ?? p.category,
+            }
           : p
       )
     );
+    if (target) {
+      setGroupsByProduct((prev) => ({
+        ...prev,
+        [product.id]: Array.from(new Set([...(prev[product.id] || []), target.id])),
+      }));
+    }
     toast({ title: 'Produto adicionado!', description: product.name });
   };
 
@@ -158,7 +203,8 @@ export function SubcategoryProductPicker({
           ) : (
             <div className="space-y-2">
               {filtered.map((p) => {
-                const isInThisSub = p.subcategory === subcategoryName;
+                const isInThisSub =
+                  p.subcategory === subcategoryName || groupNamesOf(p.id).includes(subcategoryName);
                 const isSaving = savingIds.has(p.id);
                 const thumb = getThumb(p);
                 return (

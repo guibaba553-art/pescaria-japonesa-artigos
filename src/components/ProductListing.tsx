@@ -43,6 +43,8 @@ export function ProductListing({
   const onSaleParam = forceOnSale ? 'true' : searchParams.get('on_sale');
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
+  // Produtos que pertencem aos grupos selecionados via product_categories (N:N)
+  const [groupMemberIds, setGroupMemberIds] = useState<Set<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParam);
 
@@ -143,9 +145,12 @@ export function ProductListing({
         .limit(10000);
 
       if (category) query = query.eq('category', category);
+
+      let memberIds: Set<string> | null = null;
       if (subcategory) {
-        // Expande cada subcategoria selecionada para incluir seus descendentes
+        // Expande cada grupo selecionado para incluir seus descendentes
         const subNames = new Set<string>();
+        const subIds = new Set<string>();
         subcategory
           .split(',')
           .map((s) => s.trim())
@@ -153,10 +158,32 @@ export function ProductListing({
           .forEach((name) => {
             subNames.add(name);
             const target = allCategories.find((c) => c.name === name);
-            if (target) getDescendantsOf(target.id).forEach((d) => subNames.add(d.name));
+            if (target) {
+              subIds.add(target.id);
+              getDescendantsOf(target.id).forEach((d) => {
+                subNames.add(d.name);
+                subIds.add(d.id);
+              });
+            }
           });
-        query = query.in('subcategory', Array.from(subNames));
+
+        // Um produto pode pertencer a vários grupos ao mesmo tempo (tabela N:N)
+        memberIds = new Set<string>();
+        if (subIds.size > 0) {
+          const { data: links } = await supabase
+            .from('product_categories')
+            .select('product_id')
+            .in('category_id', Array.from(subIds))
+            .limit(20000);
+          (links || []).forEach((l: any) => memberIds!.add(l.product_id));
+        }
+
+        const quoted = Array.from(subNames).map((n) => `"${n.replace(/"/g, '')}"`).join(',');
+        const orParts = [`subcategory.in.(${quoted})`];
+        if (memberIds.size > 0) orParts.push(`id.in.(${Array.from(memberIds).join(',')})`);
+        query = query.or(orParts.join(','));
       }
+      setGroupMemberIds(memberIds);
 
 
       let result = await query;
@@ -359,7 +386,11 @@ export function ProductListing({
 
       if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
       if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (expandedSubcategories.length && (!p.subcategory || !expandedSubcategories.includes(p.subcategory))) return false;
+      if (expandedSubcategories.length) {
+        const byField = !!p.subcategory && expandedSubcategories.includes(p.subcategory);
+        const byGroup = groupMemberIds?.has(p.id) ?? false;
+        if (!byField && !byGroup) return false;
+      }
       const hasActiveVariationPromo = p.variations?.some((variation) => isPromoActive(variation)) ?? false;
       if (onSaleParam === 'true' && !isPromoActive(p) && !hasActiveVariationPromo) return false;
       if (priceRange) {
@@ -394,7 +425,7 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, priceRange, sortBy, onSaleParam]);
+  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, groupMemberIds, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =

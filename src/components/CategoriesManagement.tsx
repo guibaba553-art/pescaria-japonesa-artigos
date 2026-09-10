@@ -60,11 +60,21 @@ export function CategoriesManagement() {
     }
     setExpandedSub(sub);
     setLoadingProducts(true);
-    const { data } = await supabase
-      .from('products')
-      .select('id, name, image_url, price')
-      .eq('subcategory', sub.name)
-      .order('name');
+
+    // Produtos ligados a este grupo (N:N) + o campo legado
+    const { data: links } = await supabase
+      .from('product_categories')
+      .select('product_id')
+      .eq('category_id', sub.id)
+      .limit(20000);
+    const linkedIds = Array.from(new Set((links || []).map((l: any) => l.product_id)));
+
+    let query = supabase.from('products').select('id, name, image_url, price').order('name');
+    query = linkedIds.length
+      ? query.or(`subcategory.eq."${sub.name.replace(/"/g, '')}",id.in.(${linkedIds.join(',')})`)
+      : query.eq('subcategory', sub.name);
+
+    const { data } = await query;
     setExpandedProducts(data || []);
     setLoadingProducts(false);
   };
@@ -72,6 +82,11 @@ export function CategoriesManagement() {
   const removeProductFromSub = async (productId: string) => {
     if (!expandedSub) return;
     setRemovingId(productId);
+    await supabase
+      .from('product_categories')
+      .delete()
+      .eq('product_id', productId)
+      .eq('category_id', expandedSub.id);
     const { error } = await supabase
       .from('products')
       .update({ subcategory: null })
