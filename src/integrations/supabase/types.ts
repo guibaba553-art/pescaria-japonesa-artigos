@@ -1762,6 +1762,42 @@ export type Database = {
         }
         Relationships: []
       }
+      product_change_log: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          product_id: string | null
+          product_name: string | null
+          variation_id: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          variation_id?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          variation_id?: string | null
+        }
+        Relationships: []
+      }
       product_label_pending: {
         Row: {
           created_at: string

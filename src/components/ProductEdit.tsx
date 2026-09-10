@@ -18,7 +18,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store } from 'lucide-react';
+import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store, History } from 'lucide-react';
+import { ProductChangeHistory } from '@/components/ProductChangeHistory';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
 import { ProductVariations } from '@/components/ProductVariations';
@@ -860,6 +861,9 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                 </TabsTrigger>
                 <TabsTrigger value="precificacao" className="flex-1 gap-2 py-2.5">
                   <DollarSign className="w-4 h-4" /> Preço de Venda
+                </TabsTrigger>
+                <TabsTrigger value="historico" className="flex-1 gap-2 py-2.5">
+                  <History className="w-4 h-4" /> Histórico
                 </TabsTrigger>
               </TabsList>
               )}
@@ -1981,6 +1985,10 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
             ) : null}
 
             </TabsContent>
+
+              <TabsContent value="historico" className="mt-4">
+                <ProductChangeHistory productId={product?.id} />
+              </TabsContent>
           </Tabs>
 
             <div className="flex gap-2 justify-end">
