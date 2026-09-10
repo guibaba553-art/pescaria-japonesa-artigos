@@ -12,6 +12,8 @@ import lanternasImg from "@/assets/category-lanternas.jpg";
 import guardaSolImg from "@/assets/category-guardasol.jpg";
 import caixaPescaImg from "@/assets/category-caixa-pesca.jpg";
 import alicatesImg from "@/assets/category-alicates.jpg";
+import barracasImg from "@/assets/category-barracas.jpg";
+import coletesImg from "@/assets/category-coletes.jpg";
 
 // Map slug -> background image (extensible via DB icon field fallback to slug)
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -28,6 +30,8 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "guarda-sol": guardaSolImg,
   "caixa-de-pesca": caixaPescaImg,
   alicates: alicatesImg,
+  barracas: barracasImg,
+  coletes: coletesImg,
 };
 
 const getCategoryImage = (category: { slug?: string; name?: string }) => {
