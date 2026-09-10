@@ -287,30 +287,47 @@ export function ProductListing({
     };
   }, [products, currentParentId, allCategories, selectedSubcategoryPath, categoryTreeSubOptions]);
 
-  // O filtro usa o último nível escolhido + todos os seus descendentes
+  // O filtro usa todas as subcategorias escolhidas + seus descendentes
   const expandedSubcategories = useMemo(() => {
-    if (!selectedSubcategoryPath.length) return [] as string[];
-    const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
-    const names = new Set<string>([last]);
-    const cat = allCategories.find((c) => c.name === last);
-    if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
+    if (!selectedSubs.length) return [] as string[];
+    const names = new Set<string>();
+    selectedSubs.forEach((name) => {
+      names.add(name);
+      const cat = allCategories.find((c) => c.name === name);
+      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
+    });
     return Array.from(names);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubcategoryPath, allCategories]);
+  }, [selectedSubs, allCategories]);
 
-  // Clique em um nível: navega para a subcategoria escolhida na URL
-  const handleSubcategoryLevelClick = (name: string) => {
-    if (!categoryParam) return;
-    const idx = selectedSubcategoryPath.indexOf(name);
-    if (idx >= 0) {
-      // Voltar para um nível anterior
-      const target = selectedSubcategoryPath[idx];
-      setSearchParams(target ? { category: categoryParam, subcategory: target } : { category: categoryParam });
+  const applySubs = (subs: string[]) => {
+    if (subs.length) {
+      setSearchParams({ category: categoryParam, subcategory: subs.join(',') });
+    } else if (categoryParam) {
+      setSearchParams({ category: categoryParam });
     } else {
-      // Descer para um novo nível
-      setSearchParams({ category: categoryParam, subcategory: name });
+      setSearchParams({});
     }
   };
+
+  // Clique em um nível: permite combinar várias subcategorias do mesmo nível
+  const handleSubcategoryLevelClick = (name: string) => {
+    if (!categoryParam) return;
+    if (selectedSubs.includes(name)) {
+      // Desmarca — se era a única, sobe um nível
+      const rest = selectedSubs.filter((s) => s !== name);
+      if (rest.length) return applySubs(rest);
+      const path = pathOf(name);
+      const parent = path.length > 1 ? path[path.length - 2] : undefined;
+      return applySubs(parent ? [parent] : []);
+    }
+    const parentOf = (n: string) =>
+      allCategories.find((c) => c.name === n)?.parent_id ?? null;
+    const sameLevel =
+      selectedSubs.length > 0 && parentOf(name) === parentOf(selectedSubs[0]);
+    applySubs(sameLevel ? [...selectedSubs, name] : [name]);
+  };
+
 
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
