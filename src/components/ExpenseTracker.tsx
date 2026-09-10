@@ -103,7 +103,7 @@ export function ExpenseTracker() {
       supabase.from("expense_overrides").select("*"),
       supabase
         .from("orders")
-        .select("id, source, created_at, total_amount, payment_method, status, installments")
+        .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
         .eq("source", "site" as any)
         .gte("created_at", monthStart.toISOString())
         .lte("created_at", monthEnd.toISOString())
@@ -113,7 +113,7 @@ export function ExpenseTracker() {
       fetchAllPaged<any>((from, to) =>
         supabase
           .from("orders")
-          .select("id, source, created_at, total_amount, payment_method, status, installments")
+          .select("id, source, created_at, total_amount, payment_method, payment_gateway, status, installments")
           .eq("source", "pdv" as any)
           .gte("created_at", pdvLookbackStart)
           .lte("created_at", monthEnd.toISOString())
