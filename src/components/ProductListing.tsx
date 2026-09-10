@@ -43,6 +43,8 @@ export function ProductListing({
   const onSaleParam = forceOnSale ? 'true' : searchParams.get('on_sale');
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
+  // Produtos que pertencem aos grupos selecionados via product_categories (N:N)
+  const [groupMemberIds, setGroupMemberIds] = useState<Set<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParam);
 
