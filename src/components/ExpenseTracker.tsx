@@ -108,7 +108,6 @@ function ExpenseCard({
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
   onToggleScheduled: (e: MonthlyEntry) => void;
-  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   const status = getExpenseStatus({
     paidAt: entry.override?.paid_at,
@@ -745,7 +744,6 @@ export function ExpenseTracker() {
                   onOverride={handleOverrideAmount}
                   onTogglePaid={handleTogglePaid}
                   onToggleScheduled={handleToggleScheduled}
-                onToggleScheduled={handleToggleScheduled}
                 />
               </TabsContent>
             ))}
@@ -1304,7 +1302,6 @@ function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, on
           onOverride={onOverride}
           onTogglePaid={onTogglePaid}
           onToggleScheduled={onToggleScheduled}
-        onToggleScheduled={onToggleScheduled}
         />
       ))}
     </div>
