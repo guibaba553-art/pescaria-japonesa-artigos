@@ -816,33 +816,28 @@ function UnifiedList({
 
   const items: React.ReactNode[] = [];
 
-  pdvReceivables.forEach(r => {
-    items.push(
-      <PdvReceivableCard key={`pdv-${r.date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada" />
-    );
-  });
+  const dayKeys = Array.from(
+    new Set([
+      ...pdvReceivables.map(r => r.date),
+      ...incomes.map(i => format(parseISO(i.created_at), "yyyy-MM-dd")),
+    ]),
+  ).sort((a, b) => b.localeCompare(a));
 
-
-  incomes.forEach(i => {
+  dayKeys.forEach(date => {
+    const r = pdvReceivables.find(x => x.date === date);
+    if (r) {
+      items.push(
+        <PdvReceivableCard key={`pdv-${date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada (geral)" />
+      );
+    }
     items.push(
-      <Card key={`inc-${i.id}`} className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="text-[10px]">Site</Badge>
-              <Badge variant="outline" className="text-[10px]">Entrada</Badge>
-              {i.payment_method && <Badge variant="outline" className="text-[10px]">{i.payment_method}</Badge>}
-            </div>
-            <div className="font-semibold mt-1 truncate">{i.customer_name || "Cliente não identificado"}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {format(parseISO(i.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })} • Pedido #{i.id.slice(0, 8)}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-emerald-600">{fmtBRL(i.total_amount)}</div>
-          </div>
-        </CardContent>
-      </Card>
+      <AccountReceivableGroup
+        key={`acc-${date}`}
+        date={date}
+        pdvOrders={pdvOrders}
+        siteIncomes={incomes}
+        label="Entrada"
+      />
     );
   });
 
