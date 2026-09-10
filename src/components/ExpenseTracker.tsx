@@ -480,7 +480,10 @@ export function ExpenseTracker() {
     if (entry.override) {
       await supabase.from("expense_overrides").update({ skipped: true, amount: null }).eq("id", entry.override.id);
     } else {
-      await supabase.from("expense_overrides").insert({ expense_id: entry.expense.id, year_month: yearMonth, skipped: true });
+      await supabase.from("expense_overrides").upsert(
+        { expense_id: entry.expense.id, year_month: yearMonth, skipped: true },
+        { onConflict: "expense_id,year_month" }
+      );
     }
     toast({ title: "Despesa pulada neste mês" });
     loadData();
@@ -494,7 +497,10 @@ export function ExpenseTracker() {
     if (entry.override) {
       await supabase.from("expense_overrides").update({ amount, skipped: false }).eq("id", entry.override.id);
     } else {
-      await supabase.from("expense_overrides").insert({ expense_id: entry.expense.id, year_month: yearMonth, amount });
+      await supabase.from("expense_overrides").upsert(
+        { expense_id: entry.expense.id, year_month: yearMonth, amount },
+        { onConflict: "expense_id,year_month" }
+      );
     }
     toast({ title: "Valor ajustado neste mês" });
     loadData();
@@ -519,11 +525,14 @@ export function ExpenseTracker() {
     } else {
       const { data, error } = await supabase
         .from("expense_overrides")
-        .insert({ expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt })
+        .upsert(
+          { expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt },
+          { onConflict: "expense_id,year_month" }
+        )
         .select()
         .single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-      if (data) setOverrides(prev => [...prev, data as Override]);
+      if (data) setOverrides(prev => [...prev.filter(o => o.id !== (data as Override).id), data as Override]);
     }
 
     toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
@@ -560,11 +569,14 @@ export function ExpenseTracker() {
     } else {
       const { data, error } = await supabase
         .from("expense_overrides")
-        .insert({ expense_id: entry.expense.id, year_month: yearMonth, scheduled_at: toggle.nextScheduledAt })
+        .upsert(
+          { expense_id: entry.expense.id, year_month: yearMonth, scheduled_at: toggle.nextScheduledAt },
+          { onConflict: "expense_id,year_month" }
+        )
         .select()
         .single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-      if (data) setOverrides(prev => [...prev, data as Override]);
+      if (data) setOverrides(prev => [...prev.filter(o => o.id !== (data as Override).id), data as Override]);
     }
 
     toast({ title: toggle.nextScheduledAt ? "Gasto agendado" : "Agendamento removido" });
