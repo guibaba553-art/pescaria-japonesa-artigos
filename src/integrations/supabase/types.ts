@@ -1046,6 +1046,7 @@ export type Database = {
           id: string
           notes: string | null
           paid_at: string | null
+          scheduled_at: string | null
           skipped: boolean
           updated_at: string
           year_month: string
@@ -1057,6 +1058,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
+          scheduled_at?: string | null
           skipped?: boolean
           updated_at?: string
           year_month: string
@@ -1068,6 +1070,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_at?: string | null
+          scheduled_at?: string | null
           skipped?: boolean
           updated_at?: string
           year_month?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.expense_overrides ADD COLUMN IF NOT EXISTS scheduled_at date;
