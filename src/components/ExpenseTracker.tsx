@@ -519,7 +519,10 @@ export function ExpenseTracker() {
     } else {
       const { data, error } = await supabase
         .from("expense_overrides")
-        .insert({ expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt })
+        .upsert(
+          { expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt },
+          { onConflict: "expense_id,year_month" }
+        )
         .select()
         .single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
