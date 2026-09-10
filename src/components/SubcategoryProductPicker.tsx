@@ -42,10 +42,13 @@ export function SubcategoryProductPicker({
   ancestorSubcategoryNames,
 }: Props) {
   const { toast } = useToast();
+  const { categories: allCategories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  // Grupos (nomes) de cada produto via tabela N:N
+  const [groupsByProduct, setGroupsByProduct] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -62,9 +65,24 @@ export function SubcategoryProductPicker({
       } else {
         setProducts((data as Product[]) || []);
       }
+
+      const { data: links } = await supabase
+        .from('product_categories')
+        .select('product_id, category_id')
+        .limit(20000);
+      const map: Record<string, string[]> = {};
+      (links || []).forEach((l: any) => {
+        map[l.product_id] = [...(map[l.product_id] || []), l.category_id];
+      });
+      setGroupsByProduct(map);
       setLoading(false);
     })();
   }, [open, toast]);
+
+  const groupNamesOf = (productId: string) =>
+    (groupsByProduct[productId] || [])
+      .map((id) => allCategories.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
 
   const scoped = useMemo(() => {
     let list = products;
@@ -74,10 +92,15 @@ export function SubcategoryProductPicker({
     const ancestors = ancestorSubcategoryNames ?? [];
     if (ancestors.length > 0) {
       const allowed = new Set([...ancestors, subcategoryName]);
-      list = list.filter((p) => p.subcategory && allowed.has(p.subcategory));
+      list = list.filter(
+        (p) =>
+          (p.subcategory && allowed.has(p.subcategory)) ||
+          groupNamesOf(p.id).some((n) => allowed.has(n))
+      );
     }
     return list;
-  }, [products, primaryName, ancestorSubcategoryNames, subcategoryName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, primaryName, ancestorSubcategoryNames, subcategoryName, groupsByProduct, allCategories]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
