@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, isAfter, isBefore, subDays, isSameDay, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
+import { Clock, CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
 import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +30,7 @@ import {
   type IncomeAccountTotals,
 } from "@/utils/incomeAccounts";
 import { getPaidToggleAction } from "@/utils/expensePaid";
+import { getExpenseStatus, getScheduleToggleAction, shouldPromoteToPaid, todayIso } from "@/utils/expenseScheduled";
 
 
 
@@ -58,6 +59,7 @@ interface Override {
   skipped: boolean;
   notes: string | null;
   paid_at: string | null;
+  scheduled_at?: string | null;
 }
 interface MonthlyEntry {
   expense: Expense;
@@ -96,6 +98,7 @@ function ExpenseCard({
   onSkip,
   onOverride,
   onTogglePaid,
+  onToggleScheduled,
 }: {
   entry: MonthlyEntry;
   label?: string;
@@ -104,10 +107,22 @@ function ExpenseCard({
   onSkip: (e: MonthlyEntry) => void;
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
-  const isPaid = !!entry.override?.paid_at;
+  const status = getExpenseStatus({
+    paidAt: entry.override?.paid_at,
+    scheduledAt: entry.override?.scheduled_at,
+  });
+  const isPaid = status === "paid";
+  const isScheduled = status === "scheduled";
   return (
-    <Card className={cn("hover:shadow-md transition-shadow", isPaid && "bg-green-50/50 dark:bg-green-950/10")}>
+    <Card
+      className={cn(
+        "hover:shadow-md transition-shadow",
+        isPaid && "bg-green-50/50 dark:bg-green-950/10",
+        isScheduled && "bg-yellow-50/60 dark:bg-yellow-950/10"
+      )}
+    >
       <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <Button
@@ -124,6 +139,20 @@ function ExpenseCard({
           >
             {isPaid && <Check className="w-4 h-4" />}
           </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className={cn(
+              "h-8 w-8 rounded-md border-2 transition-colors shrink-0",
+              isScheduled
+                ? "bg-yellow-400 border-yellow-500 text-yellow-950 hover:bg-yellow-500 hover:text-yellow-950"
+                : "bg-background border-muted-foreground/30 text-muted-foreground hover:border-yellow-400 hover:text-yellow-600"
+            )}
+            onClick={() => onToggleScheduled(entry)}
+            title={isScheduled ? "Remover agendamento" : "Agendar pagamento"}
+          >
+            <Clock className="w-4 h-4" />
+          </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant={entry.expense.type === "fixed" ? "default" : "secondary"} className="text-[10px]">
@@ -133,6 +162,7 @@ function ExpenseCard({
               <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
               {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
               {isPaid && <Badge className="bg-green-400 text-green-950 text-[10px]">pago</Badge>}
+              {isScheduled && <Badge className="bg-yellow-400 text-yellow-950 text-[10px]">agendado</Badge>}
             </div>
             <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
@@ -499,6 +529,65 @@ export function ExpenseTracker() {
     toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
   };
 
+  const handleToggleScheduled = async (entry: MonthlyEntry) => {
+    const yearMonth = format(currentMonth, "yyyy-MM");
+    const defaultDate = format(parseISO(entry.expense.expense_date), "dd/MM/yyyy");
+    let date: string | null = null;
+
+    if (!entry.override?.scheduled_at) {
+      const input = prompt("Data do agendamento (dd/mm/aaaa):", defaultDate);
+      if (!input) return;
+      const m = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return toast({ title: "Data inválida", variant: "destructive" });
+      date = `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
+    const toggle = getScheduleToggleAction({
+      overrideId: entry.override?.id,
+      scheduledAt: entry.override?.scheduled_at,
+      date: date ?? "",
+    });
+
+    if (toggle.action === "update" && toggle.overrideId) {
+      const { error } = await supabase
+        .from("expense_overrides")
+        .update({ scheduled_at: toggle.nextScheduledAt })
+        .eq("id", toggle.overrideId);
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setOverrides(prev =>
+        prev.map(o => (o.id === toggle.overrideId ? { ...o, scheduled_at: toggle.nextScheduledAt } : o))
+      );
+    } else {
+      const { data, error } = await supabase
+        .from("expense_overrides")
+        .insert({ expense_id: entry.expense.id, year_month: yearMonth, scheduled_at: toggle.nextScheduledAt })
+        .select()
+        .single();
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      if (data) setOverrides(prev => [...prev, data as Override]);
+    }
+
+    toast({ title: toggle.nextScheduledAt ? "Gasto agendado" : "Agendamento removido" });
+  };
+
+  // Agendamentos vencidos viram pagos automaticamente
+  useEffect(() => {
+    const due = overrides.filter(o =>
+      shouldPromoteToPaid({ paidAt: o.paid_at, scheduledAt: o.scheduled_at })
+    );
+    if (due.length === 0) return;
+    const paidAt = new Date().toISOString();
+    (async () => {
+      await supabase
+        .from("expense_overrides")
+        .update({ paid_at: paidAt })
+        .in("id", due.map(o => o.id));
+      setOverrides(prev =>
+        prev.map(o => (due.some(d => d.id === o.id) ? { ...o, paid_at: paidAt } : o))
+      );
+    })();
+  }, [overrides]);
+
 
   const isToday = isSameDay(selectedDay, new Date());
 
@@ -686,6 +775,7 @@ export function ExpenseTracker() {
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
                 onTogglePaid={handleTogglePaid}
+                onToggleScheduled={handleToggleScheduled}
               />
             </TabsContent>
             <TabsContent value="expenses">
@@ -698,6 +788,7 @@ export function ExpenseTracker() {
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
                 onTogglePaid={handleTogglePaid}
+                onToggleScheduled={handleToggleScheduled}
               />
             </TabsContent>
             {(["fixed", "variable"] as const).map(tab => (
@@ -711,6 +802,7 @@ export function ExpenseTracker() {
                   onSkip={handleSkipMonth}
                   onOverride={handleOverrideAmount}
                   onTogglePaid={handleTogglePaid}
+                  onToggleScheduled={handleToggleScheduled}
                 />
               </TabsContent>
             ))}
@@ -933,7 +1025,7 @@ function MonthAgenda({
 }
 function UnifiedList({
   entries, siteOrders, siteDates, pdvReceivables, pdvOrders, loading,
-  onEdit, onDelete, onSkip, onOverride, onTogglePaid,
+  onEdit, onDelete, onSkip, onOverride, onTogglePaid, onToggleScheduled,
 }: {
   entries: MonthlyEntry[];
   siteOrders: IncomeEntry[];
@@ -946,6 +1038,7 @@ function UnifiedList({
   onSkip: (e: MonthlyEntry) => void;
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   const hasAny = entries.length > 0 || siteDates.length > 0 || pdvReceivables.length > 0;
@@ -993,6 +1086,7 @@ function UnifiedList({
         onSkip={onSkip}
         onOverride={onOverride}
         onTogglePaid={onTogglePaid}
+        onToggleScheduled={onToggleScheduled}
       />
     );
   });
@@ -1242,11 +1336,12 @@ function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading 
   );
 }
 
-function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride, onTogglePaid }: {
+function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride, onTogglePaid, onToggleScheduled }: {
   entries: MonthlyEntry[]; loading: boolean; emptyHint?: string;
   onEdit: (e: Expense) => void; onDelete: (id: string) => void;
   onSkip: (e: MonthlyEntry) => void; onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (entries.length === 0) return (
@@ -1265,6 +1360,7 @@ function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, on
           onSkip={onSkip}
           onOverride={onOverride}
           onTogglePaid={onTogglePaid}
+          onToggleScheduled={onToggleScheduled}
         />
       ))}
     </div>
