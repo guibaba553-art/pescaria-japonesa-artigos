@@ -31,7 +31,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "caixa-de-pesca": caixaPescaImg,
   alicates: alicatesImg,
   barracas: barracasImg,
-  coletes: coletesImg,
+  coletes: coletesImg.url,
 };
 
 const getCategoryImage = (category: { slug?: string; name?: string }) => {
