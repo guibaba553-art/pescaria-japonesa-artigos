@@ -480,7 +480,10 @@ export function ExpenseTracker() {
     if (entry.override) {
       await supabase.from("expense_overrides").update({ skipped: true, amount: null }).eq("id", entry.override.id);
     } else {
-      await supabase.from("expense_overrides").insert({ expense_id: entry.expense.id, year_month: yearMonth, skipped: true });
+      await supabase.from("expense_overrides").upsert(
+        { expense_id: entry.expense.id, year_month: yearMonth, skipped: true },
+        { onConflict: "expense_id,year_month" }
+      );
     }
     toast({ title: "Despesa pulada neste mês" });
     loadData();
