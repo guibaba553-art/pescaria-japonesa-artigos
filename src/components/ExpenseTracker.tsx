@@ -107,7 +107,7 @@ function ExpenseCard({
 }) {
   const isPaid = !!entry.override?.paid_at;
   return (
-    <Card className={cn("hover:shadow-md transition-shadow", isPaid && "bg-amber-50/50 dark:bg-amber-950/10")}>
+    <Card className={cn("hover:shadow-md transition-shadow", isPaid && "bg-green-50/50 dark:bg-green-950/10")}>
       <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
           <Button
@@ -116,8 +116,8 @@ function ExpenseCard({
             className={cn(
               "h-8 w-8 rounded-md border-2 transition-colors shrink-0",
               isPaid
-                ? "bg-amber-400 border-amber-500 text-amber-950 hover:bg-amber-500 hover:text-amber-950"
-                : "bg-background border-muted-foreground/30 text-muted-foreground hover:border-amber-400 hover:text-amber-600"
+                ? "bg-green-400 border-green-500 text-green-950 hover:bg-green-500 hover:text-green-950"
+                : "bg-background border-muted-foreground/30 text-muted-foreground hover:border-green-400 hover:text-green-600"
             )}
             onClick={() => onTogglePaid(entry)}
             title={isPaid ? "Desmarcar como pago" : "Marcar como pago"}
@@ -132,7 +132,7 @@ function ExpenseCard({
               {label && <Badge variant="outline" className="text-[10px]">{label}</Badge>}
               <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
               {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
-              {isPaid && <Badge className="bg-amber-400 text-amber-950 text-[10px]">pago</Badge>}
+              {isPaid && <Badge className="bg-green-400 text-green-950 text-[10px]">pago</Badge>}
             </div>
             <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
