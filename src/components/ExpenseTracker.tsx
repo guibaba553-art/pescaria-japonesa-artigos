@@ -64,6 +64,7 @@ interface IncomeEntry {
   total_amount: number;
   customer_name?: string | null;
   payment_method?: string | null;
+  payment_gateway?: string | null;
   installments?: number | null;
 }
 
@@ -71,6 +72,8 @@ interface PdvReceivable {
   date: string; // yyyy-MM-dd (data prevista de entrada)
   total: number;
   count: number;
+  stone: number;
+  cash: number;
 }
 
 
