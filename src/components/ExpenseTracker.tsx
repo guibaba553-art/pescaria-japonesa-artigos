@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO, isAfter, isBefore, subDays, isSameDay, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
 import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,8 @@ import {
   type IncomeAccount,
   type IncomeAccountTotals,
 } from "@/utils/incomeAccounts";
+import { getPaidToggleAction } from "@/utils/expensePaid";
+
 
 
 
@@ -55,6 +57,7 @@ interface Override {
   amount: number | null;
   skipped: boolean;
   notes: string | null;
+  paid_at: string | null;
 }
 interface MonthlyEntry {
   expense: Expense;
@@ -384,6 +387,30 @@ export function ExpenseTracker() {
     loadData();
   };
 
+  const handleTogglePaid = async (entry: MonthlyEntry) => {
+    const yearMonth = format(currentMonth, "yyyy-MM");
+    const toggle = getPaidToggleAction({
+      overrideId: entry.override?.id,
+      paidAt: entry.override?.paid_at,
+    });
+
+    if (toggle.action === "update" && toggle.overrideId) {
+      const { error } = await supabase
+        .from("expense_overrides")
+        .update({ paid_at: toggle.nextPaidAt })
+        .eq("id", toggle.overrideId);
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      const { error } = await supabase
+        .from("expense_overrides")
+        .insert({ expense_id: entry.expense.id, year_month: yearMonth, paid_at: toggle.nextPaidAt });
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+
+    toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
+    loadData();
+  };
+
   const isToday = isSameDay(selectedDay, new Date());
 
   return (
@@ -569,6 +596,7 @@ export function ExpenseTracker() {
                 onDelete={handleDelete}
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
+                onTogglePaid={handleTogglePaid}
               />
             </TabsContent>
             <TabsContent value="expenses">
@@ -580,6 +608,7 @@ export function ExpenseTracker() {
                 onDelete={handleDelete}
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
+                onTogglePaid={handleTogglePaid}
               />
             </TabsContent>
             {(["fixed", "variable"] as const).map(tab => (
@@ -592,6 +621,7 @@ export function ExpenseTracker() {
                   onDelete={handleDelete}
                   onSkip={handleSkipMonth}
                   onOverride={handleOverrideAmount}
+                  onTogglePaid={handleTogglePaid}
                 />
               </TabsContent>
             ))}
@@ -814,7 +844,7 @@ function MonthAgenda({
 }
 function UnifiedList({
   entries, siteOrders, siteDates, pdvReceivables, pdvOrders, loading,
-  onEdit, onDelete, onSkip, onOverride,
+  onEdit, onDelete, onSkip, onOverride, onTogglePaid,
 }: {
   entries: MonthlyEntry[];
   siteOrders: IncomeEntry[];
@@ -826,6 +856,7 @@ function UnifiedList({
   onDelete: (id: string) => void;
   onSkip: (e: MonthlyEntry) => void;
   onOverride: (e: MonthlyEntry) => void;
+  onTogglePaid: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   const hasAny = entries.length > 0 || siteDates.length > 0 || pdvReceivables.length > 0;
@@ -864,50 +895,16 @@ function UnifiedList({
 
   entries.forEach(entry => {
     items.push(
-      <Card key={`out-${entry.expense.id + (entry.override?.id ?? "")}`} className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant={entry.expense.type === "fixed" ? "default" : "secondary"} className="text-[10px]">
-                {entry.expense.type === "fixed" ? <><Repeat className="w-3 h-3 mr-1" />Fixa</> : <><Zap className="w-3 h-3 mr-1" />Variável</>}
-              </Badge>
-              <Badge variant="outline" className="text-[10px]">Saída</Badge>
-              <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
-              {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
-            </div>
-            <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              {format(parseISO(entry.expense.expense_date), "dd/MM/yyyy", { locale: ptBR })}
-              {entry.expense.supplier && <> • {entry.expense.supplier}</>}
-              {entry.expense.payment_method && <> • {entry.expense.payment_method}</>}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold text-red-600">{fmtBRL(Number(entry.effectiveAmount))}</div>
-            {entry.expense.type === "fixed" && entry.override?.amount != null && (
-              <div className="text-[10px] text-muted-foreground line-through">{fmtBRL(entry.expense.amount)}</div>
-            )}
-          </div>
-          <div className="flex gap-1">
-            {entry.expense.type === "fixed" && (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => onOverride(entry)} title="Ajustar valor neste mês">
-                  <TrendingUp className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onSkip(entry)} title="Pular este mês">
-                  <TrendingDown className="w-4 h-4" />
-                </Button>
-              </>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => onEdit(entry.expense)}>
-              <Pencil className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onDelete(entry.expense.id)}>
-              <Trash2 className="w-4 h-4 text-red-600" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <ExpenseCard
+        key={`out-${entry.expense.id + (entry.override?.id ?? "")}`}
+        entry={entry}
+        label="Saída"
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onSkip={onSkip}
+        onOverride={onOverride}
+        onTogglePaid={onTogglePaid}
+      />
     );
   });
 
@@ -1156,10 +1153,11 @@ function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading 
   );
 }
 
-function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride }: {
+function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride, onTogglePaid }: {
   entries: MonthlyEntry[]; loading: boolean; emptyHint?: string;
   onEdit: (e: Expense) => void; onDelete: (id: string) => void;
   onSkip: (e: MonthlyEntry) => void; onOverride: (e: MonthlyEntry) => void;
+  onTogglePaid: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (entries.length === 0) return (
@@ -1170,49 +1168,15 @@ function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, on
   return (
     <div className="space-y-2">
       {entries.map(entry => (
-        <Card key={entry.expense.id + (entry.override?.id ?? "")} className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={entry.expense.type === "fixed" ? "default" : "secondary"} className="text-[10px]">
-                  {entry.expense.type === "fixed" ? <><Repeat className="w-3 h-3 mr-1" />Fixa</> : <><Zap className="w-3 h-3 mr-1" />Variável</>}
-                </Badge>
-                <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
-                {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
-              </div>
-              <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                {format(parseISO(entry.expense.expense_date), "dd/MM/yyyy", { locale: ptBR })}
-                {entry.expense.supplier && <> • {entry.expense.supplier}</>}
-                {entry.expense.payment_method && <> • {entry.expense.payment_method}</>}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-red-600">{fmtBRL(Number(entry.effectiveAmount))}</div>
-              {entry.expense.type === "fixed" && entry.override?.amount != null && (
-                <div className="text-[10px] text-muted-foreground line-through">{fmtBRL(entry.expense.amount)}</div>
-              )}
-            </div>
-            <div className="flex gap-1">
-              {entry.expense.type === "fixed" && (
-                <>
-                  <Button variant="ghost" size="sm" onClick={() => onOverride(entry)} title="Ajustar valor neste mês">
-                    <TrendingUp className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onSkip(entry)} title="Pular este mês">
-                    <TrendingDown className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-              <Button variant="ghost" size="sm" onClick={() => onEdit(entry.expense)}>
-                <Pencil className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onDelete(entry.expense.id)}>
-                <Trash2 className="w-4 h-4 text-red-600" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ExpenseCard
+          key={entry.expense.id + (entry.override?.id ?? "")}
+          entry={entry}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onSkip={onSkip}
+          onOverride={onOverride}
+          onTogglePaid={onTogglePaid}
+        />
       ))}
     </div>
   );
