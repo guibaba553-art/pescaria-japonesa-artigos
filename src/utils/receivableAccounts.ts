@@ -37,25 +37,47 @@ const totals = (lines: ReceivableLine[]) => ({
   totalNet: lines.reduce((s, l) => s + l.net, 0),
 });
 
-/** Linhas das vendas do site que entraram no dia (sem parcelamento/taxa estimada). */
+/**
+ * Parcelas de uma venda do site: a 1ª entra na data da venda e as demais
+ * no mesmo dia dos meses seguintes (padrão Asaas/Mercado Pago).
+ * Centavos que sobram na divisão vão para a última parcela.
+ */
+function siteInstallments(o: AccountOrderLike): { date: Date; amount: number }[] {
+  const total = Number(o.total_amount || 0);
+  const n = Math.max(1, Math.floor(Number(o.installments) || 1));
+  const saleDate = parseISO(o.created_at);
+  const baseCents = Math.floor((total * 100) / n);
+  const rest = Math.round(total * 100) - baseCents * n;
+  return Array.from({ length: n }, (_, i) => ({
+    date: addMonths(saleDate, i),
+    amount: (baseCents + (i === n - 1 ? rest : 0)) / 100,
+  }));
+}
+
+/** Linhas das vendas do site que entram no dia (com parcelamento, sem taxa estimada). */
 export function getSiteReceivableLines(date: string, siteOrders: AccountOrderLike[]): ReceivableLine[] {
-  return siteOrders
-    .filter(o => format(parseISO(o.created_at), "yyyy-MM-dd") === date)
-    .map(o => {
-      const gross = Number(o.total_amount || 0);
-      return {
+  const lines: ReceivableLine[] = [];
+  for (const o of siteOrders) {
+    const parcels = siteInstallments(o);
+    parcels.forEach((p, idx) => {
+      if (format(p.date, "yyyy-MM-dd") !== date) return;
+      lines.push({
         orderId: o.id,
         saleDate: o.created_at,
         paymentMethod: o.payment_method || "—",
-        parcelIndex: 1,
-        parcelCount: 1,
-        gross,
+        parcelIndex: idx + 1,
+        parcelCount: parcels.length,
+        gross: p.amount,
         feeRate: 0,
         fee: 0,
-        net: gross,
-      } as ReceivableLine;
-    })
-    .sort((a, b) => a.saleDate.localeCompare(b.saleDate));
+        net: p.amount,
+      });
+    });
+  }
+  return lines.sort((a, b) => {
+    const d = a.saleDate.localeCompare(b.saleDate);
+    return d !== 0 ? d : a.parcelIndex - b.parcelIndex;
+  });
 }
 
 /**
