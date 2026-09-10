@@ -644,6 +644,37 @@ export function ExpenseTracker() {
   );
 }
 
+const ACCOUNT_STYLE: Record<IncomeAccount, { accent: string; hint: string }> = {
+  stone: { accent: "text-emerald-600", hint: "PIX, débito e crédito do balcão" },
+  mercadopago: { accent: "text-sky-600", hint: "vendas do site pelo Mercado Pago" },
+  asaas: { accent: "text-indigo-600", hint: "vendas do site pelo Asaas" },
+  cash: { accent: "text-amber-600", hint: "caixa em espécie, separado" },
+};
+
+function IncomeAccountsCards({ totals, periodLabel }: { totals: IncomeAccountTotals; periodLabel: string }) {
+  const order: IncomeAccount[] = ["stone", "mercadopago", "asaas", "cash"];
+  const sum = order.reduce((s, k) => s + totals[k], 0);
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Entradas por conta</CardTitle>
+        <CardDescription>Total {periodLabel}: {fmtBRL(sum)}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {order.map(key => (
+          <div key={key} className="rounded-lg border p-3">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
+              {INCOME_ACCOUNT_LABEL[key]}
+            </div>
+            <div className={cn("text-lg font-bold mt-1", ACCOUNT_STYLE[key].accent)}>{fmtBRL(totals[key])}</div>
+            <div className="text-[10px] text-muted-foreground mt-1">{ACCOUNT_STYLE[key].hint}</div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function MonthAgenda({
   currentMonth,
   selectedDay,
