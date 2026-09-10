@@ -102,16 +102,20 @@ export function SubcategoryProductPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, primaryName, ancestorSubcategoryNames, subcategoryName, groupsByProduct, allCategories]);
 
+  // Ao buscar, procura em TODO o catálogo (um produto pode pertencer a vários
+  // grupos independentes, mesmo fora da família da categoria atual).
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return scoped;
-    return scoped.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.sku || '').toLowerCase().includes(q) ||
-        (p.category || '').toLowerCase().includes(q)
-    );
-  }, [scoped, search]);
+    const match = (p: Product) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.sku || '').toLowerCase().includes(q) ||
+      (p.category || '').toLowerCase().includes(q);
+    const inScope = scoped.filter(match);
+    const inScopeIds = new Set(inScope.map((p) => p.id));
+    const outOfScope = products.filter((p) => !inScopeIds.has(p.id) && match(p));
+    return [...inScope, ...outOfScope];
+  }, [scoped, products, search]);
 
 
   const handleSelect = async (product: Product) => {
