@@ -108,6 +108,7 @@ function ExpenseCard({
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
   onToggleScheduled: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   const status = getExpenseStatus({
     paidAt: entry.override?.paid_at,
@@ -162,6 +163,7 @@ function ExpenseCard({
               <Badge variant="outline" className="text-[10px]">{entry.expense.category}</Badge>
               {entry.override?.amount != null && <Badge className="bg-amber-100 text-amber-800 text-[10px]">ajustada</Badge>}
               {isPaid && <Badge className="bg-green-400 text-green-950 text-[10px]">pago</Badge>}
+              {isScheduled && <Badge className="bg-yellow-400 text-yellow-950 text-[10px]">agendado</Badge>}
             </div>
             <div className="font-semibold mt-1 truncate">{entry.expense.description}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
@@ -715,6 +717,7 @@ export function ExpenseTracker() {
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
                 onTogglePaid={handleTogglePaid}
+                onToggleScheduled={handleToggleScheduled}
               />
             </TabsContent>
             <TabsContent value="expenses">
@@ -727,6 +730,7 @@ export function ExpenseTracker() {
                 onSkip={handleSkipMonth}
                 onOverride={handleOverrideAmount}
                 onTogglePaid={handleTogglePaid}
+                onToggleScheduled={handleToggleScheduled}
               />
             </TabsContent>
             {(["fixed", "variable"] as const).map(tab => (
@@ -740,6 +744,8 @@ export function ExpenseTracker() {
                   onSkip={handleSkipMonth}
                   onOverride={handleOverrideAmount}
                   onTogglePaid={handleTogglePaid}
+                  onToggleScheduled={handleToggleScheduled}
+                onToggleScheduled={handleToggleScheduled}
                 />
               </TabsContent>
             ))}
@@ -962,7 +968,7 @@ function MonthAgenda({
 }
 function UnifiedList({
   entries, siteOrders, siteDates, pdvReceivables, pdvOrders, loading,
-  onEdit, onDelete, onSkip, onOverride, onTogglePaid,
+  onEdit, onDelete, onSkip, onOverride, onTogglePaid, onToggleScheduled,
 }: {
   entries: MonthlyEntry[];
   siteOrders: IncomeEntry[];
@@ -975,6 +981,7 @@ function UnifiedList({
   onSkip: (e: MonthlyEntry) => void;
   onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   const hasAny = entries.length > 0 || siteDates.length > 0 || pdvReceivables.length > 0;
@@ -1022,6 +1029,7 @@ function UnifiedList({
         onSkip={onSkip}
         onOverride={onOverride}
         onTogglePaid={onTogglePaid}
+        onToggleScheduled={onToggleScheduled}
       />
     );
   });
@@ -1271,11 +1279,12 @@ function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading 
   );
 }
 
-function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride, onTogglePaid }: {
+function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, onOverride, onTogglePaid, onToggleScheduled }: {
   entries: MonthlyEntry[]; loading: boolean; emptyHint?: string;
   onEdit: (e: Expense) => void; onDelete: (id: string) => void;
   onSkip: (e: MonthlyEntry) => void; onOverride: (e: MonthlyEntry) => void;
   onTogglePaid: (e: MonthlyEntry) => void;
+  onToggleScheduled: (e: MonthlyEntry) => void;
 }) {
   if (loading) return <div className="text-center py-8 text-muted-foreground">Carregando...</div>;
   if (entries.length === 0) return (
@@ -1294,6 +1303,8 @@ function ExpenseList({ entries, loading, emptyHint, onEdit, onDelete, onSkip, on
           onSkip={onSkip}
           onOverride={onOverride}
           onTogglePaid={onTogglePaid}
+          onToggleScheduled={onToggleScheduled}
+        onToggleScheduled={onToggleScheduled}
         />
       ))}
     </div>
