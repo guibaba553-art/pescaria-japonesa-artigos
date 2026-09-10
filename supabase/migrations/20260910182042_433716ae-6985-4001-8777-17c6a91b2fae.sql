@@ -1,0 +1,1 @@
+ALTER TABLE public.expense_overrides ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP WITH TIME ZONE;
