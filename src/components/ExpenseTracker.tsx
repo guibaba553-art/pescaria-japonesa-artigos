@@ -332,7 +332,8 @@ export function ExpenseTracker() {
         result.push({ expense: e, effectiveAmount: ov?.amount ?? e.amount, override: ov, isRecurring: true });
       } else {
         if (start >= monthStart && start <= monthEnd) {
-          result.push({ expense: e, effectiveAmount: e.amount, isRecurring: false });
+          const ov = overrides.find(o => o.expense_id === e.id && o.year_month === yearMonth);
+          result.push({ expense: e, effectiveAmount: ov?.amount ?? e.amount, override: ov, isRecurring: false });
         }
       }
     }
