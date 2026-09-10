@@ -151,10 +151,20 @@ export function SubcategoryProductPicker({
     setProducts((prev) =>
       prev.map((p) =>
         p.id === product.id
-          ? { ...p, subcategory: subcategoryName, category: update.category ?? p.category }
+          ? {
+              ...p,
+              subcategory: update.subcategory ?? p.subcategory,
+              category: update.category ?? p.category,
+            }
           : p
       )
     );
+    if (target) {
+      setGroupsByProduct((prev) => ({
+        ...prev,
+        [product.id]: Array.from(new Set([...(prev[product.id] || []), target.id])),
+      }));
+    }
     toast({ title: 'Produto adicionado!', description: product.name });
   };
 
