@@ -106,7 +106,7 @@ export function ExpenseTracker() {
     // Olhar 18 meses para trás: crédito em 12x tem a última parcela em D+360,
     // então 12 meses de janela ainda cortava parcelas antigas.
     const pdvLookbackStart = startOfMonth(addMonths(monthStart, -18)).toISOString();
-    const [{ data: exp }, { data: ov }, { data: siteOrd }, pdvOrd] = await Promise.all([
+    const [{ data: exp }, { data: ov }, siteOrd, pdvOrd] = await Promise.all([
       supabase.from("expenses").select("*").order("expense_date", { ascending: false }),
       supabase.from("expense_overrides").select("*"),
       // Site também precisa de janela longa: parcelado em até 12x cai nos meses seguintes.
