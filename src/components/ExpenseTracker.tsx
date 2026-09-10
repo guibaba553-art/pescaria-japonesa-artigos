@@ -529,6 +529,65 @@ export function ExpenseTracker() {
     toast({ title: toggle.nextPaidAt ? "Gasto marcado como pago" : "Gasto desmarcado" });
   };
 
+  const handleToggleScheduled = async (entry: MonthlyEntry) => {
+    const yearMonth = format(currentMonth, "yyyy-MM");
+    const defaultDate = format(parseISO(entry.expense.expense_date), "dd/MM/yyyy");
+    let date: string | null = null;
+
+    if (!entry.override?.scheduled_at) {
+      const input = prompt("Data do agendamento (dd/mm/aaaa):", defaultDate);
+      if (!input) return;
+      const m = input.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return toast({ title: "Data inválida", variant: "destructive" });
+      date = `${m[3]}-${m[2]}-${m[1]}`;
+    }
+
+    const toggle = getScheduleToggleAction({
+      overrideId: entry.override?.id,
+      scheduledAt: entry.override?.scheduled_at,
+      date: date ?? "",
+    });
+
+    if (toggle.action === "update" && toggle.overrideId) {
+      const { error } = await supabase
+        .from("expense_overrides")
+        .update({ scheduled_at: toggle.nextScheduledAt })
+        .eq("id", toggle.overrideId);
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      setOverrides(prev =>
+        prev.map(o => (o.id === toggle.overrideId ? { ...o, scheduled_at: toggle.nextScheduledAt } : o))
+      );
+    } else {
+      const { data, error } = await supabase
+        .from("expense_overrides")
+        .insert({ expense_id: entry.expense.id, year_month: yearMonth, scheduled_at: toggle.nextScheduledAt })
+        .select()
+        .single();
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      if (data) setOverrides(prev => [...prev, data as Override]);
+    }
+
+    toast({ title: toggle.nextScheduledAt ? "Gasto agendado" : "Agendamento removido" });
+  };
+
+  // Agendamentos vencidos viram pagos automaticamente
+  useEffect(() => {
+    const due = overrides.filter(o =>
+      shouldPromoteToPaid({ paidAt: o.paid_at, scheduledAt: o.scheduled_at })
+    );
+    if (due.length === 0) return;
+    const paidAt = new Date().toISOString();
+    (async () => {
+      await supabase
+        .from("expense_overrides")
+        .update({ paid_at: paidAt })
+        .in("id", due.map(o => o.id));
+      setOverrides(prev =>
+        prev.map(o => (due.some(d => d.id === o.id) ? { ...o, paid_at: paidAt } : o))
+      );
+    })();
+  }, [overrides]);
+
 
   const isToday = isSameDay(selectedDay, new Date());
 
