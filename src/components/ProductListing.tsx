@@ -111,7 +111,7 @@ export function ProductListing({
 
   useProductsRealtime(() => loadProducts(categoryParam, subcategoryParam), 'products-list');
 
-  // Reset filters quando muda categoria
+  // Reset filters quando muda a categoria principal (mantém a marca ao navegar nas subcategorias)
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
@@ -119,7 +119,8 @@ export function ProductListing({
     setPriceMinInput('');
     setPriceMaxInput('');
     priceManuallySetRef.current = false;
-  }, [categoryParam, subcategoryParam]);
+  }, [categoryParam]);
+
 
   const loadProducts = async (cat?: string, subcat?: string) => {
     const gen = ++fetchGen.current;
