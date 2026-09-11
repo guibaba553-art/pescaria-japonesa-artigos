@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Loader2, Package, Search, ShoppingCart, Tag, TrendingUp } from 'lucide-react';
+import { BarChart3, Loader2, Package, Search, ShoppingCart, Tag, TrendingUp, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { aggregateProductSales, type SalesChannel } from '@/utils/productSalesAnalysis';
