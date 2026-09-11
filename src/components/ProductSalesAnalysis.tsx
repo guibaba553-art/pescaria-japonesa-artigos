@@ -138,11 +138,52 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
     channel,
   }), [channel, items, orders, products, selectedProductIds]);
 
-  const options = mode === 'product' ? products : categories;
+  // Grupos = mesma árvore de "Gerenciar Categorias": categoria principal e seus subgrupos.
+  const categoryOptions = useMemo(() => {
+    const byParent = new Map<string | null, CategoryRow[]>();
+    categories.forEach((category) => {
+      const key = category.parent_id ?? null;
+      byParent.set(key, [...(byParent.get(key) ?? []), category]);
+    });
+    const directIds = new Map<string, Set<string>>();
+    categories.forEach((category) => {
+      const ids = new Set(links.filter((link) => link.category_id === category.id).map((link) => link.product_id));
+      products.forEach((product) => {
+        if (product.category === category.name || product.subcategory === category.name) ids.add(product.id);
+      });
+      directIds.set(category.id, ids);
+    });
+    const countOf = (id: string): number => {
+      const ids = new Set(directIds.get(id) ?? []);
+      (byParent.get(id) ?? []).forEach((child) => (directIds.get(child.id) ?? []).forEach((pid) => ids.add(pid)));
+      const stack = [...(byParent.get(id) ?? [])];
+      while (stack.length) {
+        const current = stack.pop()!;
+        (directIds.get(current.id) ?? []).forEach((pid) => ids.add(pid));
+        stack.push(...(byParent.get(current.id) ?? []));
+      }
+      return ids.size;
+    };
+    const list: { id: string; name: string; path: string; depth: number; count: number }[] = [];
+    const walk = (parent: string | null, trail: string[], depth: number) => {
+      (byParent.get(parent) ?? []).forEach((category) => {
+        const path = [...trail, category.name];
+        list.push({ id: category.id, name: category.name, path: path.join(' › '), depth, count: countOf(category.id) });
+        walk(category.id, path, depth + 1);
+      });
+    };
+    walk(null, [], 0);
+    return list;
+  }, [categories, links, products]);
+
+  const options: { id: string; name: string; path: string; depth: number; count?: number }[] =
+    mode === 'product'
+      ? products.map((product) => ({ id: product.id, name: product.name, path: product.name, depth: 0 }))
+      : categoryOptions;
   const visibleOptions = options
-    .filter((option) => normalize(option.name).includes(normalize(search)))
-    .slice(0, 80);
-  const selectedName = options.find((option) => option.id === selectedId)?.name;
+    .filter((option) => !search || normalize(option.path).includes(normalize(search)))
+    .slice(0, 120);
+  const selectedName = options.find((option) => option.id === selectedId)?.path;
 
   if (loading) {
     return <div className="flex min-h-[320px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
