@@ -188,7 +188,10 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   const visibleOptions = options
     .filter((option) => !search || normalize(option.path).includes(normalize(search)))
     .slice(0, 120);
-  const selectedName = options.find((option) => option.id === selectedId)?.path;
+  const selectedOptions = selectedIds
+    .map((id) => options.find((option) => option.id === id))
+    .filter((option): option is NonNullable<typeof option> => Boolean(option));
+  const selectedName = selectedOptions.map((option) => option.path).join(' + ');
 
   if (loading) {
     return <div className="flex min-h-[320px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -233,10 +236,10 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
                 <Button
                   key={option.id}
                   type="button"
-                  variant={selectedId === option.id ? 'default' : 'ghost'}
+                  variant={selectedIds.includes(option.id) ? 'default' : 'ghost'}
                   className={mode === 'group' ? 'h-auto w-full justify-between whitespace-normal py-2 text-left' : 'h-auto justify-start whitespace-normal border py-2 text-left'}
                   style={mode === 'group' ? { paddingLeft: 12 + option.depth * 18 } : undefined}
-                  onClick={() => { setSelectedId(option.id); setSearch(''); }}
+                  onClick={() => toggleSelection(option.id)}
                 >
                   <span>{search && mode === 'group' ? option.path : option.name}</span>
                   {mode === 'group' && <span className="ml-3 shrink-0 text-xs text-muted-foreground">{option.count ?? 0} prod.</span>}
