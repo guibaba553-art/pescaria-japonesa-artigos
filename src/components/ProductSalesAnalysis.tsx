@@ -240,7 +240,17 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
               {visibleOptions.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nenhum resultado encontrado.</p>}
             </div>
           )}
-          {selectedName && <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary"><Tag className="h-4 w-4" /> {selectedName}</div>}
+          {selectedName && (
+            <button
+              type="button"
+              onClick={() => { setSelectedId(''); setSearch(''); }}
+              title="Remover seleção e pesquisar outro"
+              className="group inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Tag className="h-4 w-4" /> {selectedName}
+              <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+            </button>
+          )}
         </CardContent>
       </Card>
 
