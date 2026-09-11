@@ -274,7 +274,7 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
         </CardContent>
       </Card>
 
-      {!selectedId ? (
+      {selectedIds.length === 0 ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">Pesquise e selecione um produto ou grupo para iniciar a análise.</div>
       ) : selectedProductIds.size === 0 ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">O grupo {selectedName} ainda não tem nenhum produto cadastrado nele.</div>
