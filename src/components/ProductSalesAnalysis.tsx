@@ -197,6 +197,8 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
 
       {!selectedId ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">Pesquise e selecione um produto ou grupo para iniciar a análise.</div>
+      ) : selectedProductIds.size === 0 ? (
+        <div className="border-y py-14 text-center text-sm text-muted-foreground">O grupo {selectedName} ainda não tem nenhum produto cadastrado nele.</div>
       ) : analysis.totals.quantity === 0 ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">Nenhuma venda encontrada para {selectedName} neste período e canal.</div>
       ) : (
