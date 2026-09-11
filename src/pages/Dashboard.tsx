@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerSourceReport } from '@/components/CustomerSourceReport';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteProfitReport } from '@/components/SiteProfitReport';
+import { ProductSalesAnalysis } from '@/components/ProductSalesAnalysis';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
@@ -1167,6 +1168,9 @@ export default function Dashboard() {
             <TabsTrigger value="clientes" className="gap-2">
               <Users className="h-4 w-4" /> Clientes
             </TabsTrigger>
+            <TabsTrigger value="produtos" className="gap-2">
+              <Package className="h-4 w-4" /> Produtos
+            </TabsTrigger>
 
             <TabsTrigger value="pdv" className="gap-2">
               <Store className="h-4 w-4" /> PDV
@@ -1557,6 +1561,11 @@ export default function Dashboard() {
                 <CustomerTables customers={customersList} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ============ PRODUTOS ============ */}
+          <TabsContent value="produtos" className="space-y-6">
+            <ProductSalesAnalysis rangeStart={range.from} rangeEnd={range.to} />
           </TabsContent>
 
           {/* ============ PDV ============ */}
