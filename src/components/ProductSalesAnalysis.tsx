@@ -36,7 +36,7 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'product' | 'group'>('product');
   const [channel, setChannel] = useState<SalesChannel>('all');
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -99,36 +99,41 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
 
   useEffect(() => {
-    setSelectedId('');
+    setSelectedIds([]);
     setSearch('');
   }, [mode]);
 
-  const selectedProductIds = useMemo(() => {
-    if (!selectedId) return new Set<string>();
-    if (mode === 'product') return new Set([selectedId]);
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
 
-    const categoryIds = new Set([selectedId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      categories.forEach((category) => {
-        if (category.parent_id && categoryIds.has(category.parent_id) && !categoryIds.has(category.id)) {
-          categoryIds.add(category.id);
-          changed = true;
+  const selectedProductIds = useMemo(() => {
+    if (selectedIds.length === 0) return new Set<string>();
+    if (mode === 'product') return new Set(selectedIds);
+
+    const ids = new Set<string>();
+    selectedIds.forEach((selectedId) => {
+      const categoryIds = new Set([selectedId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        categories.forEach((category) => {
+          if (category.parent_id && categoryIds.has(category.parent_id) && !categoryIds.has(category.id)) {
+            categoryIds.add(category.id);
+            changed = true;
+          }
+        });
+      }
+      const names = new Set(categories.filter((category) => categoryIds.has(category.id)).map((category) => category.name));
+      links.filter((link) => categoryIds.has(link.category_id)).forEach((link) => ids.add(link.product_id));
+      products.forEach((product) => {
+        if ((product.category && names.has(product.category)) || (product.subcategory && names.has(product.subcategory))) {
+          ids.add(product.id);
         }
       });
-    }
-    const names = new Set(categories.filter((category) => categoryIds.has(category.id)).map((category) => category.name));
-    const ids = new Set(
-      links.filter((link) => categoryIds.has(link.category_id)).map((link) => link.product_id),
-    );
-    products.forEach((product) => {
-      if ((product.category && names.has(product.category)) || (product.subcategory && names.has(product.subcategory))) {
-        ids.add(product.id);
-      }
     });
     return ids;
-  }, [categories, links, mode, products, selectedId]);
+  }, [categories, links, mode, products, selectedIds]);
 
   const analysis = useMemo(() => aggregateProductSales({
     orders,
@@ -183,7 +188,10 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   const visibleOptions = options
     .filter((option) => !search || normalize(option.path).includes(normalize(search)))
     .slice(0, 120);
-  const selectedName = options.find((option) => option.id === selectedId)?.path;
+  const selectedOptions = selectedIds
+    .map((id) => options.find((option) => option.id === id))
+    .filter((option): option is NonNullable<typeof option> => Boolean(option));
+  const selectedName = selectedOptions.map((option) => option.path).join(' + ');
 
   if (loading) {
     return <div className="flex min-h-[320px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -228,10 +236,10 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
                 <Button
                   key={option.id}
                   type="button"
-                  variant={selectedId === option.id ? 'default' : 'ghost'}
+                  variant={selectedIds.includes(option.id) ? 'default' : 'ghost'}
                   className={mode === 'group' ? 'h-auto w-full justify-between whitespace-normal py-2 text-left' : 'h-auto justify-start whitespace-normal border py-2 text-left'}
                   style={mode === 'group' ? { paddingLeft: 12 + option.depth * 18 } : undefined}
-                  onClick={() => { setSelectedId(option.id); setSearch(''); }}
+                  onClick={() => toggleSelection(option.id)}
                 >
                   <span>{search && mode === 'group' ? option.path : option.name}</span>
                   {mode === 'group' && <span className="ml-3 shrink-0 text-xs text-muted-foreground">{option.count ?? 0} prod.</span>}
@@ -240,21 +248,33 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
               {visibleOptions.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nenhum resultado encontrado.</p>}
             </div>
           )}
-          {selectedName && (
-            <button
-              type="button"
-              onClick={() => { setSelectedId(''); setSearch(''); }}
-              title="Remover seleção e pesquisar outro"
-              className="group inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Tag className="h-4 w-4" /> {selectedName}
-              <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
-            </button>
+          {selectedOptions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => toggleSelection(option.id)}
+                  title="Remover da análise"
+                  className="group inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Tag className="h-4 w-4" /> {option.path}
+                  <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => { setSelectedIds([]); setSearch(''); }}
+                className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+              >
+                Limpar tudo
+              </button>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {!selectedId ? (
+      {selectedIds.length === 0 ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">Pesquise e selecione um produto ou grupo para iniciar a análise.</div>
       ) : selectedProductIds.size === 0 ? (
         <div className="border-y py-14 text-center text-sm text-muted-foreground">O grupo {selectedName} ainda não tem nenhum produto cadastrado nele.</div>
