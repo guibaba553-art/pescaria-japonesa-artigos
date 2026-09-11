@@ -1,0 +1,243 @@
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, Loader2, Package, Search, ShoppingCart, Tag, TrendingUp } from 'lucide-react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { aggregateProductSales, type SalesChannel } from '@/utils/productSalesAnalysis';
+import { fetchAllPaged } from '@/utils/fetchAllPaged';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface ProductRow {
+  id: string;
+  name: string;
+  category?: string | null;
+  subcategory?: string | null;
+}
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  is_primary: boolean;
+}
+
+interface ProductCategoryLink {
+  product_id: string;
+  category_id: string;
+}
+
+const formatBRL = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const normalize = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Date; rangeEnd?: Date }) {
+  const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<'product' | 'group'>('product');
+  const [channel, setChannel] = useState<SalesChannel>('all');
+  const [selectedId, setSelectedId] = useState('');
+  const [search, setSearch] = useState('');
+  const [products, setProducts] = useState<ProductRow[]>([]);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [links, setLinks] = useState<ProductCategoryLink[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!rangeStart || !rangeEnd) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      const start = new Date(rangeStart);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(rangeEnd);
+      end.setHours(23, 59, 59, 999);
+
+      const [productsResult, categoriesResult, linksRows, orderRows] = await Promise.all([
+        supabase.rpc('get_products_admin'),
+        supabase.from('categories').select('id, name, parent_id, is_primary').order('display_order'),
+        fetchAllPaged<ProductCategoryLink>((from, to) =>
+          supabase.from('product_categories').select('product_id, category_id').range(from, to),
+        ),
+        fetchAllPaged<any>((from, to) =>
+          supabase
+            .from('orders')
+            .select('id, created_at, status, source')
+            .gte('created_at', start.toISOString())
+            .lte('created_at', end.toISOString())
+            .order('created_at', { ascending: false })
+            .range(from, to),
+        ),
+      ]);
+
+      const orderIds = orderRows.map((order) => order.id);
+      const itemRows: any[] = [];
+      for (let i = 0; i < orderIds.length; i += 200) {
+        const chunk = orderIds.slice(i, i + 200);
+        const rows = await fetchAllPaged<any>((from, to) =>
+          supabase
+            .from('order_items')
+            .select('order_id, product_id, quantity, price_at_purchase')
+            .in('order_id', chunk)
+            .range(from, to),
+        );
+        itemRows.push(...rows);
+      }
+
+      if (!cancelled) {
+        setProducts(((productsResult.data ?? []) as ProductRow[]).sort((a, b) => a.name.localeCompare(b.name)));
+        setCategories(((categoriesResult.data ?? []) as CategoryRow[]).sort((a, b) => a.name.localeCompare(b.name)));
+        setLinks(linksRows);
+        setOrders(orderRows);
+        setItems(itemRows);
+        setLoading(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
+
+  useEffect(() => {
+    setSelectedId('');
+    setSearch('');
+  }, [mode]);
+
+  const selectedProductIds = useMemo(() => {
+    if (!selectedId) return new Set<string>();
+    if (mode === 'product') return new Set([selectedId]);
+
+    const categoryIds = new Set([selectedId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      categories.forEach((category) => {
+        if (category.parent_id && categoryIds.has(category.parent_id) && !categoryIds.has(category.id)) {
+          categoryIds.add(category.id);
+          changed = true;
+        }
+      });
+    }
+    const names = new Set(categories.filter((category) => categoryIds.has(category.id)).map((category) => category.name));
+    const ids = new Set(
+      links.filter((link) => categoryIds.has(link.category_id)).map((link) => link.product_id),
+    );
+    products.forEach((product) => {
+      if ((product.category && names.has(product.category)) || (product.subcategory && names.has(product.subcategory))) {
+        ids.add(product.id);
+      }
+    });
+    return ids;
+  }, [categories, links, mode, products, selectedId]);
+
+  const analysis = useMemo(() => aggregateProductSales({
+    orders,
+    items,
+    products,
+    productIds: selectedProductIds,
+    channel,
+  }), [channel, items, orders, products, selectedProductIds]);
+
+  const options = mode === 'product' ? products : categories;
+  const visibleOptions = options
+    .filter((option) => normalize(option.name).includes(normalize(search)))
+    .slice(0, 80);
+  const selectedName = options.find((option) => option.id === selectedId)?.name;
+
+  if (loading) {
+    return <div className="flex min-h-[320px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-2xl font-bold"><Package className="h-6 w-6 text-primary" /> Análise de Produtos</h2>
+          <p className="text-sm text-muted-foreground">Veja quanto um produto ou grupo vendeu no período selecionado.</p>
+        </div>
+        <Select value={channel} onValueChange={(value) => setChannel(value as SalesChannel)}>
+          <SelectTrigger className="w-full md:w-44" aria-label="Origem das vendas"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os canais</SelectItem>
+            <SelectItem value="pdv">Somente PDV</SelectItem>
+            <SelectItem value="site">Somente Site</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">O que deseja analisar?</CardTitle>
+          <CardDescription>Escolha um item específico ou um grupo inteiro, incluindo seus subgrupos.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Tabs value={mode} onValueChange={(value) => setMode(value as 'product' | 'group')}>
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="product">Produto</TabsTrigger>
+              <TabsTrigger value="group">Grupo</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={mode === 'product' ? 'Pesquisar produto...' : 'Pesquisar grupo...'} className="pl-9" />
+          </div>
+          {search && (
+            <div className="grid max-h-56 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+              {visibleOptions.map((option) => (
+                <Button key={option.id} type="button" variant={selectedId === option.id ? 'default' : 'outline'} className="h-auto justify-start whitespace-normal py-2 text-left" onClick={() => { setSelectedId(option.id); setSearch(''); }}>
+                  {option.name}
+                </Button>
+              ))}
+              {visibleOptions.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nenhum resultado encontrado.</p>}
+            </div>
+          )}
+          {selectedName && <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary"><Tag className="h-4 w-4" /> {selectedName}</div>}
+        </CardContent>
+      </Card>
+
+      {!selectedId ? (
+        <div className="border-y py-14 text-center text-sm text-muted-foreground">Pesquise e selecione um produto ou grupo para iniciar a análise.</div>
+      ) : analysis.totals.quantity === 0 ? (
+        <div className="border-y py-14 text-center text-sm text-muted-foreground">Nenhuma venda encontrada para {selectedName} neste período e canal.</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {[
+              { label: 'Quantidade vendida', value: `${analysis.totals.quantity.toLocaleString('pt-BR')} un`, icon: Package },
+              { label: 'Receita', value: formatBRL(analysis.totals.revenue), icon: TrendingUp },
+              { label: 'Vendas', value: analysis.totals.orders.toLocaleString('pt-BR'), icon: ShoppingCart },
+              { label: 'Preço médio', value: formatBRL(analysis.totals.averagePrice), icon: BarChart3 },
+            ].map(({ label, value, icon: Icon }) => (
+              <Card key={label}><CardContent className="p-4"><div className="mb-2 flex items-center justify-between"><span className="text-xs font-medium text-muted-foreground">{label}</span><Icon className="h-4 w-4 text-primary" /></div><p className="text-xl font-bold tabular-nums">{value}</p></CardContent></Card>
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader><CardTitle>Quantidade vendida por dia</CardTitle><CardDescription>Evolução de {selectedName} no período selecionado.</CardDescription></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analysis.byDay}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip formatter={(value: number, name: string) => name === 'Quantidade' ? `${value} un` : formatBRL(Number(value))} />
+                  <Bar dataKey="quantity" name="Quantidade" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>{mode === 'group' ? 'Produtos do grupo' : 'Detalhamento'}</CardTitle><CardDescription>Ordenado pela maior quantidade vendida.</CardDescription></CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="py-2">Produto</th><th className="py-2 text-right">Quantidade</th><th className="py-2 text-right">Vendas</th><th className="py-2 text-right">Receita</th><th className="py-2 text-right">Participação</th></tr></thead>
+                <tbody>{analysis.products.map((row) => <tr key={row.productId} className="border-b border-border/60"><td className="py-3 pr-4 font-medium">{row.name}</td><td className="py-3 text-right tabular-nums">{row.quantity.toLocaleString('pt-BR')} un</td><td className="py-3 text-right tabular-nums">{row.orders}</td><td className="py-3 text-right tabular-nums">{formatBRL(row.revenue)}</td><td className="py-3 text-right tabular-nums">{((row.quantity / analysis.totals.quantity) * 100).toFixed(1)}%</td></tr>)}</tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
