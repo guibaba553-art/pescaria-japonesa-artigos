@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { translateAuthError } from '@/utils/authErrors';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -233,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       toast({
         title: "Erro ao criar conta",
-        description: error.message,
+        description: translateAuthError(error.message),
         variant: "destructive"
       });
       return { error };
@@ -266,7 +267,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       toast({
         title: "Erro ao fazer login",
-        description: error.message,
+        description: translateAuthError(error.message),
         variant: "destructive"
       });
     }
@@ -293,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       toast({
         title: "Erro ao solicitar recuperação",
-        description: error.message,
+        description: translateAuthError(error.message),
         variant: "destructive",
       });
       return { error };
@@ -314,7 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       toast({
         title: "Erro ao atualizar senha",
-        description: error.message,
+        description: translateAuthError(error.message),
         variant: "destructive",
       });
       return { error };
