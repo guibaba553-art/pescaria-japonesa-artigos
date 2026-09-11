@@ -1873,7 +1873,7 @@ export default function PDV() {
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([{
-          user_id: user!.id,
+          user_id: sellerId,
           total_amount: calculateTotal(),
           shipping_cost: 0,
           status: 'entregado',
