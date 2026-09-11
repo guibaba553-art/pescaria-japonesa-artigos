@@ -57,11 +57,11 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
       const [productsResult, categoriesResult, linksRows, orderRows] = await Promise.all([
         supabase.rpc('get_products_admin'),
         supabase.from('categories').select('id, name, parent_id, is_primary').order('display_order'),
-        fetchAllPaged<ProductCategoryLink>((from, to) =>
-          supabase.from('product_categories').select('product_id, category_id').range(from, to),
+        fetchAllPaged<ProductCategoryLink>(async (from, to) =>
+          await supabase.from('product_categories').select('product_id, category_id').range(from, to),
         ),
-        fetchAllPaged<any>((from, to) =>
-          supabase
+        fetchAllPaged<any>(async (from, to) =>
+          await supabase
             .from('orders')
             .select('id, created_at, status, source')
             .gte('created_at', start.toISOString())
@@ -75,8 +75,8 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
       const itemRows: any[] = [];
       for (let i = 0; i < orderIds.length; i += 200) {
         const chunk = orderIds.slice(i, i + 200);
-        const rows = await fetchAllPaged<any>((from, to) =>
-          supabase
+        const rows = await fetchAllPaged<any>(async (from, to) =>
+          await supabase
             .from('order_items')
             .select('order_id, product_id, quantity, price_at_purchase')
             .in('order_id', chunk)
