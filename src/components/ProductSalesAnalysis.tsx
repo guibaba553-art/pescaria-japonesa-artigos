@@ -248,16 +248,28 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
               {visibleOptions.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nenhum resultado encontrado.</p>}
             </div>
           )}
-          {selectedName && (
-            <button
-              type="button"
-              onClick={() => { setSelectedId(''); setSearch(''); }}
-              title="Remover seleção e pesquisar outro"
-              className="group inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Tag className="h-4 w-4" /> {selectedName}
-              <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
-            </button>
+          {selectedOptions.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => toggleSelection(option.id)}
+                  title="Remover da análise"
+                  className="group inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Tag className="h-4 w-4" /> {option.path}
+                  <X className="h-4 w-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => { setSelectedIds([]); setSearch(''); }}
+                className="text-xs font-medium text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+              >
+                Limpar tudo
+              </button>
+            </div>
           )}
         </CardContent>
       </Card>
