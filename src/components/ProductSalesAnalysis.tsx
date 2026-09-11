@@ -36,7 +36,7 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'product' | 'group'>('product');
   const [channel, setChannel] = useState<SalesChannel>('all');
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -99,36 +99,41 @@ export function ProductSalesAnalysis({ rangeStart, rangeEnd }: { rangeStart?: Da
   }, [rangeStart?.getTime(), rangeEnd?.getTime()]);
 
   useEffect(() => {
-    setSelectedId('');
+    setSelectedIds([]);
     setSearch('');
   }, [mode]);
 
-  const selectedProductIds = useMemo(() => {
-    if (!selectedId) return new Set<string>();
-    if (mode === 'product') return new Set([selectedId]);
+  const toggleSelection = (id: string) => {
+    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
 
-    const categoryIds = new Set([selectedId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      categories.forEach((category) => {
-        if (category.parent_id && categoryIds.has(category.parent_id) && !categoryIds.has(category.id)) {
-          categoryIds.add(category.id);
-          changed = true;
+  const selectedProductIds = useMemo(() => {
+    if (selectedIds.length === 0) return new Set<string>();
+    if (mode === 'product') return new Set(selectedIds);
+
+    const ids = new Set<string>();
+    selectedIds.forEach((selectedId) => {
+      const categoryIds = new Set([selectedId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        categories.forEach((category) => {
+          if (category.parent_id && categoryIds.has(category.parent_id) && !categoryIds.has(category.id)) {
+            categoryIds.add(category.id);
+            changed = true;
+          }
+        });
+      }
+      const names = new Set(categories.filter((category) => categoryIds.has(category.id)).map((category) => category.name));
+      links.filter((link) => categoryIds.has(link.category_id)).forEach((link) => ids.add(link.product_id));
+      products.forEach((product) => {
+        if ((product.category && names.has(product.category)) || (product.subcategory && names.has(product.subcategory))) {
+          ids.add(product.id);
         }
       });
-    }
-    const names = new Set(categories.filter((category) => categoryIds.has(category.id)).map((category) => category.name));
-    const ids = new Set(
-      links.filter((link) => categoryIds.has(link.category_id)).map((link) => link.product_id),
-    );
-    products.forEach((product) => {
-      if ((product.category && names.has(product.category)) || (product.subcategory && names.has(product.subcategory))) {
-        ids.add(product.id);
-      }
     });
     return ids;
-  }, [categories, links, mode, products, selectedId]);
+  }, [categories, links, mode, products, selectedIds]);
 
   const analysis = useMemo(() => aggregateProductSales({
     orders,
