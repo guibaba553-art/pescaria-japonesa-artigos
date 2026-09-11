@@ -1656,6 +1656,25 @@ export default function PDV() {
       return;
     }
 
+    // Sessão pode ter expirado enquanto o PDV ficou aberto: sem usuário não dá
+    // para gravar o pedido (user_id é obrigatório). Tenta recuperar a sessão.
+    let sellerId = user?.id ?? null;
+    if (!sellerId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      sellerId = sessionData?.session?.user?.id ?? null;
+    }
+    if (!sellerId) {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Faça login novamente para finalizar a venda. O carrinho foi mantido.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+
+
+
     // Cliente com classificação restritiva: exige confirmação + motivo (não bloqueia automaticamente)
     let tierOverrideReason: string | null = null;
     if (selectedCustomer && customerTier?.block_purchase) {
