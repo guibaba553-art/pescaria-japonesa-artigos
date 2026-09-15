@@ -69,11 +69,8 @@ import { Award } from 'lucide-react';
 
 import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
-import type { TefApprovedResult } from '@/components/TefChargeDialog';
 import { validateSplit, splitChange, primaryPart, type PaymentPart } from '@/utils/paymentSplit';
-const TefChargeDialog = lazy(() =>
-  import('@/components/TefChargeDialog').then((m) => ({ default: m.TefChargeDialog }))
-);
+
 
 interface ProductVariation {
   id: string;
