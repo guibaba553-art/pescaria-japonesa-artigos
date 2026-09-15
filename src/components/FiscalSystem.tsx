@@ -9,8 +9,7 @@ import { FocusNFeSettings } from './FocusNFeSettings';
 import { XMLExporter } from './XMLExporter';
 import { SpedExporter } from './SpedExporter';
 import { CategoryFiscalDefaultsManager } from './CategoryFiscalDefaultsManager';
-import { TEFSettings } from './TEFSettings';
-import { FileText, Settings, Download, TrendingUp, Tag, FileSpreadsheet, CreditCard } from 'lucide-react';
+import { FileText, Settings, Download, TrendingUp, Tag, FileSpreadsheet } from 'lucide-react';
 
 interface FiscalSettings {
   id: string;
@@ -92,7 +91,7 @@ export function FiscalSystem() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="focus" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="focus" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 Focus NFe
@@ -116,10 +115,6 @@ export function FiscalSystem() {
               <TabsTrigger value="sped" className="flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4" />
                 SPED
-              </TabsTrigger>
-              <TabsTrigger value="tef" className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                TEF
               </TabsTrigger>
             </TabsList>
 
@@ -147,9 +142,6 @@ export function FiscalSystem() {
               <SpedExporter />
             </TabsContent>
 
-            <TabsContent value="tef" className="space-y-4">
-              <TEFSettings />
-            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

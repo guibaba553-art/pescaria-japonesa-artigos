@@ -709,13 +709,9 @@ export default function PDV() {
     }
   };
 
+  // TEF temporariamente desativado: o PDV finaliza cartão sem a maquininha integrada.
   const loadTefSettings = async () => {
-    try {
-      const { data } = await supabase.from('tef_settings').select('enabled').limit(1).maybeSingle();
-      setTefEnabled(!!data?.enabled);
-    } catch (err) {
-      console.error('Erro ao carregar config TEF:', err);
-    }
+    setTefEnabled(false);
   };
 
   const saveSale = async () => {
