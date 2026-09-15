@@ -20,8 +20,12 @@ describe('BarcodeInput', () => {
       </form>,
     );
 
-    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', code: 'Enter' });
+    const wasNotCancelled = fireEvent.keyDown(screen.getByRole('textbox'), {
+      key: 'Enter',
+      code: 'Enter',
+    });
 
+    expect(wasNotCancelled).toBe(false);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
