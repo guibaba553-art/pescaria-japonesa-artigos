@@ -4206,25 +4206,8 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {tefEnabled && showTefDialog && (
-        <Suspense fallback={null}>
-          <TefChargeDialog
-            open={showTefDialog}
-            amount={calculateTotal()}
-            paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-            installments={Math.max(1, installments)}
-            onCancel={() => {
-              setShowTefDialog(false);
-              tefResultRef.current = null;
-            }}
-            onApproved={(result) => {
-              tefResultRef.current = result;
-              setShowTefDialog(false);
-              setTimeout(() => { finalizeSale(); }, 50);
-            }}
-          />
-        </Suspense>
-      )}
+
+
 
       <CustomerScoreDialog
         open={!!scoreDialogCustomer}
