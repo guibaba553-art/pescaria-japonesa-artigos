@@ -1782,7 +1782,7 @@ export default function PDV() {
     if (
       tefEnabled &&
       !splitMode &&
-      (paymentMethod === 'credit' || paymentMethod === 'debit') &&
+      (paymentMethod === 'credit' || paymentMethod === 'debit' || paymentMethod === 'pix') &&
       !tefResultRef.current
     ) {
       finalizingRef.current = false;
@@ -4234,8 +4234,8 @@ export default function PDV() {
           <TefChargeDialog
             open={showTefDialog}
             amount={calculateTotal()}
-            paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-            installments={Math.max(1, installments)}
+            paymentMethod={paymentMethod === 'debit' ? 'debit' : paymentMethod === 'pix' ? 'pix' : 'credit'}
+            installments={paymentMethod === 'credit' ? Math.max(1, installments) : 1}
             onCancel={() => {
               setShowTefDialog(false);
               tefResultRef.current = null;
