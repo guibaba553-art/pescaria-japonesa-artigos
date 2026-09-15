@@ -530,10 +530,15 @@ export default function PDV() {
   const [savedSalesSearch, setSavedSalesSearch] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
-  // TEF
-  const [tefEnabled, setTefEnabled] = useState(false);
-  const [showTefDialog, setShowTefDialog] = useState(false);
-  const tefResultRef = useRef<TefApprovedResult | null>(null);
+  // Maquininha integrada (TEF) desativada — dados ficam sempre nulos.
+  const tefResultRef = useRef<{
+    transaction_id?: string;
+    card_brand?: string;
+    card_last_digits?: string;
+    nsu?: string;
+    authorization_code?: string;
+  } | null>(null);
+
 
   useEffect(() => {
     if (!loading && !canView) {
