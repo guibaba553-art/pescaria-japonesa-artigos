@@ -1754,18 +1754,9 @@ export default function PDV() {
       }
     }
 
-    // TEF: para crédito/débito com TEF habilitado, abre dialog da maquininha
-    // antes de criar o pedido. Só prossegue após aprovação.
-    if (
-      tefEnabled &&
-      !splitMode &&
-      (paymentMethod === 'credit' || paymentMethod === 'debit') &&
-      !tefResultRef.current
-    ) {
-      finalizingRef.current = false;
-      setShowTefDialog(true);
-      return;
-    }
+    // Maquininha integrada (TEF) desativada: cartão é finalizado direto no PDV.
+
+
 
     setProcessing(true);
 
