@@ -555,7 +555,7 @@ export default function PDV() {
     const runDeferred = () => {
       loadCustomers();
       loadSavedSales();
-      loadTefSettings();
+      
     };
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     if (w.requestIdleCallback) {
