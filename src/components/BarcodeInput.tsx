@@ -58,6 +58,12 @@ export function BarcodeInput({
         maxLength={50}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
         placeholder={placeholder}
         disabled={disabled}
         className="flex-1"
