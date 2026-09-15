@@ -69,11 +69,8 @@ import { Award } from 'lucide-react';
 
 import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
-import type { TefApprovedResult } from '@/components/TefChargeDialog';
 import { validateSplit, splitChange, primaryPart, type PaymentPart } from '@/utils/paymentSplit';
-const TefChargeDialog = lazy(() =>
-  import('@/components/TefChargeDialog').then((m) => ({ default: m.TefChargeDialog }))
-);
+
 
 interface ProductVariation {
   id: string;
@@ -533,10 +530,15 @@ export default function PDV() {
   const [savedSalesSearch, setSavedSalesSearch] = useState('');
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
-  // TEF
-  const [tefEnabled, setTefEnabled] = useState(false);
-  const [showTefDialog, setShowTefDialog] = useState(false);
-  const tefResultRef = useRef<TefApprovedResult | null>(null);
+  // Maquininha integrada (TEF) desativada — dados ficam sempre nulos.
+  const tefResultRef = useRef<{
+    transaction_id?: string;
+    card_brand?: string;
+    card_last_digits?: string;
+    nsu?: string;
+    authorization_code?: string;
+  } | null>(null);
+
 
   useEffect(() => {
     if (!loading && !canView) {
@@ -553,7 +555,7 @@ export default function PDV() {
     const runDeferred = () => {
       loadCustomers();
       loadSavedSales();
-      loadTefSettings();
+      
     };
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     if (w.requestIdleCallback) {
@@ -709,10 +711,6 @@ export default function PDV() {
     }
   };
 
-  // TEF temporariamente desativado: o PDV finaliza cartão sem a maquininha integrada.
-  const loadTefSettings = async () => {
-    setTefEnabled(false);
-  };
 
   const saveSale = async () => {
     if (cart.length === 0) {
@@ -1754,18 +1752,9 @@ export default function PDV() {
       }
     }
 
-    // TEF: para crédito/débito com TEF habilitado, abre dialog da maquininha
-    // antes de criar o pedido. Só prossegue após aprovação.
-    if (
-      tefEnabled &&
-      !splitMode &&
-      (paymentMethod === 'credit' || paymentMethod === 'debit') &&
-      !tefResultRef.current
-    ) {
-      finalizingRef.current = false;
-      setShowTefDialog(true);
-      return;
-    }
+    // Maquininha integrada (TEF) desativada: cartão é finalizado direto no PDV.
+
+
 
     setProcessing(true);
 
@@ -4206,25 +4195,8 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {tefEnabled && showTefDialog && (
-        <Suspense fallback={null}>
-          <TefChargeDialog
-            open={showTefDialog}
-            amount={calculateTotal()}
-            paymentMethod={paymentMethod === 'debit' ? 'debit' : 'credit'}
-            installments={Math.max(1, installments)}
-            onCancel={() => {
-              setShowTefDialog(false);
-              tefResultRef.current = null;
-            }}
-            onApproved={(result) => {
-              tefResultRef.current = result;
-              setShowTefDialog(false);
-              setTimeout(() => { finalizeSale(); }, 50);
-            }}
-          />
-        </Suspense>
-      )}
+
+
 
       <CustomerScoreDialog
         open={!!scoreDialogCustomer}
