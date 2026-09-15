@@ -143,12 +143,6 @@ export function LabelAssignBarcodeDialog({
             ref={inputRef}
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSave();
-              }
-            }}
             placeholder="Aguardando leitura..."
             autoComplete="off"
             className="font-mono text-lg tracking-wider"
