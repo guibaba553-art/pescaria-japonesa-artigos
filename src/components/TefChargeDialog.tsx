@@ -23,7 +23,7 @@ export interface TefApprovedResult {
 interface Props {
   open: boolean;
   amount: number;
-  paymentMethod: 'credit' | 'debit' | 'pix';
+  paymentMethod: 'credit' | 'debit';
   installments?: number;
   onCancel: () => void;
   onApproved: (result: TefApprovedResult) => void;
@@ -56,11 +56,7 @@ export function TefChargeDialog({
 
     (async () => {
       setPhase('charging');
-      setMessage(
-        paymentMethod === 'pix'
-          ? 'Mostre o QR Code da maquininha ao cliente e aguarde o pagamento…'
-          : 'Aguardando maquininha aprovar o pagamento…',
-      );
+      setMessage('Aguardando maquininha aprovar o pagamento…');
 
       try {
         const { data, error } = await supabase.functions.invoke('tef-stone-charge', {
@@ -146,7 +142,7 @@ export function TefChargeDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            {paymentMethod === 'pix' ? 'PIX na maquininha' : 'Pagamento na maquininha'}
+            Pagamento na maquininha
           </DialogTitle>
           <DialogDescription>
             Total: <strong>R$ {amount.toFixed(2).replace('.', ',')}</strong>
