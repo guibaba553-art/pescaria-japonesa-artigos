@@ -9,8 +9,7 @@ import { FocusNFeSettings } from './FocusNFeSettings';
 import { XMLExporter } from './XMLExporter';
 import { SpedExporter } from './SpedExporter';
 import { CategoryFiscalDefaultsManager } from './CategoryFiscalDefaultsManager';
-import { TEFSettings } from './TEFSettings';
-import { FileText, Settings, Download, TrendingUp, Tag, FileSpreadsheet, CreditCard } from 'lucide-react';
+import { FileText, Settings, Download, TrendingUp, Tag, FileSpreadsheet } from 'lucide-react';
 
 interface FiscalSettings {
   id: string;
