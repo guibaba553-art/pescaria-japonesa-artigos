@@ -16,6 +16,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
+import { CASH_DENOMINATIONS, sumDenominations, countPieces } from '@/utils/cashDenominations';
 
 
 interface CashRegister {
