@@ -70,7 +70,8 @@ export default function CashRegister() {
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [history, setHistory] = useState<CashRegister[]>([]);
   const [salesCount, setSalesCount] = useState(0);
-  const [openingAmount, setOpeningAmount] = useState('');
+  const [openingDenomCounts, setOpeningDenomCounts] = useState<Record<string, string>>({});
+  const openingTotal = sumDenominations(openingDenomCounts);
   const [closingAmount, setClosingAmount] = useState('');
   const [denomCounts, setDenomCounts] = useState<Record<string, string>>({});
   const countedTotal = sumDenominations(denomCounts);
@@ -243,21 +244,21 @@ export default function CashRegister() {
   };
 
   const handleOpenRegister = async () => {
-    if (!openingAmount || parseFloat(openingAmount) < 0) {
-      toast({ title: 'Valor inválido', description: 'Informe o valor de abertura', variant: 'destructive' });
+    if (openingTotal < 0 || (countPieces(openingDenomCounts) === 0 && openingTotal === 0)) {
+      toast({ title: 'Valor inválido', description: 'Informe a quantidade de cédulas/moedas da abertura', variant: 'destructive' });
       return;
     }
     setLoadingAction(true);
     try {
       const { error } = await supabase.from('cash_registers').insert([{
         opened_by: user!.id,
-        opening_amount: parseFloat(openingAmount),
-        expected_amount: parseFloat(openingAmount),
+        opening_amount: openingTotal,
+        expected_amount: openingTotal,
         status: 'open',
       }]);
       if (error) throw error;
-      toast({ title: 'Caixa aberto!', description: `Caixa aberto com R$ ${openingAmount}` });
-      setOpeningAmount('');
+      toast({ title: 'Caixa aberto!', description: `Caixa aberto com ${formatBRL(openingTotal)}` });
+      setOpeningDenomCounts({});
       loadCurrentRegister();
     } catch (error: any) {
       toast({ title: 'Erro ao abrir caixa', description: error.message, variant: 'destructive' });
