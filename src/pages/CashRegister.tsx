@@ -319,8 +319,12 @@ export default function CashRegister() {
   };
 
   const handleCloseRegister = async () => {
-    if (!closingAmount || parseFloat(closingAmount) < 0) {
-      toast({ title: 'Valor inválido', variant: 'destructive' });
+    if (countPieces(denomCounts) === 0) {
+      toast({
+        title: 'Informe a contagem',
+        description: 'Digite a quantidade de cédulas e moedas no caixa.',
+        variant: 'destructive',
+      });
       return;
     }
     setLoadingAction(true);
