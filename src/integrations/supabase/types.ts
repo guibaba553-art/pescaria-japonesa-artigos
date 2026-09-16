@@ -116,12 +116,14 @@ export type Database = {
           cash_sales: number
           closed_at: string | null
           closing_amount: number | null
+          closing_denominations: Json
           created_at: string
           expected_amount: number
           id: string
           opened_at: string
           opened_by: string
           opening_amount: number
+          opening_denominations: Json
           pix_sales: number
           status: string
           updated_at: string
@@ -133,12 +135,14 @@ export type Database = {
           cash_sales?: number
           closed_at?: string | null
           closing_amount?: number | null
+          closing_denominations?: Json
           created_at?: string
           expected_amount?: number
           id?: string
           opened_at?: string
           opened_by: string
           opening_amount?: number
+          opening_denominations?: Json
           pix_sales?: number
           status?: string
           updated_at?: string
@@ -150,12 +154,14 @@ export type Database = {
           cash_sales?: number
           closed_at?: string | null
           closing_amount?: number | null
+          closing_denominations?: Json
           created_at?: string
           expected_amount?: number
           id?: string
           opened_at?: string
           opened_by?: string
           opening_amount?: number
+          opening_denominations?: Json
           pix_sales?: number
           status?: string
           updated_at?: string
