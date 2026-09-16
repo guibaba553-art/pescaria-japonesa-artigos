@@ -81,3 +81,67 @@ export function getDenominationBreakdown(counts: unknown): DenominationBreakdown
     }];
   });
 }
+
+const quantityFor = (counts: DenominationCounts, value: number): number => {
+  const raw = counts[String(value)];
+  const parsed = typeof raw === "string" ? parseInt(raw, 10) : raw;
+  return parsed && Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+};
+
+/** Soma duas contagens e desconta uma terceira, removendo saldos zerados. */
+export function applyCashExchange(
+  available: DenominationCounts,
+  received: DenominationCounts,
+  change: DenominationCounts,
+): Record<string, number> {
+  return CASH_DENOMINATIONS.reduce<Record<string, number>>((result, denomination) => {
+    const quantity = quantityFor(available, denomination.value)
+      + quantityFor(received, denomination.value)
+      - quantityFor(change, denomination.value);
+    if (quantity > 0) result[String(denomination.value)] = quantity;
+    return result;
+  }, {});
+}
+
+/**
+ * Encontra um troco exato com o menor número de peças, sem ultrapassar o saldo
+ * disponível. As cédulas recebidas já podem ser reutilizadas no próprio troco.
+ */
+export function calculateAvailableChange(
+  amount: number,
+  available: DenominationCounts,
+  received: DenominationCounts = {},
+): Record<string, number> | null {
+  const targetUnits = Math.round((Number(amount) || 0) * 20); // menor moeda: R$ 0,05
+  if (targetUnits < 0) return null;
+  if (targetUnits === 0) return {};
+
+  type State = { pieces: number; counts: Record<string, number> };
+  let states = new Map<number, State>([[0, { pieces: 0, counts: {} }]]);
+
+  for (const denomination of CASH_DENOMINATIONS) {
+    const key = String(denomination.value);
+    const unitValue = Math.round(denomination.value * 20);
+    const limit = quantityFor(available, denomination.value) + quantityFor(received, denomination.value);
+    if (limit === 0) continue;
+
+    const next = new Map(states);
+    for (const [current, state] of states) {
+      const maxQuantity = Math.min(limit, Math.floor((targetUnits - current) / unitValue));
+      for (let quantity = 1; quantity <= maxQuantity; quantity += 1) {
+        const sum = current + quantity * unitValue;
+        const pieces = state.pieces + quantity;
+        const previous = next.get(sum);
+        if (!previous || pieces < previous.pieces) {
+          next.set(sum, {
+            pieces,
+            counts: { ...state.counts, [key]: quantity },
+          });
+        }
+      }
+    }
+    states = next;
+  }
+
+  return states.get(targetUnits)?.counts ?? null;
+}
