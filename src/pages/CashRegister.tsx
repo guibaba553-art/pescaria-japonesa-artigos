@@ -379,7 +379,7 @@ export default function CashRegister() {
     const denomSource = currentRegister.current_denominations ?? currentRegister.opening_denominations;
     const denomBreakdown = getDenominationBreakdown(denomSource);
     const denomRows = denomBreakdown
-      .map((d) => `<div class="row"><span>${d.label} × ${d.count}</span><span>${formatBRL(d.subtotal)}</span></div>`)
+      .map((d) => `<div class="row"><span>${d.label} × ${d.quantity}</span><span>${formatBRL(d.subtotal)}</span></div>`)
       .join('');
     const denomSection = denomRows
       ? `<hr/><div class="row total"><span>Cédulas/moedas em caixa:</span><span></span></div>${denomRows}`
