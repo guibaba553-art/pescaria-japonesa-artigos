@@ -70,7 +70,8 @@ export default function CashRegister() {
   const [movements, setMovements] = useState<CashMovement[]>([]);
   const [history, setHistory] = useState<CashRegister[]>([]);
   const [salesCount, setSalesCount] = useState(0);
-  const [openingAmount, setOpeningAmount] = useState('');
+  const [openingDenomCounts, setOpeningDenomCounts] = useState<Record<string, string>>({});
+  const openingTotal = sumDenominations(openingDenomCounts);
   const [closingAmount, setClosingAmount] = useState('');
   const [denomCounts, setDenomCounts] = useState<Record<string, string>>({});
   const countedTotal = sumDenominations(denomCounts);
@@ -243,21 +244,21 @@ export default function CashRegister() {
   };
 
   const handleOpenRegister = async () => {
-    if (!openingAmount || parseFloat(openingAmount) < 0) {
-      toast({ title: 'Valor inválido', description: 'Informe o valor de abertura', variant: 'destructive' });
+    if (openingTotal < 0 || (countPieces(openingDenomCounts) === 0 && openingTotal === 0)) {
+      toast({ title: 'Valor inválido', description: 'Informe a quantidade de cédulas/moedas da abertura', variant: 'destructive' });
       return;
     }
     setLoadingAction(true);
     try {
       const { error } = await supabase.from('cash_registers').insert([{
         opened_by: user!.id,
-        opening_amount: parseFloat(openingAmount),
-        expected_amount: parseFloat(openingAmount),
+        opening_amount: openingTotal,
+        expected_amount: openingTotal,
         status: 'open',
       }]);
       if (error) throw error;
-      toast({ title: 'Caixa aberto!', description: `Caixa aberto com R$ ${openingAmount}` });
-      setOpeningAmount('');
+      toast({ title: 'Caixa aberto!', description: `Caixa aberto com ${formatBRL(openingTotal)}` });
+      setOpeningDenomCounts({});
       loadCurrentRegister();
     } catch (error: any) {
       toast({ title: 'Erro ao abrir caixa', description: error.message, variant: 'destructive' });
@@ -461,13 +462,14 @@ export default function CashRegister() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="opening">Valor de Abertura (R$)</Label>
-                  <Input
-                    id="opening" type="number" step="0.01"
-                    value={openingAmount}
-                    onChange={(e) => setOpeningAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
+                  <Label>Quantidade de cédulas e moedas (troco inicial)</Label>
+                  <DenominationGrid counts={openingDenomCounts} onChange={setOpeningDenomCounts} />
+                  <div className="flex justify-between text-sm pt-1">
+                    <span className="text-muted-foreground">
+                      {countPieces(openingDenomCounts)} cédulas/moedas
+                    </span>
+                    <span className="font-bold">Valor de abertura: {formatBRL(openingTotal)}</span>
+                  </div>
                 </div>
                 <Button onClick={handleOpenRegister} disabled={loadingAction} className="w-full">
                   Abrir Caixa
@@ -718,25 +720,7 @@ export default function CashRegister() {
             </div>
             <div className="space-y-2">
               <Label>Quantidade de cédulas e moedas</Label>
-              <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
-                {CASH_DENOMINATIONS.map((d) => (
-                  <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
-                    <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      placeholder="0"
-                      className="h-8 text-sm"
-                      value={denomCounts[String(d.value)] ?? ''}
-                      onChange={(e) =>
-                        setDenomCounts((prev) => ({ ...prev, [String(d.value)]: e.target.value }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
+              <DenominationGrid counts={denomCounts} onChange={setDenomCounts} />
               <div className="flex justify-between text-sm pt-1">
                 <span className="text-muted-foreground">
                   {countPieces(denomCounts)} cédulas/moedas
@@ -761,6 +745,30 @@ export default function CashRegister() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function DenominationGrid({
+  counts, onChange,
+}: { counts: Record<string, string>; onChange: (c: Record<string, string>) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
+      {CASH_DENOMINATIONS.map((d) => (
+        <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
+          <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            placeholder="0"
+            className="h-8 text-sm"
+            value={counts[String(d.value)] ?? ''}
+            onChange={(e) => onChange({ ...counts, [String(d.value)]: e.target.value })}
+          />
+        </div>
+      ))}
     </div>
   );
 }
