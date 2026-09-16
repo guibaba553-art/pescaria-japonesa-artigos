@@ -376,6 +376,14 @@ export default function CashRegister() {
     if (!currentRegister) return;
     const totalSales = salesSummary.cash + salesSummary.card + salesSummary.pix;
     const avgTicket = salesCount > 0 ? totalSales / salesCount : 0;
+    const denomSource = currentRegister.current_denominations ?? currentRegister.opening_denominations;
+    const denomBreakdown = getDenominationBreakdown(denomSource);
+    const denomRows = denomBreakdown
+      .map((d) => `<div class="row"><span>${d.label} × ${d.count}</span><span>${formatBRL(d.subtotal)}</span></div>`)
+      .join('');
+    const denomSection = denomRows
+      ? `<hr/><div class="row total"><span>Cédulas/moedas em caixa:</span><span></span></div>${denomRows}`
+      : '';
     const w = window.open('', '_blank', 'width=400,height=600');
     if (!w) return;
     w.document.write(`
