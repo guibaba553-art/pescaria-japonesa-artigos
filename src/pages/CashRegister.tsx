@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, DollarSign, TrendingUp, TrendingDown, Lock, Unlock,
-  Clock, Receipt, Printer, History, Target, ShoppingCart,
+  Clock, Receipt, Printer, History, Target, ShoppingCart, Banknote,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -555,10 +555,11 @@ export default function CashRegister() {
             </div>
 
             <Tabs defaultValue="operations">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="operations">Operações</TabsTrigger>
                 <TabsTrigger value="summary">Vendas</TabsTrigger>
                 <TabsTrigger value="movements">Movimentações</TabsTrigger>
+                <TabsTrigger value="denominations">Cédulas</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
               </TabsList>
 
@@ -658,6 +659,65 @@ export default function CashRegister() {
                         ))}
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="denominations">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Banknote className="w-5 h-5" /> Cédulas e Moedas no Caixa
+                    </CardTitle>
+                    <CardDescription>
+                      Quantidade atual de cada denominação considerada no caixa
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const breakdown = getDenominationBreakdown(currentRegister.current_denominations);
+                      const pieces = breakdown.reduce((sum, item) => sum + item.quantity, 0);
+                      const totalInDrawer = breakdown.reduce((sum, item) => sum + item.subtotal, 0);
+                      if (breakdown.length === 0) {
+                        return (
+                          <p className="text-sm text-muted-foreground text-center py-6">
+                            Nenhuma contagem de cédulas registrada para este caixa
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            {breakdown.map((item) => (
+                              <div
+                                key={item.label}
+                                className="flex items-center justify-between p-3 border rounded bg-muted/30"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                                    {item.quantity}
+                                  </div>
+                                  <div>
+                                    <div className="font-medium">{item.label}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {formatBRL(item.subtotal)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-4 border-t">
+                            <div className="text-sm text-muted-foreground">
+                              Total de peças: <span className="font-bold text-foreground">{pieces}</span>
+                            </div>
+                            <div className="text-lg font-bold">
+                              Total em cédulas/moedas: {formatBRL(totalInDrawer)}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>
