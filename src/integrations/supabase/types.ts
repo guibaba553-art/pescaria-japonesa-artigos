@@ -118,6 +118,7 @@ export type Database = {
           closing_amount: number | null
           closing_denominations: Json
           created_at: string
+          current_denominations: Json
           expected_amount: number
           id: string
           opened_at: string
@@ -137,6 +138,7 @@ export type Database = {
           closing_amount?: number | null
           closing_denominations?: Json
           created_at?: string
+          current_denominations?: Json
           expected_amount?: number
           id?: string
           opened_at?: string
@@ -156,6 +158,7 @@ export type Database = {
           closing_amount?: number | null
           closing_denominations?: Json
           created_at?: string
+          current_denominations?: Json
           expected_amount?: number
           id?: string
           opened_at?: string
@@ -3067,6 +3070,16 @@ export type Database = {
       add_label_pending: {
         Args: { p_product_id: string; p_qty: number; p_variation_id: string }
         Returns: string
+      }
+      apply_pdv_cash_exchange: {
+        Args: {
+          p_cash_register_id: string
+          p_change_amount: number
+          p_change_denominations: Json
+          p_received_amount: number
+          p_received_denominations: Json
+        }
+        Returns: Json
       }
       apply_stock_movement: {
         Args: {

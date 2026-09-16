@@ -1,0 +1,1 @@
+ALTER FUNCTION public.apply_pdv_cash_exchange(uuid, jsonb, jsonb, numeric, numeric) SECURITY INVOKER;

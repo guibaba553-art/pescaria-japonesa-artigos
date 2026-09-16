@@ -17,12 +17,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
 import {
-  CASH_DENOMINATIONS,
   sumDenominations,
   countPieces,
   compactDenominationCounts,
   getDenominationBreakdown,
 } from '@/utils/cashDenominations';
+import { CashDenominationGrid } from '@/components/CashDenominationGrid';
 
 
 interface CashRegister {
@@ -262,6 +262,7 @@ export default function CashRegister() {
         opened_by: user!.id,
         opening_amount: openingTotal,
         opening_denominations: compactDenominationCounts(openingDenomCounts),
+        current_denominations: compactDenominationCounts(openingDenomCounts),
         expected_amount: openingTotal,
         status: 'open',
       }]);
@@ -473,7 +474,7 @@ export default function CashRegister() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Quantidade de cédulas e moedas (troco inicial)</Label>
-                  <DenominationGrid counts={openingDenomCounts} onChange={setOpeningDenomCounts} />
+                  <CashDenominationGrid counts={openingDenomCounts} onChange={setOpeningDenomCounts} />
                   <div className="flex justify-between text-sm pt-1">
                     <span className="text-muted-foreground">
                       {countPieces(openingDenomCounts)} cédulas/moedas
@@ -730,7 +731,7 @@ export default function CashRegister() {
             </div>
             <div className="space-y-2">
               <Label>Quantidade de cédulas e moedas</Label>
-              <DenominationGrid counts={denomCounts} onChange={setDenomCounts} />
+              <CashDenominationGrid counts={denomCounts} onChange={setDenomCounts} />
               <div className="flex justify-between text-sm pt-1">
                 <span className="text-muted-foreground">
                   {countPieces(denomCounts)} cédulas/moedas
@@ -755,30 +756,6 @@ export default function CashRegister() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function DenominationGrid({
-  counts, onChange,
-}: { counts: Record<string, string>; onChange: (c: Record<string, string>) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
-      {CASH_DENOMINATIONS.map((d) => (
-        <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
-          <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            inputMode="numeric"
-            placeholder="0"
-            className="h-8 text-sm"
-            value={counts[String(d.value)] ?? ''}
-            onChange={(e) => onChange({ ...counts, [String(d.value)]: e.target.value })}
-          />
-        </div>
-      ))}
     </div>
   );
 }

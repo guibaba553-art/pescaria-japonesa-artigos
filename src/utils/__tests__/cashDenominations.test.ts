@@ -5,6 +5,8 @@ import {
   CASH_DENOMINATIONS,
   compactDenominationCounts,
   getDenominationBreakdown,
+  calculateAvailableChange,
+  applyCashExchange,
 } from "../cashDenominations";
 
 describe("cashDenominations", () => {
@@ -43,5 +45,30 @@ describe("cashDenominations", () => {
       { label: "R$ 100", quantity: 2, subtotal: 200 },
       { label: "R$ 0,50", quantity: 3, subtotal: 1.5 },
     ]);
+  });
+
+  it("calcula troco exato sem usar mais cédulas do que o caixa possui", () => {
+    expect(calculateAvailableChange(37, { "20": 1, "10": 2, "5": 1, "2": 1 })).toEqual({
+      "20": 1,
+      "10": 1,
+      "5": 1,
+      "2": 1,
+    });
+  });
+
+  it("usa também as cédulas que o cliente acabou de entregar", () => {
+    expect(calculateAvailableChange(50, {}, { "50": 1 })).toEqual({ "50": 1 });
+  });
+
+  it("informa quando o caixa não consegue formar o troco exato", () => {
+    expect(calculateAvailableChange(15, { "20": 1, "10": 1 })).toBeNull();
+  });
+
+  it("atualiza o saldo somando o recebido e retirando o troco", () => {
+    expect(applyCashExchange(
+      { "20": 2, "10": 1, "5": 1 },
+      { "50": 1 },
+      { "20": 1, "10": 1 },
+    )).toEqual({ "50": 1, "20": 1, "5": 1 });
   });
 });
