@@ -412,6 +412,7 @@ export default function CashRegister() {
       <div class="row"><span>Ticket médio:</span><span>${formatBRL(avgTicket)}</span></div>
       <hr/>
       <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(expectedInDrawer)}</span></div>
+      ${denomSection}
       <p style="text-align:center; font-size:11px;">Impresso em ${new Date().toLocaleString('pt-BR')}</p>
       </body></html>
     `);
