@@ -71,6 +71,8 @@ export default function CashRegister() {
   const [salesCount, setSalesCount] = useState(0);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
+  const [denomCounts, setDenomCounts] = useState<Record<string, string>>({});
+  const countedTotal = sumDenominations(denomCounts);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalReason, setWithdrawalReason] = useState('');
   const [additionAmount, setAdditionAmount] = useState('');
