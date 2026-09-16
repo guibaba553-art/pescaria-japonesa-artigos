@@ -351,7 +351,7 @@ export default function CashRegister() {
       }).eq('id', currentRegister!.id);
       if (error) throw error;
       toast({ title: 'Caixa fechado!' });
-      setClosingAmount(''); setShowClosing(false);
+      setClosingAmount(''); setDenomCounts({}); setShowClosing(false);
       loadCurrentRegister();
       loadHistory();
     } catch (error: any) {
