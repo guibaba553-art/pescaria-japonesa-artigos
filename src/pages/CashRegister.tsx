@@ -710,14 +710,35 @@ export default function CashRegister() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Valor Contado no Caixa (R$)</Label>
-              <Input type="number" step="0.01" value={closingAmount}
-                onChange={(e) => setClosingAmount(e.target.value)} />
+              <Label>Quantidade de cédulas e moedas</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
+                {CASH_DENOMINATIONS.map((d) => (
+                  <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
+                    <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="h-8 text-sm"
+                      value={denomCounts[String(d.value)] ?? ''}
+                      onChange={(e) =>
+                        setDenomCounts((prev) => ({ ...prev, [String(d.value)]: e.target.value }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-sm pt-1">
+                <span className="text-muted-foreground">
+                  {countPieces(denomCounts)} cédulas/moedas
+                </span>
+                <span className="font-bold">Total contado: {formatBRL(countedTotal)}</span>
+              </div>
             </div>
-            {closingAmount && (() => {
-              const counted = parseFloat(closingAmount);
-              const expected = expectedInDrawer;
-              const diff = counted - expected;
+            {countPieces(denomCounts) > 0 && (() => {
+              const diff = countedTotal - expectedInDrawer;
               const matches = Math.abs(diff) < 0.01;
               return (
                 <div className={`p-4 rounded ${matches ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
