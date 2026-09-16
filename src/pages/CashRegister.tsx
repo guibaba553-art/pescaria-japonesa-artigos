@@ -240,13 +240,16 @@ export default function CashRegister() {
           .order('closed_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        const lastCounts = getDenominationBreakdown(lastClosed?.closing_denominations);
-        if (lastCounts.length > 0) {
-          setOpeningDenomCounts((prev) =>
-            countPieces(prev) > 0
-              ? prev
-              : Object.fromEntries(lastCounts.map((item) => [labelToValue(item.label), String(item.quantity)])),
+        const lastCounts = lastClosed?.closing_denominations;
+        if (lastCounts && typeof lastCounts === 'object' && !Array.isArray(lastCounts)) {
+          const prefilled = Object.fromEntries(
+            Object.entries(lastCounts as Record<string, number>)
+              .filter(([, qty]) => Number(qty) > 0)
+              .map(([key, qty]) => [key, String(qty)]),
           );
+          if (Object.keys(prefilled).length > 0) {
+            setOpeningDenomCounts((prev) => (countPieces(prev) > 0 ? prev : prefilled));
+          }
         }
       }
     } catch (error: any) {
