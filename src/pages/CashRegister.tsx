@@ -555,10 +555,11 @@ export default function CashRegister() {
             </div>
 
             <Tabs defaultValue="operations">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="operations">Operações</TabsTrigger>
                 <TabsTrigger value="summary">Vendas</TabsTrigger>
                 <TabsTrigger value="movements">Movimentações</TabsTrigger>
+                <TabsTrigger value="denominations">Cédulas</TabsTrigger>
                 <TabsTrigger value="history">Histórico</TabsTrigger>
               </TabsList>
 
