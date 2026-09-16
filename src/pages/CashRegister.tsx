@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft, DollarSign, TrendingUp, TrendingDown, Lock, Unlock,
-  Clock, Receipt, Printer, History, Target, ShoppingCart,
+  Clock, Receipt, Printer, History, Target, ShoppingCart, Banknote,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
