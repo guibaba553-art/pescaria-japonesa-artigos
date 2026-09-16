@@ -16,6 +16,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
+import { CASH_DENOMINATIONS, sumDenominations, countPieces } from '@/utils/cashDenominations';
 
 
 interface CashRegister {
@@ -71,6 +72,8 @@ export default function CashRegister() {
   const [salesCount, setSalesCount] = useState(0);
   const [openingAmount, setOpeningAmount] = useState('');
   const [closingAmount, setClosingAmount] = useState('');
+  const [denomCounts, setDenomCounts] = useState<Record<string, string>>({});
+  const countedTotal = sumDenominations(denomCounts);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalReason, setWithdrawalReason] = useState('');
   const [additionAmount, setAdditionAmount] = useState('');
@@ -316,8 +319,12 @@ export default function CashRegister() {
   };
 
   const handleCloseRegister = async () => {
-    if (!closingAmount || parseFloat(closingAmount) < 0) {
-      toast({ title: 'Valor inválido', variant: 'destructive' });
+    if (countPieces(denomCounts) === 0) {
+      toast({
+        title: 'Informe a contagem',
+        description: 'Digite a quantidade de cédulas e moedas no caixa.',
+        variant: 'destructive',
+      });
       return;
     }
     setLoadingAction(true);
@@ -332,7 +339,7 @@ export default function CashRegister() {
       ).toFixed(2));
 
       const { error } = await supabase.from('cash_registers').update({
-        closing_amount: parseFloat(closingAmount),
+        closing_amount: countedTotal,
         expected_amount: recalculatedExpected,
         closed_at: closedAt,
         status: 'closed',
@@ -344,7 +351,7 @@ export default function CashRegister() {
       }).eq('id', currentRegister!.id);
       if (error) throw error;
       toast({ title: 'Caixa fechado!' });
-      setClosingAmount(''); setShowClosing(false);
+      setClosingAmount(''); setDenomCounts({}); setShowClosing(false);
       loadCurrentRegister();
       loadHistory();
     } catch (error: any) {
@@ -710,14 +717,35 @@ export default function CashRegister() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Valor Contado no Caixa (R$)</Label>
-              <Input type="number" step="0.01" value={closingAmount}
-                onChange={(e) => setClosingAmount(e.target.value)} />
+              <Label>Quantidade de cédulas e moedas</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
+                {CASH_DENOMINATIONS.map((d) => (
+                  <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
+                    <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                      placeholder="0"
+                      className="h-8 text-sm"
+                      value={denomCounts[String(d.value)] ?? ''}
+                      onChange={(e) =>
+                        setDenomCounts((prev) => ({ ...prev, [String(d.value)]: e.target.value }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-sm pt-1">
+                <span className="text-muted-foreground">
+                  {countPieces(denomCounts)} cédulas/moedas
+                </span>
+                <span className="font-bold">Total contado: {formatBRL(countedTotal)}</span>
+              </div>
             </div>
-            {closingAmount && (() => {
-              const counted = parseFloat(closingAmount);
-              const expected = expectedInDrawer;
-              const diff = counted - expected;
+            {countPieces(denomCounts) > 0 && (() => {
+              const diff = countedTotal - expectedInDrawer;
               const matches = Math.abs(diff) < 0.01;
               return (
                 <div className={`p-4 rounded ${matches ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
