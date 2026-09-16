@@ -41,6 +41,7 @@ interface CashRegister {
   status: string;
   opening_denominations: unknown;
   closing_denominations: unknown;
+  current_denominations: unknown;
 }
 
 interface CashMovement {
