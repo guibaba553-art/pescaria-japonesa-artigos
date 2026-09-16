@@ -41,6 +41,7 @@ interface CashRegister {
   status: string;
   opening_denominations: unknown;
   closing_denominations: unknown;
+  current_denominations: unknown;
 }
 
 interface CashMovement {
@@ -375,6 +376,14 @@ export default function CashRegister() {
     if (!currentRegister) return;
     const totalSales = salesSummary.cash + salesSummary.card + salesSummary.pix;
     const avgTicket = salesCount > 0 ? totalSales / salesCount : 0;
+    const denomSource = currentRegister.current_denominations ?? currentRegister.opening_denominations;
+    const denomBreakdown = getDenominationBreakdown(denomSource);
+    const denomRows = denomBreakdown
+      .map((d) => `<div class="row"><span>${d.label} × ${d.quantity}</span><span>${formatBRL(d.subtotal)}</span></div>`)
+      .join('');
+    const denomSection = denomRows
+      ? `<hr/><div class="row total"><span>Cédulas/moedas em caixa:</span><span></span></div>${denomRows}`
+      : '';
     const w = window.open('', '_blank', 'width=400,height=600');
     if (!w) return;
     w.document.write(`
@@ -403,6 +412,7 @@ export default function CashRegister() {
       <div class="row"><span>Ticket médio:</span><span>${formatBRL(avgTicket)}</span></div>
       <hr/>
       <div class="row total"><span>Esperado em caixa:</span><span>${formatBRL(expectedInDrawer)}</span></div>
+      ${denomSection}
       <p style="text-align:center; font-size:11px;">Impresso em ${new Date().toLocaleString('pt-BR')}</p>
       </body></html>
     `);
