@@ -1870,6 +1870,7 @@ export default function PDV() {
     const idempotencyKey = idempotencyKeyRef.current;
 
     let createdOrderId: string | null = null;
+    let cashExchangeApplied = false;
 
     try {
       const subtotal = calculateSubtotal();
@@ -2015,6 +2016,19 @@ export default function PDV() {
       const { error: paymentsError } = await supabase.from('order_payments').insert(paymentRows as any);
       if (paymentsError) console.error('Erro ao registrar rateio de pagamento:', paymentsError);
 
+      if (usesCash && openCashRegister && preparedChange) {
+        const changeAmount = cashChangeForSale();
+        const { error: cashExchangeError } = await supabase.rpc('apply_pdv_cash_exchange', {
+          p_cash_register_id: openCashRegister.id,
+          p_received_denominations: compactDenominationCounts(cashReceivedCounts),
+          p_change_denominations: compactDenominationCounts(preparedChange),
+          p_received_amount: cashReceivedTotal,
+          p_change_amount: changeAmount,
+        });
+        if (cashExchangeError) throw cashExchangeError;
+        cashExchangeApplied = true;
+      }
+
 
 
       // Vincula a transação TEF ao pedido criado
@@ -2059,21 +2073,10 @@ export default function PDV() {
         if (stockError) throw stockError;
       }
 
-      if (usesCash && openCashRegister && preparedChange) {
-        const changeAmount = cashChangeForSale();
-        const { error: cashExchangeError } = await supabase.rpc('apply_pdv_cash_exchange', {
-          p_cash_register_id: openCashRegister.id,
-          p_received_denominations: compactDenominationCounts(cashReceivedCounts),
-          p_change_denominations: compactDenominationCounts(preparedChange),
-          p_received_amount: cashReceivedTotal,
-          p_change_amount: changeAmount,
-        });
-        if (cashExchangeError) throw cashExchangeError;
-        await loadOpenCashRegister();
-      }
-
       // Pedido finalizado com sucesso — não precisa mais da idempotency key
       createdOrderId = null;
+      cashExchangeApplied = false;
+      await loadOpenCashRegister();
 
       if (hasProductFallback) {
         toast({
@@ -2143,6 +2146,20 @@ export default function PDV() {
 
 
     } catch (error: any) {
+      if (cashExchangeApplied && openCashRegister && preparedChange) {
+        try {
+          await supabase.rpc('apply_pdv_cash_exchange', {
+            p_cash_register_id: openCashRegister.id,
+            p_received_denominations: compactDenominationCounts(preparedChange),
+            p_change_denominations: compactDenominationCounts(cashReceivedCounts),
+            p_received_amount: cashChangeForSale(),
+            p_change_amount: cashReceivedTotal,
+          });
+          await loadOpenCashRegister();
+        } catch (rollbackError) {
+          console.error('Falha ao reverter cédulas da venda:', rollbackError);
+        }
+      }
       // Rollback manual: se criamos o pedido mas algo falhou depois,
       // cancela o pedido órfão para manter histórico completo.
       if (createdOrderId) {
