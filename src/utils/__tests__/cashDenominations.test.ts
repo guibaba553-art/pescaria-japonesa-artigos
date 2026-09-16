@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { sumDenominations, countPieces, CASH_DENOMINATIONS } from "../cashDenominations";
+import {
+  sumDenominations,
+  countPieces,
+  CASH_DENOMINATIONS,
+  compactDenominationCounts,
+  getDenominationBreakdown,
+} from "../cashDenominations";
 
 describe("cashDenominations", () => {
   it("soma zero quando nada informado", () => {
@@ -20,6 +26,22 @@ describe("cashDenominations", () => {
   it("cobre todas as denominações do real", () => {
     expect(CASH_DENOMINATIONS.map((d) => d.value)).toEqual([
       200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05,
+    ]);
+  });
+
+  it("salva apenas quantidades inteiras e positivas", () => {
+    expect(compactDenominationCounts({
+      "100": "2",
+      "20": "0",
+      "5": "3.9",
+      "1": "inválido",
+    })).toEqual({ "100": 2, "5": 3 });
+  });
+
+  it("monta o detalhamento somente das cédulas e moedas informadas", () => {
+    expect(getDenominationBreakdown({ "100": 2, "0.5": 3 })).toEqual([
+      { label: "R$ 100", quantity: 2, subtotal: 200 },
+      { label: "R$ 0,50", quantity: 3, subtotal: 1.5 },
     ]);
   });
 });

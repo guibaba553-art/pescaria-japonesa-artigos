@@ -44,3 +44,40 @@ export function countPieces(counts: DenominationCounts): number {
     return acc + (qty && Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 0);
   }, 0);
 }
+
+/** Remove valores vazios ou inválidos antes de persistir a contagem. */
+export function compactDenominationCounts(counts: DenominationCounts): Record<string, number> {
+  return CASH_DENOMINATIONS.reduce<Record<string, number>>((result, denomination) => {
+    const raw = counts[String(denomination.value)];
+    const quantity = typeof raw === "string" ? parseInt(raw, 10) : raw;
+    if (quantity && Number.isFinite(quantity) && quantity > 0) {
+      result[String(denomination.value)] = Math.floor(quantity);
+    }
+    return result;
+  }, {});
+}
+
+export interface DenominationBreakdownItem {
+  label: string;
+  quantity: number;
+  subtotal: number;
+}
+
+/** Converte a contagem salva em linhas prontas para o histórico. */
+export function getDenominationBreakdown(counts: unknown): DenominationBreakdownItem[] {
+  if (!counts || typeof counts !== "object" || Array.isArray(counts)) return [];
+  const values = counts as DenominationCounts;
+
+  return CASH_DENOMINATIONS.flatMap((denomination) => {
+    const raw = values[String(denomination.value)];
+    const parsed = typeof raw === "string" ? parseInt(raw, 10) : raw;
+    const quantity = parsed && Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+    if (quantity === 0) return [];
+
+    return [{
+      label: denomination.label,
+      quantity,
+      subtotal: Math.round(denomination.value * 100) * quantity / 100,
+    }];
+  });
+}
