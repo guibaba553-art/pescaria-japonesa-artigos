@@ -232,6 +232,25 @@ export default function CashRegister() {
         setMovements([]);
         setSalesCount(0);
         setSalesSummary({ cash: 0, card: 0, pix: 0 });
+        // Pré-preenche a abertura com as cédulas do último fechamento (editável)
+        const { data: lastClosed } = await supabase
+          .from('cash_registers')
+          .select('closing_denominations')
+          .eq('status', 'closed')
+          .order('closed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const lastCounts = lastClosed?.closing_denominations;
+        if (lastCounts && typeof lastCounts === 'object' && !Array.isArray(lastCounts)) {
+          const prefilled = Object.fromEntries(
+            Object.entries(lastCounts as Record<string, number>)
+              .filter(([, qty]) => Number(qty) > 0)
+              .map(([key, qty]) => [key, String(qty)]),
+          );
+          if (Object.keys(prefilled).length > 0) {
+            setOpeningDenomCounts((prev) => (countPieces(prev) > 0 ? prev : prefilled));
+          }
+        }
       }
     } catch (error: any) {
       toast({ title: 'Erro ao carregar caixa', description: error.message, variant: 'destructive' });
