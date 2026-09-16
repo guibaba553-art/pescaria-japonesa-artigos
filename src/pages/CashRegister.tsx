@@ -16,7 +16,13 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { summarizeSalesByMethod } from '@/utils/salesPaymentSummary';
-import { CASH_DENOMINATIONS, sumDenominations, countPieces } from '@/utils/cashDenominations';
+import {
+  CASH_DENOMINATIONS,
+  sumDenominations,
+  countPieces,
+  compactDenominationCounts,
+  getDenominationBreakdown,
+} from '@/utils/cashDenominations';
 
 
 interface CashRegister {
@@ -33,6 +39,8 @@ interface CashRegister {
   withdrawals: number;
   additions: number;
   status: string;
+  opening_denominations: unknown;
+  closing_denominations: unknown;
 }
 
 interface CashMovement {
@@ -253,6 +261,7 @@ export default function CashRegister() {
       const { error } = await supabase.from('cash_registers').insert([{
         opened_by: user!.id,
         opening_amount: openingTotal,
+        opening_denominations: compactDenominationCounts(openingDenomCounts),
         expected_amount: openingTotal,
         status: 'open',
       }]);
@@ -341,6 +350,7 @@ export default function CashRegister() {
 
       const { error } = await supabase.from('cash_registers').update({
         closing_amount: countedTotal,
+        closing_denominations: compactDenominationCounts(denomCounts),
         expected_amount: recalculatedExpected,
         closed_at: closedAt,
         status: 'closed',
@@ -823,6 +833,8 @@ function HistoryList({ history }: { history: CashRegister[] }) {
         const closed = Number(c.closing_amount ?? 0);
         const diff = closed - expected;
         const matches = Math.abs(diff) < 0.01;
+        const openingBreakdown = getDenominationBreakdown(c.opening_denominations);
+        const closingBreakdown = getDenominationBreakdown(c.closing_denominations);
         return (
           <div key={c.id} className="p-3 border rounded space-y-2">
             <div className="flex justify-between items-center">
@@ -843,9 +855,53 @@ function HistoryList({ history }: { history: CashRegister[] }) {
               <span>💳 {formatBRL(Number(c.card_sales))}</span>
               <span>📱 {formatBRL(Number(c.pix_sales))}</span>
             </div>
+            <div className="grid gap-3 border-t pt-2 md:grid-cols-2">
+              <DenominationHistory
+                title="Cédulas na abertura"
+                total={Number(c.opening_amount)}
+                breakdown={openingBreakdown}
+              />
+              <DenominationHistory
+                title="Cédulas no fechamento"
+                total={closed}
+                breakdown={closingBreakdown}
+              />
+            </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function DenominationHistory({
+  title,
+  total,
+  breakdown,
+}: {
+  title: string;
+  total: number;
+  breakdown: ReturnType<typeof getDenominationBreakdown>;
+}) {
+  const pieces = breakdown.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <div className="space-y-1 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 font-medium">
+        <span>{title}</span>
+        <span>{formatBRL(total)}{pieces > 0 ? ` · ${pieces} peças` : ''}</span>
+      </div>
+      {breakdown.length > 0 ? (
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground">
+          {breakdown.map((item) => (
+            <span key={item.label}>
+              {item.quantity}× {item.label} = {formatBRL(item.subtotal)}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <span className="text-muted-foreground">Contagem detalhada não registrada</span>
+      )}
     </div>
   );
 }
