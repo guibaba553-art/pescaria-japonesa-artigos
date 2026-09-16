@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input';
 import { CASH_DENOMINATIONS, type DenominationCounts } from '@/utils/cashDenominations';
 
 interface CashDenominationGridProps {
-  counts: DenominationCounts;
+  counts: Record<string, string>;
   onChange: (counts: Record<string, string>) => void;
   disabled?: boolean;
   maxCounts?: DenominationCounts;
