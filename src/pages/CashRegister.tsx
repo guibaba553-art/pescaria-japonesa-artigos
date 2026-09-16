@@ -749,6 +749,30 @@ export default function CashRegister() {
   );
 }
 
+function DenominationGrid({
+  counts, onChange,
+}: { counts: Record<string, string>; onChange: (c: Record<string, string>) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
+      {CASH_DENOMINATIONS.map((d) => (
+        <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
+          <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            placeholder="0"
+            className="h-8 text-sm"
+            value={counts[String(d.value)] ?? ''}
+            onChange={(e) => onChange({ ...counts, [String(d.value)]: e.target.value })}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function KpiCard({
   label, value, icon, accent,
 }: { label: string; value: string; icon: React.ReactNode; accent?: string }) {
