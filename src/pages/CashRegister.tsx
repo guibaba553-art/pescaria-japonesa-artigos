@@ -462,13 +462,14 @@ export default function CashRegister() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="opening">Valor de Abertura (R$)</Label>
-                  <Input
-                    id="opening" type="number" step="0.01"
-                    value={openingAmount}
-                    onChange={(e) => setOpeningAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
+                  <Label>Quantidade de cédulas e moedas (troco inicial)</Label>
+                  <DenominationGrid counts={openingDenomCounts} onChange={setOpeningDenomCounts} />
+                  <div className="flex justify-between text-sm pt-1">
+                    <span className="text-muted-foreground">
+                      {countPieces(openingDenomCounts)} cédulas/moedas
+                    </span>
+                    <span className="font-bold">Valor de abertura: {formatBRL(openingTotal)}</span>
+                  </div>
                 </div>
                 <Button onClick={handleOpenRegister} disabled={loadingAction} className="w-full">
                   Abrir Caixa
@@ -719,25 +720,7 @@ export default function CashRegister() {
             </div>
             <div className="space-y-2">
               <Label>Quantidade de cédulas e moedas</Label>
-              <div className="grid grid-cols-2 gap-2 max-h-[240px] overflow-y-auto pr-1">
-                {CASH_DENOMINATIONS.map((d) => (
-                  <div key={d.value} className="flex items-center gap-2 border rounded px-2 py-1.5">
-                    <span className="text-xs font-medium w-16 shrink-0">{d.label}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      placeholder="0"
-                      className="h-8 text-sm"
-                      value={denomCounts[String(d.value)] ?? ''}
-                      onChange={(e) =>
-                        setDenomCounts((prev) => ({ ...prev, [String(d.value)]: e.target.value }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
+              <DenominationGrid counts={denomCounts} onChange={setDenomCounts} />
               <div className="flex justify-between text-sm pt-1">
                 <span className="text-muted-foreground">
                   {countPieces(denomCounts)} cédulas/moedas
