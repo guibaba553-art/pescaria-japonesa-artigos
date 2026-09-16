@@ -70,6 +70,15 @@ import { Award } from 'lucide-react';
 import { validateCPF, formatCPF, formatCEP, formatPhone, sanitizeNumericInput } from '@/utils/validation';
 // Heavy modules — carregados sob demanda para acelerar a abertura do PDV
 import { validateSplit, splitChange, primaryPart, type PaymentPart } from '@/utils/paymentSplit';
+import {
+  calculateAvailableChange,
+  compactDenominationCounts,
+  countPieces,
+  getDenominationBreakdown,
+  sumDenominations,
+  type DenominationCounts,
+} from '@/utils/cashDenominations';
+import { CashDenominationGrid } from '@/components/CashDenominationGrid';
 
 
 interface ProductVariation {
@@ -232,6 +241,11 @@ export default function PDV() {
   // Pagamento — padrão é crédito (mesmo preço usado nas etiquetas dos cards)
   const [paymentMethod, setPaymentMethod] = useState<PdvPaymentMethod>('credit');
   const [cashReceived, setCashReceived] = useState('');
+  const [cashReceivedCounts, setCashReceivedCounts] = useState<Record<string, string>>({});
+  const [openCashRegister, setOpenCashRegister] = useState<{
+    id: string;
+    current_denominations: DenominationCounts;
+  } | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [customerCPF, setCustomerCPF] = useState('');
   // 0 = ainda não escolhido. No crédito a escolha é obrigatória: sem isso o
@@ -539,6 +553,38 @@ export default function PDV() {
     authorization_code?: string;
   } | null>(null);
 
+  const cashReceivedTotal = sumDenominations(cashReceivedCounts);
+
+  useEffect(() => {
+    setCashReceived(cashReceivedTotal > 0 ? cashReceivedTotal.toFixed(2) : '');
+    if (splitMode && splitParts.some(part => part.method === 'cash')) {
+      let cashUpdated = false;
+      setSplitParts(parts => parts.map(part => {
+        if (part.method !== 'cash' || cashUpdated) return part;
+        cashUpdated = true;
+        return { ...part, amount: cashReceivedTotal };
+      }));
+    }
+  }, [cashReceivedTotal, splitMode]);
+
+  const loadOpenCashRegister = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('cash_registers')
+      .select('id, current_denominations')
+      .eq('status', 'open')
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error('Erro ao carregar cédulas do caixa:', error);
+      return;
+    }
+    setOpenCashRegister(data ? {
+      id: data.id,
+      current_denominations: (data.current_denominations || {}) as DenominationCounts,
+    } : null);
+  }, []);
+
 
   useEffect(() => {
     if (!loading && !canView) {
@@ -555,7 +601,7 @@ export default function PDV() {
     const runDeferred = () => {
       loadCustomers();
       loadSavedSales();
-      
+      loadOpenCashRegister();
     };
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     if (w.requestIdleCallback) {
@@ -593,6 +639,10 @@ export default function PDV() {
       .channel('pdv-saved-sales')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'saved_sales' }, scheduleSavedReload)
       .subscribe();
+    const cashChannel = supabase
+      .channel('pdv-cash-denominations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_registers' }, loadOpenCashRegister)
+      .subscribe();
     const onVisibleSaved = () => {
       if (document.visibilityState === 'visible') scheduleSavedReload();
     };
@@ -605,12 +655,13 @@ export default function PDV() {
       if (savedTimer) clearTimeout(savedTimer);
       supabase.removeChannel(channel);
       supabase.removeChannel(savedChannel);
+      supabase.removeChannel(cashChannel);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', loadProducts);
       document.removeEventListener('visibilitychange', onVisibleSaved);
       window.removeEventListener('focus', scheduleSavedReload);
     };
-  }, []);
+  }, [loadOpenCashRegister]);
 
   const loadProducts = async () => {
     try {
@@ -826,6 +877,7 @@ export default function PDV() {
   const clearSale = () => {
     setCart([]);
     setCashReceived('');
+    setCashReceivedCounts({});
     setSelectedCustomer(null);
     setPaymentMethod('credit');
     setInstallments(0);
@@ -1454,10 +1506,28 @@ export default function PDV() {
 
   const calculateChange = () => {
     if (paymentMethod !== 'cash') return 0;
-    const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
-    const diffCents = Math.round(received * 100) - Math.round(calculateTotal() * 100);
+    const diffCents = Math.round(cashReceivedTotal * 100) - Math.round(calculateTotal() * 100);
     return Math.max(0, diffCents / 100);
   };
+
+  const effectiveSplitParts = () => {
+    let cashUpdated = false;
+    return splitParts.map(part => {
+      if (part.method !== 'cash' || cashUpdated) return part;
+      cashUpdated = true;
+      return { ...part, amount: cashReceivedTotal };
+    });
+  };
+
+  const cashChangeForSale = () => splitMode
+    ? splitChange(calculateTotal(), effectiveSplitParts())
+    : calculateChange();
+
+  const changeDenominationsForSale = () => calculateAvailableChange(
+    cashChangeForSale(),
+    openCashRegister?.current_denominations || {},
+    cashReceivedCounts,
+  );
 
   const [savingCustomer, setSavingCustomer] = useState(false);
   const handleSaveCustomer = async () => {
@@ -1711,7 +1781,7 @@ export default function PDV() {
 
     // Pagamento dividido: as partes precisam fechar o total da venda.
     if (splitMode) {
-      const check = validateSplit(calculateTotal(), splitParts);
+      const check = validateSplit(calculateTotal(), effectiveSplitParts());
       if (!check.valid) {
         toast({
           title: 'Pagamento dividido incompleto',
@@ -1736,7 +1806,7 @@ export default function PDV() {
     }
 
     if (!splitMode && paymentMethod === 'cash') {
-      const received = parseFloat((cashReceived || '').replace(',', '.')) || 0;
+      const received = cashReceivedTotal;
       // Comparar em centavos para evitar erro de ponto flutuante
       // (ex.: total 50.00000000001 vs recebido 50 quebrava venda exata)
       const receivedCents = Math.round(received * 100);
@@ -1750,6 +1820,36 @@ export default function PDV() {
         finalizingRef.current = false;
         return;
       }
+    }
+
+    const usesCash = paymentMethod === 'cash' || (splitMode && splitParts.some(part => part.method === 'cash'));
+    const preparedChange = usesCash ? changeDenominationsForSale() : {};
+    if (usesCash && !openCashRegister) {
+      toast({
+        title: 'Caixa fechado',
+        description: 'Abra o caixa e informe as cédulas disponíveis antes de receber em dinheiro.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+    if (usesCash && countPieces(cashReceivedCounts) === 0) {
+      toast({
+        title: 'Informe as cédulas recebidas',
+        description: 'Digite a quantidade de cada cédula ou moeda entregue pelo cliente.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
+    }
+    if (usesCash && preparedChange === null) {
+      toast({
+        title: 'Troco indisponível',
+        description: 'O caixa não possui a combinação exata de cédulas e moedas para este troco.',
+        variant: 'destructive',
+      });
+      finalizingRef.current = false;
+      return;
     }
 
     // Maquininha integrada (TEF) desativada: cartão é finalizado direto no PDV.
@@ -1828,13 +1928,14 @@ export default function PDV() {
       const tefData = tefResultRef.current;
       // No pagamento dividido o pedido guarda a parte de maior valor como
       // método "principal"; o rateio completo vai para order_payments.
-      const mainPart = splitMode ? primaryPart(splitParts) : null;
+      const finalizedSplitParts = effectiveSplitParts();
+      const mainPart = splitMode ? primaryPart(finalizedSplitParts) : null;
       const effectiveMethod = mainPart ? mainPart.method : paymentMethod;
       const effectiveInstallments = mainPart
         ? (mainPart.method === 'credit' ? Math.max(1, Number(mainPart.installments) || 1) : 1)
         : (paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1);
       const splitCashReceived = splitMode
-        ? splitParts.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount || 0), 0)
+        ? finalizedSplitParts.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount || 0), 0)
         : 0;
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -1887,8 +1988,8 @@ export default function PDV() {
 
       // Grava o rateio do pagamento (uma linha por meio usado). Vendas com um
       // único meio também registram uma linha, para o financeiro ler sempre daqui.
-      const paymentRows = (splitMode && splitParts.length > 0
-        ? splitParts
+      const paymentRows = (splitMode && finalizedSplitParts.length > 0
+        ? finalizedSplitParts
         : [{
             method: paymentMethod,
             amount: calculateTotal(),
@@ -1956,6 +2057,19 @@ export default function PDV() {
         });
 
         if (stockError) throw stockError;
+      }
+
+      if (usesCash && openCashRegister && preparedChange) {
+        const changeAmount = cashChangeForSale();
+        const { error: cashExchangeError } = await supabase.rpc('apply_pdv_cash_exchange', {
+          p_cash_register_id: openCashRegister.id,
+          p_received_denominations: compactDenominationCounts(cashReceivedCounts),
+          p_change_denominations: compactDenominationCounts(preparedChange),
+          p_received_amount: cashReceivedTotal,
+          p_change_amount: changeAmount,
+        });
+        if (cashExchangeError) throw cashExchangeError;
+        await loadOpenCashRegister();
       }
 
       // Pedido finalizado com sucesso — não precisa mais da idempotency key
@@ -2080,6 +2194,9 @@ export default function PDV() {
 
   const total = calculateTotal();
   const change = calculateChange();
+  const activeChange = cashChangeForSale();
+  const suggestedChange = changeDenominationsForSale();
+  const usesCashPayment = paymentMethod === 'cash' || (splitMode && splitParts.some(part => part.method === 'cash'));
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 pb-32 lg:pb-0 lg:h-screen lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden">
@@ -2960,10 +3077,15 @@ export default function PDV() {
                             <select
                               value={part.method}
                               onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
-                                i === idx ? { ...p, method: e.target.value, installments: e.target.value === 'credit' ? (p.installments || 0) : 1 } : p))}
+                                i === idx ? {
+                                  ...p,
+                                  method: e.target.value,
+                                  amount: e.target.value === 'cash' ? cashReceivedTotal : p.amount,
+                                  installments: e.target.value === 'credit' ? (p.installments || 0) : 1,
+                                } : p))}
                               className="flex-1 h-9 px-2 text-sm rounded-md border border-input bg-background"
                             >
-                              <option value="cash">Dinheiro</option>
+                              <option value="cash" disabled={part.method !== 'cash' && splitParts.some(p => p.method === 'cash')}>Dinheiro</option>
                               <option value="debit">Débito</option>
                               <option value="credit">Crédito</option>
                               <option value="pix">PIX</option>
@@ -2974,6 +3096,7 @@ export default function PDV() {
                               className="w-28 h-9"
                               placeholder="0,00"
                               value={part.amount || ''}
+                              disabled={part.method === 'cash'}
                               onChange={(e) => setSplitParts(prev => prev.map((p, i) =>
                                 i === idx ? { ...p, amount: Number(e.target.value) } : p))}
                             />
@@ -3017,8 +3140,9 @@ export default function PDV() {
                         <Plus className="w-4 h-4 mr-2" /> Adicionar forma de pagamento
                       </Button>
                       {(() => {
-                        const check = validateSplit(total, splitParts);
-                        const troco = splitChange(total, splitParts);
+                          const currentParts = effectiveSplitParts();
+                          const check = validateSplit(total, currentParts);
+                          const troco = splitChange(total, currentParts);
                         return (
                           <div className="p-3 bg-muted rounded-lg space-y-1 text-sm">
                             <div className="flex justify-between">
@@ -3050,26 +3174,42 @@ export default function PDV() {
                     </div>
                   )}
 
-                  {!splitMode && paymentMethod === 'cash' && (
+                  {usesCashPayment && (
                     <>
                       <div className="space-y-2">
-                        <Label>Valor Recebido</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={cashReceived}
-                          onChange={(e) => setCashReceived(e.target.value)}
-                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <Label>Cédulas e moedas recebidas</Label>
+                          <span className="text-xs text-muted-foreground">
+                            {countPieces(cashReceivedCounts)} peças
+                          </span>
+                        </div>
+                        <CashDenominationGrid counts={cashReceivedCounts} onChange={setCashReceivedCounts} />
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>Total recebido:</span>
+                          <span>R$ {cashReceivedTotal.toFixed(2)}</span>
+                        </div>
                       </div>
-                      {cashReceived && (
-                        <div className="p-3 bg-muted rounded-lg">
-                          <div className="flex justify-between text-sm">
+                      {cashReceivedTotal > 0 && (
+                        <div className={cn('p-3 rounded-lg space-y-2', suggestedChange === null ? 'bg-destructive/10 text-destructive' : 'bg-muted')}>
+                          <div className="flex justify-between text-sm items-center">
                             <span>Troco:</span>
                             <span className="font-bold text-lg">
-                              R$ {change.toFixed(2)}
+                              R$ {activeChange.toFixed(2)}
                             </span>
                           </div>
+                          {suggestedChange === null ? (
+                            <p className="text-xs font-medium">Não há cédulas suficientes no caixa para formar o troco exato.</p>
+                          ) : activeChange > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {getDenominationBreakdown(suggestedChange).map(item => (
+                                <Badge key={item.label} variant="secondary">
+                                  {item.quantity}× {item.label}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Pagamento exato, sem troco.</p>
+                          )}
                         </div>
                       )}
                     </>
