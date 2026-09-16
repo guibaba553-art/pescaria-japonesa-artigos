@@ -675,8 +675,9 @@ export default function CashRegister() {
                   </CardHeader>
                   <CardContent>
                     {(() => {
-                      const breakdown = getDenominationBreakdown(currentRegister?.current_denominations);
+                      const breakdown = getDenominationBreakdown(currentRegister.current_denominations);
                       const pieces = breakdown.reduce((sum, item) => sum + item.quantity, 0);
+                      const totalInDrawer = breakdown.reduce((sum, item) => sum + item.subtotal, 0);
                       if (breakdown.length === 0) {
                         return (
                           <p className="text-sm text-muted-foreground text-center py-6">
@@ -711,7 +712,7 @@ export default function CashRegister() {
                               Total de peças: <span className="font-bold text-foreground">{pieces}</span>
                             </div>
                             <div className="text-lg font-bold">
-                              Total em caixa: {formatBRL(Number(currentRegister?.opening_amount || 0) + movementTotals.additions - movementTotals.withdrawals + salesSummary.cash)}
+                              Total em cédulas/moedas: {formatBRL(totalInDrawer)}
                             </div>
                           </div>
                         </div>
