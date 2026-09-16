@@ -339,7 +339,7 @@ export default function CashRegister() {
       ).toFixed(2));
 
       const { error } = await supabase.from('cash_registers').update({
-        closing_amount: parseFloat(closingAmount),
+        closing_amount: countedTotal,
         expected_amount: recalculatedExpected,
         closed_at: closedAt,
         status: 'closed',
