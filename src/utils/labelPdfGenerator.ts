@@ -8,6 +8,7 @@
 
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
+import { code128ModuleCount, fitBarcodeBox } from './barcodeLayout';
 
 export interface LabelItem {
   /** Código que vai virar barcode (SKU/EAN). */
@@ -33,16 +34,31 @@ export interface LabelPdfOptions {
   skipSlots?: number;
 }
 
-/** Gera código de barras Code39 (com asteriscos) como dataURL PNG. */
+/** Quiet zone (margem branca) em módulos, por lado — exigência dos leitores. */
+const QUIET_ZONE_MODULES_PER_SIDE = 10;
+/** Pixels por módulo na renderização (alta resolução para não borrar na impressão). */
+const PX_PER_MODULE = 6;
+
+/**
+ * Gera código de barras CODE128 como dataURL PNG.
+ * CODE128 usa ~45% menos módulos que CODE39 para o mesmo código numérico,
+ * o que deixa as barras mais largas e legíveis em leitores laser de linha única.
+ */
 function barcodeDataUrl(code: string): string {
   const canvas = document.createElement('canvas');
+  const numericEven = /^\d+$/.test(code) && code.length % 2 === 0;
   try {
     JsBarcode(canvas, code, {
-      format: 'CODE39',
+      format: numericEven ? 'CODE128C' : 'CODE128',
       displayValue: false,
-      margin: 0,
-      height: 25,
-      width: 1,
+      marginTop: 0,
+      marginBottom: 0,
+      marginLeft: QUIET_ZONE_MODULES_PER_SIDE * PX_PER_MODULE,
+      marginRight: QUIET_ZONE_MODULES_PER_SIDE * PX_PER_MODULE,
+      background: '#ffffff',
+      lineColor: '#000000',
+      height: 160,
+      width: PX_PER_MODULE,
     });
     return canvas.toDataURL('image/png');
   } catch {
@@ -153,22 +169,35 @@ export async function generateLabelsPdf(
         const offX = -0.5; // esquerda
         const offY = 1.5;  // baixo
 
-        // Barcode (no topo, menor)
+        // Barcode (no topo) — largura calculada para não estourar a etiqueta
+        // e manter quiet zone; altura maior ajuda o leitor laser a acertar a linha.
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 6);
+          const box = fitBarcodeBox({
+            moduleCount: code128ModuleCount(item.code),
+            maxWidthMm: cellW - 4,
+            quietZoneModules: QUIET_ZONE_MODULES_PER_SIDE * 2,
+          });
+          doc.addImage(
+            dataUrl,
+            'PNG',
+            x + 2 + offX + box.offsetMm,
+            y + 1 + offY,
+            box.widthMm,
+            8.5,
+          );
         }
 
         // Código numérico embaixo do barcode
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
-        doc.text(item.code, x + cellW / 2 + offX, y + 10 + offY, { align: 'center' });
+        doc.text(item.code, x + cellW / 2 + offX, y + 12.4 + offY, { align: 'center' });
 
         // Descrição (até 2 linhas, sem reticências)
         doc.setFontSize(5.5);
         const descLines = wrapLines(item.description, 32, 2);
         descLines.forEach((line, i) => {
-          doc.text(line, x + 1.5 + offX, y + 12 + offY + i * 2.2);
+          doc.text(line, x + 1.5 + offX, y + 14.6 + offY + i * 2.1);
         });
 
         // Rodapé: loja à esquerda, preço à direita (dentro do quadrado)
