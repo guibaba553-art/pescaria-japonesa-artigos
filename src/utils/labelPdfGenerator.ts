@@ -8,6 +8,7 @@
 
 import jsPDF from 'jspdf';
 import JsBarcode from 'jsbarcode';
+import { code128ModuleCount, fitBarcodeBox } from './barcodeLayout';
 
 export interface LabelItem {
   /** Código que vai virar barcode (SKU/EAN). */
@@ -168,22 +169,35 @@ export async function generateLabelsPdf(
         const offX = -0.5; // esquerda
         const offY = 1.5;  // baixo
 
-        // Barcode (no topo, menor)
+        // Barcode (no topo) — largura calculada para não estourar a etiqueta
+        // e manter quiet zone; altura maior ajuda o leitor laser a acertar a linha.
         const dataUrl = barcodeCache.get(item.code);
         if (dataUrl) {
-          doc.addImage(dataUrl, 'PNG', x + 2 + offX, y + 1.5 + offY, cellW - 4, 6);
+          const box = fitBarcodeBox({
+            moduleCount: code128ModuleCount(item.code),
+            maxWidthMm: cellW - 4,
+            quietZoneModules: QUIET_ZONE_MODULES_PER_SIDE * 2,
+          });
+          doc.addImage(
+            dataUrl,
+            'PNG',
+            x + 2 + offX + box.offsetMm,
+            y + 1 + offY,
+            box.widthMm,
+            8.5,
+          );
         }
 
         // Código numérico embaixo do barcode
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(6);
-        doc.text(item.code, x + cellW / 2 + offX, y + 10 + offY, { align: 'center' });
+        doc.text(item.code, x + cellW / 2 + offX, y + 12.4 + offY, { align: 'center' });
 
         // Descrição (até 2 linhas, sem reticências)
         doc.setFontSize(5.5);
         const descLines = wrapLines(item.description, 32, 2);
         descLines.forEach((line, i) => {
-          doc.text(line, x + 1.5 + offX, y + 12 + offY + i * 2.2);
+          doc.text(line, x + 1.5 + offX, y + 14.6 + offY + i * 2.1);
         });
 
         // Rodapé: loja à esquerda, preço à direita (dentro do quadrado)
