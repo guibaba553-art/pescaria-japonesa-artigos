@@ -7,4 +7,4 @@
 - [x] Criar armazenamento seguro de anotações diárias por canal
 - [x] Permitir criar, editar e remover anotações clicando nos pontos
 - [x] Exibir anotações ao passar o mouse nos gráficos de PDV, Site, Vendas Gerais e Tráfego
-- [ ] Validar testes, tipos, build e fluxo visual das anotações
+- [x] Validar testes, tipos, build e fluxo visual das anotações
