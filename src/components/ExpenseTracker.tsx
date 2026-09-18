@@ -1417,22 +1417,23 @@ function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading 
         ]),
       )
         .sort((a, b) => b.localeCompare(a))
-        .map(date => {
-          const r = pdvReceivables.find(x => x.date === date);
-          return (
-            <div key={date} className="space-y-2">
-              {r && (
-                <PdvReceivableCard receivable={r} pdvOrders={pdvOrders} label="A receber (geral)" />
-              )}
-              <AccountReceivableGroup
-                date={date}
-                pdvOrders={pdvOrders}
-                siteIncomes={siteOrders}
-                label="A receber"
-              />
-            </div>
-          );
-        })}
+        .map(date => (
+          <div key={date} className="space-y-2">
+            <GeneralReceivableCard
+              date={date}
+              pdvOrders={pdvOrders}
+              siteIncomes={siteOrders}
+              label="A receber (geral)"
+            />
+            <AccountReceivableGroup
+              date={date}
+              pdvOrders={pdvOrders}
+              siteIncomes={siteOrders}
+              label="A receber"
+            />
+          </div>
+        ))}
+
     </div>
   );
 }
