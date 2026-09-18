@@ -123,3 +123,28 @@ export function buildAccountReceivables(
       return { account: a, label: INCOME_ACCOUNT_LABEL[a], date, lines, ...totals(lines) };
     });
 }
+
+export interface GeneralReceivable {
+  date: string;
+  accounts: AccountReceivable[];
+  lines: ReceivableLine[];
+  totalGross: number;
+  totalFee: number;
+  totalNet: number;
+}
+
+/**
+ * Entrada de vendas geral: somatória das entradas de todas as contas do dia
+ * (Stone, Mercado Pago, Asaas e Dinheiro), mantendo o detalhamento por conta.
+ */
+export function buildGeneralReceivable(
+  date: string,
+  pdvOrders: AccountOrderLike[],
+  siteOrders: AccountOrderLike[],
+): GeneralReceivable | null {
+  const accounts = buildAccountReceivables(date, pdvOrders, siteOrders);
+  if (accounts.length === 0) return null;
+  const lines = accounts.flatMap(a => a.lines);
+  return { date, accounts, lines, ...totals(lines) };
+}
+

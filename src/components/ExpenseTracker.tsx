@@ -3,7 +3,7 @@ import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOf
 import { ptBR } from "date-fns/locale";
 import { Clock, CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
-import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
+import { buildAccountReceivables, buildGeneralReceivable, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -1071,12 +1071,15 @@ function UnifiedList({
   ).sort((a, b) => b.localeCompare(a));
 
   dayKeys.forEach(date => {
-    const r = pdvReceivables.find(x => x.date === date);
-    if (r) {
-      items.push(
-        <PdvReceivableCard key={`pdv-${date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada (geral)" />
-      );
-    }
+    items.push(
+      <GeneralReceivableCard
+        key={`geral-${date}`}
+        date={date}
+        pdvOrders={pdvOrders}
+        siteIncomes={siteOrders}
+        label="Entrada (geral)"
+      />
+    );
     items.push(
       <AccountReceivableGroup
         key={`acc-${date}`}
@@ -1087,6 +1090,7 @@ function UnifiedList({
       />
     );
   });
+
 
   entries.forEach(entry => {
     items.push(
@@ -1117,7 +1121,91 @@ const ACCOUNT_UI: Record<IncomeAccount, { border: string; text: string; badge: s
   cash: { border: "border-green-900/40", text: "text-green-900", badge: "bg-green-900 text-white", slug: "dinheiro" },
 };
 
+/** Entrada de vendas geral: soma de Stone + Mercado Pago + Asaas + Dinheiro do dia. */
+function GeneralReceivableCard({ date, pdvOrders, siteIncomes, label }: {
+  date: string; pdvOrders: IncomeEntry[]; siteIncomes: IncomeEntry[]; label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const data = useMemo(
+    () => buildGeneralReceivable(date, pdvOrders as any, siteIncomes as any),
+    [date, pdvOrders, siteIncomes],
+  );
+  if (!data) return null;
+  return (
+    <Card className="hover:shadow-md transition-shadow border-l-4 border-primary/50">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="default" className="text-[10px]">TOTAL</Badge>
+              <Badge variant="outline" className="text-[10px]">{label}</Badge>
+            </div>
+            <div className="font-semibold mt-1 truncate">Entrada de vendas (todas as contas)</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {format(parseISO(data.date), "dd/MM/yyyy", { locale: ptBR })} • {data.lines.length} transação(ões) liquidando neste dia
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Bruto {fmtBRL(data.totalGross)}
+              {data.totalFee > 0 && <> • Taxa <span className="text-red-600">- {fmtBRL(data.totalFee)}</span></>}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-1.5">
+              {data.accounts.map(a => (
+                <Badge key={a.account} className={cn("text-[10px]", ACCOUNT_UI[a.account].badge)}>
+                  {a.label}: {fmtBRL(a.totalNet)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-lg font-bold">{fmtBRL(data.totalNet)}</div>
+              <div className="text-[10px] text-muted-foreground">líquido</div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setOpen(o => !o)}>
+              {open ? "Ocultar" : "Detalhar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                generateReceivableAccountPdf({
+                  date: data.date,
+                  title: "Entrada de vendas — todas as contas",
+                  accent: [71, 85, 105],
+                  lines: data.lines,
+                  fileSlug: "geral",
+                })
+              }
+              title="Baixar PDF com todas as contas"
+            >
+              <FileDown className="w-4 h-4 mr-1" /> PDF
+            </Button>
+          </div>
+        </div>
+
+        {open && (
+          <div className="mt-3 border-t pt-3 space-y-3">
+            {data.accounts.map(a => (
+              <div key={a.account} className="text-xs">
+                <div className="flex items-center justify-between">
+                  <Badge className={cn("text-[10px]", ACCOUNT_UI[a.account].badge)}>{a.label}</Badge>
+                  <span className={cn("font-semibold", ACCOUNT_UI[a.account].text)}>{fmtBRL(a.totalNet)}</span>
+                </div>
+                <div className="text-muted-foreground mt-0.5">
+                  {a.lines.length} transação(ões) • Bruto {fmtBRL(a.totalGross)}
+                  {a.totalFee > 0 && <> • Taxa - {fmtBRL(a.totalFee)}</>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Entrada de vendas especializada por conta (Stone, Mercado Pago, Asaas, Dinheiro). */
+
 function AccountReceivableCard({ data, label }: { data: AccountReceivable; label: string }) {
   const [open, setOpen] = useState(false);
   const ui = ACCOUNT_UI[data.account];
@@ -1329,22 +1417,23 @@ function IncomeList({ siteOrders, siteDates, pdvReceivables, pdvOrders, loading 
         ]),
       )
         .sort((a, b) => b.localeCompare(a))
-        .map(date => {
-          const r = pdvReceivables.find(x => x.date === date);
-          return (
-            <div key={date} className="space-y-2">
-              {r && (
-                <PdvReceivableCard receivable={r} pdvOrders={pdvOrders} label="A receber (geral)" />
-              )}
-              <AccountReceivableGroup
-                date={date}
-                pdvOrders={pdvOrders}
-                siteIncomes={siteOrders}
-                label="A receber"
-              />
-            </div>
-          );
-        })}
+        .map(date => (
+          <div key={date} className="space-y-2">
+            <GeneralReceivableCard
+              date={date}
+              pdvOrders={pdvOrders}
+              siteIncomes={siteOrders}
+              label="A receber (geral)"
+            />
+            <AccountReceivableGroup
+              date={date}
+              pdvOrders={pdvOrders}
+              siteIncomes={siteOrders}
+              label="A receber"
+            />
+          </div>
+        ))}
+
     </div>
   );
 }
