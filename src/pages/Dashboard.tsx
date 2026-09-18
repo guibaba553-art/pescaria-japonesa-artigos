@@ -368,13 +368,14 @@ export default function Dashboard() {
     const hasNote = Boolean(payload?.annotation);
     return (
       <circle
+        key={`${channel}-${payload.date}`}
         cx={cx}
         cy={cy}
         r={hasNote ? 5 : 3}
         fill={hasNote ? 'hsl(var(--warning))' : 'hsl(var(--background))'}
         stroke={color}
         strokeWidth={hasNote ? 3 : 2}
-        className="cursor-pointer"
+        className="dashboard-note-point cursor-pointer"
         onClick={() => openNoteEditor(channel, payload.date)}
       />
     );

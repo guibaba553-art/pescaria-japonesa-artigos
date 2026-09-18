@@ -260,7 +260,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayCli
     const { cx, cy, payload } = props;
     if (typeof cx !== 'number' || typeof cy !== 'number') return null;
     return (
-      <circle cx={cx} cy={cy} r={payload.annotation ? 5 : 3} fill={payload.annotation ? 'hsl(var(--warning))' : 'hsl(var(--background))'} stroke={color} strokeWidth={payload.annotation ? 3 : 2} className="cursor-pointer" onClick={() => onDayClick?.(payload.date)} />
+      <circle key={`traffic-${payload.date}-${color}`} cx={cx} cy={cy} r={payload.annotation ? 5 : 3} fill={payload.annotation ? 'hsl(var(--warning))' : 'hsl(var(--background))'} stroke={color} strokeWidth={payload.annotation ? 3 : 2} className="dashboard-note-point cursor-pointer" onClick={() => onDayClick?.(payload.date)} />
     );
   };
   const dailyTooltip = ({ active, payload, label }: any) => {
