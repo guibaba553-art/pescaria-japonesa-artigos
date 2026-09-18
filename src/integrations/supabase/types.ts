@@ -822,6 +822,36 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_day_notes: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          note_date: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by: string
+          id?: string
+          note: string
+          note_date: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          note_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dismissed_stock_alerts: {
         Row: {
           created_at: string
