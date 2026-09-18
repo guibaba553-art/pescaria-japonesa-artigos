@@ -1071,12 +1071,15 @@ function UnifiedList({
   ).sort((a, b) => b.localeCompare(a));
 
   dayKeys.forEach(date => {
-    const r = pdvReceivables.find(x => x.date === date);
-    if (r) {
-      items.push(
-        <PdvReceivableCard key={`pdv-${date}`} receivable={r} pdvOrders={pdvOrders} label="Entrada (geral)" />
-      );
-    }
+    items.push(
+      <GeneralReceivableCard
+        key={`geral-${date}`}
+        date={date}
+        pdvOrders={pdvOrders}
+        siteIncomes={siteOrders}
+        label="Entrada (geral)"
+      />
+    );
     items.push(
       <AccountReceivableGroup
         key={`acc-${date}`}
@@ -1087,6 +1090,7 @@ function UnifiedList({
       />
     );
   });
+
 
   entries.forEach(entry => {
     items.push(
