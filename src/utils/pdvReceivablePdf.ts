@@ -173,7 +173,7 @@ export function generatePdvReceivablePdf(
       7: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
     },
     didParseCell: data => {
-      if (data.section !== "body" || data.column.index !== 2) return;
+      if (data.section !== "body") return;
       const match = matches[data.row.index];
       if (!match) return;
       const account = classifyIncomeAccount({ source: "pdv", payment_method: match.order.payment_method });
@@ -298,7 +298,7 @@ export function generateReceivableAccountPdf(opts: {
       7: { halign: "right", fontStyle: "bold", textColor: accent },
     },
     didParseCell: data => {
-      if (data.section !== "body" || data.column.index !== 2) return;
+      if (data.section !== "body") return;
       const line = lines[data.row.index];
       if (!line) return;
       const account = line.account ?? defaultAccount ?? "stone";
