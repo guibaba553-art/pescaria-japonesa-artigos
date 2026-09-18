@@ -7,6 +7,8 @@ import {
 } from 'recharts';
 import { Eye, Users, MousePointerClick, TrendingUp, Activity, CalendarDays } from 'lucide-react';
 import { format, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { MessageSquareText } from 'lucide-react';
+import { attachChartAnnotations, type DashboardDayAnnotation } from '@/utils/dashboardAnnotations';
 
 const COLORS = ['hsl(var(--primary))', '#7c3aed', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
@@ -71,7 +73,12 @@ function classifyReferrer(ref: string | null): string {
   }
 }
 
-export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; rangeEnd?: Date } = {}) {
+export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayClick }: {
+  rangeStart?: Date;
+  rangeEnd?: Date;
+  annotations?: DashboardDayAnnotation[];
+  onDayClick?: (date: string) => void;
+} = {}) {
   const [loading, setLoading] = useState(true);
   const [totals, setTotals] = useState({ visits: 0, visitors: 0, conversion: 0, orders: 0, today: 0, todayVisitors: 0, avgPerDay: 0 });
   const [dailyData, setDailyData] = useState<DailyVisit[]>([]);
@@ -160,7 +167,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
       const key = d.toISOString().slice(0, 10);
       const entry = byDay.get(key);
       daily.push({
-        date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        date: d.toLocaleDateString('pt-BR'),
         visits: entry?.visits ?? 0,
         visitors: entry?.sessions.size ?? 0,
       });
@@ -225,7 +232,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
     const orders = ordersCount ?? 0;
     const conversion = totalVisitors > 0 ? (orders / totalVisitors) * 100 : 0;
 
-    const todayKey = today.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const todayKey = today.toLocaleDateString('pt-BR');
     const todayEntry = daily.find(d => d.date === todayKey);
     const avgPerDay = daily.length > 0 ? rows.length / daily.length : 0;
 
@@ -247,6 +254,26 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
   if (loading) {
     return <div className="text-center py-12 text-muted-foreground">Carregando dados de tráfego...</div>;
   }
+
+  const annotatedDailyData = attachChartAnnotations(dailyData, annotations, 'traffic');
+  const annotationDot = (color: string) => (props: any) => {
+    const { cx, cy, payload } = props;
+    if (typeof cx !== 'number' || typeof cy !== 'number') return null;
+    return (
+      <circle cx={cx} cy={cy} r={payload.annotation ? 5 : 3} fill={payload.annotation ? 'hsl(var(--warning))' : 'hsl(var(--background))'} stroke={color} strokeWidth={payload.annotation ? 3 : 2} className="cursor-pointer" onClick={() => onDayClick?.(payload.date)} />
+    );
+  };
+  const dailyTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const annotation = payload[0]?.payload?.annotation as string | undefined;
+    return (
+      <div className="max-w-xs rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+        <p className="mb-1 font-medium">{label}</p>
+        {payload.map((entry: any) => <p key={entry.dataKey} className="text-sm" style={{ color: entry.color }}>{entry.name}: {Number(entry.value).toLocaleString('pt-BR')}</p>)}
+        {annotation && <div className="mt-2 border-t pt-2 text-sm"><p className="mb-1 flex items-center gap-1 font-medium"><MessageSquareText className="h-3.5 w-3.5" /> Anotação</p><p className="whitespace-pre-wrap text-muted-foreground">{annotation}</p></div>}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -321,14 +348,14 @@ export function SiteAnalytics({ rangeStart, rangeEnd }: { rangeStart?: Date; ran
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailyData}>
+            <LineChart data={annotatedDailyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip />
+              <Tooltip content={dailyTooltip} />
               <Legend />
-              <Line type="monotone" dataKey="visits" stroke="hsl(var(--primary))" name="Visitas" strokeWidth={2} />
-              <Line type="monotone" dataKey="visitors" stroke="#10b981" name="Visitantes únicos" strokeWidth={2} />
+              <Line type="monotone" dataKey="visits" stroke="hsl(var(--primary))" name="Visitas" strokeWidth={2} dot={annotationDot('hsl(var(--primary))')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
+              <Line type="monotone" dataKey="visitors" stroke="#10b981" name="Visitantes únicos" strokeWidth={2} dot={annotationDot('#10b981')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
