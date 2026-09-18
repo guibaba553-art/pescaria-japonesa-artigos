@@ -8,25 +8,34 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   ArrowLeft, Package, DollarSign, Users, ShoppingCart, Store, Globe,
   TrendingUp, Download, AlertTriangle, Clock, Receipt, Target, Wallet, LayoutDashboard,
-  Calendar as CalendarIcon, Boxes, Search,
+  Calendar as CalendarIcon, Boxes, Search, MessageSquareText,
 } from 'lucide-react';
 
 import { useToast } from '@/hooks/use-toast';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerSourceReport } from '@/components/CustomerSourceReport';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { ProductSalesAnalysis } from '@/components/ProductSalesAnalysis';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { eachDayOfInterval, format, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import {
+  annotationKey,
+  attachChartAnnotations,
+  chartDateToIso,
+  type DashboardAnnotationChannel,
+  type DashboardDayAnnotation,
+} from '@/utils/dashboardAnnotations';
 
 interface ChannelStats {
   totalRevenue: number;
@@ -193,7 +202,7 @@ function DateRangeTextInputs({
 export default function Dashboard() {
 
   const navigate = useNavigate();
-  const { isAdmin, permissions, loading } = useAuth();
+  const { user, isAdmin, permissions, loading } = useAuth();
   const { toast } = useToast();
 
   const canView = isAdmin || permissions.dashboard;
@@ -230,6 +239,10 @@ export default function Dashboard() {
 
 
   const [salesData, setSalesData] = useState<SalesData[]>([]);
+  const [dayNotes, setDayNotes] = useState<DashboardDayAnnotation[]>([]);
+  const [noteEditor, setNoteEditor] = useState<{ channel: DashboardAnnotationChannel; date: string } | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   const [topPdv, setTopPdv] = useState<ProductSales[]>([]);
   const [topSite, setTopSite] = useState<ProductSales[]>([]);
   const [customersList, setCustomersList] = useState<CustomerSales[]>([]);
@@ -268,6 +281,86 @@ export default function Dashboard() {
       if (isFirst) setInitialLoading(false);
     });
   }, [canView, range]);
+
+  useEffect(() => {
+    if (!canView) return;
+    supabase
+      .from('dashboard_day_notes')
+      .select('id, channel, note_date, note, created_by')
+      .then(({ data, error }) => {
+        if (error) {
+          toast({ title: 'Erro ao carregar anotações', description: error.message, variant: 'destructive' });
+          return;
+        }
+        setDayNotes((data ?? []) as DashboardDayAnnotation[]);
+      });
+  }, [canView, toast]);
+
+  const openNoteEditor = (channel: DashboardAnnotationChannel, date: string) => {
+    const isoDate = chartDateToIso(date);
+    const current = dayNotes.find((item) => annotationKey(item.channel, item.note_date) === annotationKey(channel, isoDate));
+    setNoteEditor({ channel, date: isoDate });
+    setNoteText(current?.note ?? '');
+  };
+
+  const saveDayNote = async () => {
+    if (!noteEditor || !user) return;
+    const note = noteText.trim();
+    setSavingNote(true);
+    const existing = dayNotes.find((item) => annotationKey(item.channel, item.note_date) === annotationKey(noteEditor.channel, noteEditor.date));
+    if (!note) {
+      if (existing?.id) {
+        const { error } = await supabase.from('dashboard_day_notes').delete().eq('id', existing.id);
+        if (error) {
+          setSavingNote(false);
+          toast({ title: 'Erro ao remover anotação', description: error.message, variant: 'destructive' });
+          return;
+        }
+      }
+      setDayNotes((items) => items.filter((item) => annotationKey(item.channel, item.note_date) !== annotationKey(noteEditor.channel, noteEditor.date)));
+      setSavingNote(false);
+      setNoteEditor(null);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('dashboard_day_notes')
+      .upsert({ channel: noteEditor.channel, note_date: noteEditor.date, note, created_by: existing?.created_by ?? user.id }, { onConflict: 'channel,note_date' })
+      .select('id, channel, note_date, note, created_by')
+      .single();
+    if (error) {
+      setSavingNote(false);
+      toast({ title: 'Erro ao salvar anotação', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setDayNotes((items) => [
+      ...items.filter((item) => annotationKey(item.channel, item.note_date) !== annotationKey(noteEditor.channel, noteEditor.date)),
+      data as DashboardDayAnnotation,
+    ]);
+    setSavingNote(false);
+    setNoteEditor(null);
+    toast({ title: 'Anotação salva' });
+  };
+
+  const chartTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    const annotation = payload[0]?.payload?.annotation as string | undefined;
+    return (
+      <div className="max-w-xs rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+        <p className="mb-1 font-medium">{label}</p>
+        {payload.filter((entry: any) => entry.value != null).map((entry: any) => (
+          <p key={entry.dataKey} className="text-sm">
+            {entry.name}: {formatBRL(Number(entry.value))}
+          </p>
+        ))}
+        {annotation && (
+          <div className="mt-2 border-t pt-2 text-sm">
+            <p className="mb-1 flex items-center gap-1 font-medium"><MessageSquareText className="h-3.5 w-3.5" /> Anotação</p>
+            <p className="whitespace-pre-wrap text-muted-foreground">{annotation}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const calcChannelStats = (orders: any[], range: DateRange): ChannelStats => {
     const start = startOfDay(range.from!);
@@ -613,10 +706,9 @@ export default function Dashboard() {
           }
         });
 
-      const sorted = Object.values(byDay).sort((a, b) => {
-        const [dA, mA, yA] = a.date.split('/');
-        const [dB, mB, yB] = b.date.split('/');
-        return new Date(`${yA}-${mA}-${dA}`).getTime() - new Date(`${yB}-${mB}-${dB}`).getTime();
+      const sorted = eachDayOfInterval({ start, end }).map((day) => {
+        const date = day.toLocaleDateString('pt-BR');
+        return byDay[date] ?? { date, pdv: 0, site: 0, pdvOrders: 0, siteOrders: 0 };
       });
       setSalesData(sorted);
 
@@ -935,6 +1027,7 @@ export default function Dashboard() {
     dataKey: 'pdv' | 'site'; orderKey: 'pdvOrders' | 'siteOrders'; top: ProductSales[];
     profit?: number | null;
   }) => {
+    const annotatedSalesData = attachChartAnnotations(salesData, dayNotes, dataKey);
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
@@ -986,13 +1079,16 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={salesData}>
+                  <LineChart data={annotatedSalesData} onClick={(state: any) => { if (state?.activeLabel) openNoteEditor(dataKey, state.activeLabel); }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    <Tooltip content={chartTooltip} />
                     <Legend />
-                    <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} />
+                    <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor(dataKey, props.payload.date) }} />
+                    {annotatedSalesData.filter((row) => row.annotation).map((row) => (
+                      <ReferenceDot key={`${dataKey}-${row.date}`} x={row.date} y={row[dataKey]} r={6} fill="hsl(var(--warning))" stroke={color} strokeWidth={3} className="cursor-pointer" onClick={() => openNoteEditor(dataKey, row.date)} />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1647,14 +1743,17 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={salesData}>
+                  <LineChart data={attachChartAnnotations(salesData, dayNotes, 'all')} onClick={(state: any) => { if (state?.activeLabel) openNoteEditor('all', state.activeLabel); }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={(v: number) => formatBRL(v)} />
+                    <Tooltip content={chartTooltip} />
                     <Legend />
-                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} />
-                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} />
+                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
+                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
+                    {attachChartAnnotations(salesData, dayNotes, 'all').filter((row) => row.annotation).map((row) => (
+                      <ReferenceDot key={`all-${row.date}`} x={row.date} y={Math.max(row.pdv, row.site)} r={6} fill="hsl(var(--warning))" stroke="hsl(var(--foreground))" strokeWidth={2} className="cursor-pointer" onClick={() => openNoteEditor('all', row.date)} />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1665,10 +1764,33 @@ export default function Dashboard() {
 
           {/* ============ TRÁFEGO ============ */}
           <TabsContent value="traffic">
-            <SiteAnalytics rangeStart={range.from} rangeEnd={range.to} />
+            <SiteAnalytics rangeStart={range.from} rangeEnd={range.to} annotations={dayNotes} onDayClick={(date) => openNoteEditor('traffic', date)} />
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={Boolean(noteEditor)} onOpenChange={(open) => { if (!open) setNoteEditor(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anotação do dia</DialogTitle>
+            <DialogDescription>
+              {noteEditor ? new Date(`${noteEditor.date}T12:00:00`).toLocaleDateString('pt-BR') : ''} — escreva algo importante para lembrar neste gráfico.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteText}
+            onChange={(event) => setNoteText(event.target.value)}
+            maxLength={1000}
+            rows={5}
+            autoFocus
+            placeholder="Ex.: campanha iniciada, loja fechada ou mudança importante..."
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteEditor(null)} disabled={savingNote}>Cancelar</Button>
+            <Button onClick={saveDayNote} disabled={savingNote}>{savingNote ? 'Salvando...' : noteText.trim() ? 'Salvar anotação' : 'Remover anotação'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
