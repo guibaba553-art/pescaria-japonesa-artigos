@@ -27,7 +27,7 @@ import { CustomerSourceReport } from '@/components/CustomerSourceReport';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteProfitReport } from '@/components/SiteProfitReport';
 import { ProductSalesAnalysis } from '@/components/ProductSalesAnalysis';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { eachDayOfInterval, format, startOfDay, endOfDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import {
   annotationKey,
@@ -348,7 +348,7 @@ export default function Dashboard() {
       <div className="max-w-xs rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="mb-1 font-medium">{label}</p>
         {payload.filter((entry: any) => entry.value != null).map((entry: any) => (
-          <p key={entry.dataKey} className="text-sm" style={{ color: entry.color }}>
+          <p key={entry.dataKey} className="text-sm">
             {entry.name}: {formatBRL(Number(entry.value))}
           </p>
         ))}
@@ -724,10 +724,9 @@ export default function Dashboard() {
           }
         });
 
-      const sorted = Object.values(byDay).sort((a, b) => {
-        const [dA, mA, yA] = a.date.split('/');
-        const [dB, mB, yB] = b.date.split('/');
-        return new Date(`${yA}-${mA}-${dA}`).getTime() - new Date(`${yB}-${mB}-${dB}`).getTime();
+      const sorted = eachDayOfInterval({ start, end }).map((day) => {
+        const date = day.toLocaleDateString('pt-BR');
+        return byDay[date] ?? { date, pdv: 0, site: 0, pdvOrders: 0, siteOrders: 0 };
       });
       setSalesData(sorted);
 
@@ -1098,7 +1097,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={annotatedSalesData}>
+                  <LineChart data={annotatedSalesData} onClick={(state: any) => { if (state?.activeLabel) openNoteEditor(dataKey, state.activeLabel); }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -1759,7 +1758,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={attachChartAnnotations(salesData, dayNotes, 'all')}>
+                  <LineChart data={attachChartAnnotations(salesData, dayNotes, 'all')} onClick={(state: any) => { if (state?.activeLabel) openNoteEditor('all', state.activeLabel); }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />

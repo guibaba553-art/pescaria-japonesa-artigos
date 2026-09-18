@@ -269,7 +269,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayCli
     return (
       <div className="max-w-xs rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="mb-1 font-medium">{label}</p>
-        {payload.map((entry: any) => <p key={entry.dataKey} className="text-sm" style={{ color: entry.color }}>{entry.name}: {Number(entry.value).toLocaleString('pt-BR')}</p>)}
+        {payload.map((entry: any) => <p key={entry.dataKey} className="text-sm">{entry.name}: {Number(entry.value).toLocaleString('pt-BR')}</p>)}
         {annotation && <div className="mt-2 border-t pt-2 text-sm"><p className="mb-1 flex items-center gap-1 font-medium"><MessageSquareText className="h-3.5 w-3.5" /> Anotação</p><p className="whitespace-pre-wrap text-muted-foreground">{annotation}</p></div>}
       </div>
     );
@@ -348,7 +348,7 @@ export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayCli
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={annotatedDailyData}>
+            <LineChart data={annotatedDailyData} onClick={(state: any) => { if (state?.activeLabel) onDayClick?.(state.activeLabel); }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
