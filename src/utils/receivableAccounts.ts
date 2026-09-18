@@ -127,7 +127,7 @@ export function buildAccountReceivables(
 export interface GeneralReceivable {
   date: string;
   accounts: AccountReceivable[];
-  lines: ReceivableLine[];
+  lines: Array<ReceivableLine & { account: IncomeAccount }>;
   totalGross: number;
   totalFee: number;
   totalNet: number;
@@ -144,7 +144,7 @@ export function buildGeneralReceivable(
 ): GeneralReceivable | null {
   const accounts = buildAccountReceivables(date, pdvOrders, siteOrders);
   if (accounts.length === 0) return null;
-  const lines = accounts.flatMap(a => a.lines);
+  const lines = accounts.flatMap(a => a.lines.map(line => ({ ...line, account: a.account })));
   return { date, accounts, lines, ...totals(lines) };
 }
 

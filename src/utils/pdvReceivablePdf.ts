@@ -4,6 +4,8 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getSettlementSchedule } from "@/utils/pdvSettlement";
 import { getCardFeeRate } from "@/utils/cardFees";
+import { classifyIncomeAccount, type IncomeAccount } from "@/utils/incomeAccounts";
+import { ACCOUNT_PDF_COLOR } from "@/utils/receivableAccounts";
 
 interface OrderLike {
   id: string;
@@ -15,6 +17,17 @@ interface OrderLike {
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const PDF_ACCOUNT_LABEL: Record<IncomeAccount, string> = {
+  stone: "Stone",
+  asaas: "Asaas",
+  mercadopago: "Mercado Pago",
+  cash: "Dinheiro",
+};
+
+export function getReceivablePdfAccountCell(account: IncomeAccount) {
+  return { label: PDF_ACCOUNT_LABEL[account], color: ACCOUNT_PDF_COLOR[account] };
+}
 
 /**
  * Gera um PDF "bem visual" listando todas as vendas do PDV cuja liquidação
@@ -115,7 +128,7 @@ export function generatePdvReceivablePdf(
   // ===== Tabela =====
   autoTable(doc, {
     startY: cardsY + 80,
-    head: [["#", "Data da venda", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
+    head: [["#", "Data da venda", "Conta", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
     body: matches.map((m, i) => {
       const methodLabel = (m.order.payment_method || "—").toLowerCase();
       const isCard = methodLabel.includes("credit") || methodLabel.includes("debit") || methodLabel.includes("créd") || methodLabel.includes("débit");
@@ -125,6 +138,7 @@ export function generatePdvReceivablePdf(
       return [
         String(i + 1),
         format(parseISO(m.order.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        getReceivablePdfAccountCell(classifyIncomeAccount({ source: "pdv", payment_method: m.order.payment_method })).label,
         paymentDisplay,
         `${m.parcelIndex}/${m.parcelCount}`,
         fmtBRL(m.parcelGross),
@@ -132,7 +146,7 @@ export function generatePdvReceivablePdf(
         fmtBRL(m.parcelNet),
       ];
     }),
-    foot: [["", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
+    foot: [["", "", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
     theme: "striped",
     margin: { left: margin, right: margin },
     headStyles: {
@@ -150,11 +164,20 @@ export function generatePdvReceivablePdf(
     bodyStyles: { fontSize: 9, textColor: [31, 41, 55] },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     columnStyles: {
-      0: { halign: "center", cellWidth: 26 },
-      3: { halign: "center" },
-      4: { halign: "right" },
-      5: { halign: "right", textColor: [220, 38, 38] },
-      6: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
+      0: { halign: "center", cellWidth: 20 },
+      1: { cellWidth: 88 },
+      2: { cellWidth: 76, fontStyle: "bold" },
+      4: { halign: "center" },
+      5: { halign: "right" },
+      6: { halign: "right", textColor: [220, 38, 38] },
+      7: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
+    },
+    didParseCell: data => {
+      if (data.section !== "body" || data.column.index !== 2) return;
+      const match = matches[data.row.index];
+      if (!match) return;
+      const account = classifyIncomeAccount({ source: "pdv", payment_method: match.order.payment_method });
+      data.cell.styles.textColor = ACCOUNT_PDF_COLOR[account];
     },
     didDrawPage: () => {
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -182,6 +205,7 @@ export interface ReceivablePdfLine {
   feeRate: number;
   fee: number;
   net: number;
+  account?: IncomeAccount;
 }
 
 /**
@@ -195,8 +219,9 @@ export function generateReceivableAccountPdf(opts: {
   accent: [number, number, number];
   lines: ReceivablePdfLine[];
   fileSlug: string;
+  account?: IncomeAccount;
 }) {
-  const { date, title, subtitle, accent, lines, fileSlug } = opts;
+  const { date, title, subtitle, accent, lines, fileSlug, account: defaultAccount } = opts;
   const totalGross = lines.reduce((s, l) => s + l.gross, 0);
   const totalFee = lines.reduce((s, l) => s + l.fee, 0);
   const totalNet = lines.reduce((s, l) => s + l.net, 0);
@@ -242,17 +267,21 @@ export function generateReceivableAccountPdf(opts: {
 
   autoTable(doc, {
     startY: cardsY + 80,
-    head: [["#", "Data da venda", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
-    body: lines.map((l, i) => [
-      String(i + 1),
-      format(parseISO(l.saleDate), "dd/MM/yyyy HH:mm", { locale: ptBR }),
-      l.paymentMethod,
-      l.parcelCount > 1 ? `${l.parcelIndex}/${l.parcelCount}` : "—",
-      fmtBRL(l.gross),
-      l.feeRate > 0 ? `-${(l.feeRate * 100).toFixed(2).replace(".", ",")}%` : "—",
-      fmtBRL(l.net),
-    ]),
-    foot: [["", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
+    head: [["#", "Data da venda", "Conta", "Pagamento", "Parcela", "Bruto", "Taxa", "Líquido"]],
+    body: lines.map((l, i) => {
+      const account = l.account ?? defaultAccount ?? "stone";
+      return [
+        String(i + 1),
+        format(parseISO(l.saleDate), "dd/MM/yyyy HH:mm", { locale: ptBR }),
+        getReceivablePdfAccountCell(account).label,
+        l.paymentMethod,
+        l.parcelCount > 1 ? `${l.parcelIndex}/${l.parcelCount}` : "—",
+        fmtBRL(l.gross),
+        l.feeRate > 0 ? `-${(l.feeRate * 100).toFixed(2).replace(".", ",")}%` : "—",
+        fmtBRL(l.net),
+      ];
+    }),
+    foot: [["", "", "", "", "TOTAL", fmtBRL(totalGross), `- ${fmtBRL(totalFee)}`, fmtBRL(totalNet)]],
     theme: "striped",
     margin: { left: margin, right: margin },
     headStyles: { fillColor: accent, textColor: 255, fontStyle: "bold", fontSize: 10 },
@@ -260,11 +289,20 @@ export function generateReceivableAccountPdf(opts: {
     bodyStyles: { fontSize: 9, textColor: [31, 41, 55] },
     alternateRowStyles: { fillColor: [249, 250, 251] },
     columnStyles: {
-      0: { halign: "center", cellWidth: 26 },
-      3: { halign: "center" },
-      4: { halign: "right" },
-      5: { halign: "right", textColor: [220, 38, 38] },
-      6: { halign: "right", fontStyle: "bold", textColor: accent },
+      0: { halign: "center", cellWidth: 20 },
+      1: { cellWidth: 88 },
+      2: { cellWidth: 76, fontStyle: "bold" },
+      4: { halign: "center" },
+      5: { halign: "right" },
+      6: { halign: "right", textColor: [220, 38, 38] },
+      7: { halign: "right", fontStyle: "bold", textColor: accent },
+    },
+    didParseCell: data => {
+      if (data.section !== "body" || data.column.index !== 2) return;
+      const line = lines[data.row.index];
+      if (!line) return;
+      const account = line.account ?? defaultAccount ?? "stone";
+      data.cell.styles.textColor = ACCOUNT_PDF_COLOR[account];
     },
     didDrawPage: () => {
       const pageHeight = doc.internal.pageSize.getHeight();
