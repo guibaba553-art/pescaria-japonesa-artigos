@@ -10,4 +10,11 @@ describe("getReceivablePdfAccountCell", () => {
   ] as const)("identifica %s pelo nome e pela cor", (account, label, color) => {
     expect(getReceivablePdfAccountCell(account)).toEqual({ label, color });
   });
+
+  it("fornece a mesma cor para estilizar toda a linha da transação", () => {
+    const stone = getReceivablePdfAccountCell("stone");
+    expect(Array.from({ length: 8 }, () => stone.color)).toEqual(
+      Array.from({ length: 8 }, () => [16, 185, 129]),
+    );
+  });
 });
