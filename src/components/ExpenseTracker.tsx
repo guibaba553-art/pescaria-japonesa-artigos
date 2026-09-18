@@ -1245,6 +1245,7 @@ function AccountReceivableCard({ data, label }: { data: AccountReceivable; label
                   accent: ACCOUNT_PDF_COLOR[data.account],
                   lines: data.lines,
                   fileSlug: ui.slug,
+                  account: data.account,
                 })
               }
               title="Baixar PDF desta entrada"
