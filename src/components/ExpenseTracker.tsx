@@ -3,7 +3,7 @@ import { format, addMonths, addDays, startOfMonth, endOfMonth, startOfDay, endOf
 import { ptBR } from "date-fns/locale";
 import { Clock, CalendarIcon, Plus, Trash2, Pencil, Repeat, Zap, ChevronLeft, ChevronRight, TrendingDown, TrendingUp, Wallet, FileDown, Check } from "lucide-react";
 import { generatePdvReceivablePdf, generateReceivableAccountPdf } from "@/utils/pdvReceivablePdf";
-import { buildAccountReceivables, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
+import { buildAccountReceivables, buildGeneralReceivable, getSiteInstallments, ACCOUNT_PDF_COLOR, type AccountReceivable } from "@/utils/receivableAccounts";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
