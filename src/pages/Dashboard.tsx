@@ -20,7 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CustomerSourceReport } from '@/components/CustomerSourceReport';
@@ -359,25 +359,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-    );
-  };
-
-  const annotationDot = (channel: DashboardAnnotationChannel, color: string) => (props: any) => {
-    const { cx, cy, payload } = props;
-    if (typeof cx !== 'number' || typeof cy !== 'number') return null;
-    const hasNote = Boolean(payload?.annotation);
-    return (
-      <circle
-        key={`${channel}-${payload.date}`}
-        cx={cx}
-        cy={cy}
-        r={hasNote ? 5 : 3}
-        fill={hasNote ? 'hsl(var(--warning))' : 'hsl(var(--background))'}
-        stroke={color}
-        strokeWidth={hasNote ? 3 : 2}
-        className="dashboard-note-point cursor-pointer"
-        onClick={() => openNoteEditor(channel, payload.date)}
-      />
     );
   };
 
@@ -1104,7 +1085,10 @@ export default function Dashboard() {
                     <YAxis />
                     <Tooltip content={chartTooltip} />
                     <Legend />
-                    <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} dot={annotationDot(dataKey, color)} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor(dataKey, props.payload.date) }} />
+                    <Line type="monotone" dataKey={dataKey} stroke={color} name="Receita" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor(dataKey, props.payload.date) }} />
+                    {annotatedSalesData.filter((row) => row.annotation).map((row) => (
+                      <ReferenceDot key={`${dataKey}-${row.date}`} x={row.date} y={row[dataKey]} r={6} fill="hsl(var(--warning))" stroke={color} strokeWidth={3} className="cursor-pointer" onClick={() => openNoteEditor(dataKey, row.date)} />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -1765,8 +1749,11 @@ export default function Dashboard() {
                     <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                     <Tooltip content={chartTooltip} />
                     <Legend />
-                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} dot={annotationDot('all', '#2563eb')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
-                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} dot={annotationDot('all', '#7c3aed')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
+                    <Line type="monotone" dataKey="pdv" stroke="#2563eb" name="PDV" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
+                    <Line type="monotone" dataKey="site" stroke="#7c3aed" name="Site" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => openNoteEditor('all', props.payload.date) }} />
+                    {attachChartAnnotations(salesData, dayNotes, 'all').filter((row) => row.annotation).map((row) => (
+                      <ReferenceDot key={`all-${row.date}`} x={row.date} y={Math.max(row.pdv, row.site)} r={6} fill="hsl(var(--warning))" stroke="hsl(var(--foreground))" strokeWidth={2} className="cursor-pointer" onClick={() => openNoteEditor('all', row.date)} />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>

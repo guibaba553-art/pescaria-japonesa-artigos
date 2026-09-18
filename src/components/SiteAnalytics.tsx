@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
 import { Eye, Users, MousePointerClick, TrendingUp, Activity, CalendarDays } from 'lucide-react';
 import { format, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
@@ -256,13 +256,6 @@ export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayCli
   }
 
   const annotatedDailyData = attachChartAnnotations(dailyData, annotations, 'traffic');
-  const annotationDot = (color: string) => (props: any) => {
-    const { cx, cy, payload } = props;
-    if (typeof cx !== 'number' || typeof cy !== 'number') return null;
-    return (
-      <circle key={`traffic-${payload.date}-${color}`} cx={cx} cy={cy} r={payload.annotation ? 5 : 3} fill={payload.annotation ? 'hsl(var(--warning))' : 'hsl(var(--background))'} stroke={color} strokeWidth={payload.annotation ? 3 : 2} className="dashboard-note-point cursor-pointer" onClick={() => onDayClick?.(payload.date)} />
-    );
-  };
   const dailyTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
     const annotation = payload[0]?.payload?.annotation as string | undefined;
@@ -354,8 +347,11 @@ export function SiteAnalytics({ rangeStart, rangeEnd, annotations = [], onDayCli
               <YAxis />
               <Tooltip content={dailyTooltip} />
               <Legend />
-              <Line type="monotone" dataKey="visits" stroke="hsl(var(--primary))" name="Visitas" strokeWidth={2} dot={annotationDot('hsl(var(--primary))')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
-              <Line type="monotone" dataKey="visitors" stroke="#10b981" name="Visitantes únicos" strokeWidth={2} dot={annotationDot('#10b981')} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
+              <Line type="monotone" dataKey="visits" stroke="hsl(var(--primary))" name="Visitas" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
+              <Line type="monotone" dataKey="visitors" stroke="#10b981" name="Visitantes únicos" strokeWidth={2} dot={{ r: 3, className: 'cursor-pointer' }} activeDot={{ r: 7, onClick: (_event: unknown, props: any) => onDayClick?.(props.payload.date) }} />
+              {annotatedDailyData.filter((row) => row.annotation).map((row) => (
+                <ReferenceDot key={`traffic-${row.date}`} x={row.date} y={row.visits} r={6} fill="hsl(var(--warning))" stroke="hsl(var(--primary))" strokeWidth={3} className="cursor-pointer" onClick={() => onDayClick?.(row.date)} />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
