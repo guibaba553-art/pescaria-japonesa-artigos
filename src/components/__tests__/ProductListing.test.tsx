@@ -12,6 +12,7 @@ function createBuilder() {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     gt: vi.fn(() => builder),
+    in: vi.fn(() => builder),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
     then: (resolve: (v: any) => void, reject: (e: any) => void) => {
@@ -172,7 +173,7 @@ describe('ProductListing', () => {
     await waitFor(() => expect(screen.getByText('Produto Varas')).toBeTruthy());
     expect(screen.queryByText('SUBCATEGORIA')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /filtros/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /filtros/i })[0]);
     expect(screen.getByRole('heading', { name: 'Escolha uma categoria' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Varas' })).toBeTruthy();
   });
@@ -182,7 +183,7 @@ describe('ProductListing', () => {
     renderProductListing();
     await waitFor(() => expect(screen.getByText('Produto Varas')).toBeTruthy());
 
-    fireEvent.click(screen.getByRole('button', { name: /filtros/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /filtros/i })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Varas' }));
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Escolha a marca' })).toBeTruthy());

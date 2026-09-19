@@ -143,7 +143,7 @@ export function ProductListing({
       } else {
         const mapped = (data || []).map((row: any) => ({
           ...row,
-          brand: row.brands?.name ?? null,
+          brand: row.brands?.name ?? row.brand ?? null,
         }));
         const memberships = new Map<string, Set<string>>();
         const productIds = mapped.map((product) => product.id);
@@ -239,9 +239,23 @@ export function ProductListing({
     const sizes = new Set<string>();
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
+    });
+    const characteristicProducts = filterProductsByFacets(products, {
+      brands: selectedBrands,
+      pounds: [],
+      sizes: [],
+      groupIds: [],
+    }, groupMemberships);
+    characteristicProducts.forEach(p => {
       if (p.pound_test) pounds.add(p.pound_test);
       if (p.size) sizes.add(p.size);
     });
+    const groupCandidateIds = new Set(filterProductsByFacets(products, {
+      brands: selectedBrands,
+      pounds: selectedPounds,
+      sizes: selectedSizes,
+      groupIds: [],
+    }, groupMemberships).map((product) => product.id));
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
     return {
       brandOptions: Array.from(brands).sort(sorter),
@@ -250,9 +264,12 @@ export function ProductListing({
       groupOptions: categoryTree
         .map((category) => ({ ...category, id: allCategories.find((item) => item.name === category.name)?.id ?? '' }))
         .filter((category) => category.id)
+        .filter((category) => selectedSubs.includes(category.name) || Array.from(groupMemberships.entries()).some(
+          ([productId, groups]) => groupCandidateIds.has(productId) && groups.has(category.id),
+        ))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true })),
     };
-  }, [products, categoryTree, allCategories]);
+  }, [products, categoryTree, allCategories, selectedBrands, selectedPounds, selectedSizes, selectedSubs, groupMemberships]);
 
   const applySubs = (subs: string[]) => {
     if (subs.length) {
