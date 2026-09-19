@@ -17,9 +17,9 @@ function createBuilder() {
     limit: vi.fn(() => builder),
     then: (resolve: (v: any) => void, reject: (e: any) => void) => {
       if (resolveValue instanceof Error) {
-        setTimeout(() => reject(resolveValue), 5);
+        return Promise.reject(resolveValue).then(resolve, reject);
       } else {
-        setTimeout(() => resolve(resolveValue), 5);
+        return Promise.resolve(resolveValue).then(resolve, reject);
       }
     },
   };
