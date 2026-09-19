@@ -502,81 +502,39 @@ export function ProductListing({
     );
   };
 
-  const renderSubcategoryLevels = () => {
-    if (subcategoryOptions.length === 0 && selectedSubcategoryPath.length === 0) return null;
-    return (
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Subcategoria
-        </p>
+  const activeFilterChips = [
+    ...(categoryParam ? [{ key: 'category', label: categoryParam, remove: () => handleCategoryChange('') }] : []),
+    ...selectedBrands.map((value) => ({ key: `brand-${value}`, label: value, remove: () => toggle(selectedBrands, setSelectedBrands, value) })),
+    ...selectedPounds.map((value) => ({ key: `pound-${value}`, label: value, remove: () => toggle(selectedPounds, setSelectedPounds, value) })),
+    ...selectedSizes.map((value) => ({ key: `size-${value}`, label: value, remove: () => toggle(selectedSizes, setSelectedSizes, value) })),
+    ...selectedSubs.map((value) => ({ key: `group-${value}`, label: value, remove: () => handleGroupClick(value) })),
+  ];
 
-        {selectedSubcategoryPath.length > 0 && (
-          <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => applySubs([])}
-              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-            >
-              {categoryParam || 'Tudo'}
-            </button>
+  const renderChoiceGrid = (options: string[], selected: string[], onClick: (value: string) => void) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {options.map((option) => {
+        const active = selected.includes(option);
+        return (
+          <Button
+            key={option}
+            type="button"
+            variant={active ? 'default' : 'outline'}
+            className="h-auto min-h-11 justify-between whitespace-normal text-left"
+            onClick={() => onClick(option)}
+          >
+            <span>{option}</span>
+            {active ? <X /> : <ChevronRight />}
+          </Button>
+        );
+      })}
+    </div>
+  );
 
-            {selectedSubcategoryPath.map((name, i) => {
-              const isLast = i === selectedSubcategoryPath.length - 1;
-              return (
-                <span key={name} className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-1 duration-200">
-                  <span className="text-muted-foreground/60 text-xs">›</span>
-                  <button
-                    type="button"
-                    title={isLast ? 'Clique para voltar um nível' : `Voltar para ${name}`}
-                    onClick={() => {
-                      if (isLast) {
-                        const parentTarget = i > 0 ? selectedSubcategoryPath[i - 1] : undefined;
-                        applySubs(parentTarget ? [parentTarget] : []);
-                        return;
-                      }
-                      applySubs([name]);
-                    }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
-                      isLast
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
-                        : 'bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/20'
-                    }`}
-                  >
-                    {name}
-                    {isLast && <X className="w-3 h-3 opacity-80" />}
-                  </button>
-                </span>
-              );
-            })}
-          </nav>
-        )}
-
-        {subcategoryOptions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {subcategoryOptions.map((opt) => {
-              const active = selectedSubs.includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => handleSubcategoryLevelClick(opt)}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-full border transition-all ${
-                    active
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
-                      : 'bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border'
-                  }`}
-                >
-                  {opt}
-                  {active && <X className="w-3 h-3 opacity-80" />}
-                </button>
-              );
-            })}
-          </div>
-
-        )}
-      </div>
-    );
-  };
+  const filterStepTitle = filterStep === 'category'
+    ? 'Escolha uma categoria'
+    : filterStep === 'brand'
+      ? 'Escolha a marca'
+      : 'Combine as características';
 
 
   const displayTitle = isOffersActive
