@@ -5,9 +5,8 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { SlidersHorizontal, Filter, X } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
+import { SlidersHorizontal, Filter, X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { fuzzySearch } from '@/lib/fuzzySearch';
 
@@ -18,9 +17,11 @@ import { Product } from '@/types/product';
 import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
-import { useCategories, type Category } from '@/hooks/useCategories';
+import { useCategories } from '@/hooks/useCategories';
+import { filterProductsByFacets } from '@/utils/progressiveProductFilters';
 
 type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
+type FilterStep = 'category' | 'brand' | 'characteristics';
 
 export interface ProductListingProps {
   /** Título exibido no cabeçalho da página (ex: "Ofertas") */
@@ -43,8 +44,7 @@ export function ProductListing({
   const onSaleParam = forceOnSale ? 'true' : searchParams.get('on_sale');
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
-  // Produtos que pertencem aos grupos selecionados via product_categories (N:N)
-  const [groupMemberIds, setGroupMemberIds] = useState<Set<string> | null>(null);
+  const [groupMemberships, setGroupMemberships] = useState<Map<string, Set<string>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParam);
 
@@ -52,7 +52,7 @@ export function ProductListing({
   useEffect(() => {
     setSearchQuery(searchParam);
   }, [searchParam]);
-  const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
+  const { primaries, getDescendantsOf, categories: allCategories } = useCategories();
 
   // Subcategorias selecionadas (podem ser várias do mesmo nível)
   const selectedSubs = useMemo(
@@ -60,38 +60,15 @@ export function ProductListing({
     [subcategoryParam]
   );
 
-  const pathOf = (name: string): string[] => {
-    const target = allCategories.find((c) => c.name === name);
-    if (!target) return [name];
-    const path: string[] = [];
-    let current: Category | undefined = target;
-    const seen = new Set<string>();
-    while (current && !seen.has(current.id)) {
-      seen.add(current.id);
-      if (!current.parent_id) break;
-      path.unshift(current.name);
-      current = allCategories.find((c) => c.id === current!.parent_id);
-    }
-    return path;
-  };
-
-  // Caminho hierárquico da subcategoria atual (a partir da categoria primária).
-  // Com várias selecionadas, mostra só o caminho até o pai comum.
-  const selectedSubcategoryPath = useMemo(() => {
-    if (!selectedSubs.length || !allCategories.length) return [] as string[];
-    const base = pathOf(selectedSubs[0]);
-    return selectedSubs.length > 1 ? base.slice(0, -1) : base;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubs, allCategories]);
-
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
   const [priceMinInput, setPriceMinInput] = useState('');
   const [priceMaxInput, setPriceMaxInput] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
-  const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filterStep, setFilterStep] = useState<FilterStep>('category');
   const { toast } = useToast();
   const { addItem } = useCart();
   const { getQuantity, setQuantity, incrementQuantity, decrementQuantity } = useProductQuantity();
@@ -117,6 +94,7 @@ export function ProductListing({
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
+    setSelectedSizes([]);
     setPriceRange(null);
     setPriceMinInput('');
     setPriceMaxInput('');
@@ -146,46 +124,6 @@ export function ProductListing({
 
       if (category) query = query.eq('category', category);
 
-      let memberIds: Set<string> | null = null;
-      if (subcategory) {
-        // Expande cada grupo selecionado para incluir seus descendentes
-        const subNames = new Set<string>();
-        const subIds = new Set<string>();
-        subcategory
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .forEach((name) => {
-            subNames.add(name);
-            const target = allCategories.find((c) => c.name === name);
-            if (target) {
-              subIds.add(target.id);
-              getDescendantsOf(target.id).forEach((d) => {
-                subNames.add(d.name);
-                subIds.add(d.id);
-              });
-            }
-          });
-
-        // Um produto pode pertencer a vários grupos ao mesmo tempo (tabela N:N)
-        memberIds = new Set<string>();
-        if (subIds.size > 0) {
-          const { data: links } = await supabase
-            .from('product_categories')
-            .select('product_id')
-            .in('category_id', Array.from(subIds))
-            .limit(20000);
-          (links || []).forEach((l: any) => memberIds!.add(l.product_id));
-        }
-
-        const quoted = Array.from(subNames).map((n) => `"${n.replace(/"/g, '')}"`).join(',');
-        const orParts = [`subcategory.in.(${quoted})`];
-        if (memberIds.size > 0) orParts.push(`id.in.(${Array.from(memberIds).join(',')})`);
-        query = query.or(orParts.join(','));
-      }
-      setGroupMemberIds(memberIds);
-
-
       let result = await query;
       for (let attempt = 0; attempt < 2 && result.error && /failed to fetch|networkerror|load failed/i.test(result.error.message || ''); attempt++) {
         await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
@@ -205,8 +143,32 @@ export function ProductListing({
       } else {
         const mapped = (data || []).map((row: any) => ({
           ...row,
-          brand: row.brands?.name ?? null,
+          brand: row.brands?.name ?? row.brand ?? null,
         }));
+        const memberships = new Map<string, Set<string>>();
+        const productIds = mapped.map((product) => product.id);
+        if (productIds.length) {
+          for (let index = 0; index < productIds.length; index += 200) {
+            const { data: links } = await supabase
+              .from('product_categories')
+              .select('product_id, category_id')
+              .in('product_id', productIds.slice(index, index + 200))
+              .limit(20000);
+            (links || []).forEach((link: any) => {
+              const current = memberships.get(link.product_id) ?? new Set<string>();
+              current.add(link.category_id);
+              memberships.set(link.product_id, current);
+            });
+          }
+        }
+        mapped.forEach((product) => {
+          const legacyCategory = allCategories.find((category) => category.name === product.subcategory);
+          if (!legacyCategory) return;
+          const current = memberships.get(product.id) ?? new Set<string>();
+          current.add(legacyCategory.id);
+          memberships.set(product.id, current);
+        });
+        setGroupMemberships(memberships);
         setProducts(mapped as unknown as Product[]);
       }
     } catch (err) {
@@ -225,11 +187,6 @@ export function ProductListing({
 
   const handleOffersClick = () => {
     setSearchParams({ on_sale: 'true' });
-  };
-
-  const handleSubcategoryChange = (subcategory: string) => {
-    if (!categoryParam) return;
-    setSearchParams(subcategory ? { category: categoryParam, subcategory } : { category: categoryParam });
   };
 
   const { minPrice, maxPrice } = useMemo(() => {
@@ -256,7 +213,6 @@ export function ProductListing({
     }
   }, [products, minPrice, maxPrice]);
 
-  // Nomes de todas as subcategorias e sub-subcategorias da categoria selecionada
   const categoryTree = useMemo(() => {
     const primary = primaries.find((p) => p.name === categoryParam);
     if (!primary) return [] as Array<{ name: string; depth: number; parentName: string | null }>;
@@ -268,65 +224,59 @@ export function ProductListing({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaries, allCategories, categoryParam]);
 
-  const categoryTreeSubOptions = useMemo(
-    () => categoryTree.map((c) => c.name),
-    [categoryTree]
-  );
+  const selectedGroupIds = useMemo(() => selectedSubs
+    .map((name) => allCategories.find((category) => category.name === name)?.id)
+    .filter((id): id is string => Boolean(id)), [selectedSubs, allCategories]);
 
-  // Navegação em níveis: mostra apenas os filhos diretos do nível atual
-  const currentParentId = useMemo(() => {
-    if (selectedSubcategoryPath.length > 0) {
-      const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
-      return allCategories.find((c) => c.name === last)?.id ?? null;
-    }
-    return primaries.find((p) => p.name === categoryParam)?.id ?? null;
-  }, [selectedSubcategoryPath, allCategories, primaries, categoryParam]);
+  const productsMatchingCurrentFacets = useMemo(() => filterProductsByFacets(products, {
+    brands: selectedBrands,
+    pounds: selectedPounds,
+    sizes: selectedSizes,
+    groupIds: selectedGroupIds,
+  }, groupMemberships), [products, selectedBrands, selectedPounds, selectedSizes, selectedGroupIds, groupMemberships]);
 
-  // Opções dinâmicas a partir dos produtos carregados
-  const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
+  const { brandOptions, poundOptions, sizeOptions, groupOptions } = useMemo(() => {
     const brands = new Set<string>();
     const pounds = new Set<string>();
-    const subs = new Set<string>();
+    const sizes = new Set<string>();
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
-      if (p.pound_test) pounds.add(p.pound_test);
-      if (p.subcategory) subs.add(p.subcategory);
     });
+    const characteristicProducts = filterProductsByFacets(products, {
+      brands: selectedBrands,
+      pounds: [],
+      sizes: [],
+      groupIds: [],
+    }, groupMemberships);
+    characteristicProducts.forEach(p => {
+      if (p.pound_test) pounds.add(p.pound_test);
+      if (p.size) sizes.add(p.size);
+    });
+    const groupCandidateProducts = filterProductsByFacets(products, {
+      brands: selectedBrands,
+      pounds: selectedPounds,
+      sizes: selectedSizes,
+      groupIds: selectedGroupIds,
+    }, groupMemberships);
+    const groupCandidateIds = new Set(groupCandidateProducts.map((product) => product.id));
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
-
-    // Filhos diretos do nível atual
-    const children = currentParentId
-      ? allCategories
-          .filter((c) => c.parent_id === currentParentId)
-          .map((c) => c.name)
-      : [];
-    // Na raiz, acrescenta subcategorias "órfãs" presentes nos produtos
-    const extras =
-      selectedSubcategoryPath.length === 0
-        ? Array.from(subs)
-            .filter((n) => !children.includes(n) && !categoryTreeSubOptions.includes(n))
-            .sort(sorter)
-        : [];
-
     return {
       brandOptions: Array.from(brands).sort(sorter),
       poundOptions: Array.from(pounds).sort(sorter),
-      subcategoryOptions: [...children, ...extras],
+      sizeOptions: Array.from(sizes).sort(sorter),
+      groupOptions: categoryTree
+        .map((category) => ({ ...category, id: allCategories.find((item) => item.name === category.name)?.id ?? '' }))
+        .filter((category) => category.id)
+        .filter((category) => {
+          if (selectedSubs.includes(category.name)) return true;
+          return Array.from(groupMemberships.entries()).some(([productId, groups]) => {
+            if (!groupCandidateIds.has(productId)) return false;
+            return groups.has(category.id);
+          });
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true })),
     };
-  }, [products, currentParentId, allCategories, selectedSubcategoryPath, categoryTreeSubOptions]);
-
-  // O filtro usa todas as subcategorias escolhidas + seus descendentes
-  const expandedSubcategories = useMemo(() => {
-    if (!selectedSubs.length) return [] as string[];
-    const names = new Set<string>();
-    selectedSubs.forEach((name) => {
-      names.add(name);
-      const cat = allCategories.find((c) => c.name === name);
-      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
-    });
-    return Array.from(names);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubs, allCategories]);
+  }, [products, categoryTree, allCategories, selectedBrands, selectedPounds, selectedSizes, selectedSubs, selectedGroupIds, groupMemberships]);
 
   const applySubs = (subs: string[]) => {
     if (subs.length) {
@@ -338,22 +288,9 @@ export function ProductListing({
     }
   };
 
-  // Clique em um nível: permite combinar várias subcategorias do mesmo nível
-  const handleSubcategoryLevelClick = (name: string) => {
+  const handleGroupClick = (name: string) => {
     if (!categoryParam) return;
-    if (selectedSubs.includes(name)) {
-      // Desmarca — se era a única, sobe um nível
-      const rest = selectedSubs.filter((s) => s !== name);
-      if (rest.length) return applySubs(rest);
-      const path = pathOf(name);
-      const parent = path.length > 1 ? path[path.length - 2] : undefined;
-      return applySubs(parent ? [parent] : []);
-    }
-    const parentOf = (n: string) =>
-      allCategories.find((c) => c.name === n)?.parent_id ?? null;
-    const sameLevel =
-      selectedSubs.length > 0 && parentOf(name) === parentOf(selectedSubs[0]);
-    applySubs(sameLevel ? [...selectedSubs, name] : [name]);
+    applySubs(selectedSubs.includes(name) ? selectedSubs.filter((item) => item !== name) : [...selectedSubs, name]);
   };
 
 
@@ -381,16 +318,8 @@ export function ProductListing({
   }, [products, searchQuery]);
 
   const filteredProducts = useMemo(() => {
-    const filtered = products.filter(p => {
+    const filtered = productsMatchingCurrentFacets.filter(p => {
       if (searchMatchIds && !searchMatchIds.has(p.id)) return false;
-
-      if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
-      if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (expandedSubcategories.length) {
-        const byField = !!p.subcategory && expandedSubcategories.includes(p.subcategory);
-        const byGroup = groupMemberIds?.has(p.id) ?? false;
-        if (!byField && !byGroup) return false;
-      }
       const hasActiveVariationPromo = p.variations?.some((variation) => isPromoActive(variation)) ?? false;
       if (onSaleParam === 'true' && !isPromoActive(p) && !hasActiveVariationPromo) return false;
       if (priceRange) {
@@ -425,18 +354,20 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, groupMemberIds, priceRange, sortBy, onSaleParam]);
+  }, [productsMatchingCurrentFacets, searchMatchIds, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =
     selectedBrands.length +
     selectedPounds.length +
-    selectedSubcategoryPath.length +
+    selectedSizes.length +
+    selectedSubs.length +
     (priceFilterActive ? 1 : 0);
 
   const clearAllFilters = () => {
     setSelectedBrands([]);
     setSelectedPounds([]);
+    setSelectedSizes([]);
     if (categoryParam) {
       setSearchParams({ category: categoryParam });
     } else {
@@ -448,8 +379,7 @@ export function ProductListing({
     priceManuallySetRef.current = false;
   };
 
-  const hasAnyAttribute =
-    brandOptions.length + poundOptions.length + subcategoryOptions.length > 0
+  const hasAnyAttribute = primaries.length + brandOptions.length + poundOptions.length + sizeOptions.length + groupOptions.length > 0
     || maxPrice > minPrice;
 
   const handleApplyPrice = () => {
@@ -460,8 +390,6 @@ export function ProductListing({
     const appliedMin = rawMin === '' ? minPrice : Math.max(minPrice, Math.min(maxPrice, Number(rawMin)));
     const appliedMax = rawMax === '' ? maxPrice : Math.max(minPrice, Math.min(maxPrice, Number(rawMax)));
     setPriceRange([Math.min(appliedMin, appliedMax), Math.max(appliedMin, appliedMax)]);
-    setPricePopoverOpen(false);
-    setMobileSheetOpen(false);
   };
 
   const handleClearPrice = () => {
@@ -469,8 +397,6 @@ export function ProductListing({
     setPriceMaxInput('');
     setPriceRange([minPrice, maxPrice]);
     priceManuallySetRef.current = false;
-    setPricePopoverOpen(false);
-    setMobileSheetOpen(false);
   };
 
   const renderPriceRangeFilter = () => {
@@ -571,81 +497,39 @@ export function ProductListing({
     );
   };
 
-  const renderSubcategoryLevels = () => {
-    if (subcategoryOptions.length === 0 && selectedSubcategoryPath.length === 0) return null;
-    return (
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Subcategoria
-        </p>
+  const activeFilterChips = [
+    ...(categoryParam ? [{ key: 'category', label: categoryParam, remove: () => handleCategoryChange('') }] : []),
+    ...selectedBrands.map((value) => ({ key: `brand-${value}`, label: value, remove: () => toggle(selectedBrands, setSelectedBrands, value) })),
+    ...selectedPounds.map((value) => ({ key: `pound-${value}`, label: value, remove: () => toggle(selectedPounds, setSelectedPounds, value) })),
+    ...selectedSizes.map((value) => ({ key: `size-${value}`, label: value, remove: () => toggle(selectedSizes, setSelectedSizes, value) })),
+    ...selectedSubs.map((value) => ({ key: `group-${value}`, label: value, remove: () => handleGroupClick(value) })),
+  ];
 
-        {selectedSubcategoryPath.length > 0 && (
-          <nav aria-label="Caminho da categoria" className="flex flex-wrap items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => applySubs([])}
-              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors"
-            >
-              {categoryParam || 'Tudo'}
-            </button>
+  const renderChoiceGrid = (options: string[], selected: string[], onClick: (value: string) => void) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {options.map((option) => {
+        const active = selected.includes(option);
+        return (
+          <Button
+            key={option}
+            type="button"
+            variant={active ? 'default' : 'outline'}
+            className="h-auto min-h-11 justify-between whitespace-normal text-left"
+            onClick={() => onClick(option)}
+          >
+            <span>{option}</span>
+            {active ? <X /> : <ChevronRight />}
+          </Button>
+        );
+      })}
+    </div>
+  );
 
-            {selectedSubcategoryPath.map((name, i) => {
-              const isLast = i === selectedSubcategoryPath.length - 1;
-              return (
-                <span key={name} className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-1 duration-200">
-                  <span className="text-muted-foreground/60 text-xs">›</span>
-                  <button
-                    type="button"
-                    title={isLast ? 'Clique para voltar um nível' : `Voltar para ${name}`}
-                    onClick={() => {
-                      if (isLast) {
-                        const parentTarget = i > 0 ? selectedSubcategoryPath[i - 1] : undefined;
-                        applySubs(parentTarget ? [parentTarget] : []);
-                        return;
-                      }
-                      applySubs([name]);
-                    }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full border transition-all ${
-                      isLast
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
-                        : 'bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/20'
-                    }`}
-                  >
-                    {name}
-                    {isLast && <X className="w-3 h-3 opacity-80" />}
-                  </button>
-                </span>
-              );
-            })}
-          </nav>
-        )}
-
-        {subcategoryOptions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {subcategoryOptions.map((opt) => {
-              const active = selectedSubs.includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => handleSubcategoryLevelClick(opt)}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-full border transition-all ${
-                    active
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm hover:opacity-90'
-                      : 'bg-background text-foreground hover:bg-muted hover:border-muted-foreground/30 hover:shadow-sm border-border'
-                  }`}
-                >
-                  {opt}
-                  {active && <X className="w-3 h-3 opacity-80" />}
-                </button>
-              );
-            })}
-          </div>
-
-        )}
-      </div>
-    );
-  };
+  const filterStepTitle = filterStep === 'category'
+    ? 'Escolha uma categoria'
+    : filterStep === 'brand'
+      ? 'Escolha a marca'
+      : 'Combine as características';
 
 
   const displayTitle = isOffersActive
@@ -727,62 +611,15 @@ export function ProductListing({
       </div>
 
       <div className="container mx-auto pt-4 sm:pt-6 pb-8 sm:pb-16">
-        {/* Category filters */}
-        <div className="-mx-4 sm:mx-0 mb-4">
-          <div className="flex sm:flex-wrap gap-3 px-4 sm:px-0 overflow-x-auto sm:overflow-visible scrollbar-hide pb-2 sm:pb-1">
-            <button
-              onClick={() => handleCategoryChange('')}
-              className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                categoryParam === '' && onSaleParam !== 'true'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted text-foreground hover:bg-muted/70'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={handleOffersClick}
-              className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                onSaleParam === 'true'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted text-foreground hover:bg-muted/70'
-              }`}
-            >
-              Ofertas
-            </button>
-            {primaries.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryChange(cat.name)}
-                className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                  categoryParam === cat.name
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-muted text-foreground hover:bg-muted/70'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop filters */}
-        <div className="hidden lg:flex flex-col gap-5 mb-6">
-          <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
-            {brandOptions.length > 0 &&
-              renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-            {poundOptions.length > 0 &&
-              renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
-          </div>
-          {renderSubcategoryLevels()}
-        </div>
-
-
         {(hasAnyAttribute || filteredProducts.length > 0) && (
-          <div className="lg:hidden flex items-center gap-2 mb-4">
+          <div className="flex flex-col gap-3 mb-6">
+            <div className="flex items-center gap-2">
             {hasAnyAttribute && (
-              <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-                <SheetTrigger asChild>
+              <Dialog open={filterDialogOpen} onOpenChange={(open) => {
+                setFilterDialogOpen(open);
+                if (open) setFilterStep('category');
+              }}>
+                <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="rounded-full h-9 gap-1.5 relative">
                     <Filter className="w-4 h-4" />
                     Filtros
@@ -792,40 +629,124 @@ export function ProductListing({
                       </span>
                     )}
                   </Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0 flex flex-col">
-                  <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
-                    <SheetTitle className="text-left text-xl font-display font-bold flex items-center gap-2">
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0 gap-0">
+                  <DialogHeader className="px-5 pt-5 pb-4 border-b border-border text-left">
+                    <div className="flex items-center gap-2">
+                      {filterStep !== 'category' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Voltar"
+                          onClick={() => setFilterStep(filterStep === 'characteristics' ? 'brand' : 'category')}
+                        >
+                          <ArrowLeft />
+                        </Button>
+                      )}
+                    <DialogTitle className="text-xl font-display font-bold flex items-center gap-2">
                       <SlidersHorizontal className="w-5 h-5" />
-                      Filtros
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                    {renderPriceRangeFilter()}
-                    {brandOptions.length > 0 &&
-                      renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-                    {renderSubcategoryLevels()}
-                    {poundOptions.length > 0 &&
-                      renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                      {filterStepTitle}
+                    </DialogTitle>
+                    </div>
+                    <DialogDescription className="text-left">
+                      {filterStep === 'category'
+                        ? 'Comece pelo tipo de produto que você procura.'
+                        : filterStep === 'brand'
+                          ? 'Escolha uma ou mais marcas, ou continue sem selecionar.'
+                          : 'Estas escolhas são independentes e serão combinadas entre si.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="overflow-y-auto p-5 space-y-6 min-h-[320px]">
+                    {filterStep === 'category' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant={!categoryParam && !isOffersActive ? 'default' : 'outline'}
+                          className="h-12 justify-between"
+                          onClick={() => { handleCategoryChange(''); setFilterStep('brand'); }}
+                        >
+                          Todos os produtos <ChevronRight />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={isOffersActive ? 'default' : 'outline'}
+                          className="h-12 justify-between"
+                          onClick={() => { handleOffersClick(); setFilterStep('brand'); }}
+                        >
+                          Ofertas <ChevronRight />
+                        </Button>
+                        {primaries.map((category) => (
+                          <Button
+                            key={category.id}
+                            type="button"
+                            variant={categoryParam === category.name ? 'default' : 'outline'}
+                            className="h-12 justify-between"
+                            onClick={() => { handleCategoryChange(category.name); setFilterStep('brand'); }}
+                          >
+                            {category.name} <ChevronRight />
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+
+                    {filterStep === 'brand' && (
+                      <div className="space-y-5">
+                        {brandOptions.length > 0
+                          ? renderChoiceGrid(brandOptions, selectedBrands, (value) => toggle(selectedBrands, setSelectedBrands, value))
+                          : <p className="text-sm text-muted-foreground">Nenhuma marca cadastrada para esta categoria.</p>}
+                      </div>
+                    )}
+
+                    {filterStep === 'characteristics' && (
+                      <div className="space-y-6">
+                        {poundOptions.length > 0 && renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                        {sizeOptions.length > 0 && renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
+                        {groupOptions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Outros grupos</p>
+                            <div className="flex flex-wrap gap-2">
+                              {groupOptions.map((group) => (
+                                <Button
+                                  key={group.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={selectedSubs.includes(group.name) ? 'default' : 'outline'}
+                                  onClick={() => handleGroupClick(group.name)}
+                                >
+                                  {group.name}{selectedSubs.includes(group.name) && <X />}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {renderPriceRangeFilter()}
+                      </div>
+                    )}
                   </div>
 
-                  <SheetFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:flex-row">
+                  <DialogFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:space-x-0">
                     <Button
                       variant="outline"
-                      className="flex-1 rounded-full"
+                      className="flex-1"
                       onClick={clearAllFilters}
                       disabled={totalActiveFilters === 0}
                     >
                       Limpar
                     </Button>
-                    <Button className="flex-1 rounded-full" asChild>
-                      <button type="button" onClick={() => (document.activeElement as HTMLElement)?.blur()}>
+                    {filterStep === 'brand' ? (
+                      <Button className="flex-1" onClick={() => setFilterStep('characteristics')}>
+                        Continuar <ChevronRight />
+                      </Button>
+                    ) : filterStep === 'characteristics' ? (
+                      <Button className="flex-1" onClick={() => setFilterDialogOpen(false)}>
                         Ver {filteredProducts.length} produtos
-                      </button>
-                    </Button>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
+                      </Button>
+                    ) : (
+                      <Button className="flex-1" disabled>Escolha uma categoria</Button>
+                    )}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             )}
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
@@ -839,6 +760,16 @@ export function ProductListing({
                 <SelectItem value="newest">Mais novos</SelectItem>
               </SelectContent>
             </Select>
+            </div>
+            {activeFilterChips.length > 0 && (
+              <div className="flex flex-wrap gap-2" aria-label="Filtros ativos">
+                {activeFilterChips.map((chip) => (
+                  <Button key={chip.key} variant="secondary" size="sm" className="h-8 rounded-full" onClick={chip.remove}>
+                    {chip.label}<X />
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -886,28 +817,20 @@ export function ProductListing({
                         className="pl-9 h-9 w-96 text-sm rounded-full bg-muted/50 border-border/50"
                       />
                     </div>
-                    {priceRange && maxPrice > minPrice && (
-                      <Popover open={pricePopoverOpen} onOpenChange={setPricePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full h-9 gap-1.5 relative text-sm font-normal"
-                          >
-                            <Filter className="w-4 h-4" />
-                            Filtros
-                            {totalActiveFilters > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold ml-0.5">
-                                {totalActiveFilters}
-                              </span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-64 p-4">
-                          {renderPriceRangeFilter()}
-                        </PopoverContent>
-                      </Popover>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full h-9 gap-1.5 relative text-sm font-normal"
+                      onClick={() => { setFilterStep('category'); setFilterDialogOpen(true); }}
+                    >
+                      <Filter className="w-4 h-4" />
+                      Filtros
+                      {totalActiveFilters > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold ml-0.5">
+                          {totalActiveFilters}
+                        </span>
+                      )}
+                    </Button>
                     <span className="text-sm text-muted-foreground whitespace-nowrap">Ordenar por:</span>
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
                       <SelectTrigger className="w-[200px] h-9">
