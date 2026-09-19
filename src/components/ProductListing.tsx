@@ -17,7 +17,7 @@ import { Product } from '@/types/product';
 import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPrice';
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
-import { useCategories, type Category } from '@/hooks/useCategories';
+import { useCategories } from '@/hooks/useCategories';
 import { filterProductsByFacets } from '@/utils/progressiveProductFilters';
 
 type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
@@ -52,37 +52,13 @@ export function ProductListing({
   useEffect(() => {
     setSearchQuery(searchParam);
   }, [searchParam]);
-  const { primaries, getSubcategoriesOf, getDescendantsOf, categories: allCategories } = useCategories();
+  const { primaries, getDescendantsOf, categories: allCategories } = useCategories();
 
   // Subcategorias selecionadas (podem ser várias do mesmo nível)
   const selectedSubs = useMemo(
     () => subcategoryParam.split(',').map((s) => s.trim()).filter(Boolean),
     [subcategoryParam]
   );
-
-  const pathOf = (name: string): string[] => {
-    const target = allCategories.find((c) => c.name === name);
-    if (!target) return [name];
-    const path: string[] = [];
-    let current: Category | undefined = target;
-    const seen = new Set<string>();
-    while (current && !seen.has(current.id)) {
-      seen.add(current.id);
-      if (!current.parent_id) break;
-      path.unshift(current.name);
-      current = allCategories.find((c) => c.id === current!.parent_id);
-    }
-    return path;
-  };
-
-  // Caminho hierárquico da subcategoria atual (a partir da categoria primária).
-  // Com várias selecionadas, mostra só o caminho até o pai comum.
-  const selectedSubcategoryPath = useMemo(() => {
-    if (!selectedSubs.length || !allCategories.length) return [] as string[];
-    const base = pathOf(selectedSubs[0]);
-    return selectedSubs.length > 1 ? base.slice(0, -1) : base;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubs, allCategories]);
 
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
@@ -209,11 +185,6 @@ export function ProductListing({
 
   const handleOffersClick = () => {
     setSearchParams({ on_sale: 'true' });
-  };
-
-  const handleSubcategoryChange = (subcategory: string) => {
-    if (!categoryParam) return;
-    setSearchParams(subcategory ? { category: categoryParam, subcategory } : { category: categoryParam });
   };
 
   const { minPrice, maxPrice } = useMemo(() => {
