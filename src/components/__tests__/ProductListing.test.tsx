@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProductListing } from '../ProductListing';
 
@@ -43,12 +43,19 @@ vi.mock('@/hooks/use-toast', () => ({
 
 vi.mock('@/hooks/useCategories', () => ({
   useCategories: () => ({
-    categories: [],
+    categories: [
+      { id: '1', name: 'Carretilhas', slug: 'carretilhas', is_primary: true, description: null, icon: null, display_order: 1, parent_id: null },
+      { id: '2', name: 'Varas', slug: 'varas', is_primary: true, description: null, icon: null, display_order: 2, parent_id: null },
+      { id: '3', name: 'Evolution', slug: 'evolution', is_primary: false, description: null, icon: null, display_order: 1, parent_id: '2' },
+    ],
     primaries: [
       { id: '1', name: 'Carretilhas', slug: 'carretilhas', is_primary: true, description: null, icon: null, display_order: 1, parent_id: null },
       { id: '2', name: 'Varas', slug: 'varas', is_primary: true, description: null, icon: null, display_order: 2, parent_id: null },
     ],
     getSubcategoriesOf: vi.fn(() => []),
+    getDescendantsOf: vi.fn((id: string) => id === '2' ? [
+      { id: '3', name: 'Evolution', slug: 'evolution', is_primary: false, description: null, icon: null, display_order: 1, parent_id: '2', depth: 1 },
+    ] : []),
   }),
 }));
 
@@ -156,5 +163,34 @@ describe('ProductListing', () => {
     await waitFor(() => {
       expect(screen.getByText(/Nenhum/i)).toBeTruthy();
     });
+  });
+
+  it('oculta as listas abertas e inicia o filtro pelas categorias principais', async () => {
+    nextResult = { data: sampleProducts('Varas'), error: null };
+    renderProductListing();
+
+    await waitFor(() => expect(screen.getByText('Produto Varas')).toBeTruthy());
+    expect(screen.queryByText('SUBCATEGORIA')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /filtros/i }));
+    expect(screen.getByRole('heading', { name: 'Escolha uma categoria' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Varas' })).toBeTruthy();
+  });
+
+  it('avança de categoria para marca e depois para características independentes', async () => {
+    nextResult = { data: [{ ...sampleProducts('Varas')[0], brand: 'Marine Sports', pound_test: '17 lb', size: '1,80 m' }], error: null };
+    renderProductListing();
+    await waitFor(() => expect(screen.getByText('Produto Varas')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /filtros/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Varas' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Escolha a marca' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Marine Sports' }));
+    fireEvent.click(screen.getByRole('button', { name: /continuar/i }));
+
+    expect(screen.getByRole('heading', { name: 'Combine as características' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '17 lb' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '1,80 m' })).toBeTruthy();
   });
 });
