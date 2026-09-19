@@ -793,28 +793,20 @@ export function ProductListing({
                         className="pl-9 h-9 w-96 text-sm rounded-full bg-muted/50 border-border/50"
                       />
                     </div>
-                    {priceRange && maxPrice > minPrice && (
-                      <Popover open={pricePopoverOpen} onOpenChange={setPricePopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full h-9 gap-1.5 relative text-sm font-normal"
-                          >
-                            <Filter className="w-4 h-4" />
-                            Filtros
-                            {totalActiveFilters > 0 && (
-                              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold ml-0.5">
-                                {totalActiveFilters}
-                              </span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-64 p-4">
-                          {renderPriceRangeFilter()}
-                        </PopoverContent>
-                      </Popover>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full h-9 gap-1.5 relative text-sm font-normal"
+                      onClick={() => { setFilterStep('category'); setFilterDialogOpen(true); }}
+                    >
+                      <Filter className="w-4 h-4" />
+                      Filtros
+                      {totalActiveFilters > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold ml-0.5">
+                          {totalActiveFilters}
+                        </span>
+                      )}
+                    </Button>
                     <span className="text-sm text-muted-foreground whitespace-nowrap">Ordenar por:</span>
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
                       <SelectTrigger className="w-[200px] h-9">
