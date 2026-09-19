@@ -148,16 +148,18 @@ export function ProductListing({
         const memberships = new Map<string, Set<string>>();
         const productIds = mapped.map((product) => product.id);
         if (productIds.length) {
-          const { data: links } = await supabase
-            .from('product_categories')
-            .select('product_id, category_id')
-            .in('product_id', productIds)
-            .limit(20000);
-          (links || []).forEach((link: any) => {
-            const current = memberships.get(link.product_id) ?? new Set<string>();
-            current.add(link.category_id);
-            memberships.set(link.product_id, current);
-          });
+          for (let index = 0; index < productIds.length; index += 200) {
+            const { data: links } = await supabase
+              .from('product_categories')
+              .select('product_id, category_id')
+              .in('product_id', productIds.slice(index, index + 200))
+              .limit(20000);
+            (links || []).forEach((link: any) => {
+              const current = memberships.get(link.product_id) ?? new Set<string>();
+              current.add(link.category_id);
+              memberships.set(link.product_id, current);
+            });
+          }
         }
         mapped.forEach((product) => {
           const legacyCategory = allCategories.find((category) => category.name === product.subcategory);
