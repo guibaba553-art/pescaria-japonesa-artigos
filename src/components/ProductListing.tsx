@@ -616,62 +616,15 @@ export function ProductListing({
       </div>
 
       <div className="container mx-auto pt-4 sm:pt-6 pb-8 sm:pb-16">
-        {/* Category filters */}
-        <div className="-mx-4 sm:mx-0 mb-4">
-          <div className="flex sm:flex-wrap gap-3 px-4 sm:px-0 overflow-x-auto sm:overflow-visible scrollbar-hide pb-2 sm:pb-1">
-            <button
-              onClick={() => handleCategoryChange('')}
-              className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                categoryParam === '' && onSaleParam !== 'true'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted text-foreground hover:bg-muted/70'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={handleOffersClick}
-              className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                onSaleParam === 'true'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted text-foreground hover:bg-muted/70'
-              }`}
-            >
-              Ofertas
-            </button>
-            {primaries.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryChange(cat.name)}
-                className={`flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                  categoryParam === cat.name
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'bg-muted text-foreground hover:bg-muted/70'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop filters */}
-        <div className="hidden lg:flex flex-col gap-5 mb-6">
-          <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
-            {brandOptions.length > 0 &&
-              renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-            {poundOptions.length > 0 &&
-              renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
-          </div>
-          {renderSubcategoryLevels()}
-        </div>
-
-
         {(hasAnyAttribute || filteredProducts.length > 0) && (
-          <div className="lg:hidden flex items-center gap-2 mb-4">
+          <div className="flex flex-col gap-3 mb-6">
+            <div className="flex items-center gap-2">
             {hasAnyAttribute && (
-              <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-                <SheetTrigger asChild>
+              <Dialog open={filterDialogOpen} onOpenChange={(open) => {
+                setFilterDialogOpen(open);
+                if (open) setFilterStep('category');
+              }}>
+                <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="rounded-full h-9 gap-1.5 relative">
                     <Filter className="w-4 h-4" />
                     Filtros
@@ -681,40 +634,124 @@ export function ProductListing({
                       </span>
                     )}
                   </Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl p-0 flex flex-col">
-                  <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
-                    <SheetTitle className="text-left text-xl font-display font-bold flex items-center gap-2">
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0 gap-0">
+                  <DialogHeader className="px-5 pt-5 pb-4 border-b border-border text-left">
+                    <div className="flex items-center gap-2">
+                      {filterStep !== 'category' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Voltar"
+                          onClick={() => setFilterStep(filterStep === 'characteristics' ? 'brand' : 'category')}
+                        >
+                          <ArrowLeft />
+                        </Button>
+                      )}
+                    <DialogTitle className="text-xl font-display font-bold flex items-center gap-2">
                       <SlidersHorizontal className="w-5 h-5" />
-                      Filtros
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                    {renderPriceRangeFilter()}
-                    {brandOptions.length > 0 &&
-                      renderFilterGroup('Marca', brandOptions, selectedBrands, setSelectedBrands)}
-                    {renderSubcategoryLevels()}
-                    {poundOptions.length > 0 &&
-                      renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                      {filterStepTitle}
+                    </DialogTitle>
+                    </div>
+                    <DialogDescription className="text-left">
+                      {filterStep === 'category'
+                        ? 'Comece pelo tipo de produto que você procura.'
+                        : filterStep === 'brand'
+                          ? 'Escolha uma ou mais marcas, ou continue sem selecionar.'
+                          : 'Estas escolhas são independentes e serão combinadas entre si.'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="overflow-y-auto p-5 space-y-6 min-h-[320px]">
+                    {filterStep === 'category' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant={!categoryParam && !isOffersActive ? 'default' : 'outline'}
+                          className="h-12 justify-between"
+                          onClick={() => { handleCategoryChange(''); setFilterStep('brand'); }}
+                        >
+                          Todos os produtos <ChevronRight />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={isOffersActive ? 'default' : 'outline'}
+                          className="h-12 justify-between"
+                          onClick={() => { handleOffersClick(); setFilterStep('brand'); }}
+                        >
+                          Ofertas <ChevronRight />
+                        </Button>
+                        {primaries.map((category) => (
+                          <Button
+                            key={category.id}
+                            type="button"
+                            variant={categoryParam === category.name ? 'default' : 'outline'}
+                            className="h-12 justify-between"
+                            onClick={() => { handleCategoryChange(category.name); setFilterStep('brand'); }}
+                          >
+                            {category.name} <ChevronRight />
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+
+                    {filterStep === 'brand' && (
+                      <div className="space-y-5">
+                        {brandOptions.length > 0
+                          ? renderChoiceGrid(brandOptions, selectedBrands, (value) => toggle(selectedBrands, setSelectedBrands, value))
+                          : <p className="text-sm text-muted-foreground">Nenhuma marca cadastrada para esta categoria.</p>}
+                      </div>
+                    )}
+
+                    {filterStep === 'characteristics' && (
+                      <div className="space-y-6">
+                        {poundOptions.length > 0 && renderFilterGroup('Libragem', poundOptions, selectedPounds, setSelectedPounds)}
+                        {sizeOptions.length > 0 && renderFilterGroup('Tamanho', sizeOptions, selectedSizes, setSelectedSizes)}
+                        {groupOptions.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Outros grupos</p>
+                            <div className="flex flex-wrap gap-2">
+                              {groupOptions.map((group) => (
+                                <Button
+                                  key={group.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={selectedSubs.includes(group.name) ? 'default' : 'outline'}
+                                  onClick={() => handleGroupClick(group.name)}
+                                >
+                                  {group.name}{selectedSubs.includes(group.name) && <X />}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {renderPriceRangeFilter()}
+                      </div>
+                    )}
                   </div>
 
-                  <SheetFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:flex-row">
+                  <DialogFooter className="px-5 py-4 border-t border-border flex-row gap-2 sm:space-x-0">
                     <Button
                       variant="outline"
-                      className="flex-1 rounded-full"
+                      className="flex-1"
                       onClick={clearAllFilters}
                       disabled={totalActiveFilters === 0}
                     >
                       Limpar
                     </Button>
-                    <Button className="flex-1 rounded-full" asChild>
-                      <button type="button" onClick={() => (document.activeElement as HTMLElement)?.blur()}>
+                    {filterStep === 'brand' ? (
+                      <Button className="flex-1" onClick={() => setFilterStep('characteristics')}>
+                        Continuar <ChevronRight />
+                      </Button>
+                    ) : filterStep === 'characteristics' ? (
+                      <Button className="flex-1" onClick={() => setFilterDialogOpen(false)}>
                         Ver {filteredProducts.length} produtos
-                      </button>
-                    </Button>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
+                      </Button>
+                    ) : (
+                      <Button className="flex-1" disabled>Escolha uma categoria</Button>
+                    )}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             )}
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
@@ -728,6 +765,16 @@ export function ProductListing({
                 <SelectItem value="newest">Mais novos</SelectItem>
               </SelectContent>
             </Select>
+            </div>
+            {activeFilterChips.length > 0 && (
+              <div className="flex flex-wrap gap-2" aria-label="Filtros ativos">
+                {activeFilterChips.map((chip) => (
+                  <Button key={chip.key} variant="secondary" size="sm" className="h-8 rounded-full" onClick={chip.remove}>
+                    {chip.label}<X />
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
