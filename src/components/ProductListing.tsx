@@ -250,12 +250,13 @@ export function ProductListing({
       if (p.pound_test) pounds.add(p.pound_test);
       if (p.size) sizes.add(p.size);
     });
-    const groupCandidateIds = new Set(filterProductsByFacets(products, {
+    const groupCandidateProducts = filterProductsByFacets(products, {
       brands: selectedBrands,
       pounds: selectedPounds,
       sizes: selectedSizes,
-      groupIds: [],
-    }, groupMemberships).map((product) => product.id));
+      groupIds: selectedGroupIds,
+    }, groupMemberships);
+    const groupCandidateIds = new Set(groupCandidateProducts.map((product) => product.id));
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
     return {
       brandOptions: Array.from(brands).sort(sorter),
@@ -264,12 +265,16 @@ export function ProductListing({
       groupOptions: categoryTree
         .map((category) => ({ ...category, id: allCategories.find((item) => item.name === category.name)?.id ?? '' }))
         .filter((category) => category.id)
-        .filter((category) => selectedSubs.includes(category.name) || Array.from(groupMemberships.entries()).some(
-          ([productId, groups]) => groupCandidateIds.has(productId) && groups.has(category.id),
-        ))
+        .filter((category) => {
+          if (selectedSubs.includes(category.name)) return true;
+          return Array.from(groupMemberships.entries()).some(([productId, groups]) => {
+            if (!groupCandidateIds.has(productId)) return false;
+            return groups.has(category.id);
+          });
+        })
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true })),
     };
-  }, [products, categoryTree, allCategories, selectedBrands, selectedPounds, selectedSizes, selectedSubs, groupMemberships]);
+  }, [products, categoryTree, allCategories, selectedBrands, selectedPounds, selectedSizes, selectedSubs, selectedGroupIds, groupMemberships]);
 
   const applySubs = (subs: string[]) => {
     if (subs.length) {
