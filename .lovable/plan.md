@@ -6,11 +6,12 @@ Substituir a lista aberta de marcas e subcategorias por um único botão **Filtr
 ## Fluxo
 1. A janela começa mostrando as categorias principais, como **Varas**.
 2. Depois da categoria, mostra somente as marcas disponíveis nela, como **Marine Sports**.
-3. Em seguida, mostra somente as subcategorias do próximo nível, como **15–17 lb**.
-4. Após cada escolha, avança para os filhos diretos do nível selecionado, como **1,80 m**, até não haver outro nível.
-5. O caminho escolhido fica visível e clicável para voltar a qualquer etapa.
-6. Os filtros ativos ficam resumidos perto do botão; a listagem aberta atual deixa de ocupar espaço na página.
-7. Preço e libragem continuam disponíveis dentro da mesma janela, sem perder a busca e a ordenação existentes.
+3. Depois, mostra grupos independentes compatíveis com os produtos restantes, como **libragem**, **tamanho**, **modelo** e outros conjuntos cadastrados.
+4. As escolhas se combinam por interseção: **1,80 m** e **17 lb** podem coexistir, sem presumir que todo produto de 1,80 m tenha 17 lb.
+5. Cada escolha reduz as opções seguintes aos produtos que realmente pertencem a todos os grupos marcados.
+6. O caminho escolhido fica visível e clicável para remover qualquer escolha.
+7. Os filtros ativos ficam resumidos perto do botão; a listagem aberta atual deixa de ocupar espaço na página.
+8. Preço continua continuam disponíveis dentro da mesma janela, sem perder a busca e a ordenação existentes.
 
 ## Qualidade
 - Criar primeiro testes do fluxo progressivo e da limpeza dos filtros.

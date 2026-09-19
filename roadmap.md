@@ -8,3 +8,4 @@
 - [x] Permitir criar, editar e remover anotações clicando nos pontos
 - [x] Exibir anotações ao passar o mouse nos gráficos de PDV, Site, Vendas Gerais e Tráfego
 - [x] Validar testes, tipos, build e fluxo visual das anotações
+- [ ] Criar filtro progressivo por categoria com grupos independentes e combináveis (marca, libragem, tamanho e demais conjuntos)
