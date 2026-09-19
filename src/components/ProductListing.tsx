@@ -5,9 +5,8 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { SlidersHorizontal, Filter, X } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
+import { SlidersHorizontal, Filter, X, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { fuzzySearch } from '@/lib/fuzzySearch';
 
@@ -19,8 +18,10 @@ import { effectiveProductOrVariationPrice, isPromoActive } from '@/utils/promoPr
 import { useProductsRealtime } from '@/hooks/useProductsRealtime';
 import { ProductCard } from '@/components/ProductCard';
 import { useCategories, type Category } from '@/hooks/useCategories';
+import { filterProductsByFacets } from '@/utils/progressiveProductFilters';
 
 type SortOption = 'name_asc' | 'price_asc' | 'price_desc' | 'newest';
+type FilterStep = 'category' | 'brand' | 'characteristics';
 
 export interface ProductListingProps {
   /** Título exibido no cabeçalho da página (ex: "Ofertas") */
@@ -43,8 +44,7 @@ export function ProductListing({
   const onSaleParam = forceOnSale ? 'true' : searchParams.get('on_sale');
   const isOffersActive = onSaleParam === 'true';
   const [products, setProducts] = useState<Product[]>([]);
-  // Produtos que pertencem aos grupos selecionados via product_categories (N:N)
-  const [groupMemberIds, setGroupMemberIds] = useState<Set<string> | null>(null);
+  const [groupMemberships, setGroupMemberships] = useState<Map<string, Set<string>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(searchParam);
 
@@ -86,12 +86,13 @@ export function ProductListing({
 
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedPounds, setSelectedPounds] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number] | null>(null);
   const [priceMinInput, setPriceMinInput] = useState('');
   const [priceMaxInput, setPriceMaxInput] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
-  const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filterStep, setFilterStep] = useState<FilterStep>('category');
   const { toast } = useToast();
   const { addItem } = useCart();
   const { getQuantity, setQuantity, incrementQuantity, decrementQuantity } = useProductQuantity();
@@ -117,6 +118,7 @@ export function ProductListing({
   useEffect(() => {
     setSelectedBrands([]);
     setSelectedPounds([]);
+    setSelectedSizes([]);
     setPriceRange(null);
     setPriceMinInput('');
     setPriceMaxInput('');
@@ -146,46 +148,6 @@ export function ProductListing({
 
       if (category) query = query.eq('category', category);
 
-      let memberIds: Set<string> | null = null;
-      if (subcategory) {
-        // Expande cada grupo selecionado para incluir seus descendentes
-        const subNames = new Set<string>();
-        const subIds = new Set<string>();
-        subcategory
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .forEach((name) => {
-            subNames.add(name);
-            const target = allCategories.find((c) => c.name === name);
-            if (target) {
-              subIds.add(target.id);
-              getDescendantsOf(target.id).forEach((d) => {
-                subNames.add(d.name);
-                subIds.add(d.id);
-              });
-            }
-          });
-
-        // Um produto pode pertencer a vários grupos ao mesmo tempo (tabela N:N)
-        memberIds = new Set<string>();
-        if (subIds.size > 0) {
-          const { data: links } = await supabase
-            .from('product_categories')
-            .select('product_id')
-            .in('category_id', Array.from(subIds))
-            .limit(20000);
-          (links || []).forEach((l: any) => memberIds!.add(l.product_id));
-        }
-
-        const quoted = Array.from(subNames).map((n) => `"${n.replace(/"/g, '')}"`).join(',');
-        const orParts = [`subcategory.in.(${quoted})`];
-        if (memberIds.size > 0) orParts.push(`id.in.(${Array.from(memberIds).join(',')})`);
-        query = query.or(orParts.join(','));
-      }
-      setGroupMemberIds(memberIds);
-
-
       let result = await query;
       for (let attempt = 0; attempt < 2 && result.error && /failed to fetch|networkerror|load failed/i.test(result.error.message || ''); attempt++) {
         await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
@@ -207,6 +169,28 @@ export function ProductListing({
           ...row,
           brand: row.brands?.name ?? null,
         }));
+        const memberships = new Map<string, Set<string>>();
+        const productIds = mapped.map((product) => product.id);
+        if (productIds.length) {
+          const { data: links } = await supabase
+            .from('product_categories')
+            .select('product_id, category_id')
+            .in('product_id', productIds)
+            .limit(20000);
+          (links || []).forEach((link: any) => {
+            const current = memberships.get(link.product_id) ?? new Set<string>();
+            current.add(link.category_id);
+            memberships.set(link.product_id, current);
+          });
+        }
+        mapped.forEach((product) => {
+          const legacyCategory = allCategories.find((category) => category.name === product.subcategory);
+          if (!legacyCategory) return;
+          const current = memberships.get(product.id) ?? new Set<string>();
+          current.add(legacyCategory.id);
+          memberships.set(product.id, current);
+        });
+        setGroupMemberships(memberships);
         setProducts(mapped as unknown as Product[]);
       }
     } catch (err) {
@@ -256,7 +240,6 @@ export function ProductListing({
     }
   }, [products, minPrice, maxPrice]);
 
-  // Nomes de todas as subcategorias e sub-subcategorias da categoria selecionada
   const categoryTree = useMemo(() => {
     const primary = primaries.find((p) => p.name === categoryParam);
     if (!primary) return [] as Array<{ name: string; depth: number; parentName: string | null }>;
@@ -268,65 +251,37 @@ export function ProductListing({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primaries, allCategories, categoryParam]);
 
-  const categoryTreeSubOptions = useMemo(
-    () => categoryTree.map((c) => c.name),
-    [categoryTree]
-  );
+  const selectedGroupIds = useMemo(() => selectedSubs
+    .map((name) => allCategories.find((category) => category.name === name)?.id)
+    .filter((id): id is string => Boolean(id)), [selectedSubs, allCategories]);
 
-  // Navegação em níveis: mostra apenas os filhos diretos do nível atual
-  const currentParentId = useMemo(() => {
-    if (selectedSubcategoryPath.length > 0) {
-      const last = selectedSubcategoryPath[selectedSubcategoryPath.length - 1];
-      return allCategories.find((c) => c.name === last)?.id ?? null;
-    }
-    return primaries.find((p) => p.name === categoryParam)?.id ?? null;
-  }, [selectedSubcategoryPath, allCategories, primaries, categoryParam]);
+  const productsMatchingCurrentFacets = useMemo(() => filterProductsByFacets(products, {
+    brands: selectedBrands,
+    pounds: selectedPounds,
+    sizes: selectedSizes,
+    groupIds: selectedGroupIds,
+  }, groupMemberships), [products, selectedBrands, selectedPounds, selectedSizes, selectedGroupIds, groupMemberships]);
 
-  // Opções dinâmicas a partir dos produtos carregados
-  const { brandOptions, poundOptions, subcategoryOptions } = useMemo(() => {
+  const { brandOptions, poundOptions, sizeOptions, groupOptions } = useMemo(() => {
     const brands = new Set<string>();
     const pounds = new Set<string>();
-    const subs = new Set<string>();
+    const sizes = new Set<string>();
     products.forEach(p => {
       if (p.brand) brands.add(p.brand);
       if (p.pound_test) pounds.add(p.pound_test);
-      if (p.subcategory) subs.add(p.subcategory);
+      if (p.size) sizes.add(p.size);
     });
     const sorter = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
-
-    // Filhos diretos do nível atual
-    const children = currentParentId
-      ? allCategories
-          .filter((c) => c.parent_id === currentParentId)
-          .map((c) => c.name)
-      : [];
-    // Na raiz, acrescenta subcategorias "órfãs" presentes nos produtos
-    const extras =
-      selectedSubcategoryPath.length === 0
-        ? Array.from(subs)
-            .filter((n) => !children.includes(n) && !categoryTreeSubOptions.includes(n))
-            .sort(sorter)
-        : [];
-
     return {
       brandOptions: Array.from(brands).sort(sorter),
       poundOptions: Array.from(pounds).sort(sorter),
-      subcategoryOptions: [...children, ...extras],
+      sizeOptions: Array.from(sizes).sort(sorter),
+      groupOptions: categoryTree
+        .map((category) => ({ ...category, id: allCategories.find((item) => item.name === category.name)?.id ?? '' }))
+        .filter((category) => category.id)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true })),
     };
-  }, [products, currentParentId, allCategories, selectedSubcategoryPath, categoryTreeSubOptions]);
-
-  // O filtro usa todas as subcategorias escolhidas + seus descendentes
-  const expandedSubcategories = useMemo(() => {
-    if (!selectedSubs.length) return [] as string[];
-    const names = new Set<string>();
-    selectedSubs.forEach((name) => {
-      names.add(name);
-      const cat = allCategories.find((c) => c.name === name);
-      if (cat) getDescendantsOf(cat.id).forEach((d) => names.add(d.name));
-    });
-    return Array.from(names);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubs, allCategories]);
+  }, [products, categoryTree, allCategories]);
 
   const applySubs = (subs: string[]) => {
     if (subs.length) {
@@ -338,22 +293,9 @@ export function ProductListing({
     }
   };
 
-  // Clique em um nível: permite combinar várias subcategorias do mesmo nível
-  const handleSubcategoryLevelClick = (name: string) => {
+  const handleGroupClick = (name: string) => {
     if (!categoryParam) return;
-    if (selectedSubs.includes(name)) {
-      // Desmarca — se era a única, sobe um nível
-      const rest = selectedSubs.filter((s) => s !== name);
-      if (rest.length) return applySubs(rest);
-      const path = pathOf(name);
-      const parent = path.length > 1 ? path[path.length - 2] : undefined;
-      return applySubs(parent ? [parent] : []);
-    }
-    const parentOf = (n: string) =>
-      allCategories.find((c) => c.name === n)?.parent_id ?? null;
-    const sameLevel =
-      selectedSubs.length > 0 && parentOf(name) === parentOf(selectedSubs[0]);
-    applySubs(sameLevel ? [...selectedSubs, name] : [name]);
+    applySubs(selectedSubs.includes(name) ? selectedSubs.filter((item) => item !== name) : [...selectedSubs, name]);
   };
 
 
@@ -381,16 +323,8 @@ export function ProductListing({
   }, [products, searchQuery]);
 
   const filteredProducts = useMemo(() => {
-    const filtered = products.filter(p => {
+    const filtered = productsMatchingCurrentFacets.filter(p => {
       if (searchMatchIds && !searchMatchIds.has(p.id)) return false;
-
-      if (selectedBrands.length && (!p.brand || !selectedBrands.includes(p.brand))) return false;
-      if (selectedPounds.length && (!p.pound_test || !selectedPounds.includes(p.pound_test))) return false;
-      if (expandedSubcategories.length) {
-        const byField = !!p.subcategory && expandedSubcategories.includes(p.subcategory);
-        const byGroup = groupMemberIds?.has(p.id) ?? false;
-        if (!byField && !byGroup) return false;
-      }
       const hasActiveVariationPromo = p.variations?.some((variation) => isPromoActive(variation)) ?? false;
       if (onSaleParam === 'true' && !isPromoActive(p) && !hasActiveVariationPromo) return false;
       if (priceRange) {
@@ -425,18 +359,20 @@ export function ProductListing({
         break;
     }
     return sorted;
-  }, [products, searchMatchIds, selectedBrands, selectedPounds, expandedSubcategories, groupMemberIds, priceRange, sortBy, onSaleParam]);
+  }, [productsMatchingCurrentFacets, searchMatchIds, priceRange, sortBy, onSaleParam]);
 
   const priceFilterActive = priceRange !== null && (priceRange[0] !== minPrice || priceRange[1] !== maxPrice);
   const totalActiveFilters =
     selectedBrands.length +
     selectedPounds.length +
-    selectedSubcategoryPath.length +
+    selectedSizes.length +
+    selectedSubs.length +
     (priceFilterActive ? 1 : 0);
 
   const clearAllFilters = () => {
     setSelectedBrands([]);
     setSelectedPounds([]);
+    setSelectedSizes([]);
     if (categoryParam) {
       setSearchParams({ category: categoryParam });
     } else {
@@ -448,8 +384,7 @@ export function ProductListing({
     priceManuallySetRef.current = false;
   };
 
-  const hasAnyAttribute =
-    brandOptions.length + poundOptions.length + subcategoryOptions.length > 0
+  const hasAnyAttribute = primaries.length + brandOptions.length + poundOptions.length + sizeOptions.length + groupOptions.length > 0
     || maxPrice > minPrice;
 
   const handleApplyPrice = () => {
@@ -460,8 +395,6 @@ export function ProductListing({
     const appliedMin = rawMin === '' ? minPrice : Math.max(minPrice, Math.min(maxPrice, Number(rawMin)));
     const appliedMax = rawMax === '' ? maxPrice : Math.max(minPrice, Math.min(maxPrice, Number(rawMax)));
     setPriceRange([Math.min(appliedMin, appliedMax), Math.max(appliedMin, appliedMax)]);
-    setPricePopoverOpen(false);
-    setMobileSheetOpen(false);
   };
 
   const handleClearPrice = () => {
@@ -469,8 +402,6 @@ export function ProductListing({
     setPriceMaxInput('');
     setPriceRange([minPrice, maxPrice]);
     priceManuallySetRef.current = false;
-    setPricePopoverOpen(false);
-    setMobileSheetOpen(false);
   };
 
   const renderPriceRangeFilter = () => {
