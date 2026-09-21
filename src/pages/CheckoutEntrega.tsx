@@ -549,9 +549,11 @@ export default function CheckoutEntrega() {
       const meServiceMatch = selectedShippingOption?.codigo?.match(/^me-(\d+)$/);
       const meServiceId = meServiceMatch ? parseInt(meServiceMatch[1], 10) : null;
 
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
+      // Pedido, produtos, conferência de estoque e limite de promoções em UMA
+      // única gravação no servidor (tudo ou nada) — nunca sobra pedido sem itens.
+      setProcessingStep('Registrando pedido...');
+      const { data: siteOrderResult, error: siteOrderError } = await supabase.rpc('create_site_order', {
+        p_order: {
           user_id: user!.id,
           total_amount: Math.round((total + displayFreteValor) * 100) / 100,
           shipping_cost: displayFreteValor,
@@ -574,53 +576,21 @@ export default function CheckoutEntrega() {
           payment_gateway: selectedPayment === 'pix'
             ? selectPixGateway(total + displayFreteValor)
             : 'asaas',
-        })
-        .select()
-        .single();
-
-      if (orderError || !orderData) {
-        throw new Error(orderError?.message || 'Erro ao criar pedido');
-      }
-
-      createdOrderId = orderData.id;
-
-      // 4. Criar itens do pedido
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.id,
-        variation_id: item.variationId || null,
-        quantity: item.quantity,
-        price_at_purchase: item.price,
-      }));
-      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
-      if (itemsErr) {
-        throw new Error('Erro ao criar itens do pedido: ' + itemsErr.message);
-      }
-
-      // 5. Verificar disponibilidade de estoque (usa get_available_stock que considera reservas ativas)
-      setProcessingStep('Verificando estoque...');
-      for (const item of items) {
-        const { data: available, error: stockErr } = await supabase.rpc('get_available_stock', {
-          p_product_id: item.id,
-          p_variation_id: item.variationId || null,
-        });
-        if (stockErr || (available ?? 0) < item.quantity) {
-          throw new Error(`${item.name}: apenas ${available ?? 0} unidade(s) disponível(is) no estoque.`);
-        }
-      }
-
-      // 6. Consumir limite de promoções
-      const { error: promoError } = await supabase.rpc('consume_promo_limits', {
+        } as any,
         p_items: items.map(item => ({
           product_id: item.id,
           variation_id: item.variationId || null,
           quantity: item.quantity,
-        })),
+          price_at_purchase: item.price,
+        })) as any,
       });
-      if (promoError) {
-        await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
-        throw new Error(promoError.message || 'Limite de promoção atingido.');
+
+      if (siteOrderError || !(siteOrderResult as any)?.order_id) {
+        throw new Error(siteOrderError?.message || 'Erro ao criar pedido');
       }
+
+      const orderData = { id: (siteOrderResult as any).order_id as string };
+      createdOrderId = orderData.id;
 
       // 7. Marcar pedido como colocado — impede duplicata se o usuário recarregar a página
       setOrderPlaced(true);
