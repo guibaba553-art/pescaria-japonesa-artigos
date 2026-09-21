@@ -3134,6 +3134,16 @@ export type Database = {
       }
       cleanup_old_logs: { Args: never; Returns: Json }
       consume_promo_limits: { Args: { p_items: Json }; Returns: undefined }
+      create_pdv_sale: {
+        Args: {
+          p_cash_exchange?: Json
+          p_items: Json
+          p_order: Json
+          p_payments?: Json
+          p_promo_items?: Json
+        }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
