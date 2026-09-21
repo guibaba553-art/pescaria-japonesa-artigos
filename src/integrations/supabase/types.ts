@@ -3144,6 +3144,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_site_order: {
+        Args: { p_items: Json; p_order: Json }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
