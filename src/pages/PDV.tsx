@@ -1859,8 +1859,8 @@ export default function PDV() {
     setProcessing(true);
 
     // Gera/reutiliza chave de idempotência: se a venda falhar e o usuário tentar
-    // novamente sem limpar o carrinho, a mesma chave será enviada e o banco
-    // rejeitará duplicatas via índice único.
+    // novamente sem limpar o carrinho, a mesma chave será enviada e o servidor
+    // devolve a venda existente (ou completa a que ficou pela metade).
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current =
         (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
@@ -1868,9 +1868,6 @@ export default function PDV() {
           : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     }
     const idempotencyKey = idempotencyKeyRef.current;
-
-    let createdOrderId: string | null = null;
-    let cashExchangeApplied = false;
 
     try {
       const subtotal = calculateSubtotal();
@@ -2038,8 +2035,10 @@ export default function PDV() {
       // no banco (a partir do campo cash_received do pedido).
 
       toast({
-        title: 'Venda finalizada!',
-        description: `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
+        title: result.already_registered ? 'Venda já registrada' : 'Venda finalizada!',
+        description: result.already_registered
+          ? `Pedido #${order.id.slice(0, 8)} já estava finalizado.`
+          : `Pedido #${order.id.slice(0, 8)} criado com sucesso`,
       });
 
       // Auto-emissão fiscal para pagamentos em crédito/débito/pix é feita
@@ -2095,29 +2094,9 @@ export default function PDV() {
 
 
     } catch (error: any) {
-      if (cashExchangeApplied && openCashRegister && preparedChange) {
-        try {
-          await supabase.rpc('apply_pdv_cash_exchange', {
-            p_cash_register_id: openCashRegister.id,
-            p_received_denominations: compactDenominationCounts(preparedChange),
-            p_change_denominations: compactDenominationCounts(cashReceivedCounts),
-            p_received_amount: cashChangeForSale(),
-            p_change_amount: cashReceivedTotal,
-          });
-          await loadOpenCashRegister();
-        } catch (rollbackError) {
-          console.error('Falha ao reverter cédulas da venda:', rollbackError);
-        }
-      }
-      // Rollback manual: se criamos o pedido mas algo falhou depois,
-      // cancela o pedido órfão para manter histórico completo.
-      if (createdOrderId) {
-        try {
-          await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', createdOrderId);
-        } catch (cleanupError) {
-          console.error('Falha ao cancelar pedido órfão:', cleanupError);
-        }
-      }
+      // A gravação é atômica no servidor: se falhou, nada foi salvo — o carrinho
+      // segue intacto e o caixa pode tentar de novo com a mesma chave.
+      await loadOpenCashRegister();
       toast({
         title: 'Erro ao finalizar venda',
         description: error.message,
