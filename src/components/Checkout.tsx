@@ -659,15 +659,15 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
       const meServiceMatch = !isPickup && shippingInfo?.codigo?.match(/^me-(\d+)$/);
       const meServiceId = meServiceMatch ? parseInt(meServiceMatch[1], 10) : null;
 
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
+      // Pedido, produtos, conferência de estoque e limite de promoções em UMA
+      // única gravação no servidor (tudo ou nada).
+      const { data: siteOrderResult, error: siteOrderError } = await supabase.rpc('create_site_order', {
+        p_order: {
           user_id: user.id,
           total_amount: finalTotal,
           shipping_cost: shippingCost,
           shipping_address: shippingAddressText,
           shipping_cep: shippingCepValue,
-          // Endereço estruturado (preferido por emit-nfe / melhor-envio)
           shipping_recipient_name: !isPickup ? selectedAddress?.recipient_name ?? null : null,
           shipping_recipient_phone: !isPickup ? selectedAddress?.recipient_phone ?? null : null,
           shipping_street: !isPickup ? selectedAddress?.street ?? null : null,
@@ -679,34 +679,24 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
           status: 'aguardando_pagamento',
           delivery_type: isPickup ? 'pickup' : 'delivery',
           shipping_service_id: meServiceId,
-        })
-        .select()
-        .single();
+        } as any,
+        p_items: items.map(item => ({
+          product_id: item.id,
+          variation_id: item.variationId || null,
+          quantity: item.quantity,
+          price_at_purchase: item.price,
+        })) as any,
+      });
 
-      if (orderError || !orderData) {
-        throw new Error('Erro ao criar pedido');
+      if (siteOrderError || !(siteOrderResult as any)?.order_id) {
+        throw new Error(siteOrderError?.message || 'Erro ao criar pedido');
       }
 
+      const orderData = { id: (siteOrderResult as any).order_id as string };
       createdOrderId = orderData.id;
 
-      // Criar itens do pedido
-      // product_id sempre referencia products.id (FK do produto pai).
-      // variation_id (opcional) referencia product_variations.id quando há variação.
-      const orderItems = items.map(item => ({
-        order_id: orderData.id,
-        product_id: item.id,
-        variation_id: item.variationId || null,
-        quantity: item.quantity,
-        price_at_purchase: item.price
-      }));
-
-      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
-      if (itemsErr) {
-        throw new Error('Erro ao criar itens do pedido: ' + itemsErr.message);
-      }
-
       // Reserva estoque por 30 min para evitar oversell entre PIX/cartão e confirmação
-      const { data: resvData, error: resvError } = await supabase.rpc('reserve_stock_for_order', {
+      const { error: resvError } = await supabase.rpc('reserve_stock_for_order', {
         p_order_id: orderData.id,
         p_items: items.map(item => ({
           product_id: item.id,
@@ -716,25 +706,18 @@ export function Checkout({ open, onOpenChange, shippingCost, shippingInfo }: Che
         p_ttl_minutes: 30,
       });
       if (resvError) {
-        await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
-        throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
-      }
-
-      // Consome limite de promoções (apenas site) — bloqueia se exceder
-      const promoItems = items.map(item => ({
-        product_id: item.id,
-        variation_id: item.variationId || null,
-        quantity: item.quantity,
-      }));
-      const { error: promoError } = await supabase.rpc('consume_promo_limits', {
-        p_items: promoItems,
-      });
-      if (promoError) {
-        // Libera reserva de estoque antes de remover o pedido, senão fica órfã por 30 min
-        try { await supabase.rpc('release_stock_reservation', { p_order_id: orderData.id }); } catch {}
+        try {
+          await supabase.rpc('release_promo_limits', {
+            p_items: items.map(item => ({
+              product_id: item.id,
+              variation_id: item.variationId || null,
+              quantity: item.quantity,
+            })),
+          });
+        } catch { /* ignore */ }
         await supabase.from('orders').update({ status: 'cancelado', cancellation_reason: 'cancelado_pelo_cliente' }).eq('id', orderData.id);
         createdOrderId = null;
-        throw new Error(promoError.message || 'Limite de promoção atingido.');
+        throw new Error(resvError.message || 'Estoque indisponível para um ou mais itens.');
       }
 
       // Para Google Pay, redirecionamos

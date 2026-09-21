@@ -3134,6 +3134,20 @@ export type Database = {
       }
       cleanup_old_logs: { Args: never; Returns: Json }
       consume_promo_limits: { Args: { p_items: Json }; Returns: undefined }
+      create_pdv_sale: {
+        Args: {
+          p_cash_exchange?: Json
+          p_items: Json
+          p_order: Json
+          p_payments?: Json
+          p_promo_items?: Json
+        }
+        Returns: Json
+      }
+      create_site_order: {
+        Args: { p_items: Json; p_order: Json }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -3151,6 +3165,21 @@ export type Database = {
       get_cfop_by_uf: {
         Args: { p_has_st?: boolean; p_uf_destino: string }
         Returns: string
+      }
+      get_incomplete_sales: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          customer_name: string
+          has_fiscal: boolean
+          item_count: number
+          order_id: string
+          payment_method: string
+          source: string
+          status: Database["public"]["Enums"]["order_status"]
+          stock_movement_count: number
+          total_amount: number
+        }[]
       }
       get_my_reviewed_products: {
         Args: never
