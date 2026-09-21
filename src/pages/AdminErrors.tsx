@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, RefreshCw, Trash2, Search, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { IncompleteSalesPanel } from "@/components/IncompleteSalesPanel";
 
 interface ErrorRow {
   id: string;
@@ -161,6 +162,8 @@ export default function AdminErrors() {
       </div>
 
       <div className="max-w-7xl mx-auto p-6 space-y-4">
+        <IncompleteSalesPanel />
+
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

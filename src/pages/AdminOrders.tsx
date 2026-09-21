@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { ClipboardList } from 'lucide-react';
 import { AdminPageLayout } from '@/components/admin/AdminPageLayout';
 import { OrdersManagement } from '@/components/OrdersManagement';
-import { IncompleteSalesPanel } from '@/components/IncompleteSalesPanel';
 
 export default function AdminOrders() {
   const navigate = useNavigate();
@@ -28,7 +27,6 @@ export default function AdminOrders() {
       description="Acompanhe, filtre e gerencie todos os pedidos da sua loja online em tempo real."
     >
       <div className="space-y-4">
-        <IncompleteSalesPanel />
         <OrdersManagement />
       </div>
     </AdminPageLayout>
