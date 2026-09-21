@@ -3162,6 +3162,21 @@ export type Database = {
         Args: { p_has_st?: boolean; p_uf_destino: string }
         Returns: string
       }
+      get_incomplete_sales: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          customer_name: string
+          has_fiscal: boolean
+          item_count: number
+          order_id: string
+          payment_method: string
+          source: string
+          status: Database["public"]["Enums"]["order_status"]
+          stock_movement_count: number
+          total_amount: number
+        }[]
+      }
       get_my_reviewed_products: {
         Args: never
         Returns: {
