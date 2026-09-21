@@ -4212,8 +4212,9 @@ export default function PDV() {
                                         onClick={async () => {
                                           try {
                                             const items = (sale.cart_data as any[]) || [];
-                                            const unitOf = (it: any) =>
-                                              it.customPrice ?? it.variation?.price ?? it.product?.price_pdv ?? it.product?.price ?? 0;
+                                            const { savedSaleItemUnitPrice } = await import('@/utils/savedSaleItemPrice');
+                                            const unitOf = (it: any) => savedSaleItemUnitPrice(it);
+
                                             const subtotal = items.reduce(
                                               (s: number, it: any) => s + unitOf(it) * (it.quantity || 0),
                                               0
