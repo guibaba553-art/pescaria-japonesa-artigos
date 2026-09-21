@@ -1925,7 +1925,8 @@ export default function PDV() {
         }
       }
 
-      // Criar pedido com idempotency_key (índice único impede duplicatas)
+      // Venda gravada em UMA única operação no servidor (tudo ou nada):
+      // pedido + pagamentos + produtos + baixa de estoque + troco em cédulas.
       const tefData = tefResultRef.current;
       // No pagamento dividido o pedido guarda a parte de maior valor como
       // método "principal"; o rateio completo vai para order_payments.
@@ -1938,144 +1939,92 @@ export default function PDV() {
       const splitCashReceived = splitMode
         ? finalizedSplitParts.filter(p => p.method === 'cash').reduce((s, p) => s + Number(p.amount || 0), 0)
         : 0;
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([{
-          user_id: user!.id,
-          total_amount: calculateTotal(),
-          shipping_cost: 0,
-          status: 'entregado',
-          delivery_type: 'pickup',
-          shipping_address: selectedCustomer ? `${selectedCustomer.street}, ${selectedCustomer.number} - ${selectedCustomer.neighborhood}` : 'Venda Presencial',
-          shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
-          customer_id: selectedCustomer?.id || null,
-          source: 'pdv',
-          payment_method: effectiveMethod,
-          installments: effectiveInstallments,
-          idempotency_key: idempotencyKey,
-          tef_transaction_id: tefData?.transaction_id ?? null,
-          card_brand: tefData?.card_brand ?? null,
-          card_last_digits: tefData?.card_last_digits ?? null,
-          nsu: tefData?.nsu ?? null,
-          authorization_code: tefData?.authorization_code ?? null,
-          notes: saleNotes || null,
-          cash_received: splitMode
-            ? (splitCashReceived || null)
-            : (paymentMethod === 'cash'
-              ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
-              : null),
-          pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
-            ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
-            : null,
-        }])
-        .select()
-        .single();
+      const saleTotal = calculateTotal();
 
-      if (orderError) {
-        // 23505 = unique_violation: pedido já foi criado em uma tentativa anterior
-        if ((orderError as any).code === '23505') {
-          toast({
-            title: 'Venda já registrada',
-            description: 'Esta venda já havia sido finalizada. Carrinho limpo.',
-          });
-          clearSale();
-          await loadProducts();
-          return;
-        }
-        throw orderError;
-      }
+      const orderPayload = {
+        user_id: user!.id,
+        total_amount: saleTotal,
+        shipping_cost: 0,
+        status: 'entregado',
+        delivery_type: 'pickup',
+        shipping_address: selectedCustomer ? `${selectedCustomer.street}, ${selectedCustomer.number} - ${selectedCustomer.neighborhood}` : 'Venda Presencial',
+        shipping_cep: selectedCustomer ? selectedCustomer.cep : '00000000',
+        customer_id: selectedCustomer?.id || null,
+        source: 'pdv',
+        payment_method: effectiveMethod,
+        installments: effectiveInstallments,
+        idempotency_key: idempotencyKey,
+        tef_transaction_id: tefData?.transaction_id ?? null,
+        card_brand: tefData?.card_brand ?? null,
+        card_last_digits: tefData?.card_last_digits ?? null,
+        nsu: tefData?.nsu ?? null,
+        authorization_code: tefData?.authorization_code ?? null,
+        notes: saleNotes || null,
+        cash_received: splitMode
+          ? (splitCashReceived || null)
+          : (paymentMethod === 'cash'
+            ? (parseFloat((cashReceived || '').replace(',', '.')) || null)
+            : null),
+        pdv_service_time_seconds: (selectedCustomer?.id && customerSelectedAt)
+          ? Math.max(1, Math.round((Date.now() - customerSelectedAt) / 1000))
+          : null,
+      };
 
-      createdOrderId = order.id;
+      const itemRows = buildPdvItemRows(
+        cart.map((item, index) => ({
+          productId: item.product.id,
+          variationId: inventory.resolvedItems[index]?.resolvedVariationId ?? null,
+          quantity: item.quantity,
+          unitPrice: getItemUnitPrice(item),
+        })),
+        discountRatio,
+      );
 
-      // Grava o rateio do pagamento (uma linha por meio usado). Vendas com um
-      // único meio também registram uma linha, para o financeiro ler sempre daqui.
-      const paymentRows = (splitMode && finalizedSplitParts.length > 0
-        ? finalizedSplitParts
-        : [{
-            method: paymentMethod,
-            amount: calculateTotal(),
-            installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
-          }]
-      ).map((p, idx, arr) => {
-        // Dinheiro pode ser informado com troco: registra só o valor que cobre a venda.
-        const others = arr.reduce((s, q, i) => i === idx ? s : s + (Number(q.amount) || 0), 0);
-        const raw = Number(p.amount) || 0;
-        const amount = p.method === 'cash'
-          ? Math.max(0, Math.min(raw, calculateTotal() - others))
-          : raw;
-        return {
-          order_id: order.id,
-          payment_method: p.method,
-          amount: Number(amount.toFixed(2)),
-          installments: p.method === 'credit' ? Math.max(1, Number(p.installments) || 1) : 1,
-          cash_received: p.method === 'cash'
-            ? (splitMode ? Number(raw.toFixed(2)) : (parseFloat((cashReceived || '').replace(',', '.')) || null))
-            : null,
-        };
+      const paymentRows = buildPdvPaymentRows({
+        parts: (splitMode && finalizedSplitParts.length > 0
+          ? finalizedSplitParts
+          : [{
+              method: paymentMethod,
+              amount: saleTotal,
+              installments: paymentMethod === 'credit' ? Math.max(1, Number(installments) || 1) : 1,
+            }]) as any,
+        total: saleTotal,
+        splitMode,
+        cashReceivedInput: cashReceived,
       });
-      const { error: paymentsError } = await supabase.from('order_payments').insert(paymentRows as any);
-      if (paymentsError) console.error('Erro ao registrar rateio de pagamento:', paymentsError);
 
-      if (usesCash && openCashRegister && preparedChange) {
-        const changeAmount = cashChangeForSale();
-        const { error: cashExchangeError } = await supabase.rpc('apply_pdv_cash_exchange', {
-          p_cash_register_id: openCashRegister.id,
-          p_received_denominations: compactDenominationCounts(cashReceivedCounts),
-          p_change_denominations: compactDenominationCounts(preparedChange),
-          p_received_amount: cashReceivedTotal,
-          p_change_amount: changeAmount,
-        });
-        if (cashExchangeError) throw cashExchangeError;
-        cashExchangeApplied = true;
-      }
+      const cashExchangePayload = (usesCash && openCashRegister && preparedChange)
+        ? {
+            cash_register_id: openCashRegister.id,
+            received_denominations: compactDenominationCounts(cashReceivedCounts),
+            change_denominations: compactDenominationCounts(preparedChange),
+            received_amount: cashReceivedTotal,
+            change_amount: cashChangeForSale(),
+          }
+        : null;
 
+      const { data: saleResult, error: saleError } = await supabase.rpc('create_pdv_sale', {
+        p_order: orderPayload as any,
+        p_items: itemRows as any,
+        p_payments: paymentRows as any,
+        p_cash_exchange: cashExchangePayload as any,
+      });
 
+      if (saleError) throw saleError;
+
+      const result = (saleResult ?? {}) as { order_id?: string; already_registered?: boolean };
+      const orderId = result.order_id as string;
+      if (!orderId) throw new Error('O servidor não retornou a venda registrada.');
+      const order = { id: orderId };
 
       // Vincula a transação TEF ao pedido criado
       if (tefData?.transaction_id) {
         await supabase
           .from('tef_transactions')
-          .update({ order_id: order.id })
+          .update({ order_id: orderId })
           .eq('id', tefData.transaction_id);
       }
 
-      const orderItems = cart.map((item, index) => {
-        const resolved = inventory.resolvedItems[index];
-        const unit = getItemUnitPrice(item);
-        const adjustedUnit = Number((unit * (1 - discountRatio)).toFixed(2));
-        return {
-          order_id: order.id,
-          product_id: item.product.id,
-          variation_id: resolved?.resolvedVariationId ?? null,
-          quantity: item.quantity,
-          price_at_purchase: adjustedUnit,
-        };
-      });
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      // Atualizar estoque de forma ATÔMICA via RPC (livro-caixa + lock de linha)
-      for (const [index, item] of cart.entries()) {
-        const resolved = inventory.resolvedItems[index];
-        const { error: stockError } = await supabase.rpc('apply_stock_movement', {
-          p_product_id: item.product.id,
-          p_variation_id: resolved?.resolvedVariationId ?? null,
-          p_quantity_delta: -Math.abs(item.quantity),
-          p_movement_type: 'pdv_sale',
-          p_order_id: order.id,
-          p_reason: `Venda PDV - pedido ${order.id.slice(0, 8)}`,
-        });
-
-        if (stockError) throw stockError;
-      }
-
-      // Pedido finalizado com sucesso — não precisa mais da idempotency key
-      createdOrderId = null;
-      cashExchangeApplied = false;
       await loadOpenCashRegister();
 
       if (hasProductFallback) {
