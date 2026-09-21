@@ -171,16 +171,19 @@ beforeEach(() => {
     currentFromTable = table;
     return mockChain;
   });
-  mockChain.insert = vi.fn().mockImplementation((payload: any) => {
-    if (currentFromTable === 'orders') capturedOrdersInsert = payload;
-    return mockChain;
-  });
+  mockChain.insert = vi.fn().mockImplementation(() => mockChain);
   mockChain.single = vi.fn().mockResolvedValue({ data: { id: 'order-1' }, error: null });
   capturedOrdersInsert = null;
   mockCartTotal = 100;
 
-  // Default rpc mock — stock disponível, sem erros
-  mockRpc.mockResolvedValue({ data: 999, error: null });
+  // Default rpc mock — gravação única do pedido + stock disponível, sem erros
+  mockRpc.mockImplementation((fn: string, args: any) => {
+    if (fn === 'create_site_order') {
+      capturedOrdersInsert = args?.p_order ?? null;
+      return Promise.resolve({ data: { order_id: 'order-1' }, error: null });
+    }
+    return Promise.resolve({ data: 999, error: null });
+  });
 
   // Default edge function mock — PIX criado com sucesso
   (supabase.functions.invoke as any).mockResolvedValue({
