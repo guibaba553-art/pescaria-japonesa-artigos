@@ -30,6 +30,13 @@ import {
   type IncomeAccountTotals,
 } from "@/utils/incomeAccounts";
 import { getPaidToggleAction } from "@/utils/expensePaid";
+import {
+  BALANCE_ACCOUNTS,
+  buildAccountBalanceSeries,
+  type AccountOpening,
+  type BalanceDay,
+  type BalanceMovement,
+} from "@/utils/accountBalanceHistory";
 import { getExpenseStatus, getScheduleToggleAction, shouldPromoteToPaid, todayIso } from "@/utils/expenseScheduled";
 
 
@@ -822,6 +829,13 @@ export function ExpenseTracker() {
             </CardContent>
           </Card>
 
+          <AccountBalancesCard
+            days={daySeries}
+            title="Saldo das contas"
+            subtitle={`Acumulado até ${format(selectedDay, "dd/MM/yyyy", { locale: ptBR })} — o saldo de cada conta continua do dia anterior.`}
+            onEditOpening={() => setOpeningDialog(true)}
+          />
+
           <IncomeAccountsCards totals={dayAccounts} periodLabel="no dia" />
 
           {/* KPIs do DIA */}
@@ -937,6 +951,8 @@ export function ExpenseTracker() {
 
         {/* ============ MÊS ============ */}
         <TabsContent value="month" className="space-y-6 mt-4">
+          <AccountBalanceHistoryCard series={monthSeries} currentMonth={currentMonth} onEditOpening={() => setOpeningDialog(true)} />
+
           <IncomeAccountsCards totals={monthAccounts} periodLabel="no mês" />
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
