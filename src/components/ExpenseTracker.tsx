@@ -1820,6 +1820,7 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
   const [date, setDate] = useState<Date>(expense ? parseISO(expense.expense_date) : defaultDate);
   const [endDate, setEndDate] = useState<Date | undefined>(expense?.end_date ? parseISO(expense.end_date) : undefined);
   const [paymentMethod, setPaymentMethod] = useState(expense?.payment_method ?? "");
+  const [account, setAccount] = useState<IncomeAccount>((expense?.account as IncomeAccount) ?? "stone");
   const [supplier, setSupplier] = useState(expense?.supplier ?? "");
   const [notes, setNotes] = useState(expense?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -1896,6 +1897,7 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
       expense_date: format(date, "yyyy-MM-dd"),
       end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
       payment_method: paymentMethod || null,
+      account,
       supplier: supplier.trim() || null,
       notes: notes.trim() || null,
     };
@@ -1994,6 +1996,7 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
           </div>
           <div>
             <Label>Forma de pagamento</Label>
+            {/* placeholder-conta */}
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
               <SelectContent>{PAYMENT_METHODS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
