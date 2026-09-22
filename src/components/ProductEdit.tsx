@@ -969,7 +969,14 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                             type="text"
                             inputMode="decimal"
                             value={pricePdv}
-                            onChange={(e) => setPricePdv(sanitizeDecimalInput(e.target.value))}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setPricePdv(sanitized);
+                              const v = parseFloat(sanitized);
+                              setEditMargin(!isNaN(v) && v > 0 && liveBaseCost > 0
+                                ? reverseMarginFromPrice(v, liveBaseCost, liveTaxPct).toFixed(2)
+                                : '0');
+                            }}
                             placeholder="0,00"
                           />
                         </div>
