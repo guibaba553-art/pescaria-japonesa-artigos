@@ -10,7 +10,6 @@ describe("rótulos financeiros", () => {
 
   it("chama o total diário de Caixa", () => {
     expect(source).toContain(">Caixa</div>");
-    expect(source).not.toContain(">Saldo</div>");
   });
 
   it("mostra também o Saldo acumulado na agenda", () => {

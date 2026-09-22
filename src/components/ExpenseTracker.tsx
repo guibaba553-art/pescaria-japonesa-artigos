@@ -32,6 +32,7 @@ import {
 import { getPaidToggleAction } from "@/utils/expensePaid";
 import {
   BALANCE_ACCOUNTS,
+  buildAccumulatedDailyBalances,
   buildAccountBalanceSeries,
   type AccountOpening,
   type BalanceDay,
@@ -569,6 +570,16 @@ export function ExpenseTracker() {
     [openings, balanceMovements, currentMonth],
   );
 
+  const todayAccountBalance = useMemo(() => {
+    const series = buildAccountBalanceSeries({
+      openings,
+      movements: balanceMovements,
+      from: todayKey,
+      to: todayKey,
+    });
+    return BALANCE_ACCOUNTS.reduce((total, account) => total + series[account][0].closing, 0);
+  }, [openings, balanceMovements, todayKey]);
+
   const saveOpenings = async (rows: AccountOpening[]) => {
     const { error } = await supabase.from("account_balances").upsert(
       rows.map(r => ({
@@ -1014,6 +1025,8 @@ export function ExpenseTracker() {
             monthEntries={monthEntries}
             siteReceivables={siteReceivables}
             pdvReceivables={pdvReceivables}
+            balanceStartDate={todayKey}
+            balanceStartAmount={todayAccountBalance}
           />
         </TabsContent>
       </Tabs>
@@ -1273,6 +1286,8 @@ function MonthAgenda({
   monthEntries,
   siteReceivables,
   pdvReceivables,
+  balanceStartDate,
+  balanceStartAmount,
 }: {
   currentMonth: Date;
   selectedDay: Date;
@@ -1280,6 +1295,8 @@ function MonthAgenda({
   monthEntries: MonthlyEntry[];
   siteReceivables: { date: string; total: number }[];
   pdvReceivables: PdvReceivable[];
+  balanceStartDate: string;
+  balanceStartAmount: number;
 }) {
   const today = startOfDay(new Date());
   const daysInMonth = getDaysInMonth(currentMonth);
@@ -1307,6 +1324,7 @@ function MonthAgenda({
       const out = dayExpenses.reduce((s, e) => s + Number(e.effectiveAmount), 0);
       const inc = siteIn + pdvIn;
       return {
+        key,
         day,
         out,
         inc,
@@ -1316,6 +1334,15 @@ function MonthAgenda({
       };
     });
   }, [currentMonth, daysInMonth, monthEntries, siteReceivables, pdvReceivables, today, monthEnd]);
+
+  const accumulatedBalances = useMemo(
+    () => buildAccumulatedDailyBalances({
+      dailyCash: rows.map(r => ({ date: r.key, cash: r.balance })),
+      startDate: balanceStartDate,
+      startBalance: balanceStartAmount,
+    }),
+    [rows, balanceStartDate, balanceStartAmount],
+  );
 
   return (
     <Card>
@@ -1350,7 +1377,7 @@ function MonthAgenda({
                     {format(r.day, "EEE", { locale: ptBR })}
                   </div>
                 </div>
-                <div className="flex-1 min-w-0 grid grid-cols-3 gap-2 text-xs">
+                <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                   <div>
                     <div className="text-[10px] uppercase text-muted-foreground">Entrada</div>
                     <div className="font-semibold text-emerald-600">{r.inc > 0 ? fmtBRL(r.inc) : "—"}</div>
@@ -1364,6 +1391,19 @@ function MonthAgenda({
                     <div className={cn("font-semibold", r.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
                       {r.inc === 0 && r.out === 0 ? "—" : fmtBRL(r.balance)}
                     </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Saldo</div>
+                    {accumulatedBalances.get(r.key) == null ? (
+                      <div className="font-semibold text-muted-foreground">—</div>
+                    ) : (
+                      <div className={cn(
+                        "font-semibold",
+                        Number(accumulatedBalances.get(r.key)) >= 0 ? "text-emerald-600" : "text-red-600",
+                      )}>
+                        {fmtBRL(Number(accumulatedBalances.get(r.key)))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {isTd && <Badge variant="secondary" className="text-[10px]">hoje</Badge>}
