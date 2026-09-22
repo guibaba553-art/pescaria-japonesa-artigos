@@ -1360,7 +1360,7 @@ function MonthAgenda({
                     <div className="font-semibold text-red-600">{r.out > 0 ? fmtBRL(r.out) : "—"}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase text-muted-foreground">Saldo</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">Caixa</div>
                     <div className={cn("font-semibold", r.balance >= 0 ? "text-emerald-600" : "text-red-600")}>
                       {r.inc === 0 && r.out === 0 ? "—" : fmtBRL(r.balance)}
                     </div>
