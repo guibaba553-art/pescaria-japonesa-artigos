@@ -1017,6 +1017,13 @@ export function ExpenseTracker() {
           />
         </TabsContent>
       </Tabs>
+
+      <OpeningBalancesDialog
+        open={openingDialog}
+        onOpenChange={setOpeningDialog}
+        openings={openings}
+        onSave={saveOpenings}
+      />
     </div>
 
   );
