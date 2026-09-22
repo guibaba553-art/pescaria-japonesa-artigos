@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { resolveVariationForProduct } from '@/utils/variationSelection';
 import { useCart } from '@/hooks/useCart';
 import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
@@ -65,8 +66,12 @@ export default function ProductDetails() {
 
   const loadProduct = async () => {
     if (!id) return;
-    
+
     setLoading(true);
+    // Zera o estado do produto anterior para nunca misturar variação/preço de outro item
+    setVariations([]);
+    setSelectedVariation(null);
+    setQuantity(1);
     const { data, error } = await supabase
       .from('products')
       .select(PUBLIC_PRODUCT_COLUMNS)
@@ -96,25 +101,21 @@ export default function ProductDetails() {
         .from('product_variations')
         .select(PUBLIC_VARIATION_COLUMNS)
         .eq('product_id', id);
-      
-      if (variationsData) {
-        // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
-        // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
-        // via sitePriceForVariation em cada componente.
-        const vars = variationsData as unknown as ProductVariation[];
-        setVariations(vars);
-        const wanted = searchParams.get('variacao');
-        const preselected = wanted ? vars.find((v) => v.id === wanted) : null;
-        if (preselected) {
-          setSelectedVariation(preselected);
-          if (preselected.image_url) setSelectedImage(preselected.image_url);
-        }
+
+      // NÃO sobrescrever variation.price aqui — isPromoActive depende do price original
+      // (compara sale_price < price). O preço de exibição no site é calculado on-the-fly
+      // via sitePriceForVariation em cada componente.
+      const vars = (variationsData || []) as unknown as ProductVariation[];
+      setVariations(vars);
+      const preselected = resolveVariationForProduct(vars, searchParams.get('variacao'), null);
+      if (preselected) {
+        setSelectedVariation(preselected);
+        if (preselected.image_url) setSelectedImage(preselected.image_url);
       }
-
-
     }
     setLoading(false);
   };
+
 
   if (loading) {
     return (
