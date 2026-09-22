@@ -30,6 +30,13 @@ import {
   type IncomeAccountTotals,
 } from "@/utils/incomeAccounts";
 import { getPaidToggleAction } from "@/utils/expensePaid";
+import {
+  BALANCE_ACCOUNTS,
+  buildAccountBalanceSeries,
+  type AccountOpening,
+  type BalanceDay,
+  type BalanceMovement,
+} from "@/utils/accountBalanceHistory";
 import { getExpenseStatus, getScheduleToggleAction, shouldPromoteToPaid, todayIso } from "@/utils/expenseScheduled";
 
 
@@ -50,6 +57,8 @@ interface Expense {
   payment_method: string | null;
   supplier: string | null;
   notes: string | null;
+  /** Conta de onde o dinheiro sai (Stone, Mercado Pago, Asaas ou Dinheiro). */
+  account?: string | null;
 }
 interface Override {
   id: string;
@@ -209,6 +218,8 @@ export function ExpenseTracker() {
   const [overrides, setOverrides] = useState<Override[]>([]);
   const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
   const [pdvOrders, setPdvOrders] = useState<IncomeEntry[]>([]);
+  const [openings, setOpenings] = useState<AccountOpening[]>([]);
+  const [openingDialog, setOpeningDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -253,6 +264,18 @@ export function ExpenseTracker() {
 
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
+
+    const { data: balances } = await supabase
+      .from("account_balances")
+      .select("account, opening_amount, start_date");
+    setOpenings(
+      ((balances ?? []) as any[]).map(b => ({
+        account: b.account,
+        start_date: String(b.start_date).slice(0, 10),
+        opening_amount: Number(b.opening_amount || 0),
+      })),
+    );
+
     const mapOrder = (o: any): IncomeEntry => ({
       id: o.id,
       source: o.source === "pdv" ? "pdv" : "site",
@@ -467,6 +490,100 @@ export function ExpenseTracker() {
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [monthEntries, siteReceivables, pdvReceivables]);
+
+  // ===== Saldo por conta com histórico (realizado) =====
+  // Entradas: parcelas já liquidadas (data de liquidação até hoje).
+  // Saídas: apenas gastos marcados como pagos, na data do pagamento.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const balanceMovements: BalanceMovement[] = useMemo(() => {
+    const movs: BalanceMovement[] = [];
+
+    for (const o of pdvOrders) {
+      const account = classifyIncomeAccount({ source: "pdv", payment_method: o.payment_method });
+      for (const parcel of getSettlementSchedule(
+        parseISO(o.created_at),
+        o.payment_method,
+        o.total_amount,
+        o.installments ?? 1,
+      )) {
+        const key = format(parcel.date, "yyyy-MM-dd");
+        if (key > todayKey) continue;
+        movs.push({
+          date: key,
+          account,
+          amount: applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1),
+        });
+      }
+    }
+
+    for (const o of incomes) {
+      const account = classifyIncomeAccount({
+        source: "site",
+        payment_method: o.payment_method,
+        payment_gateway: o.payment_gateway,
+      });
+      for (const p of getSiteInstallments(o as any)) {
+        const key = format(p.date, "yyyy-MM-dd");
+        if (key > todayKey) continue;
+        movs.push({ date: key, account, amount: p.amount });
+      }
+    }
+
+    const expenseById = new Map(expenses.map(e => [e.id, e]));
+    for (const ov of overrides) {
+      if (!ov.paid_at) continue;
+      const expense = expenseById.get(ov.expense_id);
+      if (!expense || ov.skipped) continue;
+      const amount = Number(ov.amount ?? expense.amount) || 0;
+      if (amount <= 0) continue;
+      const account = (expense.account || "stone") as IncomeAccount;
+      movs.push({ date: String(ov.paid_at).slice(0, 10), account, amount: -amount });
+    }
+
+    return movs.sort((a, b) => a.date.localeCompare(b.date));
+  }, [pdvOrders, incomes, expenses, overrides, todayKey]);
+
+  const daySeries = useMemo(() => {
+    const dayKey = format(selectedDay, "yyyy-MM-dd");
+    const series = buildAccountBalanceSeries({
+      openings,
+      movements: balanceMovements,
+      from: dayKey,
+      to: dayKey,
+    });
+    return BALANCE_ACCOUNTS.reduce((acc, a) => {
+      acc[a] = series[a][0];
+      return acc;
+    }, {} as Record<IncomeAccount, BalanceDay>);
+  }, [openings, balanceMovements, selectedDay]);
+
+  const monthSeries = useMemo(
+    () =>
+      buildAccountBalanceSeries({
+        openings,
+        movements: balanceMovements,
+        from: format(startOfMonth(currentMonth), "yyyy-MM-dd"),
+        to: format(endOfMonth(currentMonth), "yyyy-MM-dd"),
+      }),
+    [openings, balanceMovements, currentMonth],
+  );
+
+  const saveOpenings = async (rows: AccountOpening[]) => {
+    const { error } = await supabase.from("account_balances").upsert(
+      rows.map(r => ({
+        account: r.account,
+        opening_amount: r.opening_amount,
+        start_date: r.start_date,
+      })) as any,
+      { onConflict: "account" },
+    );
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setOpenings(rows);
+    setOpeningDialog(false);
+    toast({ title: "Saldo inicial salvo" });
+  };
+
 
 
   const handleDelete = async (id: string) => {
@@ -712,6 +829,13 @@ export function ExpenseTracker() {
             </CardContent>
           </Card>
 
+          <AccountBalancesCard
+            days={daySeries}
+            title="Saldo das contas"
+            subtitle={`Acumulado até ${format(selectedDay, "dd/MM/yyyy", { locale: ptBR })} — o saldo de cada conta continua do dia anterior.`}
+            onEditOpening={() => setOpeningDialog(true)}
+          />
+
           <IncomeAccountsCards totals={dayAccounts} periodLabel="no dia" />
 
           {/* KPIs do DIA */}
@@ -827,6 +951,8 @@ export function ExpenseTracker() {
 
         {/* ============ MÊS ============ */}
         <TabsContent value="month" className="space-y-6 mt-4">
+          <AccountBalanceHistoryCard series={monthSeries} currentMonth={currentMonth} onEditOpening={() => setOpeningDialog(true)} />
+
           <IncomeAccountsCards totals={monthAccounts} periodLabel="no mês" />
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
@@ -891,6 +1017,13 @@ export function ExpenseTracker() {
           />
         </TabsContent>
       </Tabs>
+
+      <OpeningBalancesDialog
+        open={openingDialog}
+        onOpenChange={setOpeningDialog}
+        openings={openings}
+        onSave={saveOpenings}
+      />
     </div>
 
   );
@@ -902,6 +1035,212 @@ const ACCOUNT_STYLE: Record<IncomeAccount, { accent: string; hint: string }> = {
   asaas: { accent: "text-indigo-600", hint: "vendas do site pelo Asaas" },
   cash: { accent: "text-amber-600", hint: "caixa em espécie, separado" },
 };
+
+/** Saldo acumulado de cada conta no dia selecionado, partindo do dia anterior. */
+function AccountBalancesCard({
+  days,
+  title,
+  subtitle,
+  onEditOpening,
+}: {
+  days: Record<IncomeAccount, BalanceDay>;
+  title: string;
+  subtitle: string;
+  onEditOpening: () => void;
+}) {
+  const total = BALANCE_ACCOUNTS.reduce((s, a) => s + days[a].closing, 0);
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="w-4 h-4" /> {title}
+          </CardTitle>
+          <CardDescription>
+            {subtitle} Total somado: <strong>{fmtBRL(total)}</strong>
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onEditOpening}>Saldo inicial</Button>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {BALANCE_ACCOUNTS.map(account => {
+          const d = days[account];
+          return (
+            <div key={account} className="rounded-lg border p-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
+                {INCOME_ACCOUNT_LABEL[account]}
+              </div>
+              <div className={cn("text-xl font-bold mt-1", d.closing >= 0 ? ACCOUNT_STYLE[account].accent : "text-red-600")}>
+                {fmtBRL(d.closing)}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                <div>Vem do dia anterior: <strong>{fmtBRL(d.opening)}</strong></div>
+                <div className="text-emerald-600">Entrou hoje: {fmtBRL(d.income)}</div>
+                <div className="text-red-600">Saiu hoje: {fmtBRL(d.outcome)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Histórico dia a dia do saldo de cada conta no mês. */
+function AccountBalanceHistoryCard({
+  series,
+  currentMonth,
+  onEditOpening,
+}: {
+  series: Record<IncomeAccount, BalanceDay[]>;
+  currentMonth: Date;
+  onEditOpening: () => void;
+}) {
+  const rows = series.stone.map((_, i) => i);
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="w-4 h-4" /> Histórico de saldo por conta —{" "}
+            {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+          </CardTitle>
+          <CardDescription>
+            O saldo de cada dia parte do saldo do dia anterior. Cada conta é independente.
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onEditOpening}>Saldo inicial</Button>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr className="text-left">
+              <th className="py-1 pr-2">Dia</th>
+              {BALANCE_ACCOUNTS.map(a => (
+                <th key={a} className="py-1 pr-2 text-right whitespace-nowrap">{INCOME_ACCOUNT_LABEL[a]}</th>
+              ))}
+              <th className="py-1 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(i => {
+              const date = series.stone[i].date;
+              const total = BALANCE_ACCOUNTS.reduce((s, a) => s + series[a][i].closing, 0);
+              const moved = BALANCE_ACCOUNTS.some(a => series[a][i].income > 0 || series[a][i].outcome > 0);
+              return (
+                <tr key={date} className={cn("border-t border-border/50", moved && "bg-muted/40")}>
+                  <td className="py-1 pr-2 whitespace-nowrap">
+                    {format(parseISO(date), "dd/MM (EEE)", { locale: ptBR })}
+                  </td>
+                  {BALANCE_ACCOUNTS.map(a => (
+                    <td
+                      key={a}
+                      className={cn(
+                        "py-1 pr-2 text-right",
+                        series[a][i].closing >= 0 ? ACCOUNT_STYLE[a].accent : "text-red-600",
+                      )}
+                    >
+                      {fmtBRL(series[a][i].closing)}
+                    </td>
+                  ))}
+                  <td className="py-1 text-right font-semibold">{fmtBRL(total)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Define o saldo inicial de cada conta e a data em que ele passa a valer. */
+function OpeningBalancesDialog({
+  open,
+  onOpenChange,
+  openings,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  openings: AccountOpening[];
+  onSave: (rows: AccountOpening[]) => void;
+}) {
+  const [rows, setRows] = useState<Record<IncomeAccount, { amount: string; date: string }>>(() =>
+    BALANCE_ACCOUNTS.reduce((acc, a) => {
+      const found = openings.find(o => o.account === a);
+      acc[a] = {
+        amount: found ? String(found.opening_amount) : "0",
+        date: found?.start_date ?? format(startOfMonth(new Date()), "yyyy-MM-dd"),
+      };
+      return acc;
+    }, {} as Record<IncomeAccount, { amount: string; date: string }>),
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setRows(
+      BALANCE_ACCOUNTS.reduce((acc, a) => {
+        const found = openings.find(o => o.account === a);
+        acc[a] = {
+          amount: found ? String(found.opening_amount) : "0",
+          date: found?.start_date ?? format(startOfMonth(new Date()), "yyyy-MM-dd"),
+        };
+        return acc;
+      }, {} as Record<IncomeAccount, { amount: string; date: string }>),
+    );
+  }, [open, openings]);
+
+  const handleSave = () => {
+    onSave(
+      BALANCE_ACCOUNTS.map(a => ({
+        account: a,
+        opening_amount: Number(String(rows[a].amount).replace(".", "").replace(",", ".")) || 0,
+        start_date: rows[a].date,
+      })),
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Saldo inicial das contas</DialogTitle>
+          <DialogDescription>
+            Informe quanto cada conta tinha na data escolhida. A partir dessa data o saldo vai somando
+            as entradas e descontando os gastos pagos, dia após dia.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {BALANCE_ACCOUNTS.map(a => (
+            <div key={a} className="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <Label className="text-xs">{INCOME_ACCOUNT_LABEL[a]}</Label>
+                <Input
+                  inputMode="decimal"
+                  value={rows[a].amount}
+                  onChange={e => setRows(p => ({ ...p, [a]: { ...p[a], amount: e.target.value } }))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">A partir de</Label>
+                <Input
+                  type="date"
+                  value={rows[a].date}
+                  onChange={e => setRows(p => ({ ...p, [a]: { ...p[a], date: e.target.value } }))}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleSave}>Salvar saldos</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function IncomeAccountsCards({ totals, periodLabel }: { totals: IncomeAccountTotals; periodLabel: string }) {
   const order: IncomeAccount[] = ["stone", "mercadopago", "asaas", "cash"];
@@ -1481,6 +1820,7 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
   const [date, setDate] = useState<Date>(expense ? parseISO(expense.expense_date) : defaultDate);
   const [endDate, setEndDate] = useState<Date | undefined>(expense?.end_date ? parseISO(expense.end_date) : undefined);
   const [paymentMethod, setPaymentMethod] = useState(expense?.payment_method ?? "");
+  const [account, setAccount] = useState<IncomeAccount>((expense?.account as IncomeAccount) ?? "stone");
   const [supplier, setSupplier] = useState(expense?.supplier ?? "");
   const [notes, setNotes] = useState(expense?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -1557,6 +1897,7 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
       expense_date: format(date, "yyyy-MM-dd"),
       end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
       payment_method: paymentMethod || null,
+      account,
       supplier: supplier.trim() || null,
       notes: notes.trim() || null,
     };
@@ -1659,6 +2000,21 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
               <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
               <SelectContent>{PAYMENT_METHODS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div>
+          <Label>Sai de qual conta? *</Label>
+          <Select value={account} onValueChange={(v) => setAccount(v as IncomeAccount)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(["stone", "mercadopago", "asaas", "cash"] as IncomeAccount[]).map(a => (
+                <SelectItem key={a} value={a}>{INCOME_ACCOUNT_LABEL[a]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="text-[11px] text-muted-foreground mt-1">
+            O valor é descontado do saldo dessa conta quando o gasto for marcado como pago.
           </div>
         </div>
 

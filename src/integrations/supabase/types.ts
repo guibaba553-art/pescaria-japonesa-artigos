@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_balances: {
+        Row: {
+          account: string
+          created_at: string
+          id: string
+          opening_amount: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          account: string
+          created_at?: string
+          id?: string
+          opening_amount?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          account?: string
+          created_at?: string
+          id?: string
+          opening_amount?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           accessed_user_id: string | null
@@ -1126,6 +1153,7 @@ export type Database = {
       }
       expenses: {
         Row: {
+          account: string
           amount: number
           category: string
           created_at: string
@@ -1141,6 +1169,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account?: string
           amount: number
           category: string
           created_at?: string
@@ -1156,6 +1185,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account?: string
           amount?: number
           category?: string
           created_at?: string
