@@ -933,7 +933,56 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                           )}
                         </div>
                       </div>
+                     </div>
+
+                    {/* === Preço do produto (mantido mesmo com variações) === */}
+                    <div className="space-y-3 p-4 border-2 border-amber-500/30 rounded-lg bg-amber-500/5">
+                      <div>
+                        <h3 className="text-sm font-bold uppercase tracking-wide">Preço do produto</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Usado quando a variação não tem preço próprio. Continua editável mesmo com variações ativadas.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="base-min-sale">Preço de venda (site) (R$)</Label>
+                          <Input
+                            id="base-min-sale"
+                            type="text"
+                            inputMode="decimal"
+                            value={minSalePrice}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setMinSalePrice(sanitized);
+                              const v = parseFloat(sanitized);
+                              setSiteMarginPct(!isNaN(v) && v > 0 && liveBaseCost > 0
+                                ? reverseMarginFromPrice(v, liveBaseCost, liveTaxPct).toFixed(2)
+                                : '0');
+                            }}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="base-price-pdv">Preço PDV (R$)</Label>
+                          <Input
+                            id="base-price-pdv"
+                            type="text"
+                            inputMode="decimal"
+                            value={pricePdv}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setPricePdv(sanitized);
+                              const v = parseFloat(sanitized);
+                              setEditMargin(!isNaN(v) && v > 0 && liveBaseCost > 0
+                                ? reverseMarginFromPrice(v, liveBaseCost, liveTaxPct).toFixed(2)
+                                : '0');
+                            }}
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
                     </div>
+
 
                     {/* === VARIAÇÕES: Formação global === */}
                     <div className="space-y-3 p-4 border-2 border-emerald-500/20 rounded-lg bg-emerald-500/5">
