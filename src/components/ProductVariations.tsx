@@ -178,7 +178,8 @@ export function ProductVariations({ variations, onVariationsChange, hidePrice, d
       weight_grams: newVariation.weight_grams ? parseInt(newVariation.weight_grams) : null,
       length_cm: newVariation.length_cm ? parseFloat(newVariation.length_cm) : null,
       width_cm: newVariation.width_cm ? parseFloat(newVariation.width_cm) : null,
-      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null
+      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null,
+      ...buildNewVariationCostFields(defaultCost, defaultCostGroupId)
     };
 
     onVariationsChange([...variations, variation]);
