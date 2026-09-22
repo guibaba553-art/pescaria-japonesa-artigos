@@ -9,18 +9,23 @@ import { Badge } from "./ui/badge";
 import { isValidImageUrl } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
 import { BarcodeInput } from "@/components/BarcodeInput";
+import { buildNewVariationCostFields } from "@/utils/variationCostDefaults";
 
 interface ProductVariationsProps {
   variations: ProductVariation[];
   onVariationsChange: (variations: ProductVariation[]) => void;
   hidePrice?: boolean;
+  /** Custo do produto — replicado na nova variação (segue editável) */
+  defaultCost?: number | string | null;
+  /** Grupo de custo do produto — herdado pela nova variação */
+  defaultCostGroupId?: string | null;
 }
 
 /**
  * Componente para gerenciar variações de produto
  * Interface intuitiva para adicionar, editar e remover variações
  */
-export function ProductVariations({ variations, onVariationsChange, hidePrice }: ProductVariationsProps) {
+export function ProductVariations({ variations, onVariationsChange, hidePrice, defaultCost, defaultCostGroupId }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
   const [upProcessing, setUpProcessing] = useState<string | null>(null);
@@ -174,7 +179,8 @@ export function ProductVariations({ variations, onVariationsChange, hidePrice }:
       weight_grams: newVariation.weight_grams ? parseInt(newVariation.weight_grams) : null,
       length_cm: newVariation.length_cm ? parseFloat(newVariation.length_cm) : null,
       width_cm: newVariation.width_cm ? parseFloat(newVariation.width_cm) : null,
-      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null
+      height_cm: newVariation.height_cm ? parseFloat(newVariation.height_cm) : null,
+      ...buildNewVariationCostFields(defaultCost, defaultCostGroupId)
     };
 
     onVariationsChange([...variations, variation]);
