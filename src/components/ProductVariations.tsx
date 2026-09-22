@@ -9,6 +9,7 @@ import { Badge } from "./ui/badge";
 import { isValidImageUrl } from "@/utils/validation";
 import { useToast } from "@/hooks/use-toast";
 import { BarcodeInput } from "@/components/BarcodeInput";
+import { buildNewVariationCostFields } from "@/utils/variationCostDefaults";
 
 interface ProductVariationsProps {
   variations: ProductVariation[];
