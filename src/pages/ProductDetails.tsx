@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, ArrowLeft, Home, ChevronLeft, ChevronRight, Eye, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { resolveVariationForProduct } from '@/utils/variationSelection';
 import { useCart } from '@/hooks/useCart';
 import { Product, ProductVariation } from '@/types/product';
 import { ProductQuantitySelector } from '@/components/ProductQuantitySelector';
