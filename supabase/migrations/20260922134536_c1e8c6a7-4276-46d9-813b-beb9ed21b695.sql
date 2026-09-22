@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.validate_order_item_variation() FROM PUBLIC, anon, authenticated;
