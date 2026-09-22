@@ -1996,11 +1996,25 @@ function ExpenseDialog({ expense, defaultDate, onSaved }: {
           </div>
           <div>
             <Label>Forma de pagamento</Label>
-            {/* placeholder-conta */}
             <Select value={paymentMethod} onValueChange={setPaymentMethod}>
               <SelectTrigger><SelectValue placeholder="-" /></SelectTrigger>
               <SelectContent>{PAYMENT_METHODS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div>
+          <Label>Sai de qual conta? *</Label>
+          <Select value={account} onValueChange={(v) => setAccount(v as IncomeAccount)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(["stone", "mercadopago", "asaas", "cash"] as IncomeAccount[]).map(a => (
+                <SelectItem key={a} value={a}>{INCOME_ACCOUNT_LABEL[a]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="text-[11px] text-muted-foreground mt-1">
+            O valor é descontado do saldo dessa conta quando o gasto for marcado como pago.
           </div>
         </div>
 
