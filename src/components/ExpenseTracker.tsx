@@ -962,8 +962,6 @@ export function ExpenseTracker() {
 
         {/* ============ MÊS ============ */}
         <TabsContent value="month" className="space-y-6 mt-4">
-          <AccountBalanceHistoryCard series={monthSeries} currentMonth={currentMonth} onEditOpening={() => setOpeningDialog(true)} />
-
           <IncomeAccountsCards totals={monthAccounts} periodLabel="no mês" />
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
