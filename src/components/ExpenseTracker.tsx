@@ -1036,6 +1036,212 @@ const ACCOUNT_STYLE: Record<IncomeAccount, { accent: string; hint: string }> = {
   cash: { accent: "text-amber-600", hint: "caixa em espécie, separado" },
 };
 
+/** Saldo acumulado de cada conta no dia selecionado, partindo do dia anterior. */
+function AccountBalancesCard({
+  days,
+  title,
+  subtitle,
+  onEditOpening,
+}: {
+  days: Record<IncomeAccount, BalanceDay>;
+  title: string;
+  subtitle: string;
+  onEditOpening: () => void;
+}) {
+  const total = BALANCE_ACCOUNTS.reduce((s, a) => s + days[a].closing, 0);
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="w-4 h-4" /> {title}
+          </CardTitle>
+          <CardDescription>
+            {subtitle} Total somado: <strong>{fmtBRL(total)}</strong>
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onEditOpening}>Saldo inicial</Button>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {BALANCE_ACCOUNTS.map(account => {
+          const d = days[account];
+          return (
+            <div key={account} className="rounded-lg border p-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
+                {INCOME_ACCOUNT_LABEL[account]}
+              </div>
+              <div className={cn("text-xl font-bold mt-1", d.closing >= 0 ? ACCOUNT_STYLE[account].accent : "text-red-600")}>
+                {fmtBRL(d.closing)}
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
+                <div>Vem do dia anterior: <strong>{fmtBRL(d.opening)}</strong></div>
+                <div className="text-emerald-600">Entrou hoje: {fmtBRL(d.income)}</div>
+                <div className="text-red-600">Saiu hoje: {fmtBRL(d.outcome)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Histórico dia a dia do saldo de cada conta no mês. */
+function AccountBalanceHistoryCard({
+  series,
+  currentMonth,
+  onEditOpening,
+}: {
+  series: Record<IncomeAccount, BalanceDay[]>;
+  currentMonth: Date;
+  onEditOpening: () => void;
+}) {
+  const rows = series.stone.map((_, i) => i);
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="w-4 h-4" /> Histórico de saldo por conta —{" "}
+            {format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+          </CardTitle>
+          <CardDescription>
+            O saldo de cada dia parte do saldo do dia anterior. Cada conta é independente.
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onEditOpening}>Saldo inicial</Button>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr className="text-left">
+              <th className="py-1 pr-2">Dia</th>
+              {BALANCE_ACCOUNTS.map(a => (
+                <th key={a} className="py-1 pr-2 text-right whitespace-nowrap">{INCOME_ACCOUNT_LABEL[a]}</th>
+              ))}
+              <th className="py-1 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(i => {
+              const date = series.stone[i].date;
+              const total = BALANCE_ACCOUNTS.reduce((s, a) => s + series[a][i].closing, 0);
+              const moved = BALANCE_ACCOUNTS.some(a => series[a][i].income > 0 || series[a][i].outcome > 0);
+              return (
+                <tr key={date} className={cn("border-t border-border/50", moved && "bg-muted/40")}>
+                  <td className="py-1 pr-2 whitespace-nowrap">
+                    {format(parseISO(date), "dd/MM (EEE)", { locale: ptBR })}
+                  </td>
+                  {BALANCE_ACCOUNTS.map(a => (
+                    <td
+                      key={a}
+                      className={cn(
+                        "py-1 pr-2 text-right",
+                        series[a][i].closing >= 0 ? ACCOUNT_STYLE[a].accent : "text-red-600",
+                      )}
+                    >
+                      {fmtBRL(series[a][i].closing)}
+                    </td>
+                  ))}
+                  <td className="py-1 text-right font-semibold">{fmtBRL(total)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Define o saldo inicial de cada conta e a data em que ele passa a valer. */
+function OpeningBalancesDialog({
+  open,
+  onOpenChange,
+  openings,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  openings: AccountOpening[];
+  onSave: (rows: AccountOpening[]) => void;
+}) {
+  const [rows, setRows] = useState<Record<IncomeAccount, { amount: string; date: string }>>(() =>
+    BALANCE_ACCOUNTS.reduce((acc, a) => {
+      const found = openings.find(o => o.account === a);
+      acc[a] = {
+        amount: found ? String(found.opening_amount) : "0",
+        date: found?.start_date ?? format(startOfMonth(new Date()), "yyyy-MM-dd"),
+      };
+      return acc;
+    }, {} as Record<IncomeAccount, { amount: string; date: string }>),
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setRows(
+      BALANCE_ACCOUNTS.reduce((acc, a) => {
+        const found = openings.find(o => o.account === a);
+        acc[a] = {
+          amount: found ? String(found.opening_amount) : "0",
+          date: found?.start_date ?? format(startOfMonth(new Date()), "yyyy-MM-dd"),
+        };
+        return acc;
+      }, {} as Record<IncomeAccount, { amount: string; date: string }>),
+    );
+  }, [open, openings]);
+
+  const handleSave = () => {
+    onSave(
+      BALANCE_ACCOUNTS.map(a => ({
+        account: a,
+        opening_amount: Number(String(rows[a].amount).replace(".", "").replace(",", ".")) || 0,
+        start_date: rows[a].date,
+      })),
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Saldo inicial das contas</DialogTitle>
+          <DialogDescription>
+            Informe quanto cada conta tinha na data escolhida. A partir dessa data o saldo vai somando
+            as entradas e descontando os gastos pagos, dia após dia.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {BALANCE_ACCOUNTS.map(a => (
+            <div key={a} className="grid grid-cols-2 gap-2 items-end">
+              <div>
+                <Label className="text-xs">{INCOME_ACCOUNT_LABEL[a]}</Label>
+                <Input
+                  inputMode="decimal"
+                  value={rows[a].amount}
+                  onChange={e => setRows(p => ({ ...p, [a]: { ...p[a], amount: e.target.value } }))}
+                  placeholder="0,00"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">A partir de</Label>
+                <Input
+                  type="date"
+                  value={rows[a].date}
+                  onChange={e => setRows(p => ({ ...p, [a]: { ...p[a], date: e.target.value } }))}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button onClick={handleSave}>Salvar saldos</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function IncomeAccountsCards({ totals, periodLabel }: { totals: IncomeAccountTotals; periodLabel: string }) {
   const order: IncomeAccount[] = ["stone", "mercadopago", "asaas", "cash"];
   const sum = order.reduce((s, k) => s + totals[k], 0);
