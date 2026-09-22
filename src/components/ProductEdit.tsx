@@ -2030,6 +2030,8 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
               variations={variations}
               onVariationsChange={setVariations}
               hidePrice
+              defaultCost={cost}
+              defaultCostGroupId={costGroupId}
             />
             ) : null}
 
