@@ -14,6 +14,10 @@ interface ProductVariationsProps {
   variations: ProductVariation[];
   onVariationsChange: (variations: ProductVariation[]) => void;
   hidePrice?: boolean;
+  /** Custo do produto — replicado na nova variação (segue editável) */
+  defaultCost?: number | string | null;
+  /** Grupo de custo do produto — herdado pela nova variação */
+  defaultCostGroupId?: string | null;
 }
 
 /**
