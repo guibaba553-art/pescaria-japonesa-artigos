@@ -50,6 +50,8 @@ interface Expense {
   payment_method: string | null;
   supplier: string | null;
   notes: string | null;
+  /** Conta de onde o dinheiro sai (Stone, Mercado Pago, Asaas ou Dinheiro). */
+  account?: string | null;
 }
 interface Override {
   id: string;
@@ -209,6 +211,8 @@ export function ExpenseTracker() {
   const [overrides, setOverrides] = useState<Override[]>([]);
   const [incomes, setIncomes] = useState<IncomeEntry[]>([]);
   const [pdvOrders, setPdvOrders] = useState<IncomeEntry[]>([]);
+  const [openings, setOpenings] = useState<AccountOpening[]>([]);
+  const [openingDialog, setOpeningDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -253,6 +257,18 @@ export function ExpenseTracker() {
 
     setExpenses((exp ?? []) as Expense[]);
     setOverrides((ov ?? []) as Override[]);
+
+    const { data: balances } = await supabase
+      .from("account_balances")
+      .select("account, opening_amount, start_date");
+    setOpenings(
+      ((balances ?? []) as any[]).map(b => ({
+        account: b.account,
+        start_date: String(b.start_date).slice(0, 10),
+        opening_amount: Number(b.opening_amount || 0),
+      })),
+    );
+
     const mapOrder = (o: any): IncomeEntry => ({
       id: o.id,
       source: o.source === "pdv" ? "pdv" : "site",
@@ -467,6 +483,100 @@ export function ExpenseTracker() {
     const income = incomeSite + incomePdv;
     return { fixed, variable, total: expensesTotal, incomeSite, incomePdv, income, balance: income - expensesTotal };
   }, [monthEntries, siteReceivables, pdvReceivables]);
+
+  // ===== Saldo por conta com histórico (realizado) =====
+  // Entradas: parcelas já liquidadas (data de liquidação até hoje).
+  // Saídas: apenas gastos marcados como pagos, na data do pagamento.
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
+  const balanceMovements: BalanceMovement[] = useMemo(() => {
+    const movs: BalanceMovement[] = [];
+
+    for (const o of pdvOrders) {
+      const account = classifyIncomeAccount({ source: "pdv", payment_method: o.payment_method });
+      for (const parcel of getSettlementSchedule(
+        parseISO(o.created_at),
+        o.payment_method,
+        o.total_amount,
+        o.installments ?? 1,
+      )) {
+        const key = format(parcel.date, "yyyy-MM-dd");
+        if (key > todayKey) continue;
+        movs.push({
+          date: key,
+          account,
+          amount: applyCardFee(parcel.amount, o.payment_method, o.installments ?? 1),
+        });
+      }
+    }
+
+    for (const o of incomes) {
+      const account = classifyIncomeAccount({
+        source: "site",
+        payment_method: o.payment_method,
+        payment_gateway: o.payment_gateway,
+      });
+      for (const p of getSiteInstallments(o as any)) {
+        const key = format(p.date, "yyyy-MM-dd");
+        if (key > todayKey) continue;
+        movs.push({ date: key, account, amount: p.amount });
+      }
+    }
+
+    const expenseById = new Map(expenses.map(e => [e.id, e]));
+    for (const ov of overrides) {
+      if (!ov.paid_at) continue;
+      const expense = expenseById.get(ov.expense_id);
+      if (!expense || ov.skipped) continue;
+      const amount = Number(ov.amount ?? expense.amount) || 0;
+      if (amount <= 0) continue;
+      const account = (expense.account || "stone") as IncomeAccount;
+      movs.push({ date: String(ov.paid_at).slice(0, 10), account, amount: -amount });
+    }
+
+    return movs.sort((a, b) => a.date.localeCompare(b.date));
+  }, [pdvOrders, incomes, expenses, overrides, todayKey]);
+
+  const daySeries = useMemo(() => {
+    const dayKey = format(selectedDay, "yyyy-MM-dd");
+    const series = buildAccountBalanceSeries({
+      openings,
+      movements: balanceMovements,
+      from: dayKey,
+      to: dayKey,
+    });
+    return BALANCE_ACCOUNTS.reduce((acc, a) => {
+      acc[a] = series[a][0];
+      return acc;
+    }, {} as Record<IncomeAccount, BalanceDay>);
+  }, [openings, balanceMovements, selectedDay]);
+
+  const monthSeries = useMemo(
+    () =>
+      buildAccountBalanceSeries({
+        openings,
+        movements: balanceMovements,
+        from: format(startOfMonth(currentMonth), "yyyy-MM-dd"),
+        to: format(endOfMonth(currentMonth), "yyyy-MM-dd"),
+      }),
+    [openings, balanceMovements, currentMonth],
+  );
+
+  const saveOpenings = async (rows: AccountOpening[]) => {
+    const { error } = await supabase.from("account_balances").upsert(
+      rows.map(r => ({
+        account: r.account,
+        opening_amount: r.opening_amount,
+        start_date: r.start_date,
+      })) as any,
+      { onConflict: "account" },
+    );
+    if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+    setOpenings(rows);
+    setOpeningDialog(false);
+    toast({ title: "Saldo inicial salvo" });
+  };
+
 
 
   const handleDelete = async (id: string) => {
