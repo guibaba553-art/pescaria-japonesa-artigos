@@ -14,3 +14,4 @@
 - [x] Painel de vendas incompletas na página de Pedidos
 - [x] Gravar o pedido da loja online em uma única operação atômica
 - [ ] Recuperar as 98 vendas antigas incompletas (tela de baixa retroativa) — aguarda decisão do usuário sobre quais vendas corrigir
+- [x] Separar Caixa diário e Saldo acumulado na agenda, iniciando pelo saldo real de 22/09/2026

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildAccountBalanceSeries,
+  buildAccumulatedDailyBalances,
   getAccountBalanceAt,
   type BalanceMovement,
   type AccountOpening,
@@ -57,5 +58,23 @@ describe("histórico de saldo por conta", () => {
   it("sem saldo inicial cadastrado, começa em zero", () => {
     const at = getAccountBalanceAt({ openings: [], movements, date: "2026-09-01" });
     expect(at.stone).toBe(120);
+  });
+
+  it("inicia o saldo acumulado no saldo real de hoje e soma o caixa dos próximos dias", () => {
+    const balances = buildAccumulatedDailyBalances({
+      dailyCash: [
+        { date: "2026-09-21", cash: 500 },
+        { date: "2026-09-22", cash: 100 },
+        { date: "2026-09-23", cash: -50 },
+        { date: "2026-09-24", cash: 200 },
+      ],
+      startDate: "2026-09-22",
+      startBalance: 5562.86,
+    });
+
+    expect(balances.get("2026-09-21")).toBeUndefined();
+    expect(balances.get("2026-09-22")).toBe(5562.86);
+    expect(balances.get("2026-09-23")).toBe(5512.86);
+    expect(balances.get("2026-09-24")).toBe(5712.86);
   });
 });

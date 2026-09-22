@@ -31,6 +31,11 @@ export interface BalanceDay {
 export type AccountBalanceSeries = Record<IncomeAccount, BalanceDay[]>;
 export type AccountBalanceTotals = Record<IncomeAccount, number>;
 
+export interface DailyCash {
+  date: string;
+  cash: number;
+}
+
 const openingFor = (openings: AccountOpening[], account: IncomeAccount) =>
   openings.find(o => o.account === account);
 
@@ -107,4 +112,29 @@ export function getAccountBalanceAt({
     totals[account] = list.reduce((s, m) => s + m.amount, Number(opening?.opening_amount ?? 0));
   }
   return totals;
+}
+
+/**
+ * Projeta o saldo geral a partir de um valor real informado para a data inicial.
+ * O caixa da própria data inicial já está contido nesse valor e não é somado novamente.
+ */
+export function buildAccumulatedDailyBalances({
+  dailyCash,
+  startDate,
+  startBalance,
+}: {
+  dailyCash: DailyCash[];
+  startDate: string;
+  startBalance: number;
+}) {
+  const balances = new Map<string, number>();
+  let running = startBalance;
+
+  for (const day of [...dailyCash].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (day.date < startDate) continue;
+    if (day.date > startDate) running += day.cash;
+    balances.set(day.date, running);
+  }
+
+  return balances;
 }
