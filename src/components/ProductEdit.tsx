@@ -951,7 +951,14 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                             type="text"
                             inputMode="decimal"
                             value={minSalePrice}
-                            onChange={(e) => setMinSalePrice(sanitizeDecimalInput(e.target.value))}
+                            onChange={(e) => {
+                              const sanitized = sanitizeDecimalInput(e.target.value);
+                              setMinSalePrice(sanitized);
+                              const v = parseFloat(sanitized);
+                              setSiteMarginPct(!isNaN(v) && v > 0 && liveBaseCost > 0
+                                ? reverseMarginFromPrice(v, liveBaseCost, liveTaxPct).toFixed(2)
+                                : '0');
+                            }}
                             placeholder="0,00"
                           />
                         </div>
