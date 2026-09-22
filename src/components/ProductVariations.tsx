@@ -24,7 +24,7 @@ interface ProductVariationsProps {
  * Componente para gerenciar variações de produto
  * Interface intuitiva para adicionar, editar e remover variações
  */
-export function ProductVariations({ variations, onVariationsChange, hidePrice }: ProductVariationsProps) {
+export function ProductVariations({ variations, onVariationsChange, hidePrice, defaultCost, defaultCostGroupId }: ProductVariationsProps) {
   const { toast } = useToast();
   const [bgProcessing, setBgProcessing] = useState<string | null>(null);
   const [upProcessing, setUpProcessing] = useState<string | null>(null);
