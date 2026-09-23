@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight, Clock } from "lucide-react";
 import { effectiveProductOrVariationPrice } from "@/utils/promoPrice";
 import { PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS } from "@/utils/productColumns";
+import { pickRandom } from "@/utils/randomPick";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -73,7 +74,7 @@ const FlashDealsCountdown = () => {
         .or(`sale_ends_at.is.null,sale_ends_at.gt.${nowIso}`)
         .or(`sale_starts_at.is.null,sale_starts_at.lte.${nowIso}`)
         .order("sale_ends_at", { ascending: true, nullsFirst: false })
-        .limit(12);
+        .limit(50);
 
       // 2) IDs de produtos cujas variações estão em promoção
       const { data: promoVars } = await supabase
@@ -97,7 +98,7 @@ const FlashDealsCountdown = () => {
           .in("id", varProductIds)
           .eq("pdv_only", false)
           .gt("stock", 0)
-          .limit(12);
+          .limit(50);
         varProducts = (vpData as unknown as Product[]) || [];
       }
 
@@ -111,7 +112,8 @@ const FlashDealsCountdown = () => {
         }
       }
 
-      setProducts(merged.slice(0, 4));
+      // Sorteia 4 ofertas aleatórias a cada visita à home
+      setProducts(pickRandom(merged, 4));
       setLoading(false);
     };
     load();
