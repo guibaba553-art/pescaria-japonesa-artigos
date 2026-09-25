@@ -11,6 +11,7 @@ import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
 
 import { packItems } from '@/utils/packShipment';
+import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, PARTNER_CITIES_LABEL } from '@/lib/partnerDelivery';
 
 interface ShippingOption {
   codigo: string;
@@ -142,7 +143,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     });
   })();
 
-  const hasItemsWithoutDims = dimsReady && itemsMissingDims().length > 0;
+  const hasItemsWithoutDims = false && dimsReady && itemsMissingDims().length > 0;
 
   const buildMeProducts = () => {
     if (!products || products.length === 0) return undefined;
@@ -165,42 +166,26 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
     return packItems(shipmentItems, 0);
   };
 
-  const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
-    if (hasItemsWithoutDims) {
-      toast({
-        title: 'Frete indisponível',
-        description: 'Há itens no carrinho sem peso/medidas cadastradas. Escolha "Retirar na Loja" ou contate o vendedor.',
-        variant: 'destructive',
-      });
-      return null;
-    }
-    if (!/^\d{8}$/.test(cepDestino)) {
-      toast({ title: 'CEP inválido', description: 'CEP deve conter 8 dígitos', variant: 'destructive' });
-      return null;
-    }
-    const meProducts = buildMeProducts();
-    const { data, error } = await supabase.functions.invoke('calculate-shipping', {
-      body: {
-        cepDestino,
-        products: meProducts,
-        peso: SHIPPING_CONFIG.DEFAULT_WEIGHT,
-        formato: SHIPPING_CONFIG.DEFAULT_FORMAT,
-        comprimento: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
-        altura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height,
-        largura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width,
-      },
-    });
-    if (error || !data?.success) {
-      toast({
-        title: 'Erro ao calcular frete',
-        description: data?.error || error?.message || 'Tente novamente',
-        variant: 'destructive',
-      });
-      return null;
-    }
-    return data.options as ShippingOption[];
-  };
+  const [coverageMsg, setCoverageMsg] = useState<string | null>(null);
 
+  // Frete pela transportadora parceira: identifica a cidade pelo CEP
+  const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
+    setCoverageMsg(null);
+    const loc = await lookupCepCity(cepDestino);
+    if (!loc) {
+      toast({ title: 'CEP não encontrado', description: 'Confira o CEP digitado', variant: 'destructive' });
+      return null;
+    }
+    const cov = classifyDeliveryCity(loc.city, loc.state);
+    if (cov === 'partner') return [PARTNER_SHIPPING_OPTION];
+    if (cov === 'pickup') {
+      setCoverageMsg('Para Sinop o pedido é retirado na loja (grátis).');
+      handleSelectOption(pickupOption);
+      return [];
+    }
+    setCoverageMsg(`Ainda não entregamos em ${loc.city}/${loc.state}. Cidades atendidas: ${PARTNER_CITIES_LABEL}.`);
+    return [];
+  };
 
   const calculateShipping = async () => {
     if (!cep || cep.length !== 8) {
@@ -310,6 +295,8 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </div>
       )}
 
+      {coverageMsg && <p className="text-sm text-destructive">{coverageMsg}</p>}
+
       {options.length > 0 && (() => {
         const delivery = filterDeliveryOnly(options);
         if (delivery.length === 0) return null;
@@ -347,7 +334,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Entrega em {option.prazoEntrega} dias úteis
+                          {option.prazoEntrega > 0 ? `Entrega em ${option.prazoEntrega} dias úteis` : 'Entrega regional — valor fixo'}
                         </p>
                       </div>
                     </div>
