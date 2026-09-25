@@ -575,7 +575,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                   onClick={() => setLabelDialogOpen(true)}
                 >
                   <Truck className="w-4 h-4 mr-2" />
-                  {order.shipping_label_order_id ? 'Imprimir etiqueta' : order.tracking_code ? 'Reimprimir etiqueta' : 'Gerar etiqueta Melhor Envio'}
+                  {order.shipping_label_order_id ? 'Imprimir etiqueta' : order.tracking_code ? 'Reimprimir etiqueta' : 'Gerar etiqueta'}
                 </Button>
               </div>
               {order.tracking_code && (
