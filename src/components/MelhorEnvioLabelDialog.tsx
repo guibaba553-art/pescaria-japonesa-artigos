@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Truck, ExternalLink, Copy, MapPin, Info } from 'lucide-react';
 import { packItems } from '@/utils/packShipment';
+import { generatePartnerLabelPdf, isPartnerShippingOrder, type PartnerLabelOrder } from '@/utils/partnerLabel';
 
 // Endereço de origem (loja) — onde despachar / onde a transportadora coleta
 const STORE_ADDRESS = 'Av. das Itaúbas, 2281 — Jardim Paraíso, Sinop/MT — CEP 78556-100';
@@ -108,7 +109,7 @@ interface Props {
   onSuccess?: () => void;
 }
 
-export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }: Props) {
+function MelhorEnvioLabelDialogInner({ open, onOpenChange, order, onSuccess }: Props) {
   const { toast } = useToast();
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -437,6 +438,73 @@ export function MelhorEnvioLabelDialog({ open, onOpenChange, order, onSuccess }:
               </Button>
             </>
           )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function MelhorEnvioLabelDialog(props: Props) {
+  const { open, order, onOpenChange } = props;
+  const { toast } = useToast();
+  const [full, setFull] = useState<PartnerLabelOrder | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    setFull(null);
+    setChecked(false);
+    if (!open || !order) return;
+    supabase
+      .from('orders')
+      .select('id, created_at, delivery_type, shipping_service_id, shipping_cost, total_amount, shipping_recipient_name, shipping_recipient_phone, shipping_street, shipping_number, shipping_complement, shipping_neighborhood, shipping_city, shipping_uf, shipping_cep, shipping_address, order_items(quantity)')
+      .eq('id', order.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setFull((data as PartnerLabelOrder) || null);
+        setChecked(true);
+      });
+  }, [open, order?.id]);
+
+  if (!open || !order) return null;
+  if (!checked) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Carregando pedido…</DialogTitle></DialogHeader>
+          <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin" /></div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  if (!full || !isPartnerShippingOrder(full)) return <MelhorEnvioLabelDialogInner {...props} />;
+
+  const print = () => {
+    try {
+      const doc = generatePartnerLabelPdf(full);
+      const url = doc.output('bloburl');
+      window.open(url as unknown as string, '_blank');
+    } catch (e) {
+      toast({ title: 'Erro ao gerar etiqueta', description: String(e), variant: 'destructive' });
+    }
+  };
+  const addr = [full.shipping_street, full.shipping_number].filter(Boolean).join(', ');
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /> Etiqueta — Transportadora parceira</DialogTitle>
+          <DialogDescription>Etiqueta própria da loja, sem custo no Melhor Envio. Frete fixo já cobrado do cliente.</DialogDescription>
+        </DialogHeader>
+        <div className="rounded-lg border p-3 text-sm space-y-1">
+          <p className="font-semibold">{full.shipping_recipient_name || '—'}</p>
+          <p className="text-muted-foreground">{addr}{full.shipping_complement ? ` — ${full.shipping_complement}` : ''}</p>
+          <p className="text-muted-foreground">{full.shipping_neighborhood} — {full.shipping_city}/{full.shipping_uf} — CEP {full.shipping_cep}</p>
+          <p className="pt-1">Frete: <strong>{Number(full.shipping_cost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+          <Button onClick={print} className="gap-2"><Truck className="h-4 w-4" /> Imprimir etiqueta</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
