@@ -11,7 +11,7 @@ const faqJsonLd = {
       name: "Para quais regiões a JAPAS Pesca entrega?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Entregamos para todo o território nacional, partindo de Sinop/MT, via Correios (PAC e SEDEX) e Melhor Envio (Jadlog, Buslog, Loggi e parceiras). Também há retirada gratuita na loja em Sinop/MT.",
+        text: "Entregamos por transportadora parceira, com frete fixo de R$ 15,00, em Itaúba, Santa Helena, Guarita, Terra Nova do Norte, Peixoto de Azevedo, Matupá, Guarantã do Norte, Novo Mundo, Nova Canaã do Norte, Carlinda, Alta Floresta, Colíder, Nova Monte Verde, Paranaíta, Nova Bandeirantes, Vera, Santa Carmem, Feliz Natal e União do Sul (MT). Também há retirada gratuita na loja em Sinop/MT.",
       },
     },
     {
@@ -46,7 +46,7 @@ export default function PoliticaFrete() {
     <div className="min-h-screen flex flex-col">
       <Helmet>
         <title>Política de Frete — JAPAS Pesca</title>
-        <meta name="description" content="Frete para todo o Brasil via Correios e Melhor Envio. Veja prazos, cálculo, rastreio e retirada na loja em Sinop/MT." />
+        <meta name="description" content="Entrega por transportadora parceira com frete fixo de R$ 15 em cidades do norte de MT e retirada na loja em Sinop/MT." />
         <link rel="canonical" href="https://japaspesca.com.br/politica-de-frete" />
         <meta property="og:title" content="Política de Frete — JAPAS Pesca" />
         <meta property="og:description" content="Prazos, transportadoras, cálculo e rastreio dos pedidos da JAPAS Pesca." />
@@ -64,17 +64,16 @@ export default function PoliticaFrete() {
           <section>
             <h2 className="text-2xl font-bold mb-3">Área de entrega</h2>
             <p>
-              A <strong>JAPA PESCA E CONVENIENCIA LTDA</strong> realiza entregas para
-              <strong> todo o território nacional</strong>, partindo de Sinop/MT.
+              A <strong>JAPA PESCA E CONVENIENCIA LTDA</strong> realiza entregas por
+              <strong> transportadora parceira</strong> em cidades do norte de Mato Grosso, partindo de Sinop/MT.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-bold mb-3">Transportadoras</h2>
-            <p>Trabalhamos com as seguintes opções de envio, integradas em tempo real:</p>
+            <p>Opções de envio:</p>
             <ul className="list-disc pl-6 space-y-2 mt-3">
-              <li><strong>Correios:</strong> PAC e SEDEX</li>
-              <li><strong>Melhor Envio:</strong> Jadlog, Buslog, Loggi e demais transportadoras parceiras</li>
+              <li><strong>Transportadora parceira:</strong> frete fixo de R$ 15,00 nas cidades atendidas</li>
               <li><strong>Retirada na loja:</strong> sem custo, em Sinop/MT</li>
             </ul>
           </section>
