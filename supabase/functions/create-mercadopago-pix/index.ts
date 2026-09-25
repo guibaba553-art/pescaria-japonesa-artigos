@@ -70,7 +70,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
-        "id, user_id, status, total_amount, payment_id, pix_attempts, delivery_type, shipping_service_id",
+        "id, user_id, status, total_amount, payment_id, pix_attempts, delivery_type, shipping_service_id, shipping_cost",
       )
       .eq("id", orderId)
       .single();
@@ -137,7 +137,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         },
       );
     }
-    if (order.delivery_type === "delivery" && !order.shipping_service_id) {
+    if (order.delivery_type === "delivery" && !order.shipping_service_id && !(Number(order.shipping_cost) > 0)) {
       return new Response(
         JSON.stringify({
           error: "Selecione um frete para entrega antes de finalizar o pedido.",
