@@ -81,16 +81,22 @@ export function generatePartnerLabelPdf(o: PartnerLabelOrder): jsPDF {
   const W = 100 - M * 2;
   let y = M;
 
-  doc.setLineWidth(0.4);
+  // Térmica 100x150: só preto puro, linhas grossas, sem cinza.
+  doc.setDrawColor(0);
+  doc.setTextColor(0);
+  doc.setLineWidth(0.6);
   doc.rect(M, M, W, 140);
 
-  // Cabeçalho
+  // Cabeçalho em faixa preta (texto branco) — alto contraste na térmica
+  doc.setFillColor(0, 0, 0);
+  doc.rect(M, M, W, 14, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.text(d.carrier.toUpperCase(), 50, y + 7, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.text(`${d.service} — Frete ${brl(d.freight)}`, 50, y + 11.5, { align: 'center' });
+  doc.setTextColor(0);
   y += 14;
   doc.line(M, y, M + W, y);
 
@@ -103,7 +109,7 @@ export function generatePartnerLabelPdf(o: PartnerLabelOrder): jsPDF {
   try {
     const canvas = document.createElement('canvas');
     JsBarcode(canvas, d.orderId, { format: 'CODE128', displayValue: false, margin: 0, height: 60, width: 2 });
-    doc.addImage(canvas.toDataURL('image/png'), 'PNG', M + 4, y + 7, W - 8, 13);
+    doc.addImage(canvas.toDataURL('image/png'), 'PNG', M + 6, y + 7, W - 12, 13, undefined, 'NONE');
   } catch { /* sem código de barras */ }
   y += 23;
   doc.line(M, y, M + W, y);
