@@ -491,7 +491,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">
+                     <p className="text-sm font-semibold break-words [overflow-wrap:anywhere]">
                       {item.products?.name || 'Produto'}
                       {item.product_variations?.name && (
                         <span className="text-muted-foreground font-normal">
