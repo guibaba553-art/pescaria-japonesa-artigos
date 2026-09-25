@@ -39,7 +39,8 @@ import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
-import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, PARTNER_CITIES_LABEL, type DeliveryCoverage } from '@/lib/partnerDelivery';
+import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, type DeliveryCoverage } from '@/lib/partnerDelivery';
+import { DeliveryCoverageNotice } from '@/components/DeliveryCoverageNotice';
 
 interface FormState {
   label: string;
