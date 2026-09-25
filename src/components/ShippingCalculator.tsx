@@ -11,7 +11,8 @@ import { formatCEP, sanitizeNumericInput } from '@/utils/validation';
 import { SHIPPING_CONFIG } from '@/config/constants';
 
 import { packItems } from '@/utils/packShipment';
-import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, PARTNER_CITIES_LABEL } from '@/lib/partnerDelivery';
+import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION } from '@/lib/partnerDelivery';
+import { DeliveryCoverageNotice } from '@/components/DeliveryCoverageNotice';
 
 interface ShippingOption {
   codigo: string;
@@ -167,10 +168,12 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
   };
 
   const [coverageMsg, setCoverageMsg] = useState<string | null>(null);
+  const [unsupportedLoc, setUnsupportedLoc] = useState<{ city: string; state: string } | null>(null);
 
   // Frete pela transportadora parceira: identifica a cidade pelo CEP
   const fetchShippingForCep = async (cepDestino: string): Promise<ShippingOption[] | null> => {
     setCoverageMsg(null);
+    setUnsupportedLoc(null);
     const loc = await lookupCepCity(cepDestino);
     if (!loc) {
       toast({ title: 'CEP não encontrado', description: 'Confira o CEP digitado', variant: 'destructive' });
@@ -183,7 +186,7 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
       handleSelectOption(pickupOption);
       return [];
     }
-    setCoverageMsg(`Ainda não entregamos em ${loc.city}/${loc.state}. Cidades atendidas: ${PARTNER_CITIES_LABEL}.`);
+    setUnsupportedLoc({ city: loc.city, state: loc.state });
     return [];
   };
 
@@ -295,7 +298,10 @@ export function ShippingCalculator({ onSelectShipping, products }: ShippingCalcu
         </div>
       )}
 
-      {coverageMsg && <p className="text-sm text-destructive">{coverageMsg}</p>}
+      {coverageMsg && <p className="text-sm text-muted-foreground">{coverageMsg}</p>}
+      {unsupportedLoc && (
+        <DeliveryCoverageNotice city={unsupportedLoc.city} state={unsupportedLoc.state} showPickupHint={false} />
+      )}
 
       {options.length > 0 && (() => {
         const delivery = filterDeliveryOnly(options);

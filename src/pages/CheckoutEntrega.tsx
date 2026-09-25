@@ -39,7 +39,8 @@ import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
-import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, PARTNER_CITIES_LABEL, type DeliveryCoverage } from '@/lib/partnerDelivery';
+import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, type DeliveryCoverage } from '@/lib/partnerDelivery';
+import { DeliveryCoverageNotice } from '@/components/DeliveryCoverageNotice';
 
 interface FormState {
   label: string;
@@ -945,15 +946,20 @@ export default function CheckoutEntrega() {
                               const delivery = [...shippingOptions].filter(
                                 (o) => o.codigo !== 'RETIRADA' && !o.codigo.startsWith('frenet-')
                               );
-                              if (delivery.length === 0) {
-                                return (
-                                  <p className="text-sm text-destructive py-2 text-center">
-                                    {deliveryCoverage?.coverage === 'pickup'
-                                      ? 'Para Sinop o pedido é retirado na loja (grátis).'
-                                      : `Ainda não entregamos em ${deliveryCoverage?.city || 'essa cidade'}. Cidades atendidas: ${PARTNER_CITIES_LABEL}.`}
-                                  </p>
-                                );
-                              }
+                               if (delivery.length === 0) {
+                                 if (deliveryCoverage?.coverage === 'pickup') {
+                                   return (
+                                     <p className="text-sm text-muted-foreground py-2 text-center">
+                                       Para Sinop o pedido é retirado na loja (grátis).
+                                     </p>
+                                   );
+                                 }
+                                 return (
+                                   <DeliveryCoverageNotice
+                                     city={deliveryCoverage?.city || 'essa cidade'}
+                                   />
+                                 );
+                               }
                               const cheapest = [...delivery].sort((a, b) => a.valor - b.valor)[0];
                               const fastest = [...delivery].sort((a, b) => a.prazoEntrega - b.prazoEntrega)[0];
                               const sorted = [...delivery].sort((a, b) => {
@@ -1094,7 +1100,7 @@ export default function CheckoutEntrega() {
                     const cov = classifyDeliveryCity(form.city, form.state);
                     if (cov === 'partner') return <p className="text-sm text-primary">Entregamos em {form.city} pela transportadora parceira por R$ 15,00.</p>;
                     if (cov === 'pickup') return <p className="text-sm text-muted-foreground">Para Sinop o pedido é retirado na loja (grátis).</p>;
-                    return <p className="text-sm text-destructive">Ainda não entregamos em {form.city}. Cidades atendidas: {PARTNER_CITIES_LABEL}. Você pode escolher retirar na loja.</p>;
+                    return <DeliveryCoverageNotice city={form.city} state={form.state} />;
                   })()}
                   <div className="flex gap-2 pt-1">
                     <Button onClick={handleSave} disabled={saving} className="rounded-full">
