@@ -476,7 +476,7 @@ export function MelhorEnvioLabelDialog(props: Props) {
       </Dialog>
     );
   }
-  if (!full || !isPartnerShippingOrder(full)) return <MelhorEnvioLabelDialogInner {...props} />;
+  if (!full) return null;
 
   const print = () => {
     try {
@@ -493,8 +493,8 @@ export function MelhorEnvioLabelDialog(props: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /> Etiqueta — Transportadora parceira</DialogTitle>
-          <DialogDescription>Etiqueta própria da loja, sem custo no Melhor Envio. Frete fixo já cobrado do cliente.</DialogDescription>
+          <DialogTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary" /> Etiqueta de envio</DialogTitle>
+          <DialogDescription>Etiqueta própria da loja com os dados do frete.</DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border p-3 text-sm space-y-1">
           <p className="font-semibold">{full.shipping_recipient_name || '—'}</p>

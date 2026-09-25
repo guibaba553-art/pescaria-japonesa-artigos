@@ -29,7 +29,7 @@ const ROPA: DataItem[] = [
     finalidade: "Cálculo de frete, envio do pedido, emissão de etiqueta",
     baseLegal: "Execução de contrato (Art. 7º, V, LGPD)",
     retencao: "Enquanto endereço estiver cadastrado + 5 anos após último pedido",
-    compartilhamento: "Correios, Melhor Envio (transportadoras parceiras)",
+    compartilhamento: "Transportadora parceira",
   },
   {
     categoria: "Dados de Pagamento",

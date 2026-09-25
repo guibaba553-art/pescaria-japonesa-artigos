@@ -1995,7 +1995,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
               <div>
                 <h3 className="text-sm font-bold uppercase tracking-wide">📦 Peso e Dimensões (Frete)</h3>
                 <p className="text-xs text-muted-foreground">
-                  Usado pelo Melhor Envio para calcular o frete real. Se vazio, usa valores padrão da loja.
+                  Peso e medidas do produto (opcional).
                   Mínimos: 11×11×2 cm, peso ≥ 10 g.
                 </p>
               </div>
