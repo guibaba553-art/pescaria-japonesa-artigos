@@ -54,7 +54,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Validate order ownership ────────────────────────────────────────────
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, user_id, status, total_amount, asaas_payment_id, payment_id, pix_attempts, delivery_type, shipping_service_id')
+      .select('id, user_id, status, total_amount, asaas_payment_id, payment_id, pix_attempts, delivery_type, shipping_service_id, shipping_cost')
       .eq('id', orderId)
       .single();
 
@@ -95,7 +95,7 @@ export async function handleRequest(req: Request): Promise<Response> {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
-    if (order.delivery_type === 'delivery' && !order.shipping_service_id) {
+    if (order.delivery_type === 'delivery' && !order.shipping_service_id && !(Number(order.shipping_cost) > 0)) {
       return new Response(
         JSON.stringify({ error: 'Selecione um frete para entrega antes de finalizar o pedido.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
