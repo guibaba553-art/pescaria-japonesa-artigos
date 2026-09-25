@@ -4,8 +4,8 @@ export const PARTNER_CITIES = [
   'Itaúba', 'Santa Helena', 'Guarita', 'Terra Nova do Norte', 'Peixoto de Azevedo',
   'Matupá', 'Guarantã do Norte', 'Novo Mundo', 'Nova Canaã do Norte', 'Carlinda',
   'Alta Floresta', 'Colíder', 'Nova Monte Verde', 'Paranaíta', 'Nova Bandeirantes',
-  'Vera', 'Santa Carmem', 'Feliz Natal', 'União do Sul', 'Cláudia',
-].slice(0, 19).concat([]) as string[];
+  'Vera', 'Santa Carmem', 'Feliz Natal', 'União do Sul',
+];
 
 // Nomes aceitos (normalizados) → inclui formas curtas usadas no dia a dia
 const ALIASES: Record<string, string> = {

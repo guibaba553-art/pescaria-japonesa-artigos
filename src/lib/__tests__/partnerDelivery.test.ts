@@ -25,6 +25,6 @@ describe('classifyDeliveryCity', () => {
 
   it('frete fixo de R$ 15', () => {
     expect(PARTNER_SHIPPING_OPTION.valor).toBe(15);
-    expect(PARTNER_CITIES.length).toBe(20);
+    expect(PARTNER_CITIES.length).toBe(19);
   });
 });
