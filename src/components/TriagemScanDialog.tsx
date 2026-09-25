@@ -102,6 +102,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
   const [confirming, setConfirming] = useState(false);
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [emittingNfe, setEmittingNfe] = useState(false);
+  const [nfePrinted, setNfePrinted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset on open
@@ -109,6 +110,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
     if (open) {
       setScans({});
       setBarcode('');
+      setNfePrinted(false);
       // Auto-focus the scanner input after a tick
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -204,6 +206,10 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
 
   const handleConfirm = async () => {
     if (!order || !allScanned) return;
+    if (mode === 'pack' && !nfePrinted) {
+      toast({ title: 'Imprima a nota fiscal', description: 'A DANFE precisa ser impressa antes de concluir a triagem.', variant: 'destructive' });
+      return;
+    }
     setConfirming(true);
     try {
       const newStatus = mode === 'pickup' ? 'pronto_retirada' : 'aguardando_envio';
@@ -555,18 +561,19 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                   <Button
                     asChild
                     variant="outline"
-                    className="bg-background"
+                    className={nfePrinted ? 'bg-background border-emerald-500 text-emerald-700' : 'bg-background'}
                   >
-                    <a href={order.nfe.danfe_url} target="_blank" rel="noopener noreferrer">
-                      <Receipt className="w-4 h-4 mr-2" /> Imprimir DANFE
+                    <a href={order.nfe.danfe_url} target="_blank" rel="noopener noreferrer" onClick={() => setNfePrinted(true)}>
+                      {nfePrinted ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Receipt className="w-4 h-4 mr-2" />}
+                      {nfePrinted ? 'DANFE impressa' : 'Imprimir DANFE'}
                       {order.nfe.nfe_number && ` (Nº ${order.nfe.nfe_number})`}
                     </a>
                   </Button>
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-dashed text-xs text-muted-foreground bg-background">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    NF-e sendo emitida automaticamente...
-                  </div>
+                  <Button variant="outline" className="bg-background" onClick={emitNfe} disabled={emittingNfe}>
+                    {emittingNfe ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Receipt className="w-4 h-4 mr-2" />}
+                    {order.nfe ? 'NF-e em processamento — tentar de novo' : 'Emitir NF-e'}
+                  </Button>
                 )}
 
                 <Button
@@ -578,6 +585,11 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
                   {order.shipping_label_order_id ? 'Imprimir etiqueta' : order.tracking_code ? 'Reimprimir etiqueta' : 'Gerar etiqueta'}
                 </Button>
               </div>
+              {!nfePrinted && (
+                <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  Para concluir a triagem, imprima a nota fiscal (DANFE) primeiro.
+                </p>
+              )}
               {order.tracking_code && (
                 <p className="text-xs text-muted-foreground">
                   Rastreamento: <span className="font-mono">{order.tracking_code}</span>
@@ -594,7 +606,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
               Cancelar
             </Button>
 
-            {mode === 'pack' && hasNfeAuth && order.shipping_label_order_id && allScanned && (
+            {mode === 'pack' && hasNfeAuth && nfePrinted && order.shipping_label_order_id && allScanned && (
               <Button
                 onClick={handleMarkAsEnviado}
                 disabled={confirming}
@@ -611,7 +623,7 @@ export function TriagemScanDialog({ open, onOpenChange, order, mode, onCompleted
 
             <Button
               onClick={handleConfirm}
-              disabled={!allScanned || confirming}
+              disabled={!allScanned || confirming || (mode === 'pack' && !nfePrinted)}
               className={
                 mode === 'pickup'
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
