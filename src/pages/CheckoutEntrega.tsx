@@ -1009,7 +1009,7 @@ export default function CheckoutEntrega() {
                                           )}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                          Entrega em {option.prazoEntrega} dias úteis
+                                          {option.prazoEntrega > 0 ? `Entrega em ${option.prazoEntrega} dias úteis` : 'Entrega regional — valor fixo'}
                                         </p>
                                       </div>
                                     </div>
@@ -1090,6 +1090,12 @@ export default function CheckoutEntrega() {
                     onChange={(addr) => setForm({ ...form, ...addr })}
                     hideSavedAddresses
                   />
+                  {form.cep.length === 8 && form.city && (() => {
+                    const cov = classifyDeliveryCity(form.city, form.state);
+                    if (cov === 'partner') return <p className="text-sm text-primary">Entregamos em {form.city} pela transportadora parceira por R$ 15,00.</p>;
+                    if (cov === 'pickup') return <p className="text-sm text-muted-foreground">Para Sinop o pedido é retirado na loja (grátis).</p>;
+                    return <p className="text-sm text-destructive">Ainda não entregamos em {form.city}. Cidades atendidas: {PARTNER_CITIES_LABEL}. Você pode escolher retirar na loja.</p>;
+                  })()}
                   <div className="flex gap-2 pt-1">
                     <Button onClick={handleSave} disabled={saving} className="rounded-full">
                       {saving ? 'Salvando...' : 'Salvar endereço'}
