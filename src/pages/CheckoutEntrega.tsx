@@ -39,6 +39,7 @@ import { SHIPPING_CONFIG, PAYMENT_CONFIG } from '@/config/constants';
 import { selectPixGateway } from '@/lib/pixGatewayRouter';
 import type { UserAddress } from '@/components/MyAddresses';
 import { AddressFields } from '@/components/AddressFields';
+import { classifyDeliveryCity, lookupCepCity, PARTNER_SHIPPING_OPTION, PARTNER_CITIES_LABEL, type DeliveryCoverage } from '@/lib/partnerDelivery';
 
 interface FormState {
   label: string;
@@ -183,7 +184,8 @@ export default function CheckoutEntrega() {
     });
   })();
 
-  const pickupOnly = dimsReady && items.some((item) => {
+  // Frete fixo: medidas não são mais necessárias para entregar
+  const pickupOnly = false && dimsReady && items.some((item) => {
     const pd = (item.id && productDims[item.id]) || null;
     const vd = (item.variationId && variationDims[item.variationId]) || null;
     const w = vd?.weight_grams ?? pd?.weight_grams ?? null;
@@ -214,52 +216,34 @@ export default function CheckoutEntrega() {
     setPendingOrderId(null);
   };
 
-  const calculateShipping = useCallback(async (cepDestino: string) => {
-    if (!/^\d{8}$/.test(cepDestino)) return;
+  const [deliveryCoverage, setDeliveryCoverage] = useState<{ coverage: DeliveryCoverage; city: string } | null>(null);
+
+  // Frete pela transportadora parceira: R$ 15 fixo nas cidades atendidas
+  const calculateShipping = useCallback(async (address: { cep: string; city?: string | null; state?: string | null }) => {
+    if (!/^\d{8}$/.test(address.cep)) return;
     setShippingLoading(true);
     setShippingError(false);
-
     try {
-      const shipmentItems = items.map((p, i) => {
-        const pd = (p.id && productDims[p.id]) || null;
-        const vd = (p.variationId && variationDims[p.variationId]) || null;
-        return {
-          id: p.variationId || p.id || String(i + 1),
-          quantity: p.quantity,
-          width_cm: vd?.width_cm ?? pd?.width_cm ?? null,
-          height_cm: vd?.height_cm ?? pd?.height_cm ?? null,
-          length_cm: vd?.length_cm ?? pd?.length_cm ?? null,
-          weight_grams: vd?.weight_grams ?? pd?.weight_grams ?? null,
-        };
-      });
-      const meProducts = packItems(shipmentItems, 0);
-
-      const { data, error } = await supabase.functions.invoke('calculate-shipping', {
-        body: {
-          cepDestino,
-          products: meProducts,
-          peso: SHIPPING_CONFIG.DEFAULT_WEIGHT,
-          formato: SHIPPING_CONFIG.DEFAULT_FORMAT,
-          comprimento: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.length,
-          altura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.height,
-          largura: SHIPPING_CONFIG.DEFAULT_DIMENSIONS.width,
-        },
-      });
-
-      if (error || !data?.success) {
-        setShippingError(true);
-        setShippingOptions(null);
+      let city = address.city || '';
+      let state = address.state || '';
+      const viaCep = await lookupCepCity(address.cep);
+      if (viaCep?.city) { city = viaCep.city; state = viaCep.state; }
+      const coverage = classifyDeliveryCity(city, state);
+      setDeliveryCoverage({ coverage, city });
+      if (coverage === 'partner') {
+        setShippingOptions([PARTNER_SHIPPING_OPTION]);
       } else {
-        const opts = (data.options || []) as Array<{ codigo: string; nome: string; valor: number; prazoEntrega: number }>;
-        setShippingOptions(opts);
+        setShippingOptions([]);
+        if (coverage === 'pickup') {
+          setSelectedOption('pickup');
+          setSelectedShippingOption(null);
+          toast.info('Para Sinop, o pedido é retirado na loja (grátis).');
+        }
       }
-    } catch {
-      setShippingError(true);
-      setShippingOptions(null);
     } finally {
       setShippingLoading(false);
     }
-  }, [items, productDims, variationDims]);
+  }, []);
 
   // Recalcular frete ao trocar de endereço
   useEffect(() => {
@@ -269,7 +253,7 @@ export default function CheckoutEntrega() {
       setSelectedShippingOption(null);
       return;
     }
-    calculateShipping(selectedAddress.cep);
+    calculateShipping(selectedAddress);
   }, [selectedAddress?.id, calculateShipping]);
 
   // Frete exibido: pickup = 0, endereço = opção selecionada (ou mais barato), fallback = URL param
@@ -963,8 +947,10 @@ export default function CheckoutEntrega() {
                               );
                               if (delivery.length === 0) {
                                 return (
-                                  <p className="text-sm text-muted-foreground py-2 text-center">
-                                    Nenhuma transportadora atende esse CEP no momento.
+                                  <p className="text-sm text-destructive py-2 text-center">
+                                    {deliveryCoverage?.coverage === 'pickup'
+                                      ? 'Para Sinop o pedido é retirado na loja (grátis).'
+                                      : `Ainda não entregamos em ${deliveryCoverage?.city || 'essa cidade'}. Cidades atendidas: ${PARTNER_CITIES_LABEL}.`}
                                   </p>
                                 );
                               }
@@ -1023,7 +1009,7 @@ export default function CheckoutEntrega() {
                                           )}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                          Entrega em {option.prazoEntrega} dias úteis
+                                          {option.prazoEntrega > 0 ? `Entrega em ${option.prazoEntrega} dias úteis` : 'Entrega regional — valor fixo'}
                                         </p>
                                       </div>
                                     </div>
@@ -1104,6 +1090,12 @@ export default function CheckoutEntrega() {
                     onChange={(addr) => setForm({ ...form, ...addr })}
                     hideSavedAddresses
                   />
+                  {form.cep.length === 8 && form.city && (() => {
+                    const cov = classifyDeliveryCity(form.city, form.state);
+                    if (cov === 'partner') return <p className="text-sm text-primary">Entregamos em {form.city} pela transportadora parceira por R$ 15,00.</p>;
+                    if (cov === 'pickup') return <p className="text-sm text-muted-foreground">Para Sinop o pedido é retirado na loja (grátis).</p>;
+                    return <p className="text-sm text-destructive">Ainda não entregamos em {form.city}. Cidades atendidas: {PARTNER_CITIES_LABEL}. Você pode escolher retirar na loja.</p>;
+                  })()}
                   <div className="flex gap-2 pt-1">
                     <Button onClick={handleSave} disabled={saving} className="rounded-full">
                       {saving ? 'Salvando...' : 'Salvar endereço'}
