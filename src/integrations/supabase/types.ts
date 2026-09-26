@@ -2115,6 +2115,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_only: boolean
           size: string | null
           sku: string | null
           sold_by_weight: boolean
@@ -2176,6 +2177,7 @@ export type Database = {
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
+          site_only?: boolean
           size?: string | null
           sku?: string | null
           sold_by_weight?: boolean
@@ -2237,6 +2239,7 @@ export type Database = {
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
+          site_only?: boolean
           size?: string | null
           sku?: string | null
           sold_by_weight?: boolean
@@ -3269,6 +3272,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_only: boolean
           size: string | null
           sku: string | null
           sold_by_weight: boolean
@@ -3421,6 +3425,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_only: boolean
           size: string | null
           sku: string | null
           sold_by_weight: boolean

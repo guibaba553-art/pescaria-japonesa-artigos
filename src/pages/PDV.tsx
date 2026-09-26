@@ -701,6 +701,7 @@ export default function PDV() {
       });
       const merged = (prods || [])
         .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
+        .filter((p: any) => !p.site_only)
         .filter((p: any) => Number(p.stock || 0) > 0 || (p.variations || []).some((v: any) => Number(v.stock || 0) > 0))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setProducts(merged);
