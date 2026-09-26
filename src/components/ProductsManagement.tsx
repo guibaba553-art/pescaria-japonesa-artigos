@@ -102,7 +102,7 @@ export function ProductsManagement() {
   const [upscaleImages, setUpscaleImages] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
+  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only' | 'site-only'>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
