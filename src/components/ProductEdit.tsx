@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store, History } from 'lucide-react';
+import { Pencil, Info, DollarSign, ArrowLeft, Layers, Star, ChevronDown, Store, History, Globe } from 'lucide-react';
 import { ProductChangeHistory } from '@/components/ProductChangeHistory';
 import { useCategories } from '@/hooks/useCategories';
 import { Product } from '@/types/product';
@@ -106,6 +106,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
   const [upscaleImages, setUpscaleImages] = useState(false);
   const [soldByWeight, setSoldByWeight] = useState(product.sold_by_weight || false);
   const [pdvOnly, setPdvOnly] = useState((product as any).pdv_only || false);
+  const [siteOnly, setSiteOnly] = useState((product as any).site_only || false);
   const [pdvNoMarkup, setPdvNoMarkup] = useState((product as any).pdv_no_markup || false);
   const [brandId, setBrandId] = useState(product.brand_id || '');
   const [supplierId, setSupplierId] = useState(product.supplier_id || '');
@@ -422,6 +423,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
       setSku(product.sku || '');
       setSoldByWeight(product.sold_by_weight || false);
       setPdvOnly((product as any).pdv_only || false);
+      setSiteOnly((product as any).site_only || false);
       setPdvNoMarkup((product as any).pdv_no_markup || false);
       setBrandId(product.brand_id || '');
       setSupplierId(product.supplier_id || '');
@@ -689,6 +691,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
         width_cm: resolveOptionalMeasurementUpdate(widthCm, (product as any).width_cm, 'float'),
         height_cm: resolveOptionalMeasurementUpdate(heightCm, (product as any).height_cm, 'float'),
         pdv_only: pdvOnly,
+        site_only: siteOnly,
         pdv_no_markup: pdvNoMarkup,
         cost: cost ? parseFloat(cost) : null,
         freight_pct: freightPct ? parseFloat(freightPct) : 0,
@@ -889,7 +892,7 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPdvOnly(!pdvOnly)}
+                        onClick={() => { const next = !pdvOnly; setPdvOnly(next); if (next) setSiteOnly(false); }}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 shrink-0 ${
                           pdvOnly
                             ? 'bg-indigo-100 text-indigo-800 border-indigo-400 shadow-sm dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-600'
@@ -898,6 +901,18 @@ export function ProductEdit({ product: productProp, mode = 'edit', onUpdate, ope
                       >
                         <Store className={`w-3.5 h-3.5 transition-colors ${pdvOnly ? 'text-indigo-500' : ''}`} />
                         Exclusivo PDV
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { const next = !siteOnly; setSiteOnly(next); if (next) setPdvOnly(false); }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-200 shrink-0 ${
+                          siteOnly
+                            ? 'bg-sky-100 text-sky-800 border-sky-400 shadow-sm dark:bg-sky-900/40 dark:text-sky-300 dark:border-sky-600'
+                            : 'bg-background text-muted-foreground border-muted-foreground/20 hover:border-sky-300 hover:text-sky-700 dark:hover:text-sky-400'
+                        }`}
+                      >
+                        <Globe className={`w-3.5 h-3.5 transition-colors ${siteOnly ? 'text-sky-500' : ''}`} />
+                        Exclusivo Site
                       </button>
                     </div>
                   </div>
