@@ -161,7 +161,7 @@ describe('ProductEdit — botão PDV no cabeçalho', () => {
       render(
         <ProductEdit
           mode="edit"
-          product={{ ...baseProduct, pdv_only: true }}
+          product={{ ...baseProduct, pdv_only: true } as any}
           onUpdate={vi.fn()}
           open={true}
         />
