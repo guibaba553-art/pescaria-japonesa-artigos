@@ -137,6 +137,54 @@ describe('ProductEdit — botão PDV no cabeçalho', () => {
     expect(screen.getByText('Exclusivo PDV')).toBeTruthy();
   });
 
+  it('deve exibir o botão "Exclusivo Site" ao lado de Exclusivo PDV', async () => {
+    await act(async () => {
+      render(
+        <ProductEdit
+          mode="edit"
+          product={baseProduct}
+          onUpdate={vi.fn()}
+          open={true}
+        />
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Exclusivo PDV')).toBeTruthy();
+    });
+
+    expect(screen.getByText('Exclusivo Site')).toBeTruthy();
+  });
+
+  it('marcar "Exclusivo Site" deve desmarcar "Exclusivo PDV" (e vice-versa)', async () => {
+    await act(async () => {
+      render(
+        <ProductEdit
+          mode="edit"
+          product={{ ...baseProduct, pdv_only: true }}
+          onUpdate={vi.fn()}
+          open={true}
+        />
+      );
+    });
+
+    const siteBtn = await screen.findByText('Exclusivo Site');
+    const pdvBtn = screen.getByText('Exclusivo PDV');
+
+    // PDV começa marcado
+    expect(pdvBtn.className).toContain('border-indigo-400');
+
+    // Marcar Site desmarca PDV
+    await act(async () => { siteBtn.click(); });
+    expect(siteBtn.className).toContain('border-sky-400');
+    expect(pdvBtn.className).not.toContain('border-indigo-400');
+
+    // Marcar PDV desmarca Site
+    await act(async () => { pdvBtn.click(); });
+    expect(pdvBtn.className).toContain('border-indigo-400');
+    expect(siteBtn.className).not.toContain('border-sky-400');
+  });
+
   it('NÃO deve exibir a seção "Configurações Especiais"', async () => {
     await act(async () => {
       render(
