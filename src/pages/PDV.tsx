@@ -701,6 +701,7 @@ export default function PDV() {
       });
       const merged = (prods || [])
         .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
+        .filter((p: any) => !p.site_only)
         .filter((p: any) => Number(p.stock || 0) > 0 || (p.variations || []).some((v: any) => Number(v.stock || 0) > 0))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setProducts(merged);
@@ -1255,6 +1256,15 @@ export default function PDV() {
 
       if (dbProd?.id) {
         const prod = await fetchProductWithVariations(dbProd.id);
+        if (prod && (prod as any).site_only) {
+          toast({
+            title: 'Produto exclusivo do site',
+            description: `${prod.name} só pode ser vendido pela loja virtual.`,
+            variant: 'destructive',
+          });
+          setBarcodeInput('');
+          return;
+        }
         if (prod) {
           if (prod.variations && prod.variations.length > 0) {
             // Produto tem variações — abrir seletor em vez de adicionar direto

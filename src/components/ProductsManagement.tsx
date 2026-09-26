@@ -102,7 +102,7 @@ export function ProductsManagement() {
   const [upscaleImages, setUpscaleImages] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only'>('all');
+  const [filter, setFilter] = useState<'all' | 'in-stock' | 'out-of-stock' | 'on-sale' | 'featured' | 'restock' | 'no-dims' | 'pdv-only' | 'site-only'>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
   const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
   const { velocities } = useSalesVelocity({ daysWindow: 60, criticalDays: 7, warningDays: 14 });
@@ -225,6 +225,7 @@ export function ProductsManagement() {
   const totalStock = visibleProducts.reduce((sum, p) => sum + getStock(p), 0);
   const noDimsCount = visibleProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id])).length;
   const pdvOnlyCount = visibleProducts.filter((p) => p.pdv_only).length;
+  const siteOnlyCount = visibleProducts.filter((p) => (p as any).site_only).length;
 
   const restockIds = new Set(
     visibleProducts
@@ -243,6 +244,7 @@ export function ProductsManagement() {
   if (filter === 'restock') filteredProducts = filteredProducts.filter((p) => restockIds.has(p.id));
   if (filter === 'no-dims') filteredProducts = filteredProducts.filter((p) => isMissingShippingDims(p, variationDimsByProduct[p.id]));
   if (filter === 'pdv-only') filteredProducts = filteredProducts.filter((p) => p.pdv_only);
+  if (filter === 'site-only') filteredProducts = filteredProducts.filter((p) => (p as any).site_only);
   if (supplierFilter !== 'all') {
     filteredProducts = filteredProducts.filter((p) =>
       supplierFilter === 'none' ? !p.supplier_id : p.supplier_id === supplierFilter
@@ -264,6 +266,7 @@ export function ProductsManagement() {
     { key: 'restock', label: 'Reestoque', count: restockIds.size },
     { key: 'no-dims', label: '⚠ Sem medidas', count: noDimsCount },
     { key: 'pdv-only', label: '🏪 Só PDV', count: pdvOnlyCount },
+    { key: 'site-only', label: '🌐 Só Site', count: siteOnlyCount },
   ];
 
   return (
@@ -407,6 +410,11 @@ export function ProductsManagement() {
                         {product.pdv_only && (
                           <Badge className="bg-amber-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto exclusivo do PDV — não aparece no site">
                             🏪 Só PDV
+                          </Badge>
+                        )}
+                        {(product as any).site_only && (
+                          <Badge className="bg-sky-600 text-white border-0 text-[9px] px-1.5 py-0" title="Produto exclusivo do site — não aparece no PDV">
+                            🌐 Só Site
                           </Badge>
                         )}
                       </div>
