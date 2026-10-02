@@ -478,7 +478,8 @@ export default function Dashboard() {
         while (true) {
           const { data: page, error } = await supabase
             .from('order_items')
-            .select('quantity, price_at_purchase, order_id, product_id, variation_id')
+            .select('id, quantity, price_at_purchase, order_id, product_id, variation_id')
+            .order('id', { ascending: true })
             .range(from, from + pageSize - 1);
           if (error) throw error;
           if (!page || page.length === 0) break;
