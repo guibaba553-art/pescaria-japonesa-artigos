@@ -107,7 +107,7 @@ export function DREReport() {
       }
 
       const [{ data: expenses }, { data: overrides }] = await Promise.all([
-        supabase.from('expenses').select('id, type, category, amount, expense_date, end_date').lte('expense_date', endDate),
+        supabase.from('expenses').select('id, type, category, description, amount, expense_date, end_date').lte('expense_date', endDate),
         supabase.from('expense_overrides').select('expense_id, year_month, amount, skipped'),
       ]);
       const { byCategory } = expensesInPeriod((expenses || []) as any, (overrides || []) as any, startDate, endDate);
