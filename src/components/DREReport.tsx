@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Loader2, FileBarChart, Download, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { computeDRE, expensesInPeriod, type DREResult } from '@/lib/dre';
+import { computeDRE, expensesInPeriod, dreCategoryGroup, type DREResult, type DRECategoryGroup } from '@/lib/dre';
 import { getCardFeeRate } from '@/utils/cardFees';
 
 async function fetchAll<T>(q: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
@@ -22,7 +22,18 @@ async function fetchAll<T>(q: (from: number, to: number) => PromiseLike<{ data: 
 }
 
 
-type DREData = DREResult & { vendasCount: number; itensSemCusto: number };
+type DREData = DREResult & {
+  vendasCount: number; itensSemCusto: number;
+  byCategory: Record<string, number>;
+  gastos: Array<{ data: string; categoria: string; descricao: string; valor: number }>;
+};
+const GROUP_LABEL: Record<DRECategoryGroup, string> = {
+  estoque: 'Vira estoque (entra no CMV quando vender)',
+  imposto: 'Imposto pago (já descontado no Simples)',
+  vendas: 'Despesas com vendas',
+  financeiro: 'Despesas financeiras',
+  administrativo: 'Despesas administrativas',
+};
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -96,13 +107,16 @@ export function DREReport() {
       }
 
       const [{ data: expenses }, { data: overrides }] = await Promise.all([
-        supabase.from('expenses').select('id, type, category, amount, expense_date, end_date').lte('expense_date', endDate),
+        supabase.from('expenses').select('id, type, category, description, amount, expense_date, end_date').lte('expense_date', endDate),
         supabase.from('expense_overrides').select('expense_id, year_month, amount, skipped'),
       ]);
       const { byCategory } = expensesInPeriod((expenses || []) as any, (overrides || []) as any, startDate, endDate);
+      const gastos = ((expenses || []) as any[])
+        .filter((e) => e.type !== 'fixed' && e.expense_date >= startDate && e.expense_date <= endDate)
+        .map((e) => ({ data: e.expense_date, categoria: e.category, descricao: e.description, valor: Number(e.amount) }));
 
       const r = computeDRE({ productRevenue, freightRevenue, returns, simplesRate: simplesAliquota, cmv, paymentFees, expensesByCategory: byCategory });
-      setData({ ...r, vendasCount: validOrders.length, itensSemCusto });
+      setData({ ...r, vendasCount: validOrders.length, itensSemCusto, byCategory, gastos });
     } catch (e) {
       toast({
         title: 'Erro ao gerar DRE',
@@ -250,6 +264,42 @@ export function DREReport() {
               <div>Compras de mercadoria no período (estoque, fora do resultado): <b>{fmtBRL(data.comprasMercadoria)}</b></div>
               <div>DAS / impostos pagos no período (caixa): <b>{fmtBRL(data.dasPago)}</b></div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {data && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Todos os gastos lançados no período</CardTitle>
+            <CardDescription>
+              Cada categoria e onde ela entra no DRE. Gastos fixos contam proporcionais aos dias escolhidos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.keys(data.byCategory).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum gasto lançado neste período.</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {Object.entries(data.byCategory).sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
+                  <div key={cat} className="flex justify-between py-2 text-sm">
+                    <span><b>{cat}</b> <span className="text-muted-foreground">· {GROUP_LABEL[dreCategoryGroup(cat)]}</span></span>
+                    <span className="tabular-nums">{fmtBRL(v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {data.gastos.length > 0 && (
+              <div className="text-xs space-y-1 border-t border-border pt-3">
+                <div className="font-semibold text-sm mb-1">Lançamentos avulsos ({data.gastos.length})</div>
+                {data.gastos.map((g, i) => (
+                  <div key={i} className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">{g.data.split('-').reverse().join('/')} · {g.categoria} · {g.descricao}</span>
+                    <span className="tabular-nums">{fmtBRL(g.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
