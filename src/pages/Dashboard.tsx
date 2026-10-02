@@ -489,19 +489,16 @@ export default function Dashboard() {
         }
       }
 
-      // Receita de itens entregues dentro do período (preço realmente cobrado)
+      // Receita das vendas concluídas dentro do período (valor total da venda + frete,
+      // igual à tela de Vendas — não depende dos itens gravados)
       const deliveredInRange = delivered.filter((o) => {
         const d = new Date(o.created_at);
         return d >= start && d <= end;
       });
-      const deliveredIds = new Set(deliveredInRange.map((o) => o.id));
-      let receitaItensAcc = 0;
-      orderItems.forEach((it: any) => {
-        if (!deliveredIds.has(it.order_id)) return;
-        const qty = Number(it.quantity || 0);
-        const venda = Number(it.price_at_purchase || 0);
-        receitaItensAcc += venda * qty;
-      });
+      const receitaItensAcc = deliveredInRange.reduce(
+        (s, o) => s + parseFloat(String(o.total_amount)) + parseFloat(String(o.shipping_cost || 0)),
+        0,
+      );
       setTotalCost(0);
       setItemsRevenue(receitaItensAcc);
 
@@ -1389,7 +1386,7 @@ export default function Dashboard() {
             {/* KPIs principais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                title="Receita (itens)"
+                title="Receita"
                 value={formatBRL(itemsRevenue)}
                 hint={`+ Frete ${formatBRL(Math.max(0, totalRevenue - itemsRevenue))}`}
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
@@ -1420,7 +1417,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
                   <CardDescription>
-                    Receita de itens entregues − Despesas Fixas/Variáveis = Lucro
+                    Receita das vendas concluídas − Despesas Fixas/Variáveis = Lucro
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
