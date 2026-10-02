@@ -1386,7 +1386,7 @@ export default function Dashboard() {
             {/* KPIs principais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                title="Receita (itens)"
+                title="Receita"
                 value={formatBRL(itemsRevenue)}
                 hint={`+ Frete ${formatBRL(Math.max(0, totalRevenue - itemsRevenue))}`}
                 icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
@@ -1417,7 +1417,7 @@ export default function Dashboard() {
                 <CardHeader>
                   <CardTitle>Resumo Financeiro</CardTitle>
                   <CardDescription>
-                    Receita de itens entregues − Despesas Fixas/Variáveis = Lucro
+                    Receita das vendas concluídas − Despesas Fixas/Variáveis = Lucro
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
