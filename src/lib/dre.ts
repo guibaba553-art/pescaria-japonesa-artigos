@@ -119,3 +119,13 @@ export function computeDRE(i: DREInput) {
   };
 }
 export type DREResult = ReturnType<typeof computeDRE>;
+
+export type DRECategoryGroup = 'estoque' | 'imposto' | 'vendas' | 'financeiro' | 'administrativo';
+export function dreCategoryGroup(cat: string): DRECategoryGroup {
+  const c = norm(cat);
+  if (INVENTORY_CATEGORIES.includes(c)) return 'estoque';
+  if (TAX_CATEGORIES.includes(c)) return 'imposto';
+  if (SALES_CATEGORIES.includes(c)) return 'vendas';
+  if (FINANCIAL_CATEGORIES.includes(c)) return 'financeiro';
+  return 'administrativo';
+}

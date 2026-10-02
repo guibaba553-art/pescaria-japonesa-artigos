@@ -47,3 +47,14 @@ describe('computeDRE', () => {
     expect(d.dasPago).toBe(7000);
   });
 });
+
+import { dreCategoryGroup } from '../dre';
+describe('dreCategoryGroup', () => {
+  it('classifica cada categoria lançada', () => {
+    expect(dreCategoryGroup('Mercadoria')).toBe('estoque');
+    expect(dreCategoryGroup('Impostos')).toBe('imposto');
+    expect(dreCategoryGroup('Frete')).toBe('vendas');
+    expect(dreCategoryGroup('Financiamento')).toBe('financeiro');
+    expect(dreCategoryGroup('Outros')).toBe('administrativo');
+  });
+});
