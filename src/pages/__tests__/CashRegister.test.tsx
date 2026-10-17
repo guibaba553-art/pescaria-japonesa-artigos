@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import CashRegister from '../CashRegister';
 
@@ -50,7 +51,7 @@ describe('reforço do caixa por cédulas', () => {
       p_cash_register_id: 'register', p_denominations: { '50': 2, '0.5': 1 }, p_reason: '',
     }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    fireEvent.click(screen.getByRole('tab', { name: 'Cédulas' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Cédulas' }));
     await waitFor(() => expect(screen.getByText('R$ 100,00')).toBeInTheDocument());
   });
 
