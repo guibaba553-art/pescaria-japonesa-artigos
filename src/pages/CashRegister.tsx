@@ -86,7 +86,8 @@ export default function CashRegister() {
   const countedTotal = sumDenominations(denomCounts);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [withdrawalReason, setWithdrawalReason] = useState('');
-  const [additionAmount, setAdditionAmount] = useState('');
+  const [additionDenomCounts, setAdditionDenomCounts] = useState<Record<string, string>>({});
+  const additionTotal = sumDenominations(additionDenomCounts);
   const [additionReason, setAdditionReason] = useState('');
   const [showWithdrawal, setShowWithdrawal] = useState(false);
   const [showAddition, setShowAddition] = useState(false);
@@ -324,26 +325,22 @@ export default function CashRegister() {
   };
 
   const handleAddition = async () => {
-    if (!additionAmount || parseFloat(additionAmount) <= 0) {
-      toast({ title: 'Valor inválido', variant: 'destructive' });
+    if (!currentRegister || !user || loadingAction) return;
+    if (additionTotal <= 0) {
+      toast({ title: 'Informe as cédulas e moedas do reforço', variant: 'destructive' });
       return;
     }
     setLoadingAction(true);
     try {
-      const amount = parseFloat(additionAmount);
-      const newAdditions = movementTotals.additions + amount;
-      const newExpected = expectedInDrawer + amount;
-      const { error } = await supabase.from('cash_registers').update({
-        additions: newAdditions, expected_amount: newExpected,
-      }).eq('id', currentRegister!.id);
+      const { error } = await supabase.rpc('register_cash_reinforcement', {
+        p_cash_register_id: currentRegister.id,
+        p_denominations: compactDenominationCounts(additionDenomCounts),
+        p_reason: additionReason,
+      });
       if (error) throw error;
-      await supabase.from('cash_movements').insert([{
-        cash_register_id: currentRegister!.id, type: 'addition',
-        amount: parseFloat(additionAmount), reason: additionReason, performed_by: user!.id,
-      }]);
-      toast({ title: 'Reforço realizado', description: `R$ ${additionAmount} adicionado` });
-      setAdditionAmount(''); setAdditionReason(''); setShowAddition(false);
-      loadCurrentRegister();
+      toast({ title: 'Reforço realizado', description: `${formatBRL(additionTotal)} adicionado` });
+      setAdditionDenomCounts({}); setAdditionReason(''); setShowAddition(false);
+      await loadCurrentRegister();
     } catch (error: any) {
       toast({ title: 'Erro ao realizar reforço', description: error.message, variant: 'destructive' });
     } finally { setLoadingAction(false); }
@@ -768,16 +765,19 @@ export default function CashRegister() {
 
       {/* Dialog Reforço */}
       <Dialog open={showAddition} onOpenChange={setShowAddition}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Realizar Reforço</DialogTitle>
             <DialogDescription>Adicionar dinheiro ao caixa</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" value={additionAmount}
-                onChange={(e) => setAdditionAmount(e.target.value)} />
+              <Label>Cédulas e moedas recebidas</Label>
+              <CashDenominationGrid counts={additionDenomCounts} onChange={setAdditionDenomCounts} disabled={loadingAction} />
+              <div className="flex flex-wrap justify-between gap-2 text-sm pt-1">
+                <span className="text-muted-foreground">{countPieces(additionDenomCounts)} cédulas/moedas</span>
+                <span className="font-bold">Total do reforço: {formatBRL(additionTotal)}</span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Motivo</Label>
@@ -785,7 +785,7 @@ export default function CashRegister() {
                 onChange={(e) => setAdditionReason(e.target.value)}
                 placeholder="Ex: Troco adicional" />
             </div>
-            <Button onClick={handleAddition} disabled={loadingAction} className="w-full">
+            <Button onClick={handleAddition} disabled={loadingAction || additionTotal <= 0} className="w-full">
               Confirmar Reforço
             </Button>
           </div>

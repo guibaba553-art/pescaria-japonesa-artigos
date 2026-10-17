@@ -101,6 +101,8 @@ Every implementation or bugfix starts with a failing test, then the fix. No exce
 
 ## Watch out for
 
+- Cash reinforcement must use the atomic `register_cash_reinforcement` RPC with denomination counts; this keeps drawer inventory and the financial movement consistent under concurrent sales.
+
 - **Vite chunk config** isolates `@huggingface/transformers` and `onnxruntime` into a separate chunk — don't touch the `manualChunks` logic
 - **Playwright** is a devDependency but no e2e tests exist yet
 - **Lovable project** — README references external editor; code changes pushed via Git reflect there

@@ -103,6 +103,7 @@ export type Database = {
           amount: number
           cash_register_id: string
           created_at: string
+          denominations: Json | null
           id: string
           performed_by: string
           reason: string | null
@@ -112,6 +113,7 @@ export type Database = {
           amount: number
           cash_register_id: string
           created_at?: string
+          denominations?: Json | null
           id?: string
           performed_by: string
           reason?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           amount?: number
           cash_register_id?: string
           created_at?: string
+          denominations?: Json | null
           id?: string
           performed_by?: string
           reason?: string | null
@@ -3494,6 +3497,14 @@ export type Database = {
       }
       reconcile_stock: {
         Args: { p_product_id: string; p_variation_id?: string }
+        Returns: Json
+      }
+      register_cash_reinforcement: {
+        Args: {
+          p_cash_register_id: string
+          p_denominations: Json
+          p_reason?: string
+        }
         Returns: Json
       }
       release_promo_limits: { Args: { p_items: Json }; Returns: undefined }

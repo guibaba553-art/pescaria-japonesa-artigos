@@ -29,6 +29,7 @@ export function CashDenominationGrid({
             </div>
             <Input
               type="number"
+              aria-label={`Quantidade de ${denomination.label}`}
               min={0}
               max={available === undefined ? undefined : Number(available)}
               step={1}
