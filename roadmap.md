@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Trocar reforço por contagem de cédulas/moedas e atualizar o saldo atomicamente, com testes
+- [x] Trocar reforço por contagem de cédulas/moedas e atualizar o saldo atomicamente; 12 testes passando e tela conferida sem lançar dinheiro fictício
 
 - [x] Criar cálculo testado de troco limitado às cédulas disponíveis
 - [x] Persistir e atualizar atomicamente o saldo de cédulas do caixa
