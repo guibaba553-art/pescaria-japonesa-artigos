@@ -15,3 +15,5 @@
 - [x] Gravar o pedido da loja online em uma única operação atômica
 - [ ] Recuperar as 98 vendas antigas incompletas (tela de baixa retroativa) — aguarda decisão do usuário sobre quais vendas corrigir
 - [x] Separar Caixa diário e Saldo acumulado na agenda, iniciando pelo saldo real de 22/09/2026
+- [x] Conferir os pagamentos do MOLINETE AZURA: Asaas confirmou cartão b4044a7a e PIX 2e387599 como aprovados
+- [ ] Corrigir compra repetida do AZURA e conferir estoque — aguarda autorização explícita para cancelar e estornar o cartão b4044a7a, mantendo o PIX 2e387599
