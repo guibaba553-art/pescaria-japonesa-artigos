@@ -42,7 +42,7 @@ describe('reforço do caixa por cédulas', () => {
 
   it('registra 2 notas de 50 e 1 moeda de 0,50 como R$ 100,50 e recarrega o saldo', async () => {
     render(<MemoryRouter><CashRegister /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Realizar Reforço/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Nova Reforço' }));
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantidade de R$ 50' }), { target: { value: '2' } });
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Quantidade de R$ 0,50' }), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar Reforço' }));
@@ -56,7 +56,7 @@ describe('reforço do caixa por cédulas', () => {
 
   it('não permite confirmar reforço vazio', async () => {
     render(<MemoryRouter><CashRegister /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Realizar Reforço/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Nova Reforço' }));
     expect(screen.getByRole('button', { name: 'Confirmar Reforço' })).toBeDisabled();
     expect(rpc).not.toHaveBeenCalled();
   });
