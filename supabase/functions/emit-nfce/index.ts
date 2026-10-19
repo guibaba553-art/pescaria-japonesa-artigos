@@ -724,6 +724,19 @@ serve(async (req) => {
       );
     }
 
+    // Confirma na emissora o número/chave definitivos: a resposta do envio pode
+    // trazer dados de uma tentativa anterior (caso da NFC-e 12208 gravada como 10047).
+    if (String(result.status || '').toLowerCase() === 'autorizado') {
+      try {
+        const confirmed = await fetchExistingNfce(ref);
+        if (confirmed.response.ok && String(confirmed.result?.status || '').toLowerCase() === 'autorizado' && confirmed.result?.numero) {
+          result = { ...result, ...confirmed.result };
+        }
+      } catch (e) {
+        console.error('Falha ao confirmar NFC-e na emissora:', e);
+      }
+    }
+
     const emittedNumber = Number(result.numero || getCurrentNfceNumber());
     if (Number.isFinite(emittedNumber) && emittedNumber > 0) {
       await ensureNextNfceNumberAtLeast(emittedNumber + 1);
