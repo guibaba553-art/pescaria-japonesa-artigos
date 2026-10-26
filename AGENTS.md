@@ -89,6 +89,8 @@ Every implementation or bugfix starts with a failing test, then the fix. No exce
 
 ## Business rules
 
+- PDV list pricing uses `getPdvDisplayPrice` to select the lowest in-stock variation price with the selected payment method; parent prices must not override variation previews.
+
 - Credit cards: 13–16 digits only (Asaas limitation; Discover/Hipercard unsupported). Validated in `src/lib/creditCardValidation.ts`.
 - Payment routing by value: `src/lib/pixGatewayRouter.ts`
 - Gateways: Asaas (card) + Mercado Pago (PIX)
