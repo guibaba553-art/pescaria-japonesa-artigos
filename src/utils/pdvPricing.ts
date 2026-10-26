@@ -162,6 +162,41 @@ export function getPdvPrice(p: PdvPricingFields, method: PdvPaymentMethod): numb
 }
 
 /** Retorna o preço original do PDV ignorando promoções (para exibir riscado). */
+export function getPdvDisplayPrice(
+  product: PdvPricingFields & { variations?: (PdvPricingFields & { stock: number })[] },
+  method: PdvPaymentMethod,
+): { price: number; originalPrice: number; onSale: boolean; hasVariations: boolean } {
+  const variations = product.variations ?? [];
+  const available = variations.filter(variation => variation.stock > 0);
+  const candidates = variations.length > 0
+    ? (available.length > 0 ? available : variations).map(variation => ({
+        ...product,
+        price: Number(variation.price ?? 0),
+        price_pdv: variation.price_pdv ?? product.price_pdv ?? null,
+        price_pdv_pix: variation.price_pdv_pix ?? null,
+        price_pdv_cash: variation.price_pdv_cash ?? null,
+        price_pdv_debit: variation.price_pdv_debit ?? null,
+        price_pdv_credit: variation.price_pdv_credit ?? null,
+        on_sale: variation.on_sale ?? product.on_sale ?? null,
+        sale_price: variation.sale_price ?? product.sale_price ?? null,
+        sale_price_pdv: variation.sale_price_pdv ?? product.sale_price_pdv ?? null,
+        sale_starts_at: variation.sale_starts_at ?? product.sale_starts_at ?? null,
+        sale_ends_at: variation.sale_ends_at ?? product.sale_ends_at ?? null,
+        sale_limit_qty: variation.sale_limit_qty ?? product.sale_limit_qty ?? null,
+        sale_sold_qty: variation.sale_sold_qty ?? product.sale_sold_qty ?? null,
+        sale_channel: variation.sale_channel ?? product.sale_channel ?? null,
+      }))
+    : [product];
+  const prices = candidates.map(candidate => ({
+    price: getPdvPrice(candidate, method),
+    originalPrice: getPdvOriginalPrice(candidate, method),
+    onSale: isPdvPromoActive(candidate),
+    hasVariations: variations.length > 0,
+  }));
+  return prices.reduce((lowest, current) => current.price < lowest.price ? current : lowest);
+}
+
+/** Retorna o preço original do PDV ignorando promoções (para exibir riscado). */
 export function getPdvOriginalPrice(p: PdvPricingFields, method: PdvPaymentMethod): number {
   const manual = getManualOverride(p, method);
   if (manual != null) return manual;

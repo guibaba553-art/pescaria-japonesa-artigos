@@ -59,7 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getPdvPrice, getPdvOriginalPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
+import { getPdvPrice, getPdvOriginalPrice, getPdvDisplayPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { CustomerPdvInsights } from '@/components/CustomerPdvInsights';
@@ -2352,7 +2352,9 @@ export default function PDV() {
 
                 <ScrollArea className="h-[calc(100vh-260px)] lg:h-auto lg:flex-1 lg:min-h-0">
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {filteredProducts.map(product => (
+                    {filteredProducts.map(product => {
+                      const displayPrice = getPdvDisplayPrice(product, paymentMethod);
+                      return (
                       <Card
                         key={product.id}
                         className="cursor-pointer hover:border-primary hover:shadow-md transition-all relative rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm group"
@@ -2415,18 +2417,21 @@ export default function PDV() {
                               <span className="text-[10px] text-emerald-600 font-bold">
                                 {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
                               </span>
-                              {isPdvPromoActive(product) ? (
+                              {displayPrice.hasVariations && (
+                                <span className="text-[10px] text-muted-foreground">A partir de</span>
+                              )}
+                              {displayPrice.onSale ? (
                                 <>
                                   <span className="text-[10px] text-muted-foreground line-through leading-none">
-                                    R$ {getPdvOriginalPrice(product, paymentMethod).toFixed(2)}
+                                    R$ {displayPrice.originalPrice.toFixed(2)}
                                   </span>
                                   <span className="text-base lg:text-lg font-black text-emerald-600 leading-tight">
-                                    R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
+                                    R$ {displayPrice.price.toFixed(2)}
                                   </span>
                                 </>
                               ) : (
                                 <span className="text-base lg:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
-                                  R$ {getPdvPrice(product, paymentMethod).toFixed(2)}
+                                  R$ {displayPrice.price.toFixed(2)}
                                 </span>
                               )}
                             </div>
@@ -2436,7 +2441,8 @@ export default function PDV() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </CardContent>
