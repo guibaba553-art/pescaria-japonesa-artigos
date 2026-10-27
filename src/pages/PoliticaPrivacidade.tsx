@@ -37,6 +37,7 @@ export default function PoliticaPrivacidade() {
               <li><strong>Navegação:</strong> páginas visitadas, dispositivo, navegador, referência de origem (mediante consentimento por cookies).</li>
               <li><strong>Comunicações:</strong> mensagens enviadas pelo chat ou e-mail.</li>
             </ul>
+            <p className="mt-3"><strong>Telefone e autenticação</strong>: utilizamos seu número de telefone como identificador de acesso à sua conta e para envio de códigos de verificação via WhatsApp. Seu e-mail, quando informado voluntariamente, é utilizado exclusivamente para emissão de documentos fiscais e comunicações que você autorizar.</p>
           </section>
 
           <section>
