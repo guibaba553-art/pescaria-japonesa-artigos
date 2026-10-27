@@ -1,0 +1,6 @@
+# Limites de tamanho de PR (bento/small-prs)
+max_lines: 400
+max_files: 10
+overrides:
+  # - glob: "supabase/migrations/**"
+  #   max_lines: 200
