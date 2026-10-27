@@ -3,6 +3,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from './asaasCustomer.ts';
+import { resolveCardholderEmail, resolveOptionalCustomerEmail } from './payerEmail.ts';
 import { validateCreditCardFields } from './cardValidation.ts';
 import { handlePaymentConfirmed } from './stockHandler.ts';
 
@@ -71,6 +72,15 @@ export async function processAsaasCreditCardPayment(
     return new Response(
       JSON.stringify({ error: 'Invalid authentication' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
+  // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+  // Vale para create-payment-asaas E retry-payment-asaas (handler compartilhado).
+  if (!user.phone_confirmed_at) {
+    return new Response(
+      JSON.stringify({ error: 'PHONE_NOT_CONFIRMED' }),
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 
@@ -218,8 +228,33 @@ export async function processAsaasCreditCardPayment(
     'User-Agent': 'JapasPesca/1.0.0',
   };
 
+  // ── Payer email escada (spec seção 4, Fluxo C) ────────────────────────
+  // O body é montado client-side com `email: user?.email || ''` — para
+  // usuário só-telefone o e-mail chega vazio. Resolve server-side.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('card_contact_email')
+    .eq('id', user.id)
+    .single();
+
+  const emailInput = {
+    authEmail: user.email,
+    authEmailConfirmed: !!user.email_confirmed_at,
+    contactEmail: profile?.card_contact_email ?? null,
+    userId: user.id,
+  };
+
+  const emailFromBody = String(customerData.email ?? '').trim();
+  const resolvedCustomerEmail = emailFromBody || resolveOptionalCustomerEmail(emailInput);
+  const customerDataForAsaas: Record<string, unknown> = {
+    name: customerData.name,
+    ...(resolvedCustomerEmail ? { email: resolvedCustomerEmail } : {}),
+    cpfCnpj: customerData.cpfCnpj,
+    phone: customerData.phone,
+  };
+
   // ── Customer ────────────────────────────────────────────────────────────
-  const customer = await findOrCreateCustomer(supabase, user.id, customerData, asaasApiKey, asaasEnv);
+  const customer = await findOrCreateCustomer(supabase, user.id, customerDataForAsaas, asaasApiKey, asaasEnv);
 
   // ── P01: Look up UUID in saved_payment_methods → Asaas token ────────────
   let cardToken = creditCardToken;
@@ -266,7 +301,7 @@ export async function processAsaasCreditCardPayment(
     };
     paymentPayload.creditCardHolderInfo = {
       name: creditCardHolderInfo.name,
-      email: creditCardHolderInfo.email,
+      email: String(creditCardHolderInfo.email ?? '').trim() || resolveCardholderEmail(emailInput),
       cpfCnpj: creditCardHolderInfo.cpfCnpj,
       postalCode: creditCardHolderInfo.postalCode,
       addressNumber: creditCardHolderInfo.addressNumber,

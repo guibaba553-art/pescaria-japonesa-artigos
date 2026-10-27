@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from '../_shared/asaasCustomer.ts';
+import { resolveOptionalCustomerEmail } from '../_shared/payerEmail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +39,14 @@ export async function handleRequest(req: Request): Promise<Response> {
       return new Response(
         JSON.stringify({ error: 'Invalid authentication' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ── Guarda: telefone confirmado obrigatório (espelha a guarda do checkout) ──
+    if (!user.phone_confirmed_at) {
+      return new Response(
+        JSON.stringify({ error: 'PHONE_NOT_CONFIRMED' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -123,7 +132,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // ── Fetch user profile data for Asaas customer ──────────────────────────
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('full_name, cpf, phone')
+      .select('full_name, cpf, phone, card_contact_email')
       .eq('id', user.id)
       .single();
 
@@ -134,9 +143,17 @@ export async function handleRequest(req: Request): Promise<Response> {
       );
     }
 
+    // E-mail é opcional no customer Asaas: ausente → omitir a chave
+    // (string vazia é rejeitada pela API).
+    const customerEmail = resolveOptionalCustomerEmail({
+      authEmail: user.email,
+      authEmailConfirmed: !!user.email_confirmed_at,
+      contactEmail: profile.card_contact_email ?? null,
+      userId: user.id,
+    });
     const customerData = {
-      name: profile.full_name || user.email || 'Cliente',
-      email: user.email || '',
+      name: profile.full_name || 'Cliente',
+      ...(customerEmail ? { email: customerEmail } : {}),
       cpfCnpj: profile.cpf || '',
       phone: profile.phone || '',
     };

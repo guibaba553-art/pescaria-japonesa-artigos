@@ -1,13 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from '../_shared/asaasCustomer.ts';
+import { resolveCardholderEmail, resolveOptionalCustomerEmail } from '../_shared/payerEmail.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+export async function handleRequest(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -28,7 +29,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -116,7 +117,7 @@ serve(async (req) => {
       // Fetch user profile for Asaas customer
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, cpf, phone')
+        .select('full_name, cpf, phone, card_contact_email')
         .eq('id', currentUser.id)
         .single();
 
@@ -124,9 +125,17 @@ serve(async (req) => {
         throw new Error('Perfil do usuário não encontrado');
       }
 
+      // E-mail é opcional no customer Asaas: ausente → omitir a chave
+      // (string vazia é rejeitada pela API).
+      const customerEmail = resolveOptionalCustomerEmail({
+        authEmail: currentUser.email,
+        authEmailConfirmed: !!currentUser.email_confirmed_at,
+        contactEmail: profile.card_contact_email ?? null,
+        userId: currentUser.id,
+      });
       const customerData = {
         name: profile.full_name || currentUser.email || 'Cliente',
-        email: currentUser.email || '',
+        ...(customerEmail ? { email: customerEmail } : {}),
         cpfCnpj: profile.cpf || '',
         phone: profile.phone || '',
       };
@@ -219,7 +228,7 @@ serve(async (req) => {
       // Fetch user profile for customer info
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('full_name, cpf')
+        .select('full_name, cpf, card_contact_email')
         .eq('id', currentUser.id)
         .single();
 
@@ -234,7 +243,14 @@ serve(async (req) => {
         description: `Pedido ${orderId}`,
         payment_method_id: 'pix',
         payer: {
-          email: currentUser.email || '',
+          // payer.email é OBRIGATÓRIO no Mercado Pago → escada com placeholder
+          // (nunca string vazia, nunca chave ausente).
+          email: resolveCardholderEmail({
+            authEmail: currentUser.email,
+            authEmailConfirmed: !!currentUser.email_confirmed_at,
+            contactEmail: profile.card_contact_email ?? null,
+            userId: currentUser.id,
+          }),
           first_name: (profile.full_name || 'Cliente').split(' ')[0],
           last_name: (profile.full_name || 'Cliente').split(' ').slice(1).join(' ') || 'Cliente',
           identification: {
@@ -441,4 +457,8 @@ serve(async (req) => {
   } finally {
     clearTimeout(timeoutId);
   }
-});
+}
+
+if (!Deno.env.get("DENO_TEST")) {
+  serve(handleRequest);
+}
