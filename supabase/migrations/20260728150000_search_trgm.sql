@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
 -- GIN trigram index on products for fast ilike + similarity queries
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_products_search_trgm ON products
+CREATE INDEX IF NOT EXISTS idx_products_search_trgm ON products
 USING gin (
   name gin_trgm_ops,
   description gin_trgm_ops,
@@ -15,7 +15,7 @@ USING gin (
 );
 
 -- GIN trigram index on product_variations for variation name/sku search
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_variations_search_trgm ON product_variations
+CREATE INDEX IF NOT EXISTS idx_variations_search_trgm ON product_variations
 USING gin (
   name gin_trgm_ops,
   sku gin_trgm_ops
