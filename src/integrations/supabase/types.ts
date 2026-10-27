@@ -2279,9 +2279,28 @@ export type Database = {
           },
         ]
       }
+      otp_send_log: {
+        Row: {
+          id: number
+          phone: string
+          sent_at: string
+        }
+        Insert: {
+          id?: never
+          phone: string
+          sent_at?: string
+        }
+        Update: {
+          id?: never
+          phone?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           asaas_customer_id: string | null
+          card_contact_email: string | null
           cep: string | null
           cpf: string | null
           created_at: string
@@ -2292,6 +2311,7 @@ export type Database = {
         }
         Insert: {
           asaas_customer_id?: string | null
+          card_contact_email?: string | null
           cep?: string | null
           cpf?: string | null
           created_at?: string
@@ -2302,6 +2322,7 @@ export type Database = {
         }
         Update: {
           asaas_customer_id?: string | null
+          card_contact_email?: string | null
           cep?: string | null
           cpf?: string | null
           created_at?: string
