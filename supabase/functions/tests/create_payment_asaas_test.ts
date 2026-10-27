@@ -2,8 +2,8 @@ Deno.env.set("DENO_TEST", "1");
 
 import { assertEquals, assertStringIncludes, assertExists, assert } from "jsr:@std/assert@^1";
 import { handleRequest } from "../create-payment-asaas/index.ts";
-import { interceptFetch, setupEnv, mockAsaas, asaas } from "./mock_gateways.ts";
-import { getJwt, createOrder, deleteOrder, SUPABASE_URL, ANON_KEY, TEST_USER_ID } from "./helpers.ts";
+import { interceptFetch, setupEnv, mockAsaas, mockInternalFn, asaas } from "./mock_gateways.ts";
+import { getJwt, createOrder, deleteOrder, SUPABASE_URL, ANON_KEY, SERVICE_KEY, TEST_USER_ID } from "./helpers.ts";
 
 setupEnv();
 interceptFetch();
@@ -240,4 +240,111 @@ Deno.test("cartão recusado retorna attemptsRemaining", async () => {
   assertEquals(r.status, 400);
   const data = await r.json();
   assertExists(data.attemptsRemaining);
+});
+
+// ── Payer email escada (spec seção 4, Fluxo C) — usuário só-telefone ──
+// GoTrue local não permite remover o e-mail do usuário; mockamos apenas a
+// fronteira GoTrue (mesmo padrão de tokenize_card_test.ts) — DB real.
+
+Deno.test("telefone não confirmado → 403 PHONE_NOT_CONFIRMED (guarda server-side)", async () => {
+  mockInternalFn((url) => {
+    if (url.includes("/auth/v1/user")) {
+      return { status: 200, body: { ...usuarioSemEmail(), phone_confirmed_at: null } };
+    }
+    return null;
+  });
+  const r = await call({
+    orderId: crypto.randomUUID(),
+    installmentCount: 1,
+    remoteIp: "127.0.0.1",
+    customerData: { name: "T", cpfCnpj: "123", phone: "11" },
+    creditCardToken: "x",
+  });
+  mockInternalFn(null);
+  assertEquals(r.status, 403);
+  assertEquals((await r.json()).error, "PHONE_NOT_CONFIRMED");
+});
+
+function usuarioSemEmail(): Record<string, unknown> {
+  return {
+    id: TEST_USER_ID,
+    aud: "authenticated",
+    email: null,
+    email_confirmed_at: null,
+    phone: "+5511999999999",
+    phone_confirmed_at: new Date().toISOString(),
+    user_metadata: { full_name: "Cliente WhatsApp" },
+  };
+}
+
+async function resetarAsaasCustomerId() {
+  const svc = { "apikey": SERVICE_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}`, {
+    method: "PATCH", headers: svc, body: JSON.stringify({ asaas_customer_id: null }),
+  });
+}
+
+async function comCardContactEmail(email: string | null, fn: () => Promise<void>) {
+  const svc = { "apikey": SERVICE_KEY, "Authorization": `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+  const cur = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}&select=card_contact_email`, { headers: svc });
+  const prev = ((await cur.json())[0] as Record<string, unknown> | undefined)?.card_contact_email ?? null;
+  const patch = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}`, {
+    method: "PATCH", headers: svc, body: JSON.stringify({ card_contact_email: email }),
+  });
+  if (!patch.ok) throw new Error(`PATCH card_contact_email falhou: ${patch.status} ${await patch.text()}`);
+  try {
+    await fn();
+  } finally {
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${TEST_USER_ID}`, {
+      method: "PATCH", headers: svc, body: JSON.stringify({ card_contact_email: prev }),
+    });
+  }
+}
+
+Deno.test("usuário sem authEmail com card_contact_email salvo: contato chega ao Asaas no customer e no holderInfo", async () => {
+  await comCardContactEmail("salvo@contato.com", async () => {
+    await resetarAsaasCustomerId();
+    mockInternalFn((url) => {
+      if (url.includes("/auth/v1/user")) return { status: 200, body: usuarioSemEmail() };
+      return null;
+    });
+
+    let customerPayload: Record<string, unknown> | null = null;
+    let paymentPayload: Record<string, unknown> | null = null;
+    mockAsaas((url, _method, body) => {
+      if (url.includes("/customers") && !url.includes("/customers/cus_")) {
+        customerPayload = (body as Record<string, unknown>) ?? null;
+        return asaas.customerCreate("cus_esc_pay");
+      }
+      if (url.includes("/customers/cus_")) return asaas.customerGet("cus_esc_pay");
+      if (url.includes("/payments")) {
+        paymentPayload = (body as Record<string, unknown>) ?? null;
+        return asaas.paymentOk();
+      }
+      return null;
+    });
+
+    const oid = await createOrder();
+    const r = await call({
+      orderId: oid,
+      installmentCount: 1,
+      remoteIp: "127.0.0.1",
+      customerData: { name: "T", cpfCnpj: "123", phone: "11" },
+      creditCard: { holderName: "JOÃO", number: "4111111111111111", expiryMonth: "12", expiryYear: "30", ccv: "123" },
+      creditCardHolderInfo: { name: "T", email: "", cpfCnpj: "123", postalCode: "12345678", addressNumber: "100", phone: "11" },
+    });
+
+    await deleteOrder(oid);
+    mockAsaas(null);
+    mockInternalFn(null);
+
+    assertEquals(r.status, 200);
+    assertExists(customerPayload, "POST /v3/customers deve ter sido capturado");
+    assertEquals((customerPayload as Record<string, unknown>).email, "salvo@contato.com");
+    assertExists(paymentPayload, "POST /v3/payments deve ter sido capturado");
+    assertEquals(
+      ((paymentPayload as Record<string, unknown>).creditCardHolderInfo as Record<string, unknown>).email,
+      "salvo@contato.com",
+    );
+  });
 });
