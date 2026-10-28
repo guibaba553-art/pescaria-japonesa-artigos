@@ -11,3 +11,15 @@ export function getStockMessage(stock: number): string | null {
   }
   return null;
 }
+
+/** Produtos com variações usam somente o saldo das variações, nunca o saldo principal antigo. */
+export function getPdvDisplayStock(product: {
+  stock: number;
+  variations?: { stock: number }[];
+}): number {
+  const available = (stock: number) => Number.isFinite(Number(stock)) ? Math.max(0, Number(stock)) : 0;
+  if (product.variations?.length) {
+    return product.variations.reduce((total, variation) => total + available(variation.stock), 0);
+  }
+  return available(product.stock);
+}

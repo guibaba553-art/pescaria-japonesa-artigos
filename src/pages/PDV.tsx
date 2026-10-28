@@ -61,6 +61,7 @@ import {
 } from '@/components/ui/select';
 import { getPdvPrice, getPdvOriginalPrice, getPdvDisplayPrice, isPdvPromoActive, type PdvPaymentMethod } from '@/utils/pdvPricing';
 import { resolveCartInventory } from '@/utils/cartValidation';
+import { getPdvDisplayStock } from '@/utils/stockDisplay';
 import { CustomerSearchCombobox } from '@/components/CustomerSearchCombobox';
 import { CustomerPdvInsights } from '@/components/CustomerPdvInsights';
 import { loadTiers, getTierForScore, type CustomerTier } from '@/utils/customerTiers';
@@ -690,19 +691,26 @@ export default function PDV() {
       // restaurado. Não existe RPC que filtre por lista de ids (chamar a RPC por
       // produto seria N+1). get_product_variations_admin (SECURITY DEFINER) devolve
       // a tabela inteira em uma única chamada; o filtro por ids é feito no cliente.
-      const { data: allVars, error: vErr } = await supabase
-        .rpc('get_product_variations_admin');
-      if (vErr) { console.error('Erro variações:', vErr); }
+      const allVars: VariationAdminRow[] = [];
+      for (let offset = 0; ; offset += PAGE_P) {
+        const { data: page, error } = await supabase
+          .rpc('get_product_variations_admin')
+          .order('id')
+          .range(offset, offset + PAGE_P - 1);
+        if (error) throw error;
+        allVars.push(...(page ?? []));
+        if (!page || page.length < PAGE_P) break;
+      }
       const vars = (allVars || []).filter((v) => ids.includes(v.product_id));
       const byProduct = new Map<string, any[]>();
       (vars || []).forEach((v: any) => {
         if (!byProduct.has(v.product_id)) byProduct.set(v.product_id, []);
-        byProduct.get(v.product_id)!.push(v);
+        byProduct.get(v.product_id)?.push(v);
       });
       const merged = (prods || [])
         .map((p: any) => ({ ...p, variations: byProduct.get(p.id) || [] }))
         .filter((p: any) => !p.site_only)
-        .filter((p: any) => Number(p.stock || 0) > 0 || (p.variations || []).some((v: any) => Number(v.stock || 0) > 0))
+        .filter((p: Product) => getPdvDisplayStock(p) > 0)
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
       setProducts(merged);
     } catch (error: any) {
@@ -2415,7 +2423,7 @@ export default function PDV() {
                           <div className="flex items-end justify-between pt-1">
                             <div className="flex flex-col min-w-0">
                               <span className="text-[10px] text-emerald-600 font-bold">
-                                {product.stock} {product.sold_by_weight ? 'kg' : 'un'}
+                                {getPdvDisplayStock(product)} {product.sold_by_weight ? 'kg' : 'un'}
                               </span>
                               {displayPrice.hasVariations && (
                                 <span className="text-[10px] text-muted-foreground">A partir de</span>
