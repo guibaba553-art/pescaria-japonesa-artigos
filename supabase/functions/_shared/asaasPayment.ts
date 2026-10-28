@@ -1,6 +1,7 @@
 // Shared Asaas credit card payment processor
 // Used by create-payment-asaas and retry-payment-asaas
 
+import { triggerAutoFiscal } from './triggerAutoFiscal.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { findOrCreateCustomer } from './asaasCustomer.ts';
 import { validateCreditCardFields } from './cardValidation.ts';
@@ -395,6 +396,7 @@ export async function processAsaasCreditCardPayment(
   if (confirmedSaveError) {
     throw confirmedSaveError;
   }
+  await triggerAutoFiscal(orderId);
 
   // Colunas opcionais — falhas aqui não podem impedir a gravação do payment_id.
   if (asaasInstallmentId || invoiceNumber) {
