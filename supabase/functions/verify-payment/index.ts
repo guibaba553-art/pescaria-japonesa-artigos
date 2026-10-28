@@ -1,3 +1,4 @@
+import { triggerAutoFiscal } from '../_shared/triggerAutoFiscal.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
@@ -221,6 +222,7 @@ serve(async (req) => {
       }
 
       console.log('Pedido atualizado com sucesso');
+      await triggerAutoFiscal(order.id);
 
       // Baixa de estoque (libera reserva + subtrai estoque real). Idempotente.
       try {

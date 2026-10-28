@@ -1,3 +1,4 @@
+import { triggerAutoFiscal } from '../_shared/triggerAutoFiscal.ts';
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { handlePaymentConfirmed } from "../_shared/stockHandler.ts";
@@ -180,6 +181,7 @@ serve(async (req) => {
 
         // ── Post-payment actions (fire-and-forget) ───────────────────────
         await executePostPaymentActions(supabase, supabaseUrl, supabaseKey, orderId, payment);
+        await triggerAutoFiscal(orderId);
 
         break;
       }
@@ -206,6 +208,7 @@ serve(async (req) => {
 
           // Execute post-payment actions
           await executePostPaymentActions(supabase, supabaseUrl, supabaseKey, orderId, payment);
+        await triggerAutoFiscal(orderId);
         }
 
         // Update payment_received_at for financial reconciliation
