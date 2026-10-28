@@ -16,7 +16,9 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const pmMap: Record<string, 'cartao_credito' | 'cartao_debito' | 'pix'> = {
   credit: 'cartao_credito',
+  credit_card: 'cartao_credito',
   debit: 'cartao_debito',
+  debit_card: 'cartao_debito',
   pix: 'pix',
 };
 
@@ -60,8 +62,12 @@ serve(async (req) => {
       });
     }
 
-    // Só processa PDV com pix/credit/debit
-    if (order.source !== 'pdv' || !['pix', 'credit', 'debit'].includes(String(order.payment_method))) {
+    // PDV com pix/credit/debit, ou pedido do site com retirada na loja (já pago)
+    const isPdv = order.source === 'pdv' && ['pix', 'credit', 'debit'].includes(String(order.payment_method));
+    const isSitePickup = order.source !== 'pdv' && order.delivery_type === 'pickup'
+      && !['aguardando_pagamento', 'cancelado'].includes(String(order.status))
+      && !!pmMap[String(order.payment_method)];
+    if (!isPdv && !isSitePickup) {
       return new Response(JSON.stringify({ skipped: true, reason: 'not_applicable' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
