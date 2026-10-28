@@ -90,6 +90,7 @@ Every implementation or bugfix starts with a failing test, then the fix. No exce
 ## Business rules
 
 - PDV list pricing uses `getPdvDisplayPrice` to select the lowest in-stock variation price with the selected payment method; parent prices must not override variation previews.
+- PDV stock filtering and badges use `getPdvDisplayStock` and load all variation pages, so depleted variations never fall back to stale parent inventory.
 
 - Credit cards: 13–16 digits only (Asaas limitation; Discover/Hipercard unsupported). Validated in `src/lib/creditCardValidation.ts`.
 - Payment routing by value: `src/lib/pixGatewayRouter.ts`
