@@ -36,6 +36,13 @@
       "when": 1793301356383,
       "tag": "0004_protect_product_sales_history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793301372762,
+      "tag": "0005_restrict_historical_product_foreign_keys",
+      "breakpoints": true
     }
   ]
 }
