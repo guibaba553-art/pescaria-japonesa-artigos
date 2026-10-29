@@ -22,6 +22,13 @@
       "when": 1793279988865,
       "tag": "0002_site_has_price_min_sale",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793280000665,
+      "tag": "0003_products_site_has_price_new_min",
+      "breakpoints": true
     }
   ]
 }
