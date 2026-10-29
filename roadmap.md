@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Impedir exclusão de produtos/variações que apague itens vendidos ou movimentações de estoque
-- [ ] Corrigir total da triagem e validar a proteção do histórico
+- [x] Impedir exclusão de produtos/variações que apague itens vendidos ou movimentações de estoque — proteções e vínculos restritivos confirmados no banco
+- [x] Corrigir total da triagem e validar a proteção do histórico — 29 testes passaram; pedido conferido na tela com R$ 322,21 e triagem bloqueada sem itens
 - [ ] Recuperar itens apagados dos pedidos AZURA — depende de comprovante que confirme o item original
 
 - [x] Trocar reforço por contagem de cédulas/moedas e atualizar o saldo atomicamente; 12 testes passando e tela conferida sem lançar dinheiro fictício
