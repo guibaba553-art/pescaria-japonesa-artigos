@@ -19,6 +19,7 @@ import {
 import { TriagemScanDialog, TriagemOrder } from '@/components/TriagemScanDialog';
 import { CancelOrderWithRefundDialog } from '@/components/OrdersManagement';
 import { statusConfig, getStatusLabel } from '@/lib/orderStatus';
+import { getOrderTotals } from '@/lib/orderTotals';
 import {
   Package,
   Truck,
@@ -105,6 +106,11 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
           description: `Status atual: ${data.status}. Triagem só abre pedidos em preparo.`,
           variant: 'destructive',
         });
+        return null;
+      }
+
+      if (!data.order_items?.length) {
+        toast({ title: 'Pedido sem itens registrados', description: 'Recupere os itens deste pedido antes de concluir a triagem.', variant: 'destructive' });
         return null;
       }
 
@@ -235,8 +241,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
             const methodLabel = order.payment_method === 'pix' ? 'PIX' : order.payment_method === 'credit_card' ? 'Cartão de Crédito' : order.payment_method === 'debit_card' ? 'Cartão de Débito' : order.card_brand ? 'Cartão' : order.qr_code_base64 ? 'PIX' : order.payment_method || '';
             const isLoading = loadingOrderId === order.id;
             const isExpanded = expandedOrders.has(order.id);
-            const subtotal = order.order_items.reduce((s, it) => s + (it.price_at_purchase || 0) * (it.quantity || 0), 0);
-            const total = subtotal + (order.shipping_cost || 0);
+            const { subtotal, total } = getOrderTotals(order);
             const hasPayment = !!(order.payment_gateway && (order.payment_id || order.asaas_payment_id));
 
             return (
@@ -286,7 +291,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
                           R$ {total.toFixed(2)}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
-                          {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'itens'}
+                          {order.order_items.length ? `${order.order_items.length} ${order.order_items.length === 1 ? 'item' : 'itens'}` : 'Itens não registrados'}
                         </p>
                       </div>
                       {isLoading ? (
@@ -325,7 +330,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
                     <Button
                       size="sm"
                       onClick={() => openScanFor(order.id, order.delivery_type)}
-                      disabled={isLoading}
+                      disabled={isLoading || !order.order_items.length}
                       className="gap-1"
                     >
                       {isLoading ? (
@@ -407,6 +412,7 @@ export function TriagemSection({ orders, profiles, onStatusChanged, openLabelDia
                     <div className="px-4 pb-4 border-t space-y-4">
                       <div className="pt-4 space-y-2">
                         <h4 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">Itens do Pedido</h4>
+                        {!order.order_items.length && <p className="text-sm text-destructive">Os itens deste pedido precisam ser recuperados antes da triagem.</p>}
                         {order.order_items.map((item, idx) => (
                           <div key={item.id || idx} className="flex items-center justify-between text-sm">
                             <span className="flex-1 min-w-0">
