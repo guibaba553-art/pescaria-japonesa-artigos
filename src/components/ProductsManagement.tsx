@@ -29,6 +29,7 @@ import { DraftRestoreBanner } from '@/components/DraftRestoreBanner';
 import { normalizeProductImage } from '@/utils/normalizeProductImage';
 import { upscaleImage } from '@/utils/upscaleImage';
 import { parseOptionalMeasurementInput } from '@/utils/productMeasurements';
+import { deleteProductSafely } from '@/lib/deleteProductSafely';
 
 interface Product {
   id: string;
@@ -197,12 +198,13 @@ export function ProductsManagement() {
   const handleDelete = async (id: string, imageUrl: string | null) => {
     if (!confirm('Tem certeza que deseja deletar este produto?')) return;
     try {
-      if (imageUrl) {
-        const fileName = imageUrl.split('/').pop();
-        if (fileName) await supabase.storage.from('product-images').remove([fileName]);
-      }
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
+      await deleteProductSafely(
+        () => supabase.from('products').delete().eq('id', id),
+        async () => {
+          const fileName = imageUrl?.split('/').pop();
+          if (fileName) await supabase.storage.from('product-images').remove([fileName]);
+        },
+      );
       try {
         const dp = products.find((p) => p.id === id);
         await supabase.rpc('log_admin_access', {
