@@ -104,6 +104,9 @@ Every implementation or bugfix starts with a failing test, then the fix. No exce
 
 ## Watch out for
 
+- Database delete guards must reject removal of products or variations referenced by sales or stock movements; remove product media only after successful deletion to preserve historical records.
+- Triagem totals use the recorded order total, not a recalculation from item rows, because missing historical items must not erase the charged amount.
+
 - Cash reinforcement must use the atomic `register_cash_reinforcement` RPC with denomination counts; this keeps drawer inventory and the financial movement consistent under concurrent sales.
 
 - **Vite chunk config** isolates `@huggingface/transformers` and `onnxruntime` into a separate chunk — don't touch the `manualChunks` logic
