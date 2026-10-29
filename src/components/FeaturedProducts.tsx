@@ -33,7 +33,7 @@ const FeaturedProducts = () => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const { data, error } = await supabase
         .from('products')
-        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS).eq('site_has_price', true)
         .eq('pdv_only', false)
         .gt('stock', 0)
         .eq('featured', true)

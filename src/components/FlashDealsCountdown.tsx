@@ -66,7 +66,7 @@ const FlashDealsCountdown = () => {
       // 1) Produtos com promoção no próprio produto
       const { data: directData } = await supabase
         .from("products")
-        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+        .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS).eq('site_has_price', true)
         .eq("on_sale", true)
         .neq("sale_channel", "pdv")
         .gt("stock", 0)
@@ -94,7 +94,7 @@ const FlashDealsCountdown = () => {
       if (varProductIds.length > 0) {
         const { data: vpData } = await supabase
           .from("products")
-          .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS)
+          .select(PUBLIC_PRODUCT_COLUMNS_WITH_VARIATIONS).eq('site_has_price', true)
           .in("id", varProductIds)
           .eq("pdv_only", false)
           .gt("stock", 0)

@@ -73,7 +73,7 @@ export async function searchProductsSmart(
   if (tokens.length === 0) return [];
 
   const base = () =>
-    client.from('products').select(SELECT_FIELDS).eq('pdv_only', false).gt('stock', 0);
+    client.from('products').select(SELECT_FIELDS).eq('pdv_only', false).eq('site_has_price', true).gt('stock', 0);
 
   const orFilter = tokens
     .flatMap((t) => {

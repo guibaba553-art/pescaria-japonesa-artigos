@@ -2118,6 +2118,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_has_price: boolean
           site_only: boolean
           size: string | null
           sku: string | null
@@ -2180,6 +2181,7 @@ export type Database = {
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
+          site_has_price?: boolean
           site_only?: boolean
           size?: string | null
           sku?: string | null
@@ -2242,6 +2244,7 @@ export type Database = {
           sale_sold_qty?: number
           sale_starts_at?: string | null
           short_description?: string | null
+          site_has_price?: boolean
           site_only?: boolean
           size?: string | null
           sku?: string | null
@@ -3169,6 +3172,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_logs: { Args: never; Returns: Json }
+      compute_site_has_price: {
+        Args: { p_id: string; p_price: number }
+        Returns: boolean
+      }
       consume_promo_limits: { Args: { p_items: Json }; Returns: undefined }
       create_pdv_sale: {
         Args: {
@@ -3275,6 +3282,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_has_price: boolean
           site_only: boolean
           size: string | null
           sku: string | null
@@ -3428,6 +3436,7 @@ export type Database = {
           sale_sold_qty: number
           sale_starts_at: string | null
           short_description: string | null
+          site_has_price: boolean
           site_only: boolean
           size: string | null
           sku: string | null
