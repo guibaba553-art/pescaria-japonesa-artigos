@@ -68,7 +68,7 @@ export function SearchSection() {
           image_url, stock, rating, featured, minimum_quantity,
           sold_by_weight, created_at,
           variations:product_variations(id, name, price, stock, image_url, on_sale, sale_price, sale_ends_at, sale_limit_qty, sale_sold_qty, min_sale_price)
-        `)
+        `).eq('site_has_price', true)
         .in('id', ids)
         .limit(12);
 

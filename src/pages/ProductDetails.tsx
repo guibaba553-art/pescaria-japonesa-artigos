@@ -74,7 +74,7 @@ export default function ProductDetails() {
     setQuantity(1);
     const { data, error } = await supabase
       .from('products')
-      .select(PUBLIC_PRODUCT_COLUMNS)
+      .select(PUBLIC_PRODUCT_COLUMNS).eq('site_has_price', true)
       .eq('id', id)
       .eq('pdv_only', false)
       .maybeSingle();
