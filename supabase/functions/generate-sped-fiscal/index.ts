@@ -175,7 +175,11 @@ serve(async (req) => {
     // Layout: REG|COD_PART|NOME|COD_PAIS|CNPJ|CPF|IE|COD_MUN|SUFRAMA|END|NUM|COMPL|BAIRRO
     const participantesCods = new Map<string, string>();
     let codCount = 1;
-    customersById.forEach((c) => {
+    // Ordem alfabética pelo nome, igual ao arquivo de referência do contador.
+    Array.from(customersById.values())
+      .sort((a: any, b: any) => String(a.company_name || a.full_name || '')
+        .localeCompare(String(b.company_name || b.full_name || ''), 'pt-BR'))
+      .forEach((c: any) => {
       const cod = `C${String(codCount++).padStart(6, '0')}`;
       participantesCods.set(c.id, cod);
       const doc = cleanDoc(c.cnpj || c.cpf);
