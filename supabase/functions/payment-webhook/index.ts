@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 import { handlePaymentConfirmed } from '../_shared/stockHandler.ts';
+import { triggerAutoFiscal } from '../_shared/triggerAutoFiscal.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -189,6 +190,11 @@ serve(async (req) => {
 
         // Subtrair estoque após pagamento aprovado via shared handler
         const stockResult = await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, order.id);
+
+        // Emissão fiscal automática (site com retirada) — só se o estoque foi baixado (sem estorno)
+        if (stockResult.stockSuccess && !alreadyProcessed) {
+          await triggerAutoFiscal(order.id);
+        }
 
         // ----- Estorno automático se estoque insuficiente -----
         // Race condition: dois clientes compraram a última unidade simultaneamente.
