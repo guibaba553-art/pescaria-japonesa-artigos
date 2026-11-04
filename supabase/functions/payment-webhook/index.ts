@@ -188,13 +188,13 @@ serve(async (req) => {
 
         console.log(`Order ${order.id} updated successfully to em_preparo`);
 
-        // Emissão fiscal automática (site com retirada / PDV) — idempotente
-        if (!alreadyProcessed) {
-          await triggerAutoFiscal(order.id);
-        }
-
         // Subtrair estoque após pagamento aprovado via shared handler
         const stockResult = await handlePaymentConfirmed(supabase, supabaseUrl, supabaseKey, order.id);
+
+        // Emissão fiscal automática (site com retirada) — só se o estoque foi baixado (sem estorno)
+        if (stockResult.stockSuccess && !alreadyProcessed) {
+          await triggerAutoFiscal(order.id);
+        }
 
         // ----- Estorno automático se estoque insuficiente -----
         // Race condition: dois clientes compraram a última unidade simultaneamente.
