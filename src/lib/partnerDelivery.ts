@@ -1,16 +1,18 @@
 // Entrega pela transportadora parceira: frete fixo para cidades atendidas (MT).
 
 export const PARTNER_CITIES = [
-  'Itaúba', 'Santa Helena', 'Guarita', 'Terra Nova do Norte', 'Peixoto de Azevedo',
-  'Matupá', 'Guarantã do Norte', 'Novo Mundo', 'Nova Canaã do Norte', 'Carlinda',
-  'Alta Floresta', 'Colíder', 'Nova Monte Verde', 'Paranaíta', 'Nova Bandeirantes',
-  'Vera', 'Santa Carmem', 'Feliz Natal', 'União do Sul',
+  'Marcelândia', 'Vera', 'Itaúba', 'Nova Guarita', 'Apiacás', 'Guarantã do Norte',
+  'Alta Floresta', 'Terra Nova do Norte', 'Colíder', 'Peixoto de Azevedo', 'União do Sul',
+  'Matupá', 'Nova Santa Helena', 'Nova Bandeirantes', 'Nova Monte Verde', 'Paranaíta',
+  'Novo Mundo', 'Carlinda', 'Sorriso', 'Cláudia', 'Santa Carmem', 'Feliz Natal',
 ];
 
 // Nomes aceitos (normalizados) → inclui formas curtas usadas no dia a dia
 const ALIASES: Record<string, string> = {
   'terra nova': 'terra nova do norte',
-  'nova canaa': 'nova canaa do norte',
+  'guarita': 'nova guarita',
+  'santa helena': 'nova santa helena',
+  'nova bandeirante': 'nova bandeirantes',
   'guaranta': 'guaranta do norte',
 };
 

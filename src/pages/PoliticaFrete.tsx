@@ -11,7 +11,7 @@ const faqJsonLd = {
       name: "Para quais regiões a JAPAS Pesca entrega?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Entregamos por transportadora parceira, com frete fixo de R$ 15,00, em Itaúba, Santa Helena, Guarita, Terra Nova do Norte, Peixoto de Azevedo, Matupá, Guarantã do Norte, Novo Mundo, Nova Canaã do Norte, Carlinda, Alta Floresta, Colíder, Nova Monte Verde, Paranaíta, Nova Bandeirantes, Vera, Santa Carmem, Feliz Natal e União do Sul (MT). Também há retirada gratuita na loja em Sinop/MT.",
+        text: "Entregamos por transportadora parceira, com frete fixo de R$ 15,00, em Marcelândia, Vera, Itaúba, Nova Guarita, Apiacás, Guarantã do Norte, Alta Floresta, Terra Nova do Norte, Colíder, Peixoto de Azevedo, União do Sul, Matupá, Nova Santa Helena, Nova Bandeirantes, Nova Monte Verde, Paranaíta, Novo Mundo, Carlinda, Sorriso, Cláudia, Santa Carmem e Feliz Natal (MT). Também há retirada gratuita na loja em Sinop/MT.",
       },
     },
     {
