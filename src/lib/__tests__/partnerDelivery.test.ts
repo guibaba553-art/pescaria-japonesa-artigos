@@ -6,7 +6,13 @@ describe('classifyDeliveryCity', () => {
     expect(classifyDeliveryCity('Itaúba', 'MT')).toBe('partner');
     expect(classifyDeliveryCity('matupá', 'mt')).toBe('partner');
     expect(classifyDeliveryCity('Guarantã do Norte', 'MT')).toBe('partner');
-    expect(classifyDeliveryCity('Nova Canaã do Norte', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Sorriso', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Cláudia', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Marcelândia', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Apiacás', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Nova Guarita', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Nova Santa Helena', 'MT')).toBe('partner');
+    expect(classifyDeliveryCity('Nova Canaã do Norte', 'MT')).toBe('unsupported');
     expect(classifyDeliveryCity('Santa Carmem', 'MT')).toBe('partner');
     expect(classifyDeliveryCity('Colíder', 'MT')).toBe('partner');
     expect(classifyDeliveryCity('Vera', 'MT')).toBe('partner');
@@ -25,6 +31,6 @@ describe('classifyDeliveryCity', () => {
 
   it('frete fixo de R$ 15', () => {
     expect(PARTNER_SHIPPING_OPTION.valor).toBe(15);
-    expect(PARTNER_CITIES.length).toBe(19);
+    expect(PARTNER_CITIES.length).toBe(22);
   });
 });
