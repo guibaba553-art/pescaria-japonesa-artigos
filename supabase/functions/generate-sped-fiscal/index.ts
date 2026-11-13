@@ -17,13 +17,41 @@ const corsHeaders = {
 const cleanDoc = (doc?: string | null) => (doc || '').replace(/\D/g, '');
 const fmtVal = (n: number) =>
   (Math.round((n || 0) * 100) / 100).toFixed(2).replace('.', ',');
+// Datas no fuso de Cuiabá (UTC-4), igual à data impressa na nota.
 const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
+  const d = new Date(new Date(iso).getTime() - 4 * 3600 * 1000);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
   return `${dd}${mm}${yyyy}`;
 };
+
+const round2 = (n: number) => Math.round((n || 0) * 100) / 100;
+
+type C190Group = { cst: string; cfop: string; aliq: number; valor: number };
+// Agrupa itens por CSOSN/CFOP; a diferença para o total da nota (desconto/frete)
+// vai para o maior grupo, para o resumo bater com o valor da nota.
+export function buildC190Groups(items: any[], valNF: number): C190Group[] {
+  const map = new Map<string, C190Group>();
+  for (const it of items) {
+    const cst = String(it.products?.csosn || '102');
+    const cfop = String(it.products?.cfop || (cst === '500' ? '5405' : '5102'));
+    const aliq = cst === '102' ? 17 : 0;
+    const key = `${cst}|${cfop}|${aliq}`;
+    const g = map.get(key) || { cst, cfop, aliq, valor: 0 };
+    g.valor = round2(g.valor + Number(it.quantity) * Number(it.price_at_purchase));
+    map.set(key, g);
+  }
+  const groups = Array.from(map.values());
+  if (groups.length === 0) return [{ cst: '102', cfop: '5102', aliq: 17, valor: round2(valNF) }];
+  const sum = round2(groups.reduce((s, g) => s + g.valor, 0));
+  const diff = round2(valNF - sum);
+  if (diff !== 0) {
+    const big = groups.reduce((a, b) => (b.valor > a.valor ? b : a));
+    big.valor = round2(big.valor + diff);
+  }
+  return groups;
+}
 
 function makeLine(...fields: (string | number | undefined | null)[]): string {
   return '|' + fields.map((f) => (f === undefined || f === null ? '' : String(f))).join('|') + '|';
@@ -78,18 +106,28 @@ serve(async (req) => {
     }
 
     // ---------- NF-e AUTORIZADAS NO PERÍODO ----------
-    const startISO = `${startDate}T00:00:00`;
-    const endISO = `${endDate}T23:59:59`;
-    const { data: emissions } = await supabase
-      .from('nfe_emissions')
-      .select('id, order_id, nfe_number, nfe_key, valor_total, emitted_at, modelo, status, tipo')
-      .eq('modelo', '55')
-      .eq('status', 'success')
-      .gte('emitted_at', startISO)
-      .lte('emitted_at', endISO)
-      .order('emitted_at', { ascending: true });
-
-    const nfList = emissions || [];
+    // NF-e (55) e NFC-e (65) de saída autorizadas, no horário de Cuiabá.
+    const startISO = `${startDate}T00:00:00-04:00`;
+    const endISO = `${endDate}T23:59:59.999-04:00`;
+    const nfList: any[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page, error } = await supabase
+        .from('nfe_emissions')
+        .select('id, order_id, nfe_number, nfe_key, valor_total, emitted_at, modelo, status, tipo')
+        .in('modelo', ['55', '65'])
+        .eq('status', 'success')
+        .or('tipo.is.null,tipo.eq.saida')
+        .gte('emitted_at', startISO)
+        .lte('emitted_at', endISO)
+        .order('emitted_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, from + 999);
+      if (error) throw error;
+      nfList.push(...(page || []));
+      if (!page || page.length < 1000) break;
+    }
+    const chunk = <T,>(arr: T[], n = 100) =>
+      Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
     const orderIds = nfList.map((n) => n.order_id).filter(Boolean) as string[];
     const ordersById = new Map<string, any>();
@@ -97,28 +135,36 @@ serve(async (req) => {
     const customersById = new Map<string, any>();
 
     if (orderIds.length > 0) {
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('id, customer_id, total_amount, shipping_cost, shipping_address, created_at, source')
-        .in('id', orderIds);
-      (orders || []).forEach((o) => ordersById.set(o.id, o));
+      for (const ids of chunk(orderIds)) {
+        const { data: orders, error: oErr } = await supabase
+          .from('orders')
+          .select('id, customer_id, total_amount, shipping_cost, shipping_address, created_at, source')
+          .in('id', ids);
+        if (oErr) throw oErr;
+        (orders || []).forEach((o) => ordersById.set(o.id, o));
 
-      const { data: items } = await supabase
-        .from('order_items')
-        .select('order_id, quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, sku)')
-        .in('order_id', orderIds);
-      (items || []).forEach((it: any) => {
-        const arr = itemsByOrder.get(it.order_id) || [];
-        arr.push(it);
-        itemsByOrder.set(it.order_id, arr);
-      });
+        const { data: items, error: iErr } = await supabase
+          .from('order_items')
+          .select('id, order_id, quantity, price_at_purchase, product_id, products(name, ncm, cfop, csosn, origem, unidade_comercial, sku)')
+          .in('order_id', ids)
+          .order('id', { ascending: true })
+          .limit(5000);
+        if (iErr) throw iErr;
+        (items || []).forEach((it: any) => {
+          const arr = itemsByOrder.get(it.order_id) || [];
+          arr.push(it);
+          itemsByOrder.set(it.order_id, arr);
+        });
+      }
 
-      const custIds = Array.from(new Set((orders || []).map((o: any) => o.customer_id).filter(Boolean))) as string[];
-      if (custIds.length > 0) {
+      // Participantes (0150) só para NF-e; NFC-e vai sem destinatário.
+      const custIds = Array.from(new Set(nfList.filter((n) => n.modelo === '55')
+        .map((n) => ordersById.get(n.order_id)?.customer_id).filter(Boolean))) as string[];
+      for (const ids of chunk(custIds)) {
         const { data: custs } = await supabase
           .from('customers')
           .select('id, full_name, company_name, cpf, cnpj, cep, street, number, neighborhood')
-          .in('id', custIds);
+          .in('id', ids);
         (custs || []).forEach((c) => customersById.set(c.id, c));
       }
     }
@@ -194,7 +240,7 @@ serve(async (req) => {
 
     // 0190 / 0200 — só se houver itens
     const prodCods = new Map<string, { cod: string; name: string; ncm: string; un: string }>();
-    nfList.forEach((nf) => {
+    nfList.filter((nf) => nf.modelo === '55').forEach((nf) => {
       const its = itemsByOrder.get(nf.order_id) || [];
       its.forEach((it: any) => {
         const pid = it.product_id;
@@ -228,36 +274,46 @@ serve(async (req) => {
     const blocoC: string[] = [];
     blocoC.push(makeLine('C001', nfList.length > 0 ? '0' : '1'));
     nfList.forEach((nf) => {
+      const isNfe = nf.modelo === '55';
       const order = ordersById.get(nf.order_id) || {};
-      const cust = order.customer_id ? customersById.get(order.customer_id) : null;
+      const cust = isNfe && order.customer_id ? customersById.get(order.customer_id) : null;
       const partCod = cust ? participantesCods.get(cust.id) || '' : '';
       const dtDoc = fmtDate(nf.emitted_at || order.created_at);
-      const valFrete = Number(order.shipping_cost || 0);
-      const valNF = Number(nf.valor_total || order.total_amount || 0);
+      const valNF = round2(Number(nf.valor_total || order.total_amount || 0));
       const its = itemsByOrder.get(nf.order_id) || [];
-      const valProdSum = its.reduce(
-        (s: number, it: any) => s + Number(it.quantity) * Number(it.price_at_purchase), 0);
+      const valProdSum = round2(its.reduce(
+        (s: number, it: any) => s + Number(it.quantity) * Number(it.price_at_purchase), 0));
+      const valDesc = valProdSum > valNF ? round2(valProdSum - valNF) : 0;
+      const valMerc = valProdSum > valNF ? valProdSum : valNF;
 
+      // Layout igual ao SPED da contadora (emissão própria, IND_EMIT=0).
       blocoC.push(makeLine('C100',
-        '1', '1', partCod, '55', '00', '1',
-        nf.nfe_number || '', nf.nfe_key || '', dtDoc, dtDoc,
-        fmtVal(valNF), '0', '', '0', fmtVal(valProdSum), '9',
-        fmtVal(valFrete), '0', '0', '0', fmtVal(valNF),
-        '0', '0', '0', '0', '0', '0', '0', '0', ''));
+        '1', '0', partCod, nf.modelo, '00', '1',
+        nf.nfe_number || '', cleanDoc(nf.nfe_key), dtDoc, dtDoc,
+        fmtVal(valNF), '2', fmtVal(valDesc), '0', fmtVal(valMerc), '9',
+        '0,00', '0,00', '0,00', '0,00', '0,00',
+        '', '', '', '', '', '', ''));
 
-      its.forEach((it: any, idx: number) => {
-        const p = prodCods.get(it.product_id);
-        const qtd = Number(it.quantity);
-        const vUn = Number(it.price_at_purchase);
-        const vIt = qtd * vUn;
-        blocoC.push(makeLine('C170',
-          String(idx + 1), p?.cod || it.product_id, '',
-          fmtVal(qtd), p?.un || 'UN', fmtVal(vIt), '0', '0',
-          (it.products?.csosn || '102'),
-          (it.products?.cfop || '5102'),
-          p?.un || 'UN', fmtVal(qtd), fmtVal(vUn),
-          '0', '0', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
-      });
+      if (isNfe) {
+        its.forEach((it: any, idx: number) => {
+          const p = prodCods.get(it.product_id);
+          const qtd = Number(it.quantity);
+          const vUn = Number(it.price_at_purchase);
+          blocoC.push(makeLine('C170',
+            String(idx + 1), p?.cod || it.product_id, '',
+            fmtVal(qtd), p?.un || 'UN', fmtVal(qtd * vUn), '0', '0',
+            (it.products?.csosn || '102'),
+            (it.products?.cfop || '5102'),
+            p?.un || 'UN', fmtVal(qtd), fmtVal(vUn),
+            '0', '0', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''));
+        });
+      }
+
+      // C190 — resumo por CST/CFOP/alíquota (obrigatório; sem ele os totais ficam zerados).
+      for (const g of buildC190Groups(its, valNF)) {
+        blocoC.push(makeLine('C190', g.cst, g.cfop, fmtVal(g.aliq), fmtVal(g.valor),
+          '0,00', '0,00', '0,00', '0,00', '0,00', '0,00', ''));
+      }
     });
     blocoC.push(makeLine('C990', String(blocoC.length + 1)));
 
